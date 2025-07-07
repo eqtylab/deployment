@@ -1,0 +1,245 @@
+# =============================================================================
+# Governance Service - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Governance Service API service which provides
+# assurance validation, analysis capabilities, and integrates with AI/ML models
+# for the Governance Studio platform.
+# =============================================================================
+
+# =============================================================================
+# API SERVICE CONFIGURATION
+# =============================================================================
+
+# API service configuration - main REST API server
+api:
+  # Number of API service replicas to run
+  # Recommended: 2+ for production for high availability
+  replicaCount: 1
+
+  # Container image configuration
+  image:
+    repository: ghcr.io/eqtylab/governance-service # Container image repository
+    pullPolicy: IfNotPresent # Image pull policy
+    tag: "latest" # Container image tag
+
+  # Application startup configuration
+  command: ["./governance-service"] # Container entrypoint command
+  args:
+    []
+    # Available command line options:
+    # -debug-config        # Show configuration with debug output
+    # -debug-config-only   # Show configuration and exit
+    # -show-secrets        # Include secret values in debug output (DANGEROUS)
+    # -help                # Show help and exit
+
+  # API-specific resource limits
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# =============================================================================
+# WORKER SERVICE CONFIGURATION
+# =============================================================================
+
+# Worker service configuration - background job processor
+worker:
+  # Number of worker replicas to run
+  replicaCount: 1
+
+  # Container image configuration (separate from API)
+  image:
+    repository: ghcr.io/eqtylab/governance-worker # Worker container image repository
+    pullPolicy: IfNotPresent # Image pull policy
+    tag: "latest" # Container image tag
+
+  # Worker startup configuration
+  command: ["./governance-worker"] # Container entrypoint command
+  args:
+    []
+    # Available command line options:
+    # -debug-config        # Show configuration with debug output
+    # -debug-config-only   # Show configuration and exit
+    # -show-secrets        # Include secret values in debug output (DANGEROUS)
+    # -help                # Show help and exit
+
+  # Worker-specific resource limits
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+
+# Override the chart name if needed
+nameOverride: ""
+fullnameOverride: ""
+
+# =============================================================================
+# KUBERNETES CONFIGURATION
+# =============================================================================
+
+# Service account configuration
+serviceAccount:
+  create: false # Usually managed by umbrella chart
+  annotations: {} # Additional annotations for the service account
+  name: "" # Service account name (auto-generated if empty)
+
+# Pod-level annotations
+# Add custom annotations to pods (useful for monitoring, networking, etc.)
+podAnnotations: {}
+
+# Pod security context - security settings applied to the entire pod
+podSecurityContext: {}
+
+# Container security context - security settings for enhanced security
+securityContext:
+  capabilities:
+    drop:
+      - ALL # Drop all Linux capabilities
+  readOnlyRootFilesystem: true # Make root filesystem read-only
+  runAsNonRoot: true # Run as non-root user
+  runAsUser: 1000 # Run as specific user ID
+
+# Kubernetes service configuration
+service:
+  type: ClusterIP # Service type - ClusterIP for internal access
+  port: 10001 # Service port for the Governance Service API
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+# External Database configuration
+# Configure connection to PostgreSQL database (usually managed by umbrella chart)
+externalDatabase:
+  host: "" # Database hostname (e.g., "postgresql" or "my-postgres.domain.com")
+  port: 5432 # Database port (standard PostgreSQL port)
+  database: "governance" # Database name to connect to
+  user: "assurance" # Database username
+  password: "" # Database password (leave empty to use secret)
+  sslmode: "disable" # SSL mode: disable, require, verify-ca, verify-full
+
+  # Reference to Kubernetes secret containing database password
+  # Recommended approach for production deployments
+  passwordSecretKeyRef:
+    name: "" # Secret name containing database credentials
+    key: "" # Key within the secret containing the password
+
+# Database migration configuration
+migrations:
+  runAtStartup: false # Run database migrations automatically at startup
+  path: "/app/migrations" # Path to migration files within the container
+
+# =============================================================================
+# SECRET REFERENCES AND AUTHENTICATION
+# =============================================================================
+
+# HuggingFace Token for AI model access
+# Leave empty to use secret reference (recommended for production)
+huggingFaceToken: ""
+
+# Reference to Kubernetes secret containing HuggingFace token
+# Used for downloading and accessing AI/ML models
+huggingFaceTokenSecretKeyRef:
+  name: "" # Secret name (e.g., "hf-secret")
+  key: "" # Key within secret (e.g., "token")
+
+# Credential Encryption Key for sensitive data encryption
+# Leave empty to use secret reference (recommended for production)
+credentialEncryptionKey: ""
+
+# Reference to Kubernetes secret containing encryption key
+# Used for encrypting sensitive application data
+credentialEncryptionKeySecretKeyRef:
+  name: "" # Secret name (e.g., "platform-encryption")
+  key: "" # Key within secret (e.g., "key")
+
+# Auth0 Integration Configuration
+auth0SyncAtStartup: true # Sync Auth0 users at application startup
+auth0SyncPageSize: 100 # Number of users to sync per page from Auth0
+
+# Reference to Kubernetes secret containing Auth0 credentials
+auth0SecretKeyRef:
+  name: "auth0secret" # Secret name
+  clientIdKey: "clientId" # Key for Auth0 client ID
+  clientSecretKey: "clientSecret" # Key for Auth0 client secret
+  domainKey: "domain" # Key for Auth0 domain
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+# Application-specific configuration settings
+config:
+  # Health check endpoint path
+  path: "/api/v1/health"
+
+  # Application environment - affects logging and behavior
+  # Options: "development", "staging", "production"
+  appEnv: ""
+
+  # Logging level - controls verbosity of application logs
+  # Options: "debug", "info", "warn", "error"
+  logLevel: "info"
+
+  # HTTP Server Configuration
+  server:
+    readTimeout: 30 # Maximum time to read request (seconds)
+    writeTimeout: 30 # Maximum time to write response (seconds)
+    idleTimeout: 120 # Maximum idle time for connections (seconds)
+
+  # Background Job Scheduler Configuration
+  scheduler:
+    version: "1.0.0"
+    workerType: "general" # Type of worker (used by worker configmap)
+    maxConcurrentJobs: 5 # Number of concurrent workers
+    pollInterval: 30 # How often to check for new jobs (seconds)
+    heartbeatInterval: 60 # How often worker sends heartbeat (seconds)
+    jobClaimTTL: 5 # How long job claims are held for (minutes)
+    capabilities: "evaluation, scheduling"
+    # API-specific scheduler fields
+    workerCount: 5 # Number of concurrent workers (API perspective)
+    retryLimit: 3 # Maximum retry attempts for failed jobs
+    retryDelay: 60 # Delay between retry attempts (seconds)
+
+  # Indicator Configuration Management
+  indicators:
+    configPath: "/app/configs/indicators" # Path to indicator configuration files
+    reloadInterval: 300 # How often to reload configs (seconds)
+    validateOnLoad: true # Validate configurations when loading
+
+  # Cloud Storage Configuration
+  gcsBucketName: "" # Google Cloud Storage bucket name
+  gcsEnabled: false # Enable GCS service account volume mount
+
+  # Integration URLs
+  integrityServiceUrl: "" # URL of the Integrity Service

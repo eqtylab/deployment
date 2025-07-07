@@ -1,0 +1,489 @@
+# =============================================================================
+# GOVERNANCE STUDIO PLATFORM - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the complete Governance Studio platform including
+# all microservices, databases, and infrastructure components.
+#
+# IMPORTANT: This file contains example values. For production deployments:
+# 1. Copy this file and customize for your environment
+# 2. NEVER commit actual secrets to version control
+# 3. Use a separate secrets file for sensitive values
+# 4. Override the 'domain' value with your actual domain
+# =============================================================================
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+# Global settings that are shared across all components in the platform
+global:
+  # --- Environment Configuration ---
+  # Defines the deployment environment type, affects logging, security, and performance settings
+  environmentType: "production" # Options: development, staging, production
+
+  # Base domain for all ingress hostnames - MUST be overridden for your environment
+  # This domain will be used by all services for external access
+  domain: "governance.example.com" # Example: governance.yourcompany.com
+
+  # --- Secrets Management ---
+  # Centralized secret configuration for all platform components
+  # Secrets can be created automatically by the chart or pre-created manually
+  secrets:
+    # --- Secret Names ---
+    # These names are used to reference secrets across all components
+    # Change these if you want to use different secret names in your cluster
+    auth0SecretName: "auth0secret" # Auth0 authentication credentials
+    blobStoreSecretName: "blob-secret" # Cloud storage credentials (Azure/GCS/AWS)
+    azureKVSecretName: "azure-kv-secret" # Azure Key Vault access credentials
+    huggingFaceSecretName: "hf-secret" # Hugging Face model access token
+    encryptionKeySecretName: "platform-encryption" # Platform encryption keys
+    imagePullSecretName: "ghcr-pull-secret" # Container registry credentials
+    openaiSecretName: "openai-secret" # OpenAI API key for AI features
+
+    # --- Secret Creation Control ---
+    # true: Chart will create secrets using the values below during installation
+    # false: Secrets must be created manually before chart installation
+    # RECOMMENDATION: Use false for production and create secrets via CI/CD or manually
+    createSecrets: true
+
+    # Secret values - these will be used to create secrets if createSecrets is true
+    # For production use, do NOT include these values in your values.yaml file
+    # Instead, use --set-file or a dedicated values file that is not checked into source control
+    values:
+      # Compliance Garage secrets
+      compliance:
+        # Database connection string (used by all Compliance Garage components)
+        databaseUrl: "" # e.g., postgresql://postgres:password@postgresql:5432/governance
+        # Gemini API key for AI features
+        geminiApiKey: ""
+
+      # Auth0 authentication
+      auth0secret:
+        clientId: ""
+        clientSecret: ""
+        domain: ""
+
+      # Database credentials
+      database:
+        postgresPassword: "" # Password for PostgreSQL database
+
+      # Blob storage
+      blobStorage:
+        # For Azure
+        azureStorageAccountName: ""
+        azureStorageAccountKey: ""
+        connectionString: ""
+
+      # Azure Key Vault
+      azureKeyVault:
+        clientId: ""
+        clientSecret: ""
+        tenantId: ""
+        vaultUrl: ""
+
+      # AI/ML credentials
+      huggingFace:
+        token: ""
+
+      # OpenAI credentials
+      openai:
+        apiKey: ""
+
+      # Platform encryption
+      encryption:
+        key: "" # Encryption key for sensitive data
+        azureKeySecretName: ""
+
+      # Container registry credentials
+      imagePull:
+        username: "" # GitHub username or token name
+        password: "" # GitHub PAT with read:packages scope
+        email: "" # Email associated with GitHub account
+
+  # --- Database Configuration ---
+  # PostgreSQL connection settings shared across all platform services
+  # These values create a consistent database connection configuration
+  postgresql:
+    host: "{{ .Release.Name }}-postgresql" # Automatically resolves to deployed PostgreSQL service
+    port: 5432 # Standard PostgreSQL port
+    database: "governance" # Default database name (additional DBs created via initdb)
+    username: "postgres" # PostgreSQL admin user
+    # Note: Password is retrieved from the compliance-secrets secret for security
+
+  # --- Container Registry Configuration ---
+  # Uncomment and set if using a private container registry instead of GitHub Container Registry
+  # imageRegistry: "mycompany.registry.io/governance-platform"
+
+  # Image pull secrets for accessing private container registries
+  # These secrets must exist in the namespace before deployment
+  imagePullSecrets:
+    - name: "ghcr-pull-secret" # Required for GitHub Container Registry access
+
+  # --- Storage Configuration ---
+  # Default storage class for all persistent volumes
+  # Leave empty ("") to use the cluster's default storage class
+  # Examples: "gp2" (AWS), "pd-standard" (GCP), "azure-disk" (Azure)
+  defaultStorageClass: ""
+
+  # --- Ingress Configuration ---
+  # Centralized ingress configuration shared across all platform services
+  # All services will be accessible through path-based routing on a single domain
+  ingress:
+    enabled: true # Enable ingress for external access
+    className: "nginx" # Ingress controller class (nginx, traefik, etc.)
+
+    # Ingress annotations for common configurations
+    annotations:
+      cert-manager.io/issuer: letsencrypt-prod # Automatic TLS certificate issuer
+      nginx.ingress.kubernetes.io/use-regex: "true" # Enable regex matching for paths
+      nginx.ingress.kubernetes.io/enable-cors: "true" # Enable CORS for cross-origin requests
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m" # Maximum request body size
+
+    host: "governance.example.com" # MUST be overridden with your actual domain
+    tlsSecretName: "platform-tls" # Kubernetes secret name for TLS certificates
+
+# =============================================================================
+# COMPONENT CONFIGURATION
+# =============================================================================
+# Configuration for individual platform components
+# Each component can be enabled/disabled and customized independently
+
+# --- Component: Governance Service ---
+# Core governance platform with API and Worker services
+# API provides REST endpoints, Worker processes background jobs
+governance-service:
+  enabled: true # Set to false to disable the Governance Service component
+  
+  # === API Service Configuration ===
+  api:
+    replicaCount: 1
+    image:
+      repository: "ghcr.io/eqtylab/governance-service"
+      tag: "latest" # Updated to match production
+      pullPolicy: "IfNotPresent"
+    command: ["./governance-service"]
+    args: []
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  
+  # === Worker Service Configuration ===
+  worker:
+    replicaCount: 1
+    image:
+      repository: "ghcr.io/eqtylab/governance-worker"
+      tag: "latest"
+      pullPolicy: "IfNotPresent"
+    command: ["./governance-worker"]
+    args: []
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+  
+  # === Shared Configuration ===
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 10001
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.example.com"
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "platform-tls"
+        hosts:
+          - "governance.example.com"
+  
+  # Kubernetes deployment settings
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  # Pod settings
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext:
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+  
+  # Configure external database settings
+  externalDatabase:
+    host: "governance-platform-postgresql"
+    port: 5432
+    database: "governance"
+    user: "postgres"
+    sslmode: "disable"
+    # Password comes from secret
+    passwordSecretKeyRef:
+      name: "compliance-secrets"
+      key: "postgresPassword"
+  
+  migrations:
+    runAtStartup: true
+    path: "/app/migrations"
+  
+  config:
+    path: "/api/v1/health" # Health check endpoint path
+    gcsEnabled: false
+    gcsBucketName: "" # Updated to match production
+    integrityServiceUrl: "http://governance-platform-integrity-service:80"
+    appEnv: "production"
+    logLevel: "info"
+
+    # HTTP Server Configuration
+    server:
+      readTimeout: 30
+      writeTimeout: 30
+      idleTimeout: 120
+    # Worker-specific scheduler configuration
+    scheduler:
+      version: "1.0.0"
+      workerType: "general"
+      maxConcurrentJobs: 5
+      pollInterval: 30
+      heartbeatInterval: 60
+      jobClaimTTL: 5
+      capabilities: "evaluation, scheduling"
+      # API-specific scheduler fields
+      workerCount: 5
+      retryLimit: 3
+      retryDelay: 60
+    # Indicator Configuration Management
+    indicators:
+      configPath: "/app/configs/indicators"
+      reloadInterval: 300
+      validateOnLoad: true
+  
+  # For sensitive values like tokens/keys, point to keys within the pre-created K8s secrets
+  huggingFaceTokenSecretKeyRef:
+    name: "hf-secret"
+    key: "hugging-face-token"
+  credentialEncryptionKeySecretKeyRef:
+    name: "platform-encryption"
+    key: "key"
+  
+  # Auth0 credentials reference
+  auth0SyncAtStartup: true
+  auth0SyncPageSize: 100
+  auth0SecretKeyRef:
+    name: "auth0secret"
+    domainKey: "domain"
+    clientIdKey: "clientId"
+    clientSecretKey: "clientSecret"
+  
+  # For GCS service account, the assurance-engine deployment mounts a secret.
+  serviceAccount:
+    create: false
+    name: "blob-secret"
+
+# --- Component: Governance Studio UI ---
+# React-based frontend application providing the user interface for the platform
+# Handles authentication, data visualization, and user interactions
+governance-studio:
+  enabled: true # Set to false to disable the frontend UI component
+  replicaCount: 1
+  image:
+    repository: "ghcr.io/eqtylab/governance-studio"
+    tag: "main"
+    pullPolicy: IfNotPresent
+  imagePullSecrets:
+    - name: "ghcr-pull-secret"
+  config:
+    # API Configuration
+    apiUrl: "https://governance.example.com/governanceService"
+
+    # Auth0 Configuration
+    auth0Domain: "governance-studio.us.auth0.com"
+    auth0ClientId: "your_auth0_client_id"
+    auth0Audience: "https://governance.example.com/governanceService"
+
+    # Application Settings
+    environment: "production"
+    appTitle: "Governance Studio"
+    appHostname: "governance.example.com"
+
+    # Feature Flags
+    features:
+      compliance: true
+      governance: true
+      guardian: true
+      lineage: true
+
+    # Branding Configuration
+    branding:
+      logoUrl: "/vite.svg"
+      primaryColor: "#0f172a"
+      companyName: "EQTY Lab"
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/"
+    hosts:
+      - host: "governance.example.com"
+        paths:
+          - path: "/"
+            pathType: "Prefix"
+    tls:
+      - secretName: "platform-tls"
+        hosts:
+          - "governance.example.com"
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# --- Component: Integrity Service ---
+# Data integrity and auditability service providing blockchain integration
+# Handles cryptographic proofs, audit trails, and immutable record keeping
+integrity-service:
+  enabled: true # Set to false to disable the Integrity Service component
+  # Direct ingress configuration
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    hosts:
+      - host: "governance.example.com"
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "platform-tls"
+        hosts:
+          - "governance.example.com"
+  deployment:
+    replicaCount: 1
+  image:
+    repository: "ghcr.io/eqtylab"
+    name: "integrity-service"
+    tag: "61c5345" # Updated to match production
+  kvSecret:
+    enabled: true
+    name: "azure-kv-secret"
+    keys:
+      clientSecret: "clientSecret"
+      clientId: "clientId"
+      tenantId: "tenantId"
+      vaultUrl: "vaultUrl"
+  env:
+    # Database connection information
+    integrityDbHost: "{{ .Release.Name }}-postgresql"
+    integrityDbPort: "5432"
+    integrityDbName: "IntegrityServiceDB"
+    integrityDbUser: "postgres"
+    # Storage configuration
+    integrityAppBlobStoreAccount: "" # Name of your azure blob storage account
+    integrityAppBlobStoreContainer: "" # Name of your azure blob storage container
+    integrityServiceUrl: "" # Update to match production
+    rustEnv: "production"
+    rustBacktrace: "0"
+  # Service configuration for integrity
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 80
+    targetPort: 3050
+  resources:
+    {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 250m
+    #   memory: 256Mi
+  nodeSelector:
+    enabled: false
+    values:
+      node_pool: apps
+
+# =============================================================================
+# INFRASTRUCTURE COMPONENTS
+# =============================================================================
+# Database and infrastructure services required by the platform
+
+# --- PostgreSQL Configuration ---
+# Primary database for all platform services
+# Automatically creates separate databases for each component
+postgresql:
+  enabled: true # Set to false to use an external PostgreSQL instance
+  # Global PostgreSQL values
+  global:
+    postgresql:
+      auth:
+        database: "governance"
+        username: "postgres"
+        existingSecret: "{{ .Values.global.secrets.complianceSecretName }}"
+        secretKeys:
+          adminPasswordKey: "postgresPassword"
+          userPasswordKey: "postgresPassword"
+  # Primary PostgreSQL instance configuration
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "default"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+    # Initialize additional databases beyond the default 'governance' database
+    initdb:
+      scripts:
+        create-additional-dbs.sql: |
+          CREATE DATABASE governance;
+          GRANT ALL PRIVILEGES ON DATABASE governance TO postgres;
+
+          CREATE DATABASE compliance;
+          GRANT ALL PRIVILEGES ON DATABASE compliance TO postgres;
+
+          CREATE DATABASE "IntegrityServiceDB";
+          GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
+

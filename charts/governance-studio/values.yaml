@@ -1,0 +1,202 @@
+# =============================================================================
+# GOVERNANCE STUDIO UI - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Governance Studio frontend React application
+#
+# The application uses runtime configuration injection, which means:
+# - Single container image works for all environments
+# - Configuration changes don't require rebuilding containers
+# - Environment-specific settings are injected at container startup
+# =============================================================================
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+# Number of application replicas to run
+# Recommended: 2+ for production for high availability
+replicaCount: 1
+
+# Container image configuration
+image:
+  # Container image repository
+  repository: "ghcr.io/eqtylab/governance-studio"
+
+  # Image pull policy
+  # IfNotPresent: Only pull if image doesn't exist locally (recommended for tagged releases)
+  # Always: Always pull the latest version (use for 'latest' tags or development)
+  # Never: Never pull, use local image only
+  pullPolicy: IfNotPresent
+
+  # Container image tag - override this for specific versions
+  tag: "main"
+
+# Image pull secrets for private registries
+# Add secrets here if using a private container registry
+imagePullSecrets: []
+
+# Override the chart name if needed
+nameOverride: ""
+fullnameOverride: ""
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+# Runtime configuration injected into the application at startup
+# These values are converted to environment variables and then to a JavaScript config file
+
+config:
+  # --- API Configuration ---
+  # Backend API endpoint URL - MUST be accessible from user browsers
+  # Should match the ingress configuration of your Assurance Engine deployment
+  apiUrl: "https://api.governance.example.com"
+
+  # --- Authentication Configuration (Auth0) ---
+  # Auth0 tenant domain (without https://)
+  # Example: "your-tenant.us.auth0.com" or "your-tenant.eu.auth0.com"
+  auth0Domain: "example.auth0.com"
+
+  # Auth0 application client ID for this frontend application
+  # This should be a Single Page Application (SPA) type in Auth0
+  auth0ClientId: "YOUR_AUTH0_CLIENT_ID"
+
+  # Auth0 audience - should match your API identifier in Auth0
+  # Typically the same as your API URL
+  auth0Audience: "https://api.governance.example.com"
+
+  # --- Application Settings ---
+  # Deployment environment - affects logging and debugging features
+  # Options: "development", "staging", "production"
+  environment: "production"
+
+  # Application title displayed in browser tabs and header
+  appTitle: "Governance Studio"
+
+  # Application hostname - used for various frontend configurations
+  # Should match your ingress host configuration
+  appHostname: "governance.example.com"
+
+  # --- Feature Flags ---
+  # Enable or disable specific application features
+  # Useful for progressive feature rollouts or customer-specific customizations
+  features:
+    compliance: true # Enable compliance management features
+    governance: true # Enable governance workflow features
+    guardian: true # Enable guardian/approval workflow features
+    lineage: true # Enable data lineage tracking features
+
+  # --- Branding Configuration ---
+  # Customize the application appearance for your organization
+  branding:
+    logoUrl: "/vite.svg" # URL or path to your company logo
+    primaryColor: "#0f172a" # Primary brand color (hex format)
+    companyName: "Example Corp" # Company name displayed in the application
+
+# =============================================================================
+# KUBERNETES CONFIGURATION
+# =============================================================================
+
+# Service account configuration
+serviceAccount:
+  create: true # Create a service account for the application
+  annotations: {} # Additional annotations for the service account
+  name: "" # Service account name (auto-generated if empty)
+
+# Pod-level annotations
+# Add custom annotations to pods (useful for monitoring, networking, etc.)
+podAnnotations: {}
+
+# Pod security context - security settings applied to the entire pod
+podSecurityContext: {}
+
+# Container security context - security settings applied to the container
+securityContext: {}
+
+# Kubernetes service configuration
+service:
+  type: ClusterIP # Service type - ClusterIP for internal access only
+  port: 80 # Service port (standard HTTP port)
+
+# Ingress configuration for external access
+ingress:
+  enabled: true # Enable ingress to make the application accessible externally
+  className: "nginx" # Ingress controller class (nginx, traefik, etc.)
+
+  # Ingress annotations for additional configuration
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: / # Rewrite incoming paths
+    cert-manager.io/cluster-issuer: "letsencrypt-prod" # Automatic TLS certificate issuer
+
+  # Host configuration - defines which domains will serve this application
+  hosts:
+    - host: governance.example.com # MUST be overridden with your actual domain
+      paths:
+        - path: / # Serve the application at the root path
+          pathType: Prefix # Match all paths starting with "/"
+
+  # TLS/SSL configuration
+  tls:
+    - secretName: platform-tls # Kubernetes secret containing TLS certificates
+      hosts:
+        - governance.example.com # Domain(s) covered by the TLS certificate
+
+# =============================================================================
+# RESOURCE MANAGEMENT
+# =============================================================================
+
+# CPU and memory resource limits and requests
+# Uncomment and adjust based on your cluster capacity and application needs
+resources:
+  {}
+  # limits:
+  #   cpu: 500m        # Maximum CPU (0.5 cores)
+  #   memory: 512Mi    # Maximum memory
+  # requests:
+  #   cpu: 100m        # Minimum CPU (0.1 cores)
+  #   memory: 128Mi    # Minimum memory
+
+# Horizontal Pod Autoscaler configuration
+# Automatically scale the number of pods based on CPU utilization
+autoscaling:
+  enabled: false # Enable horizontal pod autoscaling
+  minReplicas: 2 # Minimum number of replicas
+  maxReplicas: 10 # Maximum number of replicas
+  targetCPUUtilizationPercentage: 80 # Target CPU utilization for scaling
+
+# =============================================================================
+# ADVANCED SCHEDULING
+# =============================================================================
+
+# Node selector - schedule pods on specific nodes
+# Example: { "disk-type": "ssd", "node-size": "large" }
+nodeSelector: {}
+
+# Tolerations - allow pods to be scheduled on nodes with specific taints
+# Example: [{ "key": "dedicated", "operator": "Equal", "value": "frontend", "effect": "NoSchedule" }]
+tolerations: []
+
+# Affinity rules - control pod placement relative to other pods or nodes
+# Useful for high availability or performance optimization
+affinity: {}
+
+# =============================================================================
+# HEALTH MONITORING
+# =============================================================================
+
+# Liveness probe - Kubernetes will restart the container if this fails
+# Checks if the application is running and responsive
+livenessProbe:
+  httpGet:
+    path: / # Health check endpoint
+    port: 80 # Port to check
+  initialDelaySeconds: 30 # Wait time before first check
+  periodSeconds: 10 # Check interval
+
+# Readiness probe - Kubernetes will remove the pod from service if this fails
+# Checks if the application is ready to serve traffic
+readinessProbe:
+  httpGet:
+    path: / # Readiness check endpoint
+    port: 80 # Port to check
+  initialDelaySeconds: 5 # Wait time before first check
+  periodSeconds: 5 # Check interval

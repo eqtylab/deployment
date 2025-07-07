@@ -1,0 +1,9 @@
+apiVersion: v2
+appVersion: 2.0.0
+description: A Helm chart for the Governance Service API service
+maintainers:
+  - email: hello@eqtylab.io
+    name: EQTY Lab
+name: governance-service
+type: application
+version: 1.1.1

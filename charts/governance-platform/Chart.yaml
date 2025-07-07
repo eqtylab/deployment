@@ -1,0 +1,40 @@
+apiVersion: v2
+name: governance-platform
+description: A Helm chart for the complete Governance Studio platform.
+type: application
+version: 1.1.0
+
+# This is the version number of the application being deployed.
+appVersion: "1.0.0"
+
+dependencies:
+  # 1. Compliance Garage
+  - name: compliance-garage
+    version: "0.1.0"
+    repository: "file://../compliance-garage" # Local file system reference
+    condition: compliance-garage.enabled
+
+  # 2. Governance Service API
+  - name: governance-service
+    version: "1.1.1"
+    repository: "file://../governance-service" # Local file system reference
+    condition: governance-service.enabled
+
+  # 3. Integrity Service
+  - name: integrity-service
+    version: "1.0.0"
+    repository: "file://../integrity-service" # Local file system reference
+    condition: integrity-service.enabled
+
+  # 4. PostgreSQL - used by assurance-engine, compliance-garage, and integrity services
+  - name: postgresql
+    version: "~12.5.5" # Bitnami chart version
+    repository: "https://charts.bitnami.com/bitnami"
+    alias: postgresql
+    condition: postgresql.enabled
+
+  # 6. Governance Studio UI
+  - name: governance-studio
+    version: "1.0.0"
+    repository: "file://../governance-studio"
+    condition: governance-studio.enabled
