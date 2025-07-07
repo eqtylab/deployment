@@ -1,7 +1,4 @@
 dependencies:
-- name: compliance-garage
-  repository: file://../compliance-garage
-  version: 0.1.0
 - name: governance-service
   repository: file://../governance-service
   version: 1.1.1
@@ -14,5 +11,5 @@ dependencies:
 - name: governance-studio
   repository: file://../governance-studio
   version: 1.0.0
-digest: sha256:809705cccb11f6604ab67b482b48244409b30ec5b39c4f6319b92374ca31acde
-generated: "2025-06-27T11:27:42.101266461-06:00"
+digest: sha256:4111b3376ac2f956bd610edb9909e01d1fd6822a412583377763e06b7c7830ae
+generated: "2025-07-07T10:54:45.205011584-06:00"
