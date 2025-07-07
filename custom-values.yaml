@@ -1,0 +1,82 @@
+# Example customer values.yaml for deploying Governance Studio
+# Customize it for your specific environment
+global:
+  defaultStorageClass: "default"
+  environmentType: "development" # Options: development, staging, production
+  domain: "govtest.dev.eqtylab.io"
+  imagePullSecrets:
+    - name: "ghcr-pull-secret"
+
+  ingress:
+    annotations:
+      cert-manager.io/issuer: letsencrypt
+    host: "govtest.dev.eqtylab.io"
+
+# --- Component: Governance Service API ---
+governance-service:
+  api:
+    image:
+      tag: "sha-94d85e4"
+  worker:
+    image:
+      tag: "sha-94d85e4"
+
+  ingress:
+    hosts:
+      - host: "govtest.dev.eqtylab.io"
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+
+    tls:
+      - secretName: platform-tls
+        hosts:
+          - "govtest.dev.eqtylab.io"
+
+  config:
+    appEnv: "development"
+
+# --- Component: Gov Studio UI ---
+governance-studio:
+  enabled: false
+
+  config:
+    # API Configuration
+    apiUrl: "https://govtest.dev.eqtylab.io/governanceService"
+    auth0Domain: "governance-studio.us.auth0.com"
+    auth0ClientId: "oJlvzdhdlMDIs1PX1xeTM2B98TwZCtyw"
+    auth0Audience: "https://governance-studio.us.auth0.com/api/v2/"
+
+    # Application Settings
+    environment: "development"
+    appHostname: "govtest.dev.eqtylab.io"
+
+  ingress:
+    annotations:
+      cert-manager.io/issuer: "letsencrypt"
+    hosts:
+      - host: "govtest.dev.eqtylab.io"
+
+# --- Component: Integrity Service ---
+integrity-service:
+  ingress:
+    hosts:
+      - host: "govtest.dev.eqtylab.io"
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+
+    tls:
+      - secretName: platform-tls
+        hosts:
+          - "govtest.dev.eqtylab.io"
+
+  image:
+    tag: "b175486"
+
+  env:
+    integrityAppBlobStoreAccount: "umbrellachartstorage"
+    integrityAppBlobStoreContainer: "root-blob-container"
+    integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
+    rustEnv: "development"
+    rustBacktrace: "1"
