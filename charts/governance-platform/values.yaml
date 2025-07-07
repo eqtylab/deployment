@@ -33,6 +33,7 @@ global:
     # Change these if you want to use different secret names in your cluster
     auth0SecretName: "auth0secret" # Auth0 authentication credentials
     blobStoreSecretName: "blob-secret" # Cloud storage credentials (Azure/GCS/AWS)
+    complianceSecretName: "compliance-secrets" # Database credentials
     azureKVSecretName: "azure-kv-secret" # Azure Key Vault access credentials
     huggingFaceSecretName: "hf-secret" # Hugging Face model access token
     encryptionKeySecretName: "platform-encryption" # Platform encryption keys
