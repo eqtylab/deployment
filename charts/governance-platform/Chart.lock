@@ -11,5 +11,8 @@ dependencies:
 - name: governance-studio
   repository: file://../governance-studio
   version: 1.0.0
-digest: sha256:4111b3376ac2f956bd610edb9909e01d1fd6822a412583377763e06b7c7830ae
-generated: "2025-07-07T10:54:45.205011584-06:00"
+- name: auth-service
+  repository: file://../auth-service
+  version: 0.1.0
+digest: sha256:af8bbc684d5d6bd2b0aa02e83dfd0f36a7ac39c5f971ccb8302c81332ce70414
+generated: "2025-07-07T17:08:43.578394818-06:00"

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: auth-service
+description: EQTYLab Auth Service - Authentication and authorization service for the Governance Platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - auth
+  - authentication
+  - authorization
+  - rbac
+home: https://github.com/eqtylab/auth-service
+sources:
+  - https://github.com/eqtylab/auth-service
+maintainers:
+  - name: EQTYLab Team
+    email: support@eqtylab.com
+dependencies:
+  - name: postgresql
+    version: "~15.5.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+annotations:
+  category: Authentication
