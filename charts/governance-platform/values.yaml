@@ -447,6 +447,9 @@ auth-service:
   image:
     tag: "sha-7bf195c"
 
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+
 # =============================================================================
 # INFRASTRUCTURE COMPONENTS
 # =============================================================================
