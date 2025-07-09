@@ -465,6 +465,12 @@ auth-service:
     enabled: false # Use shared postgresql instance instead of deploying own
 
   config:
+    keyVault:
+      provider: "azure"
+      azure:
+        vaultUrl: "https://helm-umbrella-akv.vault.azure.net/"
+        tenantId: "6712fe8e-3505-4daf-b881-675312392087"
+        existingSecret: "azure-kv-secret"
     database:
       host: "governance-platform-postgresql" # Use shared postgresql instance
       port: 5432

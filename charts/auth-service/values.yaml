@@ -231,17 +231,16 @@ config:
 
   # Key Vault configuration (for DID keys)
   keyVault:
-    provider: "azure" # azure, hashicorp, local
+    provider: "" # azure, hashicorp, local
     azure:
-      vaultUrl: ""
-      tenantId: ""
-      clientId: ""
-      clientSecret: ""
+      tenant-id: ""
+      vault-url: ""
       # Use existing secret for Azure credentials
       existingSecret: ""
       existingSecretKeys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
+        clientId: "clientId"
+        clientSecret: "clientSecret"
+
     hashicorp:
       address: ""
       token: ""
@@ -364,7 +363,22 @@ podDisruptionBudget:
   # maxUnavailable: 1
 
 # Extra environment variables
-extraEnvVars: []
+extraEnvVars:
+  # - name: API_SECRET
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: auth-service-api-secret
+  #       key: api-secret
+  - name: API_SECRET
+    value: "api-key"
+  - name: ENVIRONMENT
+    value: "development"
+  - name: SWAGGER_ENABLED
+    value: "true"
+  - name: SWAGGER_BASE_PATH
+    value: "/auth"
+  - name: INTEGRITY_SERVICE_URL
+    value: "http://localhost:3050"
 # - name: EXTRA_VAR
 #   value: "extra-value"
 
