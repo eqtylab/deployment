@@ -444,11 +444,26 @@ integrity-service:
 
 # --- Component: Authentication Service ---
 auth-service:
+  enabled: true
   image:
     tag: "sha-7bf195c"
 
   imagePullSecrets:
     - name: ghcr-pull-secret
+
+  # Configure to use shared postgresql instance
+  postgresql:
+    enabled: false # Use shared postgresql instance instead of deploying own
+
+  config:
+    database:
+      host: "governance-platform-postgresql" # Use shared postgresql instance
+      port: 5432
+      name: "authservice"
+      user: "postgres"
+      existingSecret: "compliance-secrets"
+      existingSecretKeys:
+        password: "postgresPassword"
 
 # =============================================================================
 # INFRASTRUCTURE COMPONENTS
@@ -495,3 +510,6 @@ postgresql:
 
           CREATE DATABASE "IntegrityServiceDB";
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
+
+          CREATE DATABASE authservice;
+          GRANT ALL PRIVILEGES ON DATABASE authservice TO postgres;
