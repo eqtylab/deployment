@@ -38,8 +38,6 @@ governance-service:
 
 # --- Component: Gov Studio UI ---
 governance-studio:
-  enabled: false
-
   config:
     # API Configuration
     apiUrl: "https://govtest.dev.eqtylab.io/governanceService"
@@ -56,6 +54,9 @@ governance-studio:
       cert-manager.io/issuer: "letsencrypt"
     hosts:
       - host: "govtest.dev.eqtylab.io"
+        paths:
+          - path: /
+            pathType: Prefix
 
 # --- Component: Integrity Service ---
 integrity-service:
