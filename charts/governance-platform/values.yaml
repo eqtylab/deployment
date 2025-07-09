@@ -38,6 +38,7 @@ global:
     huggingFaceSecretName: "hf-secret" # Hugging Face model access token
     encryptionKeySecretName: "platform-encryption" # Platform encryption keys
     imagePullSecretName: "ghcr-pull-secret" # Container registry credentials
+    idpSecretName: "idp" # Secrets for auth-service
     openaiSecretName: "openai-secret" # OpenAI API key for AI features
 
     # --- Secret Creation Control ---
@@ -62,6 +63,14 @@ global:
         clientId: ""
         clientSecret: ""
         domain: ""
+        
+      # IDP secrets for auth-service
+      idp:
+        clientId: ""
+        clientSecret: ""
+        auth0:
+          managementClientId: ""
+          managementClientSecret: ""
 
       # Database credentials
       database:
@@ -464,6 +473,14 @@ auth-service:
       existingSecret: "compliance-secrets"
       existingSecretKeys:
         password: "postgresPassword"
+
+    idp:
+      provider: "auth0"
+      existingSecret: "idp"
+      skipIssuerVerification: true
+
+      auth0:
+        apiIdentifier: ""
 
 # =============================================================================
 # INFRASTRUCTURE COMPONENTS

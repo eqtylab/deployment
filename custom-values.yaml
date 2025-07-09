@@ -80,3 +80,18 @@ integrity-service:
     integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
     rustEnv: "development"
     rustBacktrace: "1"
+
+# --- Component: Auth Service ---
+auth-service:
+  config:
+    logging:
+      level: debug
+
+    idp:
+      issuer: "https://governance-studio-stag.us.auth0.com/"
+
+      auth0:
+        domain: "governance-studio-stag.us.auth0.com"
+        managementAudience: "https://governance-studio-stag.us.auth0.com/api/v2/"
+        enableManagementAPI: true
+        apiIdentifier: "https://governance-studio-stag.us.auth0.com/api/v2/"

@@ -123,7 +123,7 @@ config:
   logging:
     level: info
     format: json
-    skipPaths: "/health" # Paths to skip in request logging
+    skipPaths: "/health,/health/live,/health/ready"
 
   # Identity Provider Configuration
   idp:
@@ -138,7 +138,7 @@ config:
     scopes: "openid,profile,email"
 
     # Use existing secret for IDP credentials
-    existingSecret: ""
+    existingSecret: "idp"
     # Keys in the existing secret
     existingSecretKeys:
       clientId: "client-id"
@@ -195,7 +195,7 @@ config:
       managementAudience: ""
       # User creation settings
       defaultConnection: "Username-Password-Authentication"
-      defaultRoles: "user,member"
+      defaultRoles: ["user"]
       sendInvitationEmail: true
       # Custom domain (optional)
       customDomain: ""
