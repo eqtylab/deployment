@@ -454,7 +454,7 @@ integrity-service:
 
 # --- Component: Authentication Service ---
 auth-service:
-  enabled: true
+  enabled: false
   image:
     tag: "sha-7bf195c"
 
