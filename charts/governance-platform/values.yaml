@@ -330,6 +330,7 @@ governance-studio:
   imagePullSecrets:
     - name: "ghcr-pull-secret"
   config:
+    integrityServiceUrl: "https://governance.example.com/integrityService"
     # API Configuration
     apiUrl: "https://governance.example.com/governanceService"
 

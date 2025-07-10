@@ -19,3 +19,4 @@ data:
   BRANDING_LOGO_URL: {{ .Values.config.branding.logoUrl | quote }}
   BRANDING_PRIMARY_COLOR: {{ .Values.config.branding.primaryColor | quote }}
   BRANDING_COMPANY_NAME: {{ .Values.config.branding.companyName | quote }}
+  INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | quote }}
