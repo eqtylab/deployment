@@ -1,16 +1,22 @@
 # Example customer values.yaml for deploying Governance Studio
 # Customize it for your specific environment
+
+# Config values reused across various services/charts
+_config: &config
+  domain: &domain "govtest.dev.eqtylab.io"
+  auth0Domain: &auth0Domain "governance-studio.us.auth0.com"
+  auth0StagingDomain: &auth0StagingDomain "governance-studio-stag.us.auth0.com"
+
 global:
-  defaultStorageClass: "default"
   environmentType: "development" # Options: development, staging, production
-  domain: "govtest.dev.eqtylab.io"
+  domain: *domain
   imagePullSecrets:
     - name: "ghcr-pull-secret"
 
   ingress:
     annotations:
       cert-manager.io/issuer: letsencrypt
-    host: "govtest.dev.eqtylab.io"
+    host: *domain
 
 # --- Component: Governance Service API ---
 governance-service:
@@ -23,7 +29,7 @@ governance-service:
 
   ingress:
     hosts:
-      - host: "govtest.dev.eqtylab.io"
+      - host: *domain
         paths:
           - path: "/governanceService(/|$)(.*)"
             pathType: "ImplementationSpecific"
@@ -31,7 +37,7 @@ governance-service:
     tls:
       - secretName: platform-tls
         hosts:
-          - "govtest.dev.eqtylab.io"
+          - *domain
 
   config:
     appEnv: "development"
@@ -42,22 +48,21 @@ governance-studio:
     tag: sha-03c2eb2-prod
   config:
     swaggerEnabled: "true"
-    integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
     # API Configuration
-    apiUrl: "https://govtest.dev.eqtylab.io"
-    auth0Domain: "governance-studio.us.auth0.com"
+    integrityServiceUrl: !join ["https://", *domain, "/integrityService"]
+    apiUrl: !join ["https://", *domain]
+    auth0Domain: *auth0Domain
     auth0ClientId: "oJlvzdhdlMDIs1PX1xeTM2B98TwZCtyw"
-    auth0Audience: "https://governance-studio.us.auth0.com/api/v2/"
+    auth0Audience: !join ["https://", *auth0Domain, "/api/v2/"]
 
     # Application Settings
-    environment: "development"
-    appHostname: "govtest.dev.eqtylab.io"
+    appHostname: *domain
 
   ingress:
     annotations:
       cert-manager.io/issuer: "letsencrypt"
     hosts:
-      - host: "govtest.dev.eqtylab.io"
+      - host: *domain
         paths:
           - path: /
             pathType: Prefix
@@ -66,7 +71,7 @@ governance-studio:
 integrity-service:
   ingress:
     hosts:
-      - host: "govtest.dev.eqtylab.io"
+      - host: *domain
         paths:
           - path: "/integrityService(/|$)(.*)"
             pathType: "ImplementationSpecific"
@@ -74,7 +79,7 @@ integrity-service:
     tls:
       - secretName: platform-tls
         hosts:
-          - "govtest.dev.eqtylab.io"
+          - *domain
 
   image:
     tag: "b175486"
@@ -82,21 +87,23 @@ integrity-service:
   env:
     integrityAppBlobStoreAccount: "umbrellachartstorage"
     integrityAppBlobStoreContainer: "root-blob-container"
-    integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
     rustEnv: "development"
     rustBacktrace: "1"
+    integrityServiceUrl: !join ["https://", *domain, "/integrityService"]
 
 # --- Component: Auth Service ---
 auth-service:
+  image:
+    tag: "sha-7bf195c"
+
   config:
     logging:
       level: debug
-
     idp:
-      issuer: "https://governance-studio-stag.us.auth0.com/"
+      issuer: !join ["https://", *auth0StagingDomain, "/"]
 
       auth0:
-        domain: "governance-studio-stag.us.auth0.com"
-        managementAudience: "https://governance-studio-stag.us.auth0.com/api/v2/"
+        domain: *auth0StagingDomain
+        managementAudience: !join ["https://", *auth0StagingDomain, "/api/v2/"]
         enableManagementAPI: true
-        apiIdentifier: "https://governance-studio-stag.us.auth0.com/api/v2/"
+        apiIdentifier: !join ["https://", *auth0StagingDomain, "/api/v2/"]
