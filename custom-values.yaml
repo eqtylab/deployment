@@ -1,16 +1,5 @@
-# Example customer values.yaml for deploying Governance Studio
-# Customize it for your specific environment
-global:
-  defaultStorageClass: "default"
-  environmentType: "development" # Options: development, staging, production
-  domain: "govtest.dev.eqtylab.io"
-  imagePullSecrets:
-    - name: "ghcr-pull-secret"
-
-  ingress:
-    annotations:
-      cert-manager.io/issuer: letsencrypt
-    host: "govtest.dev.eqtylab.io"
+# This is the minimal configuration required to deploy the Governance Studio Platform
+# See the individual charts for addtional settings that can be customized
 
 # --- Component: Governance Service API ---
 governance-service:
