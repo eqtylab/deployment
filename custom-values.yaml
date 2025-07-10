@@ -1,0 +1,71 @@
+# This is the minimal configuration required to deploy the Governance Studio Platform
+# See the individual charts for addtional settings that can be customized
+
+# --- Component: Governance Service API ---
+governance-service:
+  api:
+    image:
+      tag: "sha-94d85e4"
+
+  worker:
+    image:
+      tag: "sha-94d85e4"
+
+  ingress:
+    hosts:
+      - host: "govtest.dev.eqtylab.io"
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+
+    tls:
+      - secretName: platform-tls
+        hosts:
+          - "govtest.dev.eqtylab.io"
+
+# --- Component: Gov Studio UI ---
+governance-studio:
+  image:
+    tag: sha-03c2eb2-prod
+
+  config:
+    # API Configuration
+    integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
+    apiUrl: "https://govtest.dev.eqtylab.io"
+    auth0Domain: "governance-studio.us.auth0.com"
+    auth0ClientId: "oJlvzdhdlMDIs1PX1xeTM2B98TwZCtyw"
+    auth0Audience: "https://governance-studio.us.auth0.com/api/v2/"
+
+    # Application Settings
+    appHostname: "govtest.dev.eqtylab.io"
+
+  ingress:
+    annotations:
+      cert-manager.io/issuer: "letsencrypt"
+    hosts:
+      - host: "govtest.dev.eqtylab.io"
+        paths:
+          - path: /
+            pathType: Prefix
+
+# --- Component: Integrity Service ---
+integrity-service:
+  ingress:
+    hosts:
+      - host: "govtest.dev.eqtylab.io"
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+
+    tls:
+      - secretName: platform-tls
+        hosts:
+          - "govtest.dev.eqtylab.io"
+
+  image:
+    tag: "b175486"
+
+  env:
+    integrityAppBlobStoreAccount: "umbrellachartstorage"
+    integrityAppBlobStoreContainer: "root-blob-container"
+    integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"

@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "auth-service.fullname" . }}
+  labels:
+    {{- include "auth-service.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    server:
+      port: {{ .Values.config.server.port }}
+      host: {{ .Values.config.server.host | quote }}
+      readTimeout: {{ .Values.config.server.readTimeout }}
+      writeTimeout: {{ .Values.config.server.writeTimeout }}
+      idleTimeout: {{ .Values.config.server.idleTimeout }}
+
+    logging:
+      level: {{ .Values.config.logging.level }}
+      format: {{ .Values.config.logging.format }}
+      skipPaths: {{ .Values.config.logging.skipPaths | quote }}
+
+    idp:
+      provider: {{ .Values.config.idp.provider | quote }}
+      issuer: {{ .Values.config.idp.issuer | quote }}
+      {{- if eq .Values.config.idp.provider "auth0" }}
+      auth0:
+        domain: {{ .Values.config.idp.auth0.domain | quote }}
+        {{- if .Values.config.idp.auth0.managementAudience }}
+        managementAudience: {{ .Values.config.idp.auth0.managementAudience | quote }}
+        {{- end }}
+        {{- if .Values.config.idp.auth0.apiIdentifier }}
+        apiIdentifier: {{ .Values.config.idp.auth0.apiIdentifier | quote }}
+        {{- end }}
+        defaultConnection: {{ .Values.config.idp.auth0.defaultConnection | quote }}
+        sendInvitationEmail: {{ .Values.config.idp.auth0.sendInvitationEmail }}
+      {{- end }}
+      {{- if eq .Values.config.idp.provider "keycloak" }}
+      keycloak:
+        realm: {{ .Values.config.idp.keycloak.realm | quote }}
+        {{- if .Values.config.idp.keycloak.adminUrl }}
+        adminUrl: {{ .Values.config.idp.keycloak.adminUrl | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if eq .Values.config.idp.provider "zitadel" }}
+      zitadel:
+        {{- if .Values.config.idp.zitadel.projectId }}
+        projectId: {{ .Values.config.idp.zitadel.projectId | quote }}
+        {{- end }}
+        {{- if .Values.config.idp.zitadel.organizationId }}
+        organizationId: {{ .Values.config.idp.zitadel.organizationId | quote }}
+        {{- end }}
+      {{- end }}
+
+    database:
+      host: {{ include "auth-service.databaseHost" . | quote }}
+      port: {{ .Values.config.database.port }}
+      name: {{ .Values.config.database.name | quote }}
+      user: {{ .Values.config.database.user | quote }}
+      sslMode: {{ .Values.config.database.sslMode | quote }}
+
+    keyVault:
+      provider: {{ .Values.config.keyVault.provider | quote }}
+      {{- if eq .Values.config.keyVault.provider "azure" }}
+      azure:
+        vaultUrl: {{ .Values.config.keyVault.azure.vaultUrl | quote }}
+        tenantId: {{ .Values.config.keyVault.azure.tenantId | quote }}
+      {{- else if eq .Values.config.keyVault.provider "hashicorp" }}
+      hashicorp:
+        address: {{ .Values.config.keyVault.hashicorp.address | quote }}
+      {{- end }}
+
+    rbac:
+      cache:
+        enabled: {{ .Values.config.rbac.cache.enabled }}
+        ttl: {{ .Values.config.rbac.cache.ttl }}
+        maxSize: {{ .Values.config.rbac.cache.maxSize }}
+
+    {{- if .Values.metrics.enabled }}
+    metrics:
+      enabled: true
+      port: {{ .Values.metrics.port }}
+      path: {{ .Values.metrics.path | quote }}
+    {{- end }}

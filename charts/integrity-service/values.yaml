@@ -1,0 +1,189 @@
+# =============================================================================
+# INTEGRITY SERVICE - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Integrity Service which provides data integrity
+# validation, audit trail management, blockchain integration, and cryptographic
+# proof generation for the Governance Studio platform.
+# =============================================================================
+
+# =============================================================================
+# SERVICE ENABLEMENT
+# =============================================================================
+
+# Enable the Integrity Service application
+# Set to false to disable the entire service
+enable:
+  application: true
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+# Override the chart name if needed
+nameOverride: ""
+
+# Deployment update strategy for rolling updates
+# Options: "RollingUpdate", "Recreate"
+updateStrategy: "RollingUpdate"
+
+# Deployment environment identifier
+# Used for environment-specific configurations
+environment: ""
+
+# Application name identifier
+name: integrity
+
+# Pod replica configuration
+deployment:
+  replicaCount: 1 # Number of service replicas to run
+
+# Container configuration
+container:
+  name: integrity # Container name within the pod
+
+# =============================================================================
+# ADVANCED SCHEDULING
+# =============================================================================
+
+# Node selector configuration for pod placement
+# Schedule pods on specific nodes based on node labels
+nodeSelector:
+  enabled: false # Enable node selector
+  values: {} # Node selector labels (e.g., {"disk": "ssd"})
+
+# =============================================================================
+# STORAGE CONFIGURATION
+# =============================================================================
+
+# Persistent Volume configuration for data storage
+# Required for maintaining integrity data across pod restarts
+pv:
+  shards:
+    integrity:
+      name: store # Persistent volume name
+      shardHostPath: /var/lib/integrity # Host path for data storage
+      path: /data/integrity # Container mount path
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+
+# Application environment variables configuration
+env:
+  # Rust application environment
+  # Options: "development", "staging", "production"
+  rustEnv: ""
+
+  # Azure Blob Storage Configuration
+  integrityAppBlobStoreAccount: "" # Azure storage account name
+  integrityAppBlobStoreContainer: "" # Azure blob container name
+
+  # Service URL Configuration
+  integrityServiceUrl: "" # Public URL for this service
+
+# =============================================================================
+# SECRET CONFIGURATION
+# =============================================================================
+
+# Azure Key Vault Secret Configuration
+# Used for Azure-based integrations and blob storage
+kvSecret:
+  enabled: true # Enable Azure Key Vault secret
+  name: "azure-kv-creds" # Kubernetes secret name
+  keys:
+    clientSecret: "clientSecret" # Secret key for Azure client secret
+    clientId: "clientId" # Secret key for Azure client ID
+    tenantId: "tenantId" # Secret key for Azure tenant ID
+    vaultUrl: "vaultUrl" # Secret key for Azure Key Vault URL
+
+auth0SecretKeyRef:
+  name: "auth0secret" # Secret name
+  clientIdKey: "clientId" # Key for Auth0 client ID
+  clientSecretKey: "clientSecret" # Key for Auth0 client secret
+  domainKey: "domain" # Key for Auth0 domain
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+
+# Kubernetes service configuration for network access to the Integrity Service
+service:
+  name: integrity-service # Service name for DNS resolution
+
+  enabled:
+    false # Enable the Kubernetes service
+    # Note: Usually managed by umbrella chart
+
+  # Load balancer configuration for external access
+  loadBalancer:
+    enabled: false # Enable load balancer type service
+    ip: "" # Static IP for load balancer (optional)
+
+  type:
+    ClusterIP # Service type - ClusterIP for internal access only
+    # Options: ClusterIP, NodePort, LoadBalancer
+
+  port: 80 # External service port
+  targetPort: 3050 # Container port that receives traffic
+
+  # Service selector labels - used to target specific pods
+  # Usually auto-generated, but can be customized if needed
+  selector: {}
+
+  # Service annotations for additional configuration
+  # Examples: load balancer settings, ingress controller hints
+  annotations: {}
+# =============================================================================
+# CONTAINER IMAGE CONFIGURATION
+# =============================================================================
+
+# Container image settings for the Integrity Service deployment
+image:
+  repository: ghcr.io/eqtylab # Container registry repository
+  tag: latest # Image tag - use specific versions for production
+  pullPolicy:
+    Always # Image pull policy
+    # Options: Always, IfNotPresent, Never
+  name: integrity-service # Image name within the repository
+  pullSecret: "ghcr-pull-secret" # Kubernetes secret for registry authentication
+# =============================================================================
+# INGRESS CONFIGURATION
+# =============================================================================
+
+# Ingress configuration for external HTTP/HTTPS access to the Integrity Service
+ingress:
+  enabled:
+    false # Enable ingress for external access
+    # Note: Usually managed by umbrella chart
+
+  className:
+    "nginx" # Ingress controller class name
+    # Examples: "nginx", "traefik", "alb"
+
+  name: "integrity-service-ingress" # Ingress resource name
+
+  # Ingress annotations for additional configuration
+  # Examples: SSL redirects, rate limiting, authentication
+  annotations: {}
+
+  # Hostname configuration (backward compatibility with umbrella chart)
+  hostname: "chart-example.local"
+
+  # Host and path configuration for routing traffic
+  hosts:
+    - host: chart-example.local # Domain name for accessing the service
+      paths:
+        - path: / # URL path pattern
+          pathType: ImplementationSpecific # Path matching type
+
+  # Paths configuration (backward compatibility with umbrella chart)
+  paths:
+    - path: / # URL path pattern
+      pathType: ImplementationSpecific # Path matching type
+
+  # TLS/SSL configuration for HTTPS
+  tls: []
+
+  # TLS configuration (backward compatibility with umbrella chart)
+  tls_compat:
+    secretName: "" # Kubernetes secret containing TLS certificates

@@ -1,0 +1,37 @@
+{{- if .Values.service.enabled -}}
+{{- $fullName := include "fullname" . -}}
+{{- $servicePort := .Values.service.port -}}
+{{- $serviceTargetPort := .Values.service.targetPort -}}
+{{- $service := .Values.service -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-{{ .Values.service.name }}
+{{- with $service.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ $service.type }}
+  {{- if $service.loadBalancer.enabled }}
+  loadBalancerIP: {{ $service.loadBalancer.ip }}
+  {{- end }}
+  ports:
+    - port: {{ $servicePort }}
+      targetPort: {{ $serviceTargetPort }}
+      protocol: TCP
+      name: http
+  selector:
+  {{- if $service.selector }}
+  {{- range $key, $value := $service.selector }}
+    {{ $key }}: {{ $value }}
+  {{- end }}
+  {{- else}}
+    app: {{ template "name" . }}
+  {{- end }}
+{{- end }}
