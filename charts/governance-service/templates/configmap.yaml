@@ -17,3 +17,4 @@ data:
   INDICATORS_CONFIG_PATH: "{{ .Values.config.indicators.configPath }}"
   INDICATORS_RELOAD_INTERVAL_SECONDS: "{{ .Values.config.indicators.reloadInterval }}"
   INDICATORS_VALIDATE_ON_LOAD: "{{ .Values.config.indicators.validateOnLoad }}"
+  SWAGGER_ENABLED: "{{ .Values.config.swaggerEnabled }}"
