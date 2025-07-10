@@ -6,6 +6,7 @@ governance-service:
   api:
     image:
       tag: "sha-94d85e4"
+
   worker:
     image:
       tag: "sha-94d85e4"
@@ -22,24 +23,20 @@ governance-service:
         hosts:
           - "govtest.dev.eqtylab.io"
 
-  config:
-    appEnv: "development"
-
 # --- Component: Gov Studio UI ---
 governance-studio:
   image:
     tag: sha-03c2eb2-prod
+
   config:
-    swaggerEnabled: "true"
-    integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
     # API Configuration
+    integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
     apiUrl: "https://govtest.dev.eqtylab.io"
     auth0Domain: "governance-studio.us.auth0.com"
     auth0ClientId: "oJlvzdhdlMDIs1PX1xeTM2B98TwZCtyw"
     auth0Audience: "https://governance-studio.us.auth0.com/api/v2/"
 
     # Application Settings
-    environment: "development"
     appHostname: "govtest.dev.eqtylab.io"
 
   ingress:
@@ -72,20 +69,3 @@ integrity-service:
     integrityAppBlobStoreAccount: "umbrellachartstorage"
     integrityAppBlobStoreContainer: "root-blob-container"
     integrityServiceUrl: "https://govtest.dev.eqtylab.io/integrityService"
-    rustEnv: "development"
-    rustBacktrace: "1"
-
-# --- Component: Auth Service ---
-auth-service:
-  config:
-    logging:
-      level: debug
-
-    idp:
-      issuer: "https://governance-studio-stag.us.auth0.com/"
-
-      auth0:
-        domain: "governance-studio-stag.us.auth0.com"
-        managementAudience: "https://governance-studio-stag.us.auth0.com/api/v2/"
-        enableManagementAPI: true
-        apiIdentifier: "https://governance-studio-stag.us.auth0.com/api/v2/"
