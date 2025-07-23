@@ -1,7 +1,7 @@
 dependencies:
 - name: governance-service
   repository: file://../governance-service
-  version: 1.1.1
+  version: 1.0.0
 - name: integrity-service
   repository: file://../integrity-service
   version: 1.0.0
@@ -13,6 +13,6 @@ dependencies:
   version: 1.0.0
 - name: auth-service
   repository: file://../auth-service
-  version: 0.1.0
-digest: sha256:af8bbc684d5d6bd2b0aa02e83dfd0f36a7ac39c5f971ccb8302c81332ce70414
-generated: "2025-07-07T17:08:43.578394818-06:00"
+  version: 1.0.0
+digest: sha256:e93b27b40ea5bbc23aca24254dd0d3a7a3a60a9cc0709af6da0f0b0ac5968cd0
+generated: "2025-07-23T12:43:52.656755-04:00"

@@ -1,0 +1,47 @@
+🚀 Governance Platform Deployed Successfully!
+
+This chart includes two services:
+
+📡 API Service ({{ include "governance-service.fullname" . }})
+   - Provides REST API endpoints for governance operations
+   - Replicas: {{ .Values.api.replicaCount }}
+   - Image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
+
+⚙️  Worker Service ({{ include "governance-worker.fullname" . }})
+   - Processes background jobs and scheduled tasks
+   - Replicas: {{ .Values.worker.replicaCount }}
+   - Image: {{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag | default .Chart.AppVersion }}
+
+1. Get the API service URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "governance-service.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "governance-service.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "governance-service.fullname" . }} --template "{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "governance-service.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. Monitor the services:
+
+   # Check API service status
+   kubectl get pods -l app.kubernetes.io/name={{ include "governance-service.name" . }} -n {{ .Release.Namespace }}
+
+   # Check worker service status
+   kubectl get pods -l app.kubernetes.io/name={{ include "governance-worker.name" . }} -n {{ .Release.Namespace }}
+
+   # View worker logs
+   kubectl logs -l app.kubernetes.io/name={{ include "governance-worker.name" . }} -n {{ .Release.Namespace }} --tail=50

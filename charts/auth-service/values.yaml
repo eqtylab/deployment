@@ -1,11 +1,11 @@
-# Default values for auth-service.
+# Updated values for auth-service with all new configurations
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
+replicaCount: 2
 
 image:
-  repository: "ghcr.io/eqtylab/auth-service"
+  repository: eqtylab/auth-service
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -54,6 +54,7 @@ ingress:
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
     - host: auth.local
       paths:
@@ -118,27 +119,41 @@ config:
     readTimeout: 30s
     writeTimeout: 30s
     idleTimeout: 120s
+    environment: "production" # development, staging, production
+    swaggerEnabled: false # Enable swagger in non-prod environments
 
   # Logging configuration
   logging:
-    level: info
-    format: json
-    skipPaths: "/health,/health/live,/health/ready"
+    level: info # debug, info, warn, error
+    format: json # json, text
+    skipPaths: "/health,/health/live,/health/ready,/metrics"
+
+  # Security configuration
+  security:
+    # API Secret for Auth0 Actions / IDP webhooks
+    apiSecret: "" # Required - generate a strong secret
+    # JWT Secret for session tokens (if needed)
+    jwtSecret: "" # Optional - only if using local JWT generation
+    # Use existing secret
+    existingSecret: ""
+    existingSecretKeys:
+      apiSecret: "api-secret"
+      jwtSecret: "jwt-secret"
 
   # Identity Provider Configuration
   idp:
     # Provider type: generic, keycloak, zitadel, auth0
-    provider: "generic"
+    provider: "auth0"
 
     # Common OIDC settings (used by all providers)
-    issuer: ""
+    issuer: "" # e.g., https://your-tenant.auth0.com/
     clientId: ""
     clientSecret: ""
-    redirectUri: ""
+    redirectUri: "" # e.g., https://auth.yourdomain.com/callback
     scopes: "openid,profile,email"
 
     # Use existing secret for IDP credentials
-    existingSecret: "idp"
+    existingSecret: ""
     # Keys in the existing secret
     existingSecretKeys:
       clientId: "client-id"
@@ -187,24 +202,28 @@ config:
 
     # Auth0-specific settings
     auth0:
-      domain: ""
+      domain: "" # e.g., your-tenant.auth0.com
       # Management API settings
-      enableManagementAPI: false # Set to true to enable Auth0 Management API
-      managementClientId: ""
-      managementClientSecret: ""
-      managementAudience: ""
+      enableManagementAPI: true # Required for user/org management
+      managementClientId: "" # M2M application client ID
+      managementClientSecret: "" # M2M application client secret
+      managementAudience: "" # e.g., https://your-tenant.auth0.com/api/v2/
+      apiIdentifier: "" # Your API identifier in Auth0
       # User creation settings
       defaultConnection: "Username-Password-Authentication"
-      defaultRoles: ["user"]
+      defaultRoles: "user" # Comma-separated list
       sendInvitationEmail: true
       # Custom domain (optional)
       customDomain: ""
+      # Sync settings
+      syncAtStartup: false # Enable Auth0 organization sync at startup
+      syncPageSize: 100 # Page size for Auth0 API calls
 
     # Advanced settings
     httpTimeout: "30s"
-    skipIssuerVerification: false
-    skipClientIdCheck: false
-    insecureSkipVerify: false
+    skipIssuerVerification: false # DANGEROUS - only for development
+    skipClientIdCheck: false # DANGEROUS - only for development
+    insecureSkipVerify: false # DANGEROUS - only for development
     cacheTTL: 3600
     maxRetries: 3
 
@@ -214,35 +233,46 @@ config:
     port: 5432
     name: "authservice"
     user: "authservice"
-    password: ""
-    sslMode: "disable"
+    password: "" # Will be auto-generated if using subchart
+    sslMode: "disable" # disable, require, verify-ca, verify-full
     # Connection pool settings
     maxOpenConns: 25
     maxIdleConns: 5
     connMaxLifetime: "5m"
     # Migration settings
-    autoMigrate: true
-    migrationsPath: "/internal/database/migrations"
+    autoMigrate: true # Run migrations on startup
+    migrationsPath: "internal/database/migrations"
     # Use existing secret for database credentials
     existingSecret: ""
     # Keys in the existing secret
     existingSecretKeys:
       password: "password"
 
+  # Integration with other services
+  integrations:
+    # Integrity Service URL (for DID key fallback)
+    integrityServiceUrl: "" # e.g., http://integrity-service:8080
+    # Governance Service callback URL
+    governanceServiceUrl: "" # e.g., http://governance-service:10001
+
   # Key Vault configuration (for DID keys)
   keyVault:
-    provider: "" # azure, hashicorp, local
+    provider: "azure" # azure, hashicorp, local
+    # DID Key cache settings
+    cacheTTLMinutes: 15
     azure:
-      tenant-id: ""
-      vault-url: ""
+      vaultUrl: "" # e.g., https://your-vault.vault.azure.net/
+      tenantId: ""
+      clientId: ""
+      clientSecret: ""
       # Use existing secret for Azure credentials
       existingSecret: ""
       existingSecretKeys:
-        clientId: "clientId"
-        clientSecret: "clientSecret"
-
+        clientId: "client-id"
+        clientSecret: "client-secret"
+        tenantId: "tenant-id"
     hashicorp:
-      address: ""
+      address: "" # e.g., http://vault:8200
       token: ""
       # Use existing secret for Vault token
       existingSecret: ""
@@ -251,11 +281,11 @@ config:
 
   # RBAC configuration
   rbac:
-    # Cache settings
+    # Cache settings for permission checks
     cache:
       enabled: true
-      ttl: 300s
-      maxSize: 1000
+      ttl: 300s # 5 minutes
+      maxSize: 1000 # Maximum number of cached entries
 
   # CORS configuration
   cors:
@@ -264,12 +294,40 @@ config:
 
   # Session configuration
   session:
-    secret: ""
-    duration: "24h"
+    secret: "" # Session encryption secret
+    duration: "24h" # Session duration
     # Use existing secret for session secret
     existingSecret: ""
     existingSecretKeys:
       secret: "session-secret"
+
+  # Service Account configuration
+  serviceAccounts:
+    # Auto-create default service accounts on startup
+    autoCreate: true
+    # Default governance-worker service account
+    governanceWorker:
+      enabled: true
+      name: "governance-worker"
+      description: "Automated governance service worker for processing indicator evaluations"
+      # Platform-wide access (no organization binding)
+      organizationId: "" # Empty for platform-wide access
+      scopes:
+        - "governance:declarations:create"
+        - "integrity:statements:create"
+      # Auth0 M2M Application credentials for governance-worker
+      # These are required for the service account to authenticate
+      auth0ClientId: "" # AUTH0_GOVERNANCE_WORKER_CLIENT_ID
+      auth0ClientSecret: "" # AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
+    # Encryption key for service account secrets
+    encryptionKey: "" # Base64 encoded 32-byte key
+    # Use existing secret for encryption key
+    existingSecret: ""
+    # kubectl create secret generic governance-worker-credentials --from-literal=key="" --from-literal=governance-worker-client-id="" --from-literal=governance-worker-client-secret="" -n <namespace>
+    existingSecretKeys:
+      encryptionKey: "encryption-key"
+      governanceWorkerClientId: "governance-worker-client-id"
+      governanceWorkerClientSecret: "governance-worker-client-secret"
 
   # Rate limiting
   rateLimit:
@@ -278,25 +336,33 @@ config:
 
 # PostgreSQL subchart configuration
 postgresql:
-  enabled: true
+  enabled: false
   auth:
     username: authservice
-    password: authservice
+    password: authservice # Change in production!
     database: authservice
   primary:
     persistence:
       enabled: true
       size: 10Gi
+      storageClass: "" # Use default storage class
   metrics:
     enabled: false
+    serviceMonitor:
+      enabled: false
 
 # Redis subchart configuration (for caching/sessions)
 redis:
-  enabled: false
+  enabled: false # Enable if using Redis for caching
   auth:
     enabled: true
-    password: ""
+    password: "" # Will be auto-generated
   master:
+    persistence:
+      enabled: false # Enable for production
+      size: 8Gi
+  replica:
+    replicaCount: 1
     persistence:
       enabled: false
 
@@ -327,6 +393,8 @@ metrics:
     interval: 30s
     scrapeTimeout: 10s
     labels: {}
+    # Add labels for Prometheus Operator to discover
+    # release: prometheus
 
 # Network policies
 networkPolicy:
@@ -338,7 +406,10 @@ networkPolicy:
               name: ingress-nginx
         - podSelector:
             matchLabels:
-              app.kubernetes.io/name: governance-platform
+              app.kubernetes.io/name: governance-service
+      ports:
+        - protocol: TCP
+          port: 8080
   egress:
     # Allow DNS
     - to:
@@ -350,11 +421,27 @@ networkPolicy:
           port: 53
         - protocol: UDP
           port: 53
+    # Allow PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
     # Allow external HTTPS (for IDP communication)
     - to: []
       ports:
         - protocol: TCP
           port: 443
+    # Allow internal service communication
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: integrity-service
+      ports:
+        - protocol: TCP
+          port: 8080
 
 # Pod Disruption Budget
 podDisruptionBudget:
@@ -363,22 +450,7 @@ podDisruptionBudget:
   # maxUnavailable: 1
 
 # Extra environment variables
-extraEnvVars:
-  # - name: API_SECRET
-  #   valueFrom:
-  #     secretKeyRef:
-  #       name: auth-service-api-secret
-  #       key: api-secret
-  - name: API_SECRET
-    value: "api-key"
-  - name: ENVIRONMENT
-    value: "development"
-  - name: SWAGGER_ENABLED
-    value: "true"
-  - name: SWAGGER_BASE_PATH
-    value: "/auth"
-  - name: INTEGRITY_SERVICE_URL
-    value: "http://localhost:3050"
+extraEnvVars: []
 # - name: EXTRA_VAR
 #   value: "extra-value"
 
@@ -394,25 +466,15 @@ extraInitContainers: []
 # Example: Run migrations as init container (when autoMigrate is false)
 # - name: run-migrations
 #   image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-#   command: ["/migrate"]
+#   command: ["/app/migrate"]
 #   env:
-#     - name: DB_HOST
-#       value: "{{ include \"auth-service.databaseHost\" . }}"
-#     - name: DB_PORT
-#       value: "{{ .Values.config.database.port }}"
-#     - name: DB_NAME
-#       value: "{{ .Values.config.database.name }}"
-#     - name: DB_USER
-#       value: "{{ .Values.config.database.user }}"
-#     - name: DB_PASSWORD
-#       valueFrom:
-#         secretKeyRef:
-#           name: "{{ include \"auth-service.databaseSecretName\" . }}"
-#           key: "{{ include \"auth-service.databaseSecretKey\" . }}"
-#     - name: DB_SSL_MODE
-#       value: "{{ .Values.config.database.sslMode }}"
+#     - name: DATABASE_URL
+#       value: "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)"
 #     - name: DATABASE_MIGRATIONS_PATH
-#       value: "/internal/database/migrations"
+#       value: "{{ .Values.config.database.migrationsPath }}"
+#   envFrom:
+#     - secretRef:
+#         name: "{{ include \"auth-service.fullname\" . }}-db"
 
 # Extra manifests to deploy
 extraManifests: []
@@ -420,3 +482,24 @@ extraManifests: []
 # Migration Job configuration
 migration:
   enabled: false # Enable to run migrations as a Helm hook job
+  # Job configuration
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 300
+  # Resources for migration job
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Service-specific environment overrides
+# These are useful for different environments (dev, staging, prod)
+envOverrides: {}
+  # Example overrides for staging:
+  # ENVIRONMENT: "staging"
+  # LOG_LEVEL: "debug"
+  # SWAGGER_ENABLED: "true"
+  # IDP_SKIP_ISSUER_VERIFICATION: "true"  # Only for non-prod!

@@ -63,6 +63,12 @@ spec:
             - name: SERVER_IDLE_TIMEOUT
               value: {{ .Values.config.server.idleTimeout | quote }}
 
+            # Environment
+            - name: ENVIRONMENT
+              value: {{ .Values.config.server.environment | default "production" | quote }}
+            - name: SWAGGER_ENABLED
+              value: {{ .Values.config.server.swaggerEnabled | default false | quote }}
+
             # Logging configuration
             - name: LOG_LEVEL
               value: {{ .Values.config.logging.level | quote }}
@@ -230,6 +236,28 @@ spec:
                   key: {{ .Values.config.keyVault.hashicorp.existingSecretKeys.token | default "token" }}
             {{- end }}
 
+            # Security configuration
+            {{- if .Values.config.security.apiSecret }}
+            - name: API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "auth-service.securitySecretName" . }}
+                  key: {{ .Values.config.security.existingSecretKeys.apiSecret | default "api-secret" }}
+            {{- end }}
+            {{- if .Values.config.security.jwtSecret }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "auth-service.securitySecretName" . }}
+                  key: {{ .Values.config.security.existingSecretKeys.jwtSecret | default "jwt-secret" }}
+            {{- end }}
+
+            # Integration URLs
+            {{- if .Values.config.integrations.integrityServiceUrl }}
+            - name: INTEGRITY_SERVICE_URL
+              value: {{ .Values.config.integrations.integrityServiceUrl | quote }}
+            {{- end }}
+
             # RBAC cache configuration
             - name: RBAC_CACHE_ENABLED
               value: {{ .Values.config.rbac.cache.enabled | quote }}
@@ -237,6 +265,50 @@ spec:
               value: {{ .Values.config.rbac.cache.ttl | quote }}
             - name: RBAC_CACHE_MAX_SIZE
               value: {{ .Values.config.rbac.cache.maxSize | quote }}
+
+            # DID Key cache configuration
+            - name: DID_KEY_CACHE_TTL_MINUTES
+              value: {{ .Values.config.keyVault.cacheTTLMinutes | default 15 | quote }}
+
+            # Service Account configuration
+            - name: SERVICE_ACCOUNT_AUTO_CREATE
+              value: {{ .Values.config.serviceAccounts.autoCreate | default false | quote }}
+            {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
+            - name: SERVICE_ACCOUNT_DEFAULT_NAME
+              value: {{ .Values.config.serviceAccounts.governanceWorker.name | quote }}
+            # Auth0 M2M credentials for governance-worker
+            {{- if .Values.config.serviceAccounts.governanceWorker.auth0ClientId }}
+            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_ID
+              value: {{ .Values.config.serviceAccounts.governanceWorker.auth0ClientId | quote }}
+            {{- else if .Values.config.serviceAccounts.existingSecret }}
+            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "auth-service.serviceAccountSecretName" . }}
+                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.governanceWorkerClientId | default "governance-worker-client-id" }}
+            {{- end }}
+            {{- if .Values.config.serviceAccounts.governanceWorker.auth0ClientSecret }}
+            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
+              value: {{ .Values.config.serviceAccounts.governanceWorker.auth0ClientSecret | quote }}
+            {{- else if .Values.config.serviceAccounts.existingSecret }}
+            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "auth-service.serviceAccountSecretName" . }}
+                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.governanceWorkerClientSecret | default "governance-worker-client-secret" }}
+            {{- end }}
+            {{- if .Values.config.serviceAccounts.governanceWorker.audience }}
+            - name: AUTH0_GOVERNANCE_WORKER_AUDIENCE
+              value: {{ .Values.config.serviceAccounts.governanceWorker.audience | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.config.serviceAccounts.existingSecret }}
+            - name: SERVICE_ACCOUNT_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "auth-service.serviceAccountSecretName" . }}
+                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.encryptionKey | default "key" }}
+            {{- end }}
 
             # Metrics configuration
             {{- if .Values.metrics.enabled }}

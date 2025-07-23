@@ -74,34 +74,52 @@ env:
   # Options: "development", "staging", "production"
   rustEnv: ""
 
-  # Azure Blob Storage Configuration
+  # Blob Storage Configuration
+  # Storage backend type - determines which cloud provider to use
+  # Options: "aws_s3", "azure_blob", "gcs"
+  integrityAppBlobStoreType: ""
+
+  # AWS S3 Configuration (if using AWS)
+  integrityAppBlobStoreRegion: "" # AWS region (e.g., "us-west-2")
+  integrityAppBlobStoreBucket: "" # S3 bucket name
+  integrityAppBlobStoreFolder: "" # Folder/prefix within bucket
+
+  # Azure Blob Storage Configuration (if using Azure)
   integrityAppBlobStoreAccount: "" # Azure storage account name
   integrityAppBlobStoreContainer: "" # Azure blob container name
 
   # Service URL Configuration
   integrityServiceUrl: "" # Public URL for this service
 
+  # Auth0 Configuration
+  integrityAppAuthType: "auth0"
+  integrityAppAuthClientId: ""
+  integrityAppAuthDomain: ""
+  integrityAppCustomClaimsUrl: "" # URL for custom claims
+
 # =============================================================================
 # SECRET CONFIGURATION
 # =============================================================================
 
+# AWS Credentials Secret Configuration
+# Used when integrityAppBlobStoreType is set to "aws_s3"
+secrets:
+  enabled: false # Enable AWS credentials secret
+  name: "aws-creds" # Kubernetes secret name
+  keys:
+    awsSecretAccessKey: "awsSecretAccessKey" # Secret key for AWS secret access key
+    awsAccessKeyId: "awsAccessKeyId" # Secret key for AWS access key ID
+
 # Azure Key Vault Secret Configuration
 # Used for Azure-based integrations and blob storage
 kvSecret:
-  enabled: true # Enable Azure Key Vault secret
+  enabled: false # Enable Azure Key Vault secret
   name: "azure-kv-creds" # Kubernetes secret name
   keys:
     clientSecret: "clientSecret" # Secret key for Azure client secret
     clientId: "clientId" # Secret key for Azure client ID
     tenantId: "tenantId" # Secret key for Azure tenant ID
     vaultUrl: "vaultUrl" # Secret key for Azure Key Vault URL
-
-auth0SecretKeyRef:
-  name: "auth0secret" # Secret name
-  clientIdKey: "clientId" # Key for Auth0 client ID
-  clientSecretKey: "clientSecret" # Key for Auth0 client secret
-  domainKey: "domain" # Key for Auth0 domain
-
 # =============================================================================
 # SERVICE CONFIGURATION
 # =============================================================================
@@ -157,7 +175,7 @@ ingress:
     # Note: Usually managed by umbrella chart
 
   className:
-    "nginx" # Ingress controller class name
+    "" # Ingress controller class name
     # Examples: "nginx", "traefik", "alb"
 
   name: "integrity-service-ingress" # Ingress resource name

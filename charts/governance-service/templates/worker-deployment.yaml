@@ -81,12 +81,29 @@ spec:
           {{- end }}
           - name: MAIN_API_BASE_URL
             value: "http://{{ include "governance-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}"
+          - name: AUTH_SERVICE_URL
+            value: {{ .Values.config.authServiceUrl }}
+          {{- if .Values.worker.m2mCredentials }}
+          # M2M credentials for worker authentication
+          - name: M2M_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.worker.m2mCredentials.secretName | quote }}
+                key: {{ .Values.worker.m2mCredentials.clientIdKey | default "client-id" | quote }}
+          - name: M2M_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.worker.m2mCredentials.secretName | quote }}
+                key: {{ .Values.worker.m2mCredentials.clientSecretKey | default "client-secret" | quote }}
+          - name: AUTH0_DOMAIN
+            value: {{ .Values.config.auth0Domain | quote }}
+          - name: AUTH0_AUDIENCE
+            value: {{ .Values.worker.m2mCredentials.audience | default "https://governance.eqtylab.io" | quote }}
+          {{- end }}
           volumeMounts:
-            {{- if .Values.config.gcsEnabled }}
             - name: gcp-sa-volume
               mountPath: /var/secrets/google
               readOnly: true
-            {{- end }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
@@ -102,11 +119,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        {{- if .Values.config.gcsEnabled }}
         - name: gcp-sa-volume
           secret:
             secretName: {{ .Values.serviceAccount.name | quote }}
             items:
               - key: "gcs-sa.json"
                 path: "attachments-sa.json"
-        {{- end }}

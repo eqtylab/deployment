@@ -1,0 +1,204 @@
+{{- define "governanceplatform.notes" }}
+#################################################################################
+#                                                                               #
+#                   Governance Platform Successfully Deployed!                #
+#                                                                               #
+#################################################################################
+
+Release Name:     {{ .Release.Name }}
+Namespace:        {{ .Release.Namespace }}
+Chart Version:    {{ .Chart.Version }}
+App Version:      {{ .Chart.AppVersion }}
+Status:           {{ .Release.Status }}
+Revision:         {{ .Release.Revision }}
+{{- $globalDomain := .Values.global.domain | default "PLEASE_CONFIGURE_GLOBAL_DOMAIN" }}
+
+---------------------------------------------------------------------------------
+➡️ Accessing Your Governance Studio Platform:
+---------------------------------------------------------------------------------
+
+{{- $governanceUi := index .Values "governance-studio" }}
+{{- if $governanceUi.enabled }}
+  {{- $vfHost := "" }}
+  {{- if $governanceUi.ingress.enabled }}
+    {{- $vfHost = (first $governanceUi.ingress.hosts).host }}
+  {{- end }}
+  {{- if $vfHost }}
+🔹 **Governance Platform Portal:**
+    URL: https://{{ $vfHost }}
+    (Note: It might take a few minutes for Ingress and DNS to fully propagate.)
+  {{- else }}
+🔹 **Governance Platform Portal:**
+    Enabled, but Ingress for Governance Platform UI is not configured or enabled in your values.
+    You may need to set up Ingress or use port-forwarding to access:
+    Service: {{ printf "%s-governance-studio" .Release.Name }} (default port 80)
+  {{- end }}
+{{- end }}
+
+---------------------------------------------------------------------------------
+🔑 Key API Service Information:
+---------------------------------------------------------------------------------
+
+{{- $complianceGarage := index .Values "compliance-garage" }}
+{{- if $complianceGarage.enabled }}
+  {{- $cgApiHost := "" }}
+  {{- $cgApiPath := "/garage" }}
+  {{- if .Values.global.ingress.host }}
+    {{- $cgApiHost = .Values.global.ingress.host }}
+  {{- else }}
+    {{- $cgApiHost = .Values.global.domain }}
+  {{- end }}
+  {{- if and $complianceGarage $complianceGarage.api $complianceGarage.ingress $complianceGarage.ingress.enabled }}
+    {{- if $complianceGarage.ingress.hosts }}
+      {{- $host := index $complianceGarage.ingress.hosts 0 }}
+      {{- if $host }}
+        {{- if $host.host }}
+          {{- $cgApiHost = $host.host }}
+        {{- end }}
+        {{- if $host.paths }}
+          {{- $path := index $host.paths 0 }}
+          {{- if $path }}
+            {{- $pathStr := $path.path | toString }}
+            {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
+            {{- if $basePath }}
+              {{- $cgApiPath = $basePath }}
+            {{- else }}
+              {{- $cgApiPath = $path.path }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+🔸 **Compliance Garage API:**
+    Base URL: http://{{ $cgApiHost }}{{ $cgApiPath }}
+{{- end }}
+
+{{- $governanceService := index .Values "governance-service" }}
+{{- if $governanceService.enabled }}
+  {{- $aeHost := "" }}
+  {{- $aePath := "/assuranceApi" }}
+  {{- if .Values.global.ingress.host }}
+    {{- $aeHost = .Values.global.ingress.host }}
+  {{- else }}
+    {{- $aeHost = .Values.global.domain }}
+  {{- end }}
+  {{- if and $governanceService $governanceService.ingress $governanceService.ingress.enabled }}
+    {{- if $governanceService.ingress.hosts }}
+      {{- $host := index $governanceService.ingress.hosts 0 }}
+      {{- if $host }}
+        {{- if $host.host }}
+          {{- $aeHost = $host.host }}
+        {{- end }}
+        {{- if $host.paths }}
+          {{- $path := index $host.paths 0 }}
+          {{- if $path }}
+            {{- $pathStr := $path.path | toString }}
+            {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
+            {{- if $basePath }}
+              {{- $aePath = $basePath }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+🔸 **Governance Service API:**
+    Base URL: http://{{ $aeHost }}{{ $aePath }}
+{{- end }}
+
+{{- $integrityService := index .Values "integrity-service" }}
+{{- if $integrityService.enabled }}
+  {{- $isHost := "" }}
+  {{- $isPath := "/integrityService" }}
+  {{- if .Values.global.ingress.host }}
+    {{- $isHost = .Values.global.ingress.host }}
+  {{- else }}
+    {{- $isHost = .Values.global.domain }}
+  {{- end }}
+  {{- if and $integrityService $integrityService.ingress $integrityService.ingress.enabled }}
+    {{- if $integrityService.ingress.hosts }}
+      {{- $host := index $integrityService.ingress.hosts 0 }}
+      {{- if $host }}
+        {{- if $host.host }}
+          {{- $isHost = $host.host }}
+        {{- end }}
+        {{- if $host.paths }}
+          {{- $path := index $host.paths 0 }}
+          {{- if $path }}
+            {{- $pathStr := $path.path | toString }}
+            {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
+            {{- if $basePath }}
+              {{- $isPath = $basePath }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+🔸 **Integrity Service API:**
+    Base URL: http://{{ $isHost }}{{ $isPath }}
+{{- end }}
+
+{{- $verifiedAuth := index .Values "verified-auth" }}
+{{- if $verifiedAuth.enabled }}
+🔸 **Verified Auth Services:**
+    These services are enabled. Specific access details depend on your `verified-auth-services` sub-chart configuration (Ingress, Service type).
+    Typically, they are internal services consumed by other platform components.
+{{- end }}
+
+---------------------------------------------------------------------------------
+⚙️ Important Configuration & Secrets:
+---------------------------------------------------------------------------------
+* **Domain:** Your platform is configured for the domain `{{ $globalDomain }}`.
+    Ensure your DNS records are correctly pointing to your Kubernetes Ingress controller's external IP.
+* **Secrets Management:** This installation relies on pre-configured Kubernetes Secrets for
+    sensitive data like database credentials, API keys, etc. Please ensure that all secrets
+    listed in `global.secrets` in your values file (or the Helm command) were created correctly
+    in the `{{ .Release.Namespace }}` namespace **before** installing this chart.
+    Example expected secrets include: auth0-secret, blob-secret, etc.
+* **TLS/HTTPS:** This NOTES.txt provides HTTP URLs. For production, you are responsible for
+    configuring TLS/HTTPS on your Ingress resources, typically using cert-manager or by
+    providing your own TLS certificates and configuring the Ingress `tls` sections in your values.
+
+---------------------------------------------------------------------------------
+🚀 Checking Deployment Status & Next Steps:
+---------------------------------------------------------------------------------
+1.  **Check Pod Status:**
+    `kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}`
+    (Wait for all pods to be in `Running` or `Completed` state.)
+
+2.  **Check Services:**
+    `kubectl get services -n {{ .Release.Namespace }}`
+
+3.  **Check Ingresses:**
+    `kubectl get ingresses -n {{ .Release.Namespace }}`
+
+4.  **View Logs:**
+    If you encounter issues, check the logs of individual pods:
+    `kubectl logs -n {{ .Release.Namespace }} -f <pod-name> -c <container-name-if-applicable>`
+
+5.  **Troubleshooting Ingress:**
+    If UIs/APIs are not accessible via domain names, ensure:
+    * Your Ingress controller is running and configured correctly.
+    * DNS has propagated.
+    * The Ingress resources for Governance Studio components show an `ADDRESS`.
+
+6.  **Review Sub-Chart Notes:**
+    Some sub-charts might have their own specific notes. You can view them by checking the
+    Helm release notes for those components if needed, though this umbrella chart's notes
+    aim to be comprehensive for primary access points.
+
+---------------------------------------------------------------------------------
+📚 Further Documentation:
+---------------------------------------------------------------------------------
+For detailed configuration options, architecture, and troubleshooting, please refer to
+the official Governance Studio deployment documentation:
+  [YOUR_DOCUMENTATION_URL_HERE]  <-- **IMPORTANT: Replace this with your actual doc link!**
+
+Enjoy using Governance Studio!
+#################################################################################
+{{- end }}
+
+{{- /* Call the defined template */}}
+{{- template "governanceplatform.notes" . }}

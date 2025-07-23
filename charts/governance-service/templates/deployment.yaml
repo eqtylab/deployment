@@ -66,22 +66,10 @@ spec:
                 {{- end }}
           - name: GCS_BUCKET_NAME
             value: {{ .Values.config.gcsBucketName }}
-          {{- if .Values.config.gcsEnabled }}
           - name: GCS_CREDENTIALS_FILE
             value: "/var/secrets/google/attachments-sa.json"
-          {{- end }}
-
           - name: AUTH0_DOMAIN
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.auth0SecretKeyRef }}
-                name: {{ .Values.auth0SecretKeyRef.name | quote }}
-                key: {{ .Values.auth0SecretKeyRef.domainKey | quote }}
-                {{- else }}
-                name: "auth0secret"
-                key: "domain"
-                {{- end }}
-
+            value: {{ .Values.config.auth0Domain }}
           - name: AUTH0_CLIENT_ID
             valueFrom:
               secretKeyRef:
@@ -89,10 +77,9 @@ spec:
                 name: {{ .Values.auth0SecretKeyRef.name | quote }}
                 key: {{ .Values.auth0SecretKeyRef.clientIdKey | quote }}
                 {{- else }}
-                name: "auth0secret"
-                key: "clientId"
+                name: "auth0-secret"
+                key: "auth0-client-id"
                 {{- end }}
-
           - name: AUTH0_CLIENT_SECRET
             valueFrom:
               secretKeyRef:
@@ -100,19 +87,31 @@ spec:
                 name: {{ .Values.auth0SecretKeyRef.name | quote }}
                 key: {{ .Values.auth0SecretKeyRef.clientSecretKey | quote }}
                 {{- else }}
-                name: "auth0secret"
-                key: "clientSecret"
+                name: "auth0-secret"
+                key: "auth0-client-secret"
                 {{- end }}
-
           - name: AUTH0_SYNC_AT_STARTUP
             value: {{ .Values.auth0SyncAtStartup | quote }}
-
           - name: AUTH0_SYNC_PAGE_SIZE
             value: {{ .Values.auth0SyncPageSize | quote }}
-
           - name: INTEGRITY_SERVICE_URL
             value: {{ .Values.config.integrityServiceUrl }}
-
+          - name: AUTH_SERVICE_URL
+            value: {{ .Values.config.authServiceUrl }}
+          {{- if .Values.config.serviceAccount.enabled }}
+          - name: INTEGRITY_AUTH_SERVICE_URL
+            value: {{ .Values.config.serviceAccount.authServiceUrl | default .Values.config.authServiceUrl }}
+          - name: INTEGRITY_AUTH_SERVICE_API_KEY
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.config.serviceAccount.existingSecret }}
+                name: {{ .Values.config.serviceAccount.existingSecret }}
+                key: {{ .Values.config.serviceAccount.existingSecretKeys.apiKey | default "auth-service-api-key" }}
+                {{- else }}
+                name: {{ include "governance-service.fullname" . }}-service-account
+                key: auth-service-api-key
+                {{- end }}
+          {{- end }}
           {{- if .Values.huggingFaceTokenSecretKeyRef }}
           # Get token from external secret
           - name: HUGGING_FACE_TOKEN
@@ -137,11 +136,9 @@ spec:
             value: {{ .Values.migrations.path | quote }}
           {{- end }}
           volumeMounts:
-            {{- if .Values.config.gcsEnabled }}
             - name: gcp-sa-volume
               mountPath: /var/secrets/google
               readOnly: true
-            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -180,11 +177,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        {{- if .Values.config.gcsEnabled }}
         - name: gcp-sa-volume
           secret:
             secretName: {{ .Values.serviceAccount.name | quote }}
             items:
               - key: "gcs-sa.json"
                 path: "attachments-sa.json"
-        {{- end }}

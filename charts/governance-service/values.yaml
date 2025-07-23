@@ -24,8 +24,7 @@ api:
 
   # Application startup configuration
   command: ["./governance-service"] # Container entrypoint command
-  args:
-    []
+  args: []
     # Available command line options:
     # -debug-config        # Show configuration with debug output
     # -debug-config-only   # Show configuration and exit
@@ -58,8 +57,7 @@ worker:
 
   # Worker startup configuration
   command: ["./governance-worker"] # Container entrypoint command
-  args:
-    []
+  args: []
     # Available command line options:
     # -debug-config        # Show configuration with debug output
     # -debug-config-only   # Show configuration and exit
@@ -189,10 +187,9 @@ auth0SyncPageSize: 100 # Number of users to sync per page from Auth0
 
 # Reference to Kubernetes secret containing Auth0 credentials
 auth0SecretKeyRef:
-  name: "auth0secret" # Secret name
-  clientIdKey: "clientId" # Key for Auth0 client ID
-  clientSecretKey: "clientSecret" # Key for Auth0 client secret
-  domainKey: "domain" # Key for Auth0 domain
+  name: "" # Secret name (e.g., "auth0-secret")
+  clientIdKey: "" # Key for Auth0 client ID
+  clientSecretKey: "" # Key for Auth0 client secret
 
 # =============================================================================
 # APPLICATION CONFIGURATION
@@ -239,7 +236,27 @@ config:
 
   # Cloud Storage Configuration
   gcsBucketName: "" # Google Cloud Storage bucket name
-  gcsEnabled: false # Enable GCS service account volume mount
+
+  # Auth0 Configuration (can also be provided via secrets)
+  auth0Domain: "" # Auth0 tenant domain
+  auth0ClientId: "" # Auth0 client ID
+  auth0ClientSecret: "" # Auth0 client secret (prefer secret reference)
 
   # Integration URLs
   integrityServiceUrl: "" # URL of the Integrity Service
+  authServiceUrl: "" # URL of the Auth Service for permission validation
+
+  # Service Account Configuration (for worker authentication)
+  serviceAccount:
+    # Enable service account authentication for worker
+    enabled: true
+    # Auth service URL for token retrieval
+    authServiceUrl: "" # e.g., http://auth-service:8080
+    # API key for auth service
+    authServiceApiKey: "" # Will be auto-generated if using auth-service subchart
+    # Service account name
+    serviceName: "governance-worker"
+    # Use existing secret for API key
+    existingSecret: ""
+    existingSecretKeys:
+      apiKey: "auth-service-api-key"

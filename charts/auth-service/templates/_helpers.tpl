@@ -127,3 +127,25 @@ Create the Key Vault secret name
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create the security secret name
+*/}}
+{{- define "auth-service.securitySecretName" -}}
+{{- if .Values.config.security.existingSecret }}
+{{- .Values.config.security.existingSecret }}
+{{- else }}
+{{- printf "%s-security" (include "auth-service.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create the service account secret name
+*/}}
+{{- define "auth-service.serviceAccountSecretName" -}}
+{{- if .Values.config.serviceAccounts.existingSecret }}
+{{- .Values.config.serviceAccounts.existingSecret }}
+{{- else }}
+{{- printf "%s-service-accounts" (include "auth-service.fullname" .) }}
+{{- end }}
+{{- end }}

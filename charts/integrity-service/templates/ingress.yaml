@@ -44,7 +44,7 @@ spec:
               pathType: {{ .pathType }}
               backend:
                 service:
-                  name: {{ if .backend }}{{ if .backend.service }}{{ .backend.service.name }}{{ else }}{{ $fullName }}-{{ $.Values.service.name }}{{ end }}{{ else }}{{ $fullName }}-{{ $.Values.service.name }}{{ end }}
+                  name: {{ if .backend }}{{ if .backend.service }}{{ .backend.service.name }}{{ else }}{{ $fullName }}{{ end }}{{ else }}{{ $fullName }}{{ end }}
                   port:
                     number: {{ if .backend }}{{ if .backend.service }}{{ if .backend.service.port }}{{ .backend.service.port }}{{ else }}{{ $svcPort }}{{ end }}{{ else }}{{ $svcPort }}{{ end }}{{ else }}{{ $svcPort }}{{ end }}
             {{- end }}
@@ -58,7 +58,7 @@ spec:
               pathType: {{ .pathType }}
               backend:
                 service:
-                  name: {{ if .backend }}{{ if .backend.service }}{{ .backend.service.name }}{{ else }}{{ $fullName }}-{{ $.Values.service.name }}{{ end }}{{ else }}{{ $fullName }}-{{ $.Values.service.name }}{{ end }}
+                  name: {{ if .backend }}{{ if .backend.service }}{{ .backend.service.name }}{{ else }}{{ $fullName }}{{ end }}{{ else }}{{ $fullName }}{{ end }}
                   port:
                     number: {{ if .backend }}{{ if .backend.service }}{{ if .backend.service.port }}{{ .backend.service.port }}{{ else }}{{ $svcPort }}{{ end }}{{ else }}{{ $svcPort }}{{ end }}{{ else }}{{ $svcPort }}{{ end }}
             {{- end }}

@@ -53,10 +53,44 @@ spec:
               value: {{ .Values.env.rustEnv | quote }}
 
             - name: INTEGRITY_APP__blob_store__type
-              value: "azure_blob"
+              value: {{ .Values.env.integrityAppBlobStoreType | quote }}
 
             - name: INTEGRITY_SERVICE_URL
               value: {{ .Values.env.integrityServiceUrl | quote }}
+
+            # AWS S3 settings
+            - name: INTEGRITY_APP__blob_store__region
+              value: {{ .Values.env.integrityAppBlobStoreRegion | quote }}
+            - name: INTEGRITY_APP__blob_store__bucket
+              value: {{ .Values.env.integrityAppBlobStoreBucket | quote }}
+            - name: INTEGRITY_APP__blob_store__folder
+              value: {{ .Values.env.integrityAppBlobStoreFolder | quote }}
+
+            # Auth0 settings
+            - name: INTEGRITY_APP__auth__type
+              value: {{ .Values.env.integrityAppAuthType | quote }}
+            - name: INTEGRITY_APP__auth__client_id
+              value: {{ .Values.env.integrityAppAuthClientId | quote }}
+            - name: INTEGRITY_APP__auth__domain
+              value: {{ .Values.env.integrityAppAuthDomain | quote }}
+            - name: INTEGRITY_APP__auth__custom_claims_url
+              value: {{ .Values.env.integrityAppCustomClaimsUrl | quote }}
+
+            # aws-creds must be created in env
+            # kubectl create secret generic -n integrity-dev aws-creds --from-literal=awsSecretAccessKey='<key>' --from-literal=awsAccessKeyId='<key>'
+            {{- if .Values.secrets.enabled }}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "integrity.complianceSecretName" . }}"
+                  key: {{ .Values.secrets.keys.awsSecretAccessKey }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "integrity.complianceSecretName" . }}"
+                  key: {{ .Values.secrets.keys.awsAccessKeyId }}
+            {{- end }}
+            # END AWS S3 settings
 
             # Azure KV settings
             {{- if .Values.kvSecret.enabled }}
@@ -106,58 +140,15 @@ spec:
             - name: INTEGRITY_APP__db__user
               value: "postgres"
 
-            ##### Auth0 settings #####
-            - name: INTEGRITY_APP__auth__type
-              value: "auth0"
-
-            - name: INTEGRITY_APP__auth__domain
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.auth0SecretKeyRef.name | quote }}
-                  key: {{ .Values.auth0SecretKeyRef.domainKey | quote }}
-
-
-            # These are only used when logging in via the swagger page
-            - name: INTEGRITY_APP__auth__client_secret
-              value: ""
-            - name: INTEGRITY_APP__auth__client_id
-              value: ""
-            - name: INTEGRITY_APP__auth__custom_claims_url
-              value: ""
-            ##### END Auth0 settings #####
-
-            ##### Azure Key Vault Signer Settings     #####
-            - name: INTEGRITY_APP__auth_signer_config__type
-              value: "azure_key_vault"
-
+            # Auth0 settings
             - name: INTEGRITY_APP__auth_signer_config__client_secret
               valueFrom:
                 secretKeyRef:
                   name: "{{ include "integrity.azureKvSecretName" . }}"
                   key: {{ .Values.kvSecret.keys.clientSecret }}
 
-            - name: INTEGRITY_APP__auth_signer_config__tenant_id
-              valueFrom:
-                secretKeyRef:
-                  name: "{{ include "integrity.azureKvSecretName" . }}"
-                  key: {{ .Values.kvSecret.keys.tenantId }}
-
-            - name: INTEGRITY_APP__auth_signer_config__client_id
-              valueFrom:
-                secretKeyRef:
-                  name: "{{ include "integrity.azureKvSecretName" . }}"
-                  key: {{ .Values.kvSecret.keys.clientId }}
-
-            - name: INTEGRITY_APP__auth_signer_config__vault_url
-              valueFrom:
-                secretKeyRef:
-                  name: "{{ include "integrity.azureKvSecretName" . }}"
-                  key: {{ .Values.kvSecret.keys.vaultUrl }}
-            ##### END Azure Key Vault Signer Settings #####
-
             - name: COMMAND
               value: "integrity-service"
-
           args:
             - $(COMMAND)
             - start

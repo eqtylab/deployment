@@ -31,15 +31,18 @@ global:
     # --- Secret Names ---
     # These names are used to reference secrets across all components
     # Change these if you want to use different secret names in your cluster
-    auth0SecretName: "auth0secret" # Auth0 authentication credentials
-    blobStoreSecretName: "blob-secret" # Cloud storage credentials (Azure/GCS/AWS)
     complianceSecretName: "compliance-secrets" # Database credentials, API keys for Compliance Garage
+    auth0SecretName: "auth0-secret" # Auth0 authentication credentials
+    blobStoreSecretName: "blob-secret" # Cloud storage credentials (Azure/GCS/AWS)
     azureKVSecretName: "azure-kv-secret" # Azure Key Vault access credentials
     huggingFaceSecretName: "hf-secret" # Hugging Face model access token
     encryptionKeySecretName: "platform-encryption" # Platform encryption keys
     imagePullSecretName: "ghcr-pull-secret" # Container registry credentials
-    idpSecretName: "idp" # Secrets for auth-service
     openaiSecretName: "openai-secret" # OpenAI API key for AI features
+    authServiceDbSecretName: "auth-service-db-credentials" # Auth service database credentials
+    authServiceSessionSecretName: "auth-service-session-secret" # Auth service session secret
+    authServiceApiSecretName: "auth-service-api-secret" # Auth service API secret
+    governanceWorkerSecretName: "governance-worker-credentials" # Governance worker service account
 
     # --- Secret Creation Control ---
     # true: Chart will create secrets using the values below during installation
@@ -55,33 +58,34 @@ global:
       compliance:
         # Database connection string (used by all Compliance Garage components)
         databaseUrl: "" # e.g., postgresql://postgres:password@postgresql:5432/governance
+        # Redis connection string
+        redisUrl: "" # e.g., redis://redis-master:6379
         # Gemini API key for AI features
         geminiApiKey: ""
 
       # Auth0 authentication
-      auth0secret:
+      auth0:
         clientId: ""
         clientSecret: ""
-        domain: ""
-        
-      # IDP secrets for auth-service
-      idp:
-        clientId: ""
-        clientSecret: ""
-        auth0:
-          managementClientId: ""
-          managementClientSecret: ""
+        domain: "" # e.g., your-tenant.us.auth0.com
 
       # Database credentials
       database:
         postgresPassword: "" # Password for PostgreSQL database
+        redisPassword: "" # Password for Redis
 
       # Blob storage
       blobStorage:
+        # For GCP
+        gcsServiceAccountJson: "" # Base64-encoded service account JSON
         # For Azure
         azureStorageAccountName: ""
         azureStorageAccountKey: ""
         connectionString: ""
+        emailString: ""
+        # For AWS
+        awsAccessKeyId: ""
+        awsSecretAccessKey: ""
 
       # Azure Key Vault
       azureKeyVault:
@@ -101,13 +105,30 @@ global:
       # Platform encryption
       encryption:
         key: "" # Encryption key for sensitive data
+        azureKeyVaultUrl: ""
+        azureKeyVaultClientId: ""
+        azureKeyVaultClientSecret: ""
         azureKeySecretName: ""
+        azureKeyVaultTenantId: ""
 
       # Container registry credentials
       imagePull:
         username: "" # GitHub username or token name
         password: "" # GitHub PAT with read:packages scope
         email: "" # Email associated with GitHub account
+
+      # Auth Service specific secrets
+      authService:
+        dbPassword: "" # Database password for auth service (can be same as postgresPassword)
+        sessionSecret: "" # Session secret for auth service (generate with: openssl rand -base64 32)
+        apiSecret: "" # API secret for auth service (generate with: openssl rand -base64 32)
+        jwtSecret: "" # JWT secret for auth service (generate with: openssl rand -base64 32)
+
+      # Governance Worker Service Account
+      governanceWorker:
+        encryptionKey: "" # Encryption key for service accounts (generate with: openssl rand -base64 32)
+        clientId: "" # Auth0 M2M application client ID for governance worker
+        clientSecret: "" # Auth0 M2M application client secret for governance worker
 
   # --- Database Configuration ---
   # PostgreSQL connection settings shared across all platform services
@@ -162,7 +183,7 @@ global:
 # API provides REST endpoints, Worker processes background jobs
 governance-service:
   enabled: true # Set to false to disable the Governance Service component
-  
+
   # === API Service Configuration ===
   api:
     replicaCount: 1
@@ -179,7 +200,7 @@ governance-service:
       requests:
         cpu: 250m
         memory: 256Mi
-  
+
   # === Worker Service Configuration ===
   worker:
     replicaCount: 1
@@ -196,16 +217,16 @@ governance-service:
       requests:
         cpu: 500m
         memory: 512Mi
-  
+
   # === Shared Configuration ===
   imagePullSecrets:
     - name: ghcr-pull-secret
-  
+
   # Service configuration
   service:
     type: ClusterIP
     port: 10001
-  
+
   ingress:
     enabled: true
     className: "nginx"
@@ -224,18 +245,18 @@ governance-service:
       - secretName: "platform-tls"
         hosts:
           - "governance.example.com"
-  
+
   # Kubernetes deployment settings
   autoscaling:
     enabled: false
     minReplicas: 1
     maxReplicas: 100
     targetCPUUtilizationPercentage: 80
-  
+
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  
+
   # Pod settings
   podAnnotations: {}
   podSecurityContext: {}
@@ -246,7 +267,7 @@ governance-service:
     readOnlyRootFilesystem: true
     runAsNonRoot: true
     runAsUser: 1000
-  
+
   # Configure external database settings
   externalDatabase:
     host: "governance-platform-postgresql"
@@ -258,11 +279,11 @@ governance-service:
     passwordSecretKeyRef:
       name: "compliance-secrets"
       key: "postgresPassword"
-  
+
   migrations:
     runAtStartup: true
     path: "/app/migrations"
-  
+
   config:
     path: "/api/v1/health" # Health check endpoint path
     gcsEnabled: false
@@ -294,7 +315,7 @@ governance-service:
       configPath: "/app/configs/indicators"
       reloadInterval: 300
       validateOnLoad: true
-  
+
   # For sensitive values like tokens/keys, point to keys within the pre-created K8s secrets
   huggingFaceTokenSecretKeyRef:
     name: "hf-secret"
@@ -302,16 +323,16 @@ governance-service:
   credentialEncryptionKeySecretKeyRef:
     name: "platform-encryption"
     key: "key"
-  
+
   # Auth0 credentials reference
   auth0SyncAtStartup: true
   auth0SyncPageSize: 100
   auth0SecretKeyRef:
-    name: "auth0secret"
+    name: "auth0-secret"
     domainKey: "domain"
     clientIdKey: "clientId"
     clientSecretKey: "clientSecret"
-  
+
   # For GCS service account, the assurance-engine deployment mounts a secret.
   serviceAccount:
     create: false
@@ -412,7 +433,7 @@ integrity-service:
   image:
     repository: "ghcr.io/eqtylab"
     name: "integrity-service"
-    tag: "61c5345" # Updated to match production
+    tag: "d4e4b46" # Updated to match production
   kvSecret:
     enabled: true
     name: "azure-kv-secret"
@@ -433,14 +454,18 @@ integrity-service:
     integrityServiceUrl: "" # Update to match production
     rustEnv: "production"
     rustBacktrace: "0"
+    # Auth configurations
+    integrityAppAuthType: "" # e.g. "auth0"
+    integrityAppAuthClientId: "" # e.g. "your-client-id"
+    integrityAppAuthDomain: "" # e.g. "your-auth0-domain.auth0.com"
+    integrityAppCustomClaimsUrl: "" # URL for custom claims
   # Service configuration for integrity
   service:
     enabled: true
     type: ClusterIP
     port: 80
     targetPort: 3050
-  resources:
-    {}
+  resources: {}
     # limits:
     #   cpu: 500m
     #   memory: 512Mi
@@ -456,7 +481,7 @@ integrity-service:
 auth-service:
   enabled: false
   image:
-    tag: "sha-7bf195c"
+    tag: "sha-aee2859"
 
   imagePullSecrets:
     - name: ghcr-pull-secret
@@ -482,12 +507,47 @@ auth-service:
         password: "postgresPassword"
 
     idp:
-      provider: "auth0"
-      existingSecret: "idp"
+      provider: "" # Provider for identity provider
+      issuer: "" # Issuer URL for identity provider
+      existingSecret: "auth0-credentials"
       skipIssuerVerification: true
 
       auth0:
-        apiIdentifier: ""
+        domain: "" # Domain for Auth0
+        enableManagementAPI: true # Enable Auth0 Management API
+        managementAudience: "" # Management API audience for Auth0
+        apiIdentifier: "" # API identifier for Auth0
+        defaultConnection: "Username-Password-Authentication"
+        defaultRoles: ["user"]
+        sendInvitationEmail: true
+        syncAtStartup: true
+        syncPageSize: 100
+
+    # Integration with other services
+    integrations:
+      # Integrity Service URL (for DID key fallback)
+      integrityServiceUrl: "http://governance-platform-integrity"
+      # Governance Service URL
+      governanceServiceUrl: "http://governance-platform-governance-service:10001"
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    hosts:
+      - host: "governance.example.com"
+        paths:
+          - path: "/auth(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "platform-tls"
+        hosts:
+          - "governance.example.com"
 
 # =============================================================================
 # INFRASTRUCTURE COMPONENTS
