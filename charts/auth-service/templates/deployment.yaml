@@ -169,6 +169,14 @@ spec:
             - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET
               value: {{ .Values.config.idp.keycloak.serviceAccountClientSecret | quote }}
             {{- end }}
+            {{- if .Values.config.idp.keycloak.enableUserManagement }}
+            - name: IDP_KEYCLOAK_ENABLE_USER_MANAGEMENT
+              value: {{ .Values.config.idp.keycloak.enableUserManagement | quote }}
+            {{- end }}
+            {{- if .Values.config.idp.keycloak.enableGroupSync }}
+            - name: IDP_KEYCLOAK_ENABLE_GROUP_SYNC
+              value: {{ .Values.config.idp.keycloak.enableGroupSync | quote }}
+            {{- end }}
             {{- end }}
 
             {{- if eq .Values.config.idp.provider "zitadel" }}
@@ -276,7 +284,10 @@ spec:
             {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
             - name: SERVICE_ACCOUNT_DEFAULT_NAME
               value: {{ .Values.config.serviceAccounts.governanceWorker.name | quote }}
-            # Auth0 M2M credentials for governance-worker
+
+            # M2M credentials for governance-worker
+            {{- if eq .Values.config.idp.provider "auth0" }}
+            # Auth0 service account credentials
             {{- if .Values.config.serviceAccounts.governanceWorker.auth0ClientId }}
             - name: AUTH0_GOVERNANCE_WORKER_CLIENT_ID
               value: {{ .Values.config.serviceAccounts.governanceWorker.auth0ClientId | quote }}
@@ -302,6 +313,31 @@ spec:
               value: {{ .Values.config.serviceAccounts.governanceWorker.audience | quote }}
             {{- end }}
             {{- end }}
+
+            {{- if eq .Values.config.idp.provider "keycloak" }}
+            # Keycloak service account credentials
+            {{- if .Values.config.serviceAccounts.governanceWorker.keycloakClientId }}
+            - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_ID
+              value: {{ .Values.config.serviceAccounts.governanceWorker.keycloakClientId | quote }}
+            {{- else if .Values.config.serviceAccounts.existingSecret }}
+            - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "auth-service.serviceAccountSecretName" . }}
+                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.governanceWorkerClientId | default "governance-worker-client-id" }}
+            {{- end }}
+            {{- if .Values.config.serviceAccounts.governanceWorker.keycloakClientSecret }}
+            - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_SECRET
+              value: {{ .Values.config.serviceAccounts.governanceWorker.keycloakClientSecret | quote }}
+            {{- else if .Values.config.serviceAccounts.existingSecret }}
+            - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "auth-service.serviceAccountSecretName" . }}
+                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.governanceWorkerClientSecret | default "governance-worker-client-secret" }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.config.serviceAccounts.existingSecret }}
             - name: SERVICE_ACCOUNT_ENCRYPTION_KEY
               valueFrom:
@@ -318,6 +354,22 @@ spec:
               value: {{ .Values.metrics.port | quote }}
             - name: METRICS_PATH
               value: {{ .Values.metrics.path | quote }}
+            {{- end }}
+
+            # Token Exchange configuration
+            {{- if .Values.config.tokenExchange.enabled }}
+            - name: AUTH_SERVICE_KEY_ID
+              value: {{ .Values.config.tokenExchange.keyId | quote }}
+            - name: AUTH_SERVICE_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.config.tokenExchange.existingSecret | default (printf "%s-keys" (include "auth-service.fullname" .)) }}
+                  key: {{ .Values.config.tokenExchange.existingSecretKeys.privateKey | default "private-key" }}
+            {{- end }}
+
+            {{- if .Values.config.authUrl }}
+            - name: AUTH_SERVICE_URL
+              value: {{ .Values.config.authUrl | quote }}
             {{- end }}
 
             {{- with .Values.extraEnvVars }}

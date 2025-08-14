@@ -92,10 +92,9 @@ env:
   integrityServiceUrl: "" # Public URL for this service
 
   # Auth0 Configuration
-  integrityAppAuthType: "auth0"
-  integrityAppAuthClientId: ""
-  integrityAppAuthDomain: ""
-  integrityAppCustomClaimsUrl: "" # URL for custom claims
+  integrityAppAuthType: "auth_service"
+  authServiceUrl: "http://governance-platform-auth-service:8080"
+  integrityAppCustomClaimsUrl: "https://governance.eqtylab.io/auth0_user_id" # URL for custom claims
 
 # =============================================================================
 # SECRET CONFIGURATION

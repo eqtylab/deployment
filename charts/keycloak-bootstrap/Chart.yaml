@@ -1,0 +1,17 @@
+apiVersion: v2
+name: keycloak-bootstrap
+description: A Helm chart for bootstrapping Keycloak with governance platform configuration
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+
+keywords:
+  - keycloak
+  - bootstrap
+  - governance
+  - authentication
+
+maintainers:
+  - name: Governance Platform Team
+
+dependencies: []

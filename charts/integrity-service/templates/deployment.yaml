@@ -69,10 +69,8 @@ spec:
             # Auth0 settings
             - name: INTEGRITY_APP__auth__type
               value: {{ .Values.env.integrityAppAuthType | quote }}
-            - name: INTEGRITY_APP__auth__client_id
-              value: {{ .Values.env.integrityAppAuthClientId | quote }}
-            - name: INTEGRITY_APP__auth__domain
-              value: {{ .Values.env.integrityAppAuthDomain | quote }}
+            - name: INTEGRITY_APP__auth__url
+              value: {{ .Values.env.authServiceUrl | quote }}
             - name: INTEGRITY_APP__auth__custom_claims_url
               value: {{ .Values.env.integrityAppCustomClaimsUrl | quote }}
 
@@ -94,6 +92,29 @@ spec:
 
             # Azure KV settings
             {{- if .Values.kvSecret.enabled }}
+            - name: INTEGRITY_APP__auth_signer_config__type
+              value: "azure_key_vault"
+            - name: INTEGRITY_APP__auth_signer_config__client_secret
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "integrity.azureKvSecretName" . }}"
+                  key: {{ .Values.kvSecret.keys.clientSecret }}
+            - name: INTEGRITY_APP__auth_signer_config__client_id
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "integrity.azureKvSecretName" . }}"
+                  key: {{ .Values.kvSecret.keys.clientId }}
+            - name: INTEGRITY_APP__auth_signer_config__tenant_id
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "integrity.azureKvSecretName" . }}"
+                  key: {{ .Values.kvSecret.keys.tenantId }}
+            - name: INTEGRITY_APP__auth_signer_config__vault_url
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "integrity.azureKvSecretName" . }}"
+                  key: {{ .Values.kvSecret.keys.vaultUrl }}
+
             - name: INTEGRITY_APP__key_vault__client_secret
               valueFrom:
                 secretKeyRef:
@@ -139,14 +160,6 @@ spec:
               value: "{{ .Release.Name }}-postgresql"
             - name: INTEGRITY_APP__db__user
               value: "postgres"
-
-            # Auth0 settings
-            - name: INTEGRITY_APP__auth_signer_config__client_secret
-              valueFrom:
-                secretKeyRef:
-                  name: "{{ include "integrity.azureKvSecretName" . }}"
-                  key: {{ .Values.kvSecret.keys.clientSecret }}
-
             - name: COMMAND
               value: "integrity-service"
           args:

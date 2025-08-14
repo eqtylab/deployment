@@ -1,16 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "governance-studio.name" -}}
+{{- define "keycloak-bootstrap.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
 */}}
-{{- define "governance-studio.fullname" -}}
+{{- define "keycloak-bootstrap.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +24,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "governance-studio.chart" -}}
+{{- define "keycloak-bootstrap.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "governance-studio.labels" -}}
-helm.sh/chart: {{ include "governance-studio.chart" . }}
-{{ include "governance-studio.selectorLabels" . }}
+{{- define "keycloak-bootstrap.labels" -}}
+helm.sh/chart: {{ include "keycloak-bootstrap.chart" . }}
+{{ include "keycloak-bootstrap.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,18 +43,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "governance-studio.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "governance-studio.name" . }}
+{{- define "keycloak-bootstrap.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "keycloak-bootstrap.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "governance-studio.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "governance-studio.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
 {{- end }}

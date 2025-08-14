@@ -1,7 +1,7 @@
 apiVersion: v2
 appVersion: 2.0.0
 name: integrity-service
-version: 1.0.0
+version: 1.1.5
 description: "Governance Studio Integrity"
 home: https://github.com/eqtylab/governance-studio
 sources:

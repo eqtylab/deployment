@@ -6,9 +6,9 @@ metadata:
     {{- include "governance-studio.labels" . | nindent 4 }}
 data:
   API_URL: {{ .Values.config.apiUrl | quote }}
-  AUTH0_DOMAIN: {{ .Values.config.auth0Domain | quote }}
-  AUTH0_CLIENT_ID: {{ .Values.config.auth0ClientId | quote }}
-  AUTH0_AUDIENCE: {{ .Values.config.auth0Audience | quote }}
+  AUTH_SERVICE_URL: {{ .Values.config.authServiceUrl | quote }}
+  INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | quote }}
+
   ENVIRONMENT: {{ .Values.config.environment | quote }}
   APP_TITLE: {{ .Values.config.appTitle | quote }}
   APP_HOSTNAME: {{ .Values.config.appHostname | quote }}
@@ -19,4 +19,17 @@ data:
   BRANDING_LOGO_URL: {{ .Values.config.branding.logoUrl | quote }}
   BRANDING_PRIMARY_COLOR: {{ .Values.config.branding.primaryColor | quote }}
   BRANDING_COMPANY_NAME: {{ .Values.config.branding.companyName | quote }}
-  INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | quote }}
+
+  AUTH_PROVIDER: {{ .Values.config.authProvider | quote }}
+  # AUTH0 Settings
+  {{- if eq .Values.config.authProvider "auth0" }}
+  AUTH0_DOMAIN: {{ .Values.config.auth0Domain | quote }}
+  AUTH0_CLIENT_ID: {{ .Values.config.auth0ClientId | quote }}
+  AUTH0_AUDIENCE: {{ .Values.config.auth0Audience | quote }}
+  {{- end }}
+  # Keycloak Settings
+  {{- if eq .Values.config.authProvider "keycloak" }}
+  KEYCLOAK_URL: {{ .Values.config.keycloakUrl | quote }}
+  KEYCLOAK_REALM: {{ .Values.config.keycloakRealm | quote }}
+  KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | quote }}
+  {{- end }}

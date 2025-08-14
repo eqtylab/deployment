@@ -1,3 +1,4 @@
+{{- if .Values.worker.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -125,3 +126,4 @@ spec:
             items:
               - key: "gcs-sa.json"
                 path: "attachments-sa.json"
+{{- end }}

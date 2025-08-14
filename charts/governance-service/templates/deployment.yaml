@@ -96,12 +96,10 @@ spec:
             value: {{ .Values.auth0SyncPageSize | quote }}
           - name: INTEGRITY_SERVICE_URL
             value: {{ .Values.config.integrityServiceUrl }}
-          - name: AUTH_SERVICE_URL
-            value: {{ .Values.config.authServiceUrl }}
           {{- if .Values.config.serviceAccount.enabled }}
-          - name: INTEGRITY_AUTH_SERVICE_URL
+          - name: AUTH_SERVICE_URL
             value: {{ .Values.config.serviceAccount.authServiceUrl | default .Values.config.authServiceUrl }}
-          - name: INTEGRITY_AUTH_SERVICE_API_KEY
+          - name: AUTH_SERVICE_API_KEY
             valueFrom:
               secretKeyRef:
                 {{- if .Values.config.serviceAccount.existingSecret }}
@@ -110,6 +108,40 @@ spec:
                 {{- else }}
                 name: {{ include "governance-service.fullname" . }}-service-account
                 key: auth-service-api-key
+                {{- end }}
+          {{- end }}
+          {{- if .Values.keycloakSecretKeyRef.enabled }}
+          - name: KEYCLOAK_URL
+            value: {{ .Values.keycloakSecretKeyRef.url | default "https://keycloak.example.com" }}
+          - name: KEYCLOAK_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.keycloakSecretKeyRef.existingSecret }}
+                name: {{ .Values.keycloakSecretKeyRef.existingSecret }}
+                key: {{ .Values.keycloakSecretKeyRef.existingSecretKeys.clientId | default "keycloak-client-id" }}
+                {{- else }}
+                name: {{ include "governance-service.fullname" . }}-keycloak
+                key: keycloak-client-id
+                {{- end }}
+          - name: KEYCLOAK_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.keycloakSecretKeyRef.existingClientSecretKeyRef }}
+                name: {{ .Values.keycloakSecretKeyRef.existingClientSecretKeyRef.name }}
+                key: {{ .Values.keycloakSecretKeyRef.existingClientSecretKeyRef.clientSecret | default "client-secret" }}
+                {{- else }}
+                name: {{ include "governance-service.fullname" . }}-keycloak
+                key: keycloak-client-secret
+                {{- end }}
+          - name: KEYCLOAK_REALM
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.keycloakSecretKeyRef.existingSecret }}
+                name: {{ .Values.keycloakSecretKeyRef.existingSecret }}
+                key: {{ .Values.keycloakSecretKeyRef.existingSecretKeys.realm | default "governance" }}
+                {{- else }}
+                name: {{ include "governance-service.fullname" . }}-keycloak
+                key: realm
                 {{- end }}
           {{- end }}
           {{- if .Values.huggingFaceTokenSecretKeyRef }}

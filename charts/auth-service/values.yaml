@@ -130,12 +130,9 @@ config:
 
   # Security configuration
   security:
-    # API Secret for Auth0 Actions / IDP webhooks
-    apiSecret: "" # Required - generate a strong secret
-    # JWT Secret for session tokens (if needed)
-    jwtSecret: "" # Optional - only if using local JWT generation
-    # Use existing secret
-    existingSecret: ""
+    apiSecret: "" # Use existingSecret
+    jwtSecret: "" # Use existingSecret
+    existingSecret: "auth-service-api-secret"
     existingSecretKeys:
       apiSecret: "api-secret"
       jwtSecret: "jwt-secret"
@@ -319,6 +316,7 @@ config:
       # These are required for the service account to authenticate
       auth0ClientId: "" # AUTH0_GOVERNANCE_WORKER_CLIENT_ID
       auth0ClientSecret: "" # AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
+      audience: "" # AUTH0_GOVERNANCE_WORKER_AUDIENCE
     # Encryption key for service account secrets
     encryptionKey: "" # Base64 encoded 32-byte key
     # Use existing secret for encryption key
@@ -328,6 +326,22 @@ config:
       encryptionKey: "encryption-key"
       governanceWorkerClientId: "governance-worker-client-id"
       governanceWorkerClientSecret: "governance-worker-client-secret"
+
+  # Token Exchange configuration
+  tokenExchange:
+    enabled: false
+    # Key identifier for the signing key
+    keyId: "auth-service-prod-001"
+    # Private key for signing tokens (PEM format)
+    privateKey: "" # Will be mounted from secret
+    # Use existing secret for private key
+    existingSecret: "" # e.g., "auth-service-keys"
+    # Keys in the existing secret
+    existingSecretKeys:
+      privateKey: "private-key"
+
+  # Authentication Service URL
+  authUrl: "" # e.g., https://your-domain.com/auth
 
   # Rate limiting
   rateLimit:

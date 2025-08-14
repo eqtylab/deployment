@@ -15,7 +15,7 @@ spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
-
+  
   {{- if or .Values.ingress.tls .Values.ingress.tls_compat }}
   tls:
     {{- if .Values.ingress.tls }}
@@ -32,7 +32,7 @@ spec:
         secretName: {{ .Values.ingress.tls_compat.secretName }}
     {{- end }}
   {{- end }}
-
+  
   rules:
     {{- if .Values.ingress.hosts }}
       {{- range .Values.ingress.hosts }}

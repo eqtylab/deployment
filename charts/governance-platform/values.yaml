@@ -24,6 +24,12 @@ global:
   # This domain will be used by all services for external access
   domain: "governance.example.com" # Example: governance.yourcompany.com
 
+  # Default image pull policy for all containers
+  # IfNotPresent: Only pull if image doesn't exist locally (recommended for tagged releases)
+  # Always: Always pull the latest version (use for 'latest' tags or development)
+  # Never: Never pull, use local image only
+  imagePullPolicy: "IfNotPresent"
+
   # --- Secrets Management ---
   # Centralized secret configuration for all platform components
   # Secrets can be created automatically by the chart or pre-created manually
@@ -42,6 +48,7 @@ global:
     authServiceDbSecretName: "auth-service-db-credentials" # Auth service database credentials
     authServiceSessionSecretName: "auth-service-session-secret" # Auth service session secret
     authServiceApiSecretName: "auth-service-api-secret" # Auth service API secret
+    authServiceKeysSecretName: "auth-service-keys" # Auth service private keys for token signing
     governanceWorkerSecretName: "governance-worker-credentials" # Governance worker service account
 
     # --- Secret Creation Control ---
@@ -123,12 +130,22 @@ global:
         sessionSecret: "" # Session secret for auth service (generate with: openssl rand -base64 32)
         apiSecret: "" # API secret for auth service (generate with: openssl rand -base64 32)
         jwtSecret: "" # JWT secret for auth service (generate with: openssl rand -base64 32)
+        privateKey: "" # Private key for token signing (PEM format) - used for Keycloak token exchange
 
       # Governance Worker Service Account
       governanceWorker:
         encryptionKey: "" # Encryption key for service accounts (generate with: openssl rand -base64 32)
-        clientId: "" # Auth0 M2M application client ID for governance worker
-        clientSecret: "" # Auth0 M2M application client secret for governance worker
+        clientId: "" # Auth0/Keycloak application client ID for governance worker (if Keycloak, use 'governance-worker')
+        clientSecret: "" # Auth0/Keycloak application client secret for governance worker
+
+      # Keycloak-specific secrets (when using Keycloak instead of Auth0)
+      keycloak:
+        # Frontend client (public client)
+        frontendClientId: "governance-platform-frontend" # Usually doesn't need to be changed
+
+        # Backend client (confidential client for auth-service)
+        backendClientId: "governance-platform-backend" # Usually doesn't need to be changed
+        backendClientSecret: "" # Required: Secret for backend client (generate with: openssl rand -hex 32)
 
   # --- Database Configuration ---
   # PostgreSQL connection settings shared across all platform services
@@ -140,6 +157,14 @@ global:
     username: "postgres" # PostgreSQL admin user
     # Note: Password is retrieved from the compliance-secrets secret for security
 
+  # --- Redis Configuration ---
+  # Redis connection settings for caching and message queuing
+  # Used primarily by Compliance Garage components
+  redis:
+    host: "{{ .Release.Name }}-redis-master" # Automatically resolves to deployed Redis master service
+    port: 6379 # Standard Redis port
+    # Note: Password is retrieved from secrets if authentication is enabled
+
   # --- Container Registry Configuration ---
   # Uncomment and set if using a private container registry instead of GitHub Container Registry
   # imageRegistry: "mycompany.registry.io/governance-platform"
@@ -148,6 +173,17 @@ global:
   # These secrets must exist in the namespace before deployment
   imagePullSecrets:
     - name: "ghcr-pull-secret" # Required for GitHub Container Registry access
+
+  # --- Default Resource Configuration ---
+  # Default CPU and memory limits/requests applied to all components
+  # Individual components can override these values in their specific configuration
+  defaultResources:
+    requests:
+      cpu: "100m" # Minimum CPU allocation (0.1 CPU core)
+      memory: "256Mi" # Minimum memory allocation
+    limits:
+      cpu: "500m" # Maximum CPU allocation (0.5 CPU core)
+      memory: "512Mi" # Maximum memory allocation
 
   # --- Storage Configuration ---
   # Default storage class for all persistent volumes
@@ -284,251 +320,110 @@ governance-service:
     runAtStartup: true
     path: "/app/migrations"
 
-  config:
-    path: "/api/v1/health" # Health check endpoint path
-    gcsEnabled: false
-    gcsBucketName: "" # Updated to match production
-    integrityServiceUrl: "http://governance-platform-integrity-service:80"
-    appEnv: "production"
-    logLevel: "info"
-
-    # HTTP Server Configuration
-    server:
-      readTimeout: 30
-      writeTimeout: 30
-      idleTimeout: 120
-    # Worker-specific scheduler configuration
-    scheduler:
-      version: "1.0.0"
-      workerType: "general"
-      maxConcurrentJobs: 5
-      pollInterval: 30
-      heartbeatInterval: 60
-      jobClaimTTL: 5
-      capabilities: "evaluation, scheduling"
-      # API-specific scheduler fields
-      workerCount: 5
-      retryLimit: 3
-      retryDelay: 60
-    # Indicator Configuration Management
-    indicators:
-      configPath: "/app/configs/indicators"
-      reloadInterval: 300
-      validateOnLoad: true
-
-  # For sensitive values like tokens/keys, point to keys within the pre-created K8s secrets
-  huggingFaceTokenSecretKeyRef:
-    name: "hf-secret"
-    key: "hugging-face-token"
-  credentialEncryptionKeySecretKeyRef:
-    name: "platform-encryption"
-    key: "key"
-
-  # Auth0 credentials reference
-  auth0SyncAtStartup: true
-  auth0SyncPageSize: 100
-  auth0SecretKeyRef:
-    name: "auth0-secret"
-    domainKey: "domain"
-    clientIdKey: "clientId"
-    clientSecretKey: "clientSecret"
-
-  # For GCS service account, the assurance-engine deployment mounts a secret.
-  serviceAccount:
-    create: false
-    name: "blob-secret"
-
-# --- Component: Governance Studio UI ---
-# React-based frontend application providing the user interface for the platform
-# Handles authentication, data visualization, and user interactions
-governance-studio:
-  enabled: true # Set to false to disable the frontend UI component
-  replicaCount: 1
-  image:
-    repository: "ghcr.io/eqtylab/governance-studio"
-    tag: "main"
-    pullPolicy: IfNotPresent
-  imagePullSecrets:
-    - name: "ghcr-pull-secret"
-  config:
-    integrityServiceUrl: "https://governance.example.com/integrityService"
-    # API Configuration
-    apiUrl: "https://governance.example.com/governanceService"
-
-    # Auth0 Configuration
-    auth0Domain: "governance-studio.us.auth0.com"
-    auth0ClientId: "your_auth0_client_id"
-    auth0Audience: "https://governance.example.com/governanceService"
-
-    # Application Settings
-    environment: "production"
-    appTitle: "Governance Studio"
-    appHostname: "governance.example.com"
-
-    # Feature Flags
-    features:
-      compliance: true
-      governance: true
-      guardian: true
-      lineage: true
-
-    # Branding Configuration
-    branding:
-      logoUrl: "/vite.svg"
-      primaryColor: "#0f172a"
-      companyName: "EQTY Lab"
-
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/enable-cors: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/"
-    hosts:
-      - host: "governance.example.com"
-        paths:
-          - path: "/"
-            pathType: "Prefix"
-    tls:
-      - secretName: "platform-tls"
-        hosts:
-          - "governance.example.com"
-
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "256Mi"
-    limits:
-      cpu: "500m"
-      memory: "512Mi"
-
-# --- Component: Integrity Service ---
-# Data integrity and auditability service providing blockchain integration
-# Handles cryptographic proofs, audit trails, and immutable record keeping
-integrity-service:
-  enabled: true # Set to false to disable the Integrity Service component
-  # Direct ingress configuration
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/enable-cors: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    hosts:
-      - host: "governance.example.com"
-        paths:
-          - path: "/integrityService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
-    tls:
-      - secretName: "platform-tls"
-        hosts:
-          - "governance.example.com"
-  deployment:
-    replicaCount: 1
-  image:
-    repository: "ghcr.io/eqtylab"
-    name: "integrity-service"
-    tag: "d4e4b46" # Updated to match production
-  kvSecret:
-    enabled: true
-    name: "azure-kv-secret"
-    keys:
-      clientSecret: "clientSecret"
-      clientId: "clientId"
-      tenantId: "tenantId"
-      vaultUrl: "vaultUrl"
-  env:
-    # Database connection information
-    integrityDbHost: "{{ .Release.Name }}-postgresql"
-    integrityDbPort: "5432"
-    integrityDbName: "IntegrityServiceDB"
-    integrityDbUser: "postgres"
-    # Storage configuration
-    integrityAppBlobStoreAccount: "" # Name of your azure blob storage account
-    integrityAppBlobStoreContainer: "" # Name of your azure blob storage container
-    integrityServiceUrl: "" # Update to match production
-    rustEnv: "production"
-    rustBacktrace: "0"
-    # Auth configurations
-    integrityAppAuthType: "" # e.g. "auth0"
-    integrityAppAuthClientId: "" # e.g. "your-client-id"
-    integrityAppAuthDomain: "" # e.g. "your-auth0-domain.auth0.com"
-    integrityAppCustomClaimsUrl: "" # URL for custom claims
-  # Service configuration for integrity
-  service:
-    enabled: true
-    type: ClusterIP
-    port: 80
-    targetPort: 3050
-  resources: {}
-    # limits:
-    #   cpu: 500m
-    #   memory: 512Mi
-    # requests:
-    #   cpu: 250m
-    #   memory: 256Mi
-  nodeSelector:
-    enabled: false
-    values:
-      node_pool: apps
-
-# --- Component: Authentication Service ---
 auth-service:
-  enabled: false
-  image:
-    tag: "sha-aee2859"
-
-  imagePullSecrets:
-    - name: ghcr-pull-secret
-
-  # Configure to use shared postgresql instance
-  postgresql:
-    enabled: false # Use shared postgresql instance instead of deploying own
-
+  enabled: true # Set to false to disable the Auth Service component
   config:
-    keyVault:
-      provider: "azure"
-      azure:
-        vaultUrl: "https://helm-umbrella-akv.vault.azure.net/"
-        tenantId: "6712fe8e-3505-4daf-b881-675312392087"
-        existingSecret: "azure-kv-secret"
-    database:
-      host: "governance-platform-postgresql" # Use shared postgresql instance
-      port: 5432
-      name: "authservice"
-      user: "postgres"
-      existingSecret: "compliance-secrets"
-      existingSecretKeys:
-        password: "postgresPassword"
+    server:
+      port: 8080
+      host: "0.0.0.0"
+      environment: "production"
+      swaggerEnabled: true # Enable swagger for non-production environments
+
+    logging:
+      level: info
+      format: json
+      skipPaths: "/health,/health/live,/health/ready"
 
     idp:
-      provider: "" # Provider for identity provider
-      issuer: "" # Issuer URL for identity provider
-      existingSecret: "auth0-credentials"
+      provider: "auth0"
+      issuer: "https://governance-studio.us.auth0.com/"
+      clientId: "" # Will use secret
+      clientSecret: "" # Will use secret
+      existingSecret: "auth0-secret"
       skipIssuerVerification: true
 
       auth0:
-        domain: "" # Domain for Auth0
+        domain: "governance-studio.us.auth0.com"
         enableManagementAPI: true # Enable Auth0 Management API
-        managementAudience: "" # Management API audience for Auth0
-        apiIdentifier: "" # API identifier for Auth0
+        managementAudience: "https://governance-studio.us.auth0.com/api/v2/"
+        apiIdentifier: "https://governance-studio.us.auth0.com/api/v2/"
         defaultConnection: "Username-Password-Authentication"
         defaultRoles: ["user"]
         sendInvitationEmail: true
         syncAtStartup: true
         syncPageSize: 100
 
+    # Service Account configuration
+    serviceAccounts:
+      autoCreate: true
+      governanceWorker:
+        enabled: true
+        name: "governance-worker"
+        description: "Automated governance service worker for processing indicator evaluations"
+        # No organizationId - platform-wide access
+        scopes:
+          - "governance:declarations:create"
+          - "integrity:statements:create"
+        # Auth0 M2M credentials will be provided via secret
+        auth0ClientId: "" # Will use secret
+        auth0ClientSecret: "" # Will use secret
+        audience: "https://governance.eqtylab.io" # Your API audience in Auth0
+      # Generate a secure encryption key: openssl rand -base64 32
+      # encryptionKey: "your-base64-encoded-32-byte-key"
+      existingSecret: "governance-worker-credentials"
+      existingSecretKeys:
+        encryptionKey: "key"
+        governanceWorkerClientId: "governance-worker-client-id"
+        governanceWorkerClientSecret: "governance-worker-client-secret"
+
+    database:
+      host: "governance-platform-postgresql"
+      port: 5432
+      name: "governance"
+      user: "postgres"
+      sslMode: "disable" # Internal cluster communication
+      maxOpenConns: 25
+      maxIdleConns: 5
+      connMaxLifetime: "5m"
+      existingSecret: "auth-service-db-credentials"
+      # Migration settings
+      autoMigrate: true # Run migrations on startup
+      migrationsPath: "/internal/database/migrations" # Path in container
+
+    session:
+      duration: "24h"
+      existingSecret: "auth-service-session-secret"
+
+    cors:
+      enabled: false # Ingress handles CORS in k8s
+      origins: "*" # Not used when enabled=false
+
+    # Security configuration
+    security:
+      # These will be provided via extraEnvVars from existing secrets
+      apiSecret: ""
+      jwtSecret: ""
+
     # Integration with other services
     integrations:
       # Integrity Service URL (for DID key fallback)
-      integrityServiceUrl: "http://governance-platform-integrity"
+      integrityServiceUrl: "http://governance-platform-integrity-service"
       # Governance Service URL
       governanceServiceUrl: "http://governance-platform-governance-service:10001"
+
+    # Key Vault configuration (for DID keys)
+    keyVault:
+      provider: "azure" # azure, hashicorp, local
+      azure:
+        vaultUrl: "https://example-kv.vault.azure.net/"
+        tenantId: "example-tenant-id"
+        clientId: "" # Will use secret
+        clientSecret: "" # Will use secret
+        # Use existing secret for Azure credentials
+        existingSecret: "platform-encryption"
+        existingSecretKeys:
+          clientId: "azure-key-vault-client-id"
+          clientSecret: "azure-key-vault-client-secret"
 
   ingress:
     enabled: true
@@ -538,7 +433,7 @@ auth-service:
       nginx.ingress.kubernetes.io/use-regex: "true"
       nginx.ingress.kubernetes.io/rewrite-target: "/$2"
       nginx.ingress.kubernetes.io/enable-cors: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     hosts:
       - host: "governance.example.com"
         paths:
@@ -548,6 +443,47 @@ auth-service:
       - secretName: "platform-tls"
         hosts:
           - "governance.example.com"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: false # Enable later if needed
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+  postgresql:
+    enabled: false # Using existing PostgreSQL in cluster
+
+  healthCheck:
+    liveness:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    readiness:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 5
+
+  metrics:
+    enabled: false
+    port: 9090
+    path: /metrics
+
+  extraEnvVars:
+    - name: API_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: auth-service-api-secret
+          key: api-secret
+    - name: SWAGGER_BASE_PATH
+      value: "/auth"
 
 # =============================================================================
 # INFRASTRUCTURE COMPONENTS
@@ -561,6 +497,7 @@ postgresql:
   enabled: true # Set to false to use an external PostgreSQL instance
   # Global PostgreSQL values
   global:
+    defaultStorageClass: ""
     postgresql:
       auth:
         database: "governance"
@@ -574,7 +511,6 @@ postgresql:
     persistence:
       enabled: true
       size: 10Gi
-      storageClass: "default"
     resources:
       requests:
         cpu: 500m
@@ -595,5 +531,29 @@ postgresql:
           CREATE DATABASE "IntegrityServiceDB";
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
 
-          CREATE DATABASE authservice;
-          GRANT ALL PRIVILEGES ON DATABASE authservice TO postgres;
+# =============================================================================
+# KEYCLOAK INTEGRATION
+# =============================================================================
+# Configuration for Keycloak identity provider integration
+# This creates the necessary organization in the governance database
+keycloak:
+  # Enable automatic organization creation for Keycloak realm
+  createOrganization: false # Set to true to create org on install/upgrade
+
+  # Realm name in Keycloak (must match the organization name in database)
+  realmName: "governance"
+
+  # Display name for the organization
+  displayName: "Governance Platform"
+
+  # Create platform-admin user in auth service tables
+  createPlatformAdmin: false # Set to true to create platform admin user
+
+  # Keycloak user ID for platform-admin (will be set by bootstrap)
+  # Leave empty to auto-generate, or set after running Keycloak bootstrap
+  platformAdminKeycloakId: ""
+
+  # Additional organization settings (optional)
+  organizationSettings:
+    description: "Main governance organization"
+    settings: "{}" # JSON string for additional settings

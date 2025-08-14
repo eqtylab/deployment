@@ -2,8 +2,8 @@ apiVersion: v2
 name: auth-service
 description: EQTYLab Auth Service - Authentication and authorization service for the Governance Platform
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 1.0.4
+appVersion: "1.0.2"
 keywords:
   - auth
   - authentication

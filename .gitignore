@@ -56,3 +56,5 @@ Session.vim
 .envrc
 .direnv
 my-secrets.yaml
+
+**/.helm_ls_cache/**

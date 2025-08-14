@@ -1,0 +1,192 @@
+# Default values for keycloak-bootstrap
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration
+global:
+  imagePullSecrets: []
+
+# Bootstrap job configuration
+bootstrap:
+  enabled: true
+
+  # Image configuration
+  image:
+    repository: alpine
+    tag: "3.19"
+    pullPolicy: IfNotPresent
+
+  # Command override to install required tools
+  command: ["/bin/sh", "-c"]
+  args: ["apk add --no-cache curl jq && /scripts/bootstrap.sh"]
+
+  # Job configuration
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 600
+
+  # Resources
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    capabilities:
+      drop:
+        - ALL
+
+  # Wait configuration
+  wait:
+    enabled: false
+    maxAttempts: 60
+    sleepSeconds: 5
+
+# Keycloak configuration
+keycloak:
+  # URL configuration
+  url: "http://keycloak:8080"
+  healthUrl: "http://keycloak:9000/keycloak/health/ready"
+  adminUsername: "admin"
+  adminPasswordSecret:
+    name: "keycloak-admin"
+    key: "password"
+
+  # Realm configuration
+  realm:
+    name: "governance"
+    displayName: "Governance Platform"
+    loginWithEmailAllowed: true
+    registrationAllowed: true
+    resetPasswordAllowed: true
+    rememberMe: true
+    verifyEmail: false
+    sslRequired: "external"
+    bruteForceProtected: true
+
+  # Token configuration
+  tokens:
+    accessTokenLifespan: 300
+    ssoSessionIdleTimeout: 1800
+    ssoSessionMaxLifespan: 36000
+
+# Client configuration
+clients:
+  # Frontend client
+  frontend:
+    clientId: "governance-platform-frontend"
+    name: "Governance Platform Frontend"
+    description: "Frontend application for Governance Platform"
+    publicClient: true
+    redirectUris:
+      - "http://localhost:5173/*"
+      - "https://governance.example.com/*"
+    webOrigins:
+      - "http://localhost:5173"
+      - "https://governance.example.com"
+    defaultScopes:
+      - "openid"
+      - "profile"
+      - "email"
+      - "roles"
+    optionalScopes:
+      - "offline_access"
+
+  # Backend client
+  backend:
+    clientId: "governance-platform-backend"
+    name: "Governance Platform Backend"
+    description: "Backend service for Governance Platform"
+    publicClient: false
+    serviceAccountsEnabled: true
+    secretName: "keycloak-backend-client"
+    secretKey: "client-secret"
+    redirectUris:
+      - "http://localhost:8000/*"
+      - "https://api.governance.example.com/*"
+    webOrigins:
+      - "http://localhost:8000"
+      - "https://api.governance.example.com"
+    defaultScopes:
+      - "openid"
+      - "profile"
+      - "email"
+      - "roles"
+
+  # Worker client
+  worker:
+    clientId: "governance-worker"
+    name: "Governance Worker"
+    description: "Worker service for Governance Platform"
+    publicClient: false
+    serviceAccountsEnabled: true
+    secretName: "keycloak-worker-client"
+    secretKey: "client-secret"
+    defaultScopes:
+      - "openid"
+      - "profile"
+      - "email"
+      - "roles"
+
+# Custom scopes
+scopes:
+  - name: "read:organizations"
+    description: "Read access to organizations"
+  - name: "write:organizations"
+    description: "Write access to organizations"
+  - name: "read:projects"
+    description: "Read access to projects"
+  - name: "write:projects"
+    description: "Write access to projects"
+  - name: "read:evaluations"
+    description: "Read access to evaluations"
+  - name: "write:evaluations"
+    description: "Write access to evaluations"
+
+# Initial users
+users:
+  # Platform admin user
+  admin:
+    enabled: true
+    username: "platform-admin"
+    email: "admin@governance.local"
+    firstName: "Platform"
+    lastName: "Admin"
+    emailVerified: true
+    temporaryPassword: false
+    secretName: "keycloak-admin-user"
+    secretKey: "password"
+
+  # Test users
+  testUsers:
+    enabled: false
+    users:
+      - username: "test-user-1"
+        email: "test1@governance.local"
+        firstName: "Test"
+        lastName: "User 1"
+        password: "test123"
+      - username: "test-user-2"
+        email: "test2@governance.local"
+        firstName: "Test"
+        lastName: "User 2"
+        password: "test123"
+
+# Output configuration
+output:
+  # Generate .env file with configuration
+  generateEnvFile: true
+  # Create K8s secrets with credentials
+  createSecrets: true
+  # Secret names
+  secrets:
+    frontend: "keycloak-frontend-config"
+    backend: "keycloak-backend-config"
+    worker: "keycloak-worker-config"

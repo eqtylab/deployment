@@ -1,0 +1,34 @@
+{{- if .Values.bootstrap.enabled }}
+Keycloak Bootstrap Job has been created!
+
+The bootstrap job will:
+1. Wait for Keycloak to be ready at {{ .Values.keycloak.url }}
+2. Create the realm: {{ .Values.keycloak.realm.name }}
+3. Configure clients:
+   - Frontend: {{ .Values.clients.frontend.clientId }}
+   - Backend: {{ .Values.clients.backend.clientId }}
+   - Worker: {{ .Values.clients.worker.clientId }}
+4. Create custom scopes for governance platform
+{{- if .Values.users.admin.enabled }}
+5. Create admin user: {{ .Values.users.admin.username }}
+{{- end }}
+
+To check the job status:
+  kubectl get jobs -l "app.kubernetes.io/name={{ include "keycloak-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+To view the job logs:
+  kubectl logs -l "app.kubernetes.io/name={{ include "keycloak-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+{{- if .Values.output.createSecrets }}
+
+Configuration secrets have been created:
+- Frontend: {{ .Values.output.secrets.frontend }}
+- Backend: {{ .Values.output.secrets.backend }}
+- Worker: {{ .Values.output.secrets.worker }}
+
+You can use these secrets in your application deployments.
+{{- end }}
+
+{{- else }}
+Keycloak Bootstrap is disabled. To enable it, set bootstrap.enabled=true
+{{- end }}

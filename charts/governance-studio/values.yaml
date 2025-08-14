@@ -51,6 +51,12 @@ config:
   # Should match the ingress configuration of your Assurance Engine deployment
   apiUrl: "https://api.governance.example.com"
 
+  authServerUrl: "https://api.governance.example.com"
+
+  integrityServiceUrl: "https://api.governance.example.com"
+
+  authProvider: "" # auth0 or keycloak
+
   # --- Authentication Configuration (Auth0) ---
   # Auth0 tenant domain (without https://)
   # Example: "your-tenant.us.auth0.com" or "your-tenant.eu.auth0.com"
@@ -63,6 +69,10 @@ config:
   # Auth0 audience - should match your API identifier in Auth0
   # Typically the same as your API URL
   auth0Audience: "https://api.governance.example.com"
+
+  keycloakUrl: "https://keycloak.example.com"
+  keycloakRealm: "example"
+  keycloakClientId: "YOUR_KEYCLOAK_CLIENT_ID"
 
   # --- Application Settings ---
   # Deployment environment - affects logging and debugging features
@@ -136,7 +146,7 @@ ingress:
 
   # TLS/SSL configuration
   tls:
-    - secretName: platform-tls # Kubernetes secret containing TLS certificates
+    - secretName: governance-tls # Kubernetes secret containing TLS certificates
       hosts:
         - governance.example.com # Domain(s) covered by the TLS certificate
 
@@ -146,8 +156,7 @@ ingress:
 
 # CPU and memory resource limits and requests
 # Uncomment and adjust based on your cluster capacity and application needs
-resources:
-  {}
+resources: {}
   # limits:
   #   cpu: 500m        # Maximum CPU (0.5 cores)
   #   memory: 512Mi    # Maximum memory

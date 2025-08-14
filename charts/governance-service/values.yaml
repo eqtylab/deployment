@@ -46,6 +46,8 @@ api:
 
 # Worker service configuration - background job processor
 worker:
+  enabled: true
+
   # Number of worker replicas to run
   replicaCount: 1
 
@@ -190,6 +192,17 @@ auth0SecretKeyRef:
   name: "" # Secret name (e.g., "auth0-secret")
   clientIdKey: "" # Key for Auth0 client ID
   clientSecretKey: "" # Key for Auth0 client secret
+
+keycloakSecretKeyRef:
+  enabled: false
+  existingSecret: "keycloak-worker-config"
+  existingSecretKeys:
+    clientId: "KEYCLOAK_CLIENT_ID"
+    realm: "KEYCLOAK_REALM"
+    url: "KEYCLOAK_URL"
+  existingClientSecretKeyRef:
+    name: "keycloak-worker-client" # Secret name (e.g., "keycloak-worker-client")
+    clientSecretKey: "client-secret" # Key for Keycloak client secret
 
 # =============================================================================
 # APPLICATION CONFIGURATION

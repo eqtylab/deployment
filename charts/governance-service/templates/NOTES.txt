@@ -39,9 +39,9 @@ This chart includes two services:
 
    # Check API service status
    kubectl get pods -l app.kubernetes.io/name={{ include "governance-service.name" . }} -n {{ .Release.Namespace }}
-
+   
    # Check worker service status
    kubectl get pods -l app.kubernetes.io/name={{ include "governance-worker.name" . }} -n {{ .Release.Namespace }}
-
+   
    # View worker logs
    kubectl logs -l app.kubernetes.io/name={{ include "governance-worker.name" . }} -n {{ .Release.Namespace }} --tail=50
