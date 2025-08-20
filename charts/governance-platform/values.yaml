@@ -70,7 +70,7 @@ global:
         # Gemini API key for AI features
         geminiApiKey: ""
 
-      # Auth0 authentication
+      # Auth0 authentication (only needed when using Auth0, not Keycloak)
       auth0:
         clientId: ""
         clientSecret: ""
@@ -225,7 +225,7 @@ governance-service:
     replicaCount: 1
     image:
       repository: "ghcr.io/eqtylab/governance-service"
-      tag: "latest" # Updated to match production
+      tag: "1.0.0"
       pullPolicy: "IfNotPresent"
     command: ["./governance-service"]
     args: []
@@ -242,7 +242,7 @@ governance-service:
     replicaCount: 1
     image:
       repository: "ghcr.io/eqtylab/governance-worker"
-      tag: "latest"
+      tag: "1.0.0"
       pullPolicy: "IfNotPresent"
     command: ["./governance-worker"]
     args: []
@@ -304,6 +304,11 @@ governance-service:
     runAsNonRoot: true
     runAsUser: 1000
 
+  # Service Account Configuration
+  serviceAccount:
+    create: false
+    name: "blob-secret"
+
   # Configure external database settings
   externalDatabase:
     host: "governance-platform-postgresql"
@@ -319,6 +324,71 @@ governance-service:
   migrations:
     runAtStartup: true
     path: "/app/migrations"
+
+  # Application configuration
+  config:
+    logLevel: "info"
+    appEnv: "production"
+
+    # Storage provider configuration
+    storageProvider: "gcs" # Options: "gcs" or "azure"
+
+    # Google Cloud Storage Configuration
+    gcsBucketName: "" # Set if using GCS
+
+    # Azure Storage Configuration
+    azureStorageAccountName: "" # Azure storage account name
+    azureStorageAccountKey: "" # Azure storage account key (prefer using secret reference)
+    azureStorageConnectionString: "" # Azure storage connection string (prefer using secret reference)
+    azureStorageContainerName: "" # Azure storage container name
+    azureUseManagedIdentity: false # Use Azure managed identity for authentication
+
+    # Auth0 configuration
+    auth0Domain: "governance-studio.us.auth0.com"
+
+    # Service URLs
+    integrityServiceUrl: "http://governance-platform-integrity-service"
+    authServiceUrl: "http://governance-platform-auth-service:8080"
+
+    # Service account configuration
+    serviceAccount:
+      enabled: true
+      authServiceUrl: "http://governance-platform-auth-service:8080"
+
+  # Azure Storage Secret Reference (recommended for production)
+  azureStorageSecretKeyRef:
+    name: "blob-secret" # Uses the blob storage secret from global secrets
+    accountNameKey: "azure-storage-account-name"
+    accountKeyKey: "azure-storage-account-key"
+    connectionStringKey: "connection-string"
+
+  # Auth0 Secret Reference (only used when not using Keycloak)
+  auth0SecretKeyRef:
+    name: ""
+    clientIdKey: ""
+    clientSecretKey: ""
+
+  # Keycloak Configuration (when using Keycloak instead of Auth0)
+  keycloakSecretKeyRef:
+    enabled: false # Set to true when using Keycloak
+    existingSecret: "keycloak-worker-config"
+    existingSecretKeys:
+      clientId: "KEYCLOAK_CLIENT_ID"
+      realm: "KEYCLOAK_REALM"
+      url: "KEYCLOAK_URL"
+    existingClientSecretKeyRef:
+      name: "keycloak-worker-client"
+      clientSecretKey: "client-secret"
+
+  # HuggingFace Token Secret Reference
+  huggingFaceTokenSecretKeyRef:
+    name: "hf-secret"
+    key: "token"
+
+  # Credential Encryption Key Secret Reference
+  credentialEncryptionKeySecretKeyRef:
+    name: "platform-encryption"
+    key: "key"
 
 auth-service:
   enabled: true # Set to false to disable the Auth Service component
@@ -524,9 +594,6 @@ postgresql:
         create-additional-dbs.sql: |
           CREATE DATABASE governance;
           GRANT ALL PRIVILEGES ON DATABASE governance TO postgres;
-
-          CREATE DATABASE compliance;
-          GRANT ALL PRIVILEGES ON DATABASE compliance TO postgres;
 
           CREATE DATABASE "IntegrityServiceDB";
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;

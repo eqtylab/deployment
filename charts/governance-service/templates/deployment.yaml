@@ -64,12 +64,60 @@ spec:
                 name: "postgresql"
                 key: "postgres-password"
                 {{- end }}
+          - name: STORAGE_PROVIDER
+            value: {{ .Values.config.storageProvider | quote }}
+          {{- if .Values.config.gcsBucketName }}
           - name: GCS_BUCKET_NAME
             value: {{ .Values.config.gcsBucketName }}
+          {{- end }}
+          {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
           - name: GCS_CREDENTIALS_FILE
             value: "/var/secrets/google/attachments-sa.json"
+          {{- end }}
+          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageAccountName }}
+          - name: AZURE_STORAGE_ACCOUNT_NAME
+            {{- if .Values.azureStorageSecretKeyRef.name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
+                key: {{ .Values.azureStorageSecretKeyRef.accountNameKey | quote }}
+            {{- else }}
+            value: {{ .Values.config.azureStorageAccountName }}
+            {{- end }}
+          {{- end }}
+          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageAccountKey }}
+          - name: AZURE_STORAGE_ACCOUNT_KEY
+            {{- if .Values.azureStorageSecretKeyRef.name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
+                key: {{ .Values.azureStorageSecretKeyRef.accountKeyKey | quote }}
+            {{- else }}
+            value: {{ .Values.config.azureStorageAccountKey }}
+            {{- end }}
+          {{- end }}
+          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageConnectionString }}
+          - name: AZURE_STORAGE_CONNECTION_STRING
+            {{- if .Values.azureStorageSecretKeyRef.name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
+                key: {{ .Values.azureStorageSecretKeyRef.connectionStringKey | quote }}
+            {{- else }}
+            value: {{ .Values.config.azureStorageConnectionString }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.config.azureStorageContainerName }}
+          - name: AZURE_STORAGE_CONTAINER_NAME
+            value: {{ .Values.config.azureStorageContainerName }}
+          {{- end }}
+          - name: AZURE_USE_MANAGED_IDENTITY
+            value: {{ .Values.config.azureUseManagedIdentity | quote }}
+          {{- if not .Values.keycloakSecretKeyRef.enabled }}
+          {{- if .Values.config.auth0Domain }}
           - name: AUTH0_DOMAIN
             value: {{ .Values.config.auth0Domain }}
+          {{- end }}
           - name: AUTH0_CLIENT_ID
             valueFrom:
               secretKeyRef:
@@ -94,6 +142,7 @@ spec:
             value: {{ .Values.auth0SyncAtStartup | quote }}
           - name: AUTH0_SYNC_PAGE_SIZE
             value: {{ .Values.auth0SyncPageSize | quote }}
+          {{- end }}
           - name: INTEGRITY_SERVICE_URL
             value: {{ .Values.config.integrityServiceUrl }}
           {{- if .Values.config.serviceAccount.enabled }}
@@ -168,9 +217,11 @@ spec:
             value: {{ .Values.migrations.path | quote }}
           {{- end }}
           volumeMounts:
+            {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
             - name: gcp-sa-volume
               mountPath: /var/secrets/google
               readOnly: true
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
@@ -209,9 +260,11 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
         - name: gcp-sa-volume
           secret:
             secretName: {{ .Values.serviceAccount.name | quote }}
             items:
               - key: "gcs-sa.json"
                 path: "attachments-sa.json"
+        {{- end }}

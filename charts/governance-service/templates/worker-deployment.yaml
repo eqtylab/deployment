@@ -96,15 +96,68 @@ spec:
               secretKeyRef:
                 name: {{ .Values.worker.m2mCredentials.secretName | quote }}
                 key: {{ .Values.worker.m2mCredentials.clientSecretKey | default "client-secret" | quote }}
+          {{- if not .Values.keycloakSecretKeyRef.enabled }}
           - name: AUTH0_DOMAIN
             value: {{ .Values.config.auth0Domain | quote }}
           - name: AUTH0_AUDIENCE
             value: {{ .Values.worker.m2mCredentials.audience | default "https://governance.eqtylab.io" | quote }}
           {{- end }}
+          {{- end }}
+          - name: STORAGE_PROVIDER
+            value: {{ .Values.config.storageProvider | quote }}
+          {{- if .Values.config.gcsBucketName }}
+          - name: GCS_BUCKET_NAME
+            value: {{ .Values.config.gcsBucketName }}
+          {{- end }}
+          {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
+          - name: GCS_CREDENTIALS_FILE
+            value: "/var/secrets/google/attachments-sa.json"
+          {{- end }}
+          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageAccountName }}
+          - name: AZURE_STORAGE_ACCOUNT_NAME
+            {{- if .Values.azureStorageSecretKeyRef.name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
+                key: {{ .Values.azureStorageSecretKeyRef.accountNameKey | quote }}
+            {{- else }}
+            value: {{ .Values.config.azureStorageAccountName }}
+            {{- end }}
+          {{- end }}
+          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageAccountKey }}
+          - name: AZURE_STORAGE_ACCOUNT_KEY
+            {{- if .Values.azureStorageSecretKeyRef.name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
+                key: {{ .Values.azureStorageSecretKeyRef.accountKeyKey | quote }}
+            {{- else }}
+            value: {{ .Values.config.azureStorageAccountKey }}
+            {{- end }}
+          {{- end }}
+          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageConnectionString }}
+          - name: AZURE_STORAGE_CONNECTION_STRING
+            {{- if .Values.azureStorageSecretKeyRef.name }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
+                key: {{ .Values.azureStorageSecretKeyRef.connectionStringKey | quote }}
+            {{- else }}
+            value: {{ .Values.config.azureStorageConnectionString }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.config.azureStorageContainerName }}
+          - name: AZURE_STORAGE_CONTAINER_NAME
+            value: {{ .Values.config.azureStorageContainerName }}
+          {{- end }}
+          - name: AZURE_USE_MANAGED_IDENTITY
+            value: {{ .Values.config.azureUseManagedIdentity | quote }}
           volumeMounts:
+            {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
             - name: gcp-sa-volume
               mountPath: /var/secrets/google
               readOnly: true
+            {{- end }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
@@ -120,10 +173,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
         - name: gcp-sa-volume
           secret:
             secretName: {{ .Values.serviceAccount.name | quote }}
             items:
               - key: "gcs-sa.json"
                 path: "attachments-sa.json"
+        {{- end }}
 {{- end }}
