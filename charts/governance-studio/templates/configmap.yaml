@@ -12,6 +12,7 @@ data:
   ENVIRONMENT: {{ .Values.config.environment | quote }}
   APP_TITLE: {{ .Values.config.appTitle | quote }}
   APP_HOSTNAME: {{ .Values.config.appHostname | quote }}
+  BASE_PATH: {{ .Values.config.basePath | quote }}
   FEATURE_COMPLIANCE: {{ .Values.config.features.compliance | quote }}
   FEATURE_GOVERNANCE: {{ .Values.config.features.governance | quote }}
   FEATURE_GUARDIAN: {{ .Values.config.features.guardian | quote }}

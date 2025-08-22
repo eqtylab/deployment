@@ -46,6 +46,8 @@ fullnameOverride: ""
 # These values are converted to environment variables and then to a JavaScript config file
 
 config:
+  basePath: "/"
+
   # --- API Configuration ---
   # Backend API endpoint URL - MUST be accessible from user browsers
   # Should match the ingress configuration of your Assurance Engine deployment

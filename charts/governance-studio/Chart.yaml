@@ -2,7 +2,7 @@ apiVersion: v2
 name: governance-studio
 description: A Helm chart for deploying EQTY Lab Governance Studio frontend
 type: application
-version: 1.1.0
+version: 1.1.1
 appVersion: "1.0.0"
 keywords:
   - governance
