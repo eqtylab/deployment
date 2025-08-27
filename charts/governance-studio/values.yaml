@@ -135,9 +135,9 @@ ingress:
   className: "nginx" # Ingress controller class (nginx, traefik, etc.)
 
   # Ingress annotations for additional configuration
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: / # Rewrite incoming paths
-    cert-manager.io/cluster-issuer: "letsencrypt-prod" # Automatic TLS certificate issuer
+  annotations: {}
+    # nginx.ingress.kubernetes.io/rewrite-target: / # Rewrite incoming paths
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod" # Automatic TLS certificate issuer
 
   # Host configuration - defines which domains will serve this application
   hosts:
