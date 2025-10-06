@@ -92,10 +92,14 @@ config:
   # Enable or disable specific application features
   # Useful for progressive feature rollouts or customer-specific customizations
   features:
-    compliance: true # Enable compliance management features
-    governance: true # Enable governance workflow features
-    guardian: true # Enable guardian/approval workflow features
+    governance: true # Enable compliance management features
     lineage: true # Enable data lineage tracking features
+    guardianEnabled: false
+    guardianGarage: false
+    guardianRulebooks: false
+    guardianOsFunctions: false
+    guardianSdkFunctions: false
+    agentManagement: false
 
   # --- Branding Configuration ---
   # Customize the application appearance for your organization

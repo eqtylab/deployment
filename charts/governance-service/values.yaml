@@ -268,6 +268,9 @@ config:
     configPath: "/app/configs/indicators" # Path to indicator configuration files
     reloadInterval: 300 # How often to reload configs (seconds)
     validateOnLoad: true # Validate configurations when loading
+    osGuardrailsEnabled: false # Enable OS guardrails
+    osGuardrailsBatchSize: 100 # Batch size for OS guardrails
+    osGuardrailsTimeoutSeconds: 5 # Timeout for OS guardrails (seconds)
 
   # Cloud Storage Configuration
   storageProvider: "gcs" # Storage provider: "gcs" or "azure"
@@ -306,3 +309,18 @@ config:
     existingSecret: ""
     existingSecretKeys:
       apiKey: "auth-service-api-key"
+
+  # AI Configuration
+  ai:
+    enabled: false
+    provider: "anthropic"
+    model: "claude-3-7-sonnet-latest"
+    temperature: 0.7
+    maxTokens: 4000
+    timeoutSeconds: 60
+    retryAttempts: 3
+    secretKeyRef:
+      name: "" # governance-service-ai-secret
+      key: "" # api-secret-key
+    apiKey: ""
+    useV2: true

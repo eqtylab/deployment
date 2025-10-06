@@ -50,6 +50,7 @@ global:
     authServiceApiSecretName: "auth-service-api-secret" # Auth service API secret
     authServiceKeysSecretName: "auth-service-keys" # Auth service private keys for token signing
     governanceWorkerSecretName: "governance-worker-credentials" # Governance worker service account
+    governanceServiceAISecretName: "governance-service-ai-secret" # Governance service AI secret
 
     # --- Secret Creation Control ---
     # true: Chart will create secrets using the values below during installation
@@ -146,6 +147,9 @@ global:
         # Backend client (confidential client for auth-service)
         backendClientId: "governance-platform-backend" # Usually doesn't need to be changed
         backendClientSecret: "" # Required: Secret for backend client (generate with: openssl rand -hex 32)
+
+      governanceService:
+        aiApiKey: "" # AI API key for governance service (used for AI-based governance decisions)
 
   # --- Database Configuration ---
   # PostgreSQL connection settings shared across all platform services
@@ -576,6 +580,15 @@ postgresql:
         secretKeys:
           adminPasswordKey: "postgresPassword"
           userPasswordKey: "postgresPassword"
+
+  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  # HARDCODED VALUES, USING LEGACY BITNAMI POSTGRESQL IMAGE.
+  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+    tag: 15.3.0-debian-11-r17
+
   # Primary PostgreSQL instance configuration
   primary:
     persistence:

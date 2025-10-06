@@ -216,6 +216,44 @@ spec:
           - name: MIGRATIONS_PATH
             value: {{ .Values.migrations.path | quote }}
           {{- end }}
+
+          {{- if .Values.config.ai.enabled }}
+          - name: AI_ENABLED
+            value: {{ .Values.config.ai.enabled | quote }}
+          - name: AI_API_KEY
+            {{- if .Values.config.ai.secretKeyRef }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.config.ai.secretKeyRef.name | quote }}
+                key: {{ .Values.config.ai.secretKeyRef.key | quote }}
+            {{- else }}
+            value: {{ .Values.config.ai.apiKey | quote }}
+            {{- end }}
+          - name: AI_PROVIDER
+            value: {{ .Values.config.ai.provider | quote }}
+          - name: AI_MODEL
+            value: {{ .Values.config.ai.model | quote }}
+          - name: AI_TEMPERATURE
+            value: {{ .Values.config.ai.temperature | quote }}
+          - name: AI_MAX_TOKENS
+            value: {{ .Values.config.ai.maxTokens | quote }}
+          - name: AI_TIMEOUT_SECONDS
+            value: {{ .Values.config.ai.timeoutSeconds | quote }}
+          - name: AI_RETRY_ATTEMPTS
+            value: {{ .Values.config.ai.retryAttempts | quote }}
+          - name: AI_USE_V2
+            value: {{ .Values.config.ai.useV2 | quote }}
+          {{- end }}
+          - name: ENABLE_OS_GUARDRAIL_EVENTS
+            value: {{ .Values.config.indicators.osGuardrailsEnabled | quote }}
+          {{- if .Values.config.indicators.osGuardrailsEnabled }}
+          - name: GUARDRAIL_EVENT_BATCH_SIZE
+            value: {{ .Values.config.indicators.osGuardrailsBatchSize | quote }}
+          {{- end }}
+          {{- if .Values.config.indicators.osGuardrailsEnabled }}
+          - name: GUARDRAIL_EVENT_TIMEOUT_SECONDS
+            value: {{ .Values.config.indicators.osGuardrailsTimeoutSeconds | quote }}
+          {{- end }}
           volumeMounts:
             {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
             - name: gcp-sa-volume

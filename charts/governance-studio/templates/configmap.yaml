@@ -8,15 +8,22 @@ data:
   API_URL: {{ .Values.config.apiUrl | quote }}
   AUTH_SERVICE_URL: {{ .Values.config.authServiceUrl | quote }}
   INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | quote }}
+  GARAGE_SERVICE_URL: {{ .Values.config.garageServiceUrl | quote }}
 
   ENVIRONMENT: {{ .Values.config.environment | quote }}
   APP_TITLE: {{ .Values.config.appTitle | quote }}
   APP_HOSTNAME: {{ .Values.config.appHostname | quote }}
   BASE_PATH: {{ .Values.config.basePath | quote }}
-  FEATURE_COMPLIANCE: {{ .Values.config.features.compliance | quote }}
+
   FEATURE_GOVERNANCE: {{ .Values.config.features.governance | quote }}
-  FEATURE_GUARDIAN: {{ .Values.config.features.guardian | quote }}
   FEATURE_LINEAGE: {{ .Values.config.features.lineage | quote }}
+  FEATURE_GUARDIAN_ENABLED: {{ .Values.config.features.guardianEnabled | quote }}
+  FEATURE_GUARDIAN_GARAGE: {{ .Values.config.features.guardianGarage | quote }}
+  FEATURE_GUARDIAN_RULEBOOKS: {{ .Values.config.features.guardianRulebooks | quote }}
+  FEATURE_GUARDIAN_OS_FUNCTIONS: {{ .Values.config.features.guardianOsFunctions | quote }}
+  FEATURE_GUARDIAN_SDK_FUNCTIONS: {{ .Values.config.features.guardianSdkFunctions | quote }}
+  FEATURE_GUARDIAN_AGENT_MANAGEMENT: {{ .Values.config.features.agentManagement | quote }}
+
   BRANDING_LOGO_URL: {{ .Values.config.branding.logoUrl | quote }}
   BRANDING_PRIMARY_COLOR: {{ .Values.config.branding.primaryColor | quote }}
   BRANDING_COMPANY_NAME: {{ .Values.config.branding.companyName | quote }}
