@@ -1,0 +1,221 @@
+# Auth0 Provider Configuration for SaaS Deployment
+# This values file configures the auth-service to use Auth0 as the identity provider
+#
+# Usage:
+#   helm install auth-service ./charts/auth-service -f examples/values-auth0.yaml
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+config:
+  # Server configuration
+  server:
+    environment: "production"
+    swaggerEnabled: false
+
+  # Logging configuration
+  logging:
+    level: "info"
+    format: "json"
+
+  # CORS is disabled by default as ingress controller handles it
+  cors:
+    enabled: false
+    origins: "*"
+
+  # Identity Provider configuration
+  idp:
+    provider: "auth0"
+    issuer: "https://your-tenant.auth0.com/"
+
+    # Auth0-specific configuration
+    auth0:
+      domain: "your-tenant.auth0.com"
+      enableManagementAPI: true
+      managementAudience: "https://your-tenant.auth0.com/api/v2/"
+      apiIdentifier: "https://api.your-app.com"
+      defaultConnection: "Username-Password-Authentication"
+      defaultRoles: ["user"]
+      sendInvitationEmail: true
+      syncAtStartup: false
+      syncPageSize: 100
+
+  # Key Vault configuration for DID key signing
+  keyVault:
+    provider: "azure"
+    cacheTTLMinutes: 15
+    azure:
+      vaultUrl: "https://your-keyvault.vault.azure.net/"
+      tenantId: "your-azure-tenant-id"
+
+  # Service integration URLs (usually auto-generated in umbrella chart)
+  integrations:
+    integrityServiceUrl: "http://governance-platform-integrity-service:3050"
+    governanceServiceUrl: "http://governance-platform-governance-service:10001"
+
+  # Service account configuration
+  serviceAccounts:
+    autoCreate: true
+    governanceWorker:
+      enabled: true
+      name: "governance-worker"
+      description: "Automated governance service worker for processing indicator evaluations"
+      audience: "https://your-tenant.auth0.com/api/v2/"
+
+  # RBAC cache configuration
+  rbac:
+    cache:
+      enabled: true
+      ttl: "300s"
+      maxSize: 1000
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+externalDatabase:
+  # Use managed database service (RDS, Cloud SQL, etc.)
+  host: "your-rds-endpoint.amazonaws.com"
+  port: 5432
+  name: "governance"
+  user: "postgres"
+  sslMode: "require"
+  maxOpenConns: 25
+  maxIdleConns: 5
+  connMaxLifetime: "5m"
+
+  # Use existing secret for credentials
+  passwordSecretKeyRef:
+    name: "platform-database"
+    key: "password"
+
+migrations:
+  runAtStartup: true
+  path: "/internal/database/migrations"
+
+# =============================================================================
+# SECRET CONFIGURATION
+# =============================================================================
+
+secrets:
+  # Auth0 credentials
+  auth:
+    name: "platform-auth0"
+    keys:
+      clientId: "client-id"
+      clientSecret: "client-secret"
+      managementClientId: "client-id"
+      managementClientSecret: "client-secret"
+
+  # Security secrets (API and JWT)
+  security:
+    name: "platform-auth-service"
+    keys:
+      apiSecret: "api-secret"
+      jwtSecret: "jwt-secret"
+
+  # Session secret
+  session:
+    name: "platform-auth-service"
+    keys:
+      secret: "session-secret"
+
+  # Azure Key Vault credentials
+  keyVault:
+    name: "platform-azure-key-vault"
+    keys:
+      clientId: "client-id"
+      clientSecret: "client-secret"
+
+  # Governance worker credentials
+  worker:
+    name: "platform-governance-worker"
+    keys:
+      encryptionKey: "encryption-key"
+      clientId: "client-id"
+      clientSecret: "client-secret"
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+# Production-ready settings for SaaS
+replicaCount: 3
+
+image:
+  repository: ghcr.io/eqtylab/auth-service
+  pullPolicy: Always
+  tag: "" # Uses appVersion from Chart.yaml
+
+imagePullSecrets:
+  - name: "platform-image-pull-secret"
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# =============================================================================
+# OBSERVABILITY
+# =============================================================================
+
+metrics:
+  enabled: true
+  port: 9090
+  path: "/metrics"
+  serviceMonitor:
+    enabled: true
+    interval: "30s"
+
+# =============================================================================
+# INGRESS CONFIGURATION
+# =============================================================================
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+  hosts:
+    - host: auth.your-saas-domain.com
+      paths:
+        - path: "/authService(/|$)(.*)"
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: auth-service-tls
+      hosts:
+        - auth.your-saas-domain.com
+
+# =============================================================================
+# HIGH AVAILABILITY
+# =============================================================================
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - auth-service
+          topologyKey: kubernetes.io/hostname

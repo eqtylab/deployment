@@ -1,0 +1,39 @@
+{{- if .Values.enabled }}
+Governance Studio has been deployed!
+
+Service URL (internal): http://{{ include "governance-studio.fullname" . }}:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+External URL: https://{{ .host }}{{ $.Values.config.basePath }}
+{{- end }}
+{{- else }}
+
+To access the application, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "governance-studio.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:8080
+{{- end }}
+
+Configuration:
+  Environment: {{ .Values.config.environment | default ((.Values.global).environmentType | default "not set") }}
+  Auth Provider: {{ .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "not set" }}
+
+Feature Flags:
+  Governance: {{ .Values.config.features.governance }}
+  Lineage: {{ .Values.config.features.lineage }}
+  Guardian: {{ .Values.config.features.guardianEnabled }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "governance-studio.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "governance-studio.fullname" . }} -n {{ .Release.Namespace }}
+
+{{- if not .Values.config.authProvider }}
+{{- if not ((.Values.global).secrets).auth.provider }}
+
+⚠️  WARNING: Auth provider is not configured!
+Please set: governance-studio.config.authProvider or global.secrets.auth.provider
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,503 @@
+# =============================================================================
+# GOVERNANCE PLATFORM - AWS DEPLOYMENT EXAMPLE
+# =============================================================================
+# Complete example for deploying the Governance Platform on Amazon Web Services
+# using EKS (Elastic Kubernetes Service) with S3 for storage.
+#
+# PREREQUISITES:
+#   - EKS cluster with AWS Load Balancer Controller or ingress-nginx
+#   - S3 buckets created for governance and integrity services
+#   - IAM user/role with S3 access permissions (or use IRSA)
+#   - Auth0 tenant configured (or Keycloak)
+#   - Azure Key Vault for credential signing (cross-cloud requirement)
+#   - cert-manager installed for TLS certificates (or use ACM)
+#
+# USAGE:
+#   1. Copy this file and customize for your environment
+#   2. Create secrets using the commands at the bottom of this file
+#   3. Deploy:
+#      helm dependency update ./charts/governance-platform
+#      helm install governance-platform ./charts/governance-platform \
+#        --namespace governance \
+#        --create-namespace \
+#        --values values-aws-example.yaml
+# =============================================================================
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+global:
+  # Your AWS domain - update this to your actual domain
+  domain: "governance.yourcompany.com"
+  environmentType: "production"
+  imagePullPolicy: "IfNotPresent"
+
+  # ---------------------------------------------------------------------------
+  # Secret Configuration
+  # ---------------------------------------------------------------------------
+  # Set create: false for production - create secrets manually before deployment
+  # See the SECRET CREATION COMMANDS section at the bottom of this file
+  secrets:
+    create: false
+
+    # Database credentials
+    database:
+      secretName: "platform-database"
+
+    # Authentication - Auth0
+    auth:
+      provider: "auth0"
+      auth0:
+        secretName: "platform-auth0"
+
+    # Auth service credentials
+    authService:
+      secretName: "platform-auth-service"
+
+    # Storage - AWS S3
+    storage:
+      aws_s3:
+        secretName: "platform-aws-s3"
+
+    # Secret Manager - Azure Key Vault (required for credential signing)
+    # Note: Even on AWS, Azure Key Vault is used for signing credentials
+    secretManager:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        enabled: true
+        secretName: "platform-azure-key-vault"
+
+    # Platform encryption
+    encryption:
+      secretName: "platform-encryption-key"
+
+    # Governance worker credentials
+    governanceWorker:
+      secretName: "platform-governance-worker"
+
+    # AI service credentials (optional)
+    governanceServiceAI:
+      secretName: "platform-governance-service-ai"
+
+    # Image registry credentials
+    imageRegistry:
+      secretName: "platform-image-pull-secret"
+      registry: "ghcr.io"
+
+# =============================================================================
+# GOVERNANCE STUDIO (Frontend)
+# =============================================================================
+governance-studio:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx" # or "alb" for AWS ALB Controller
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+      # For AWS ALB Controller, use these annotations instead:
+      # alb.ingress.kubernetes.io/scheme: internet-facing
+      # alb.ingress.kubernetes.io/target-type: ip
+      # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:region:account:certificate/cert-id
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: governance-studio-tls
+        hosts:
+          - governance.yourcompany.com
+
+  config:
+    # Auth0 SPA settings (public, not secrets)
+    auth0Domain: "your-tenant.us.auth0.com"
+    auth0ClientId: "your-spa-client-id"
+    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+
+    appTitle: "Governance Studio"
+    features:
+      governance: true
+      lineage: true
+      guardianEnabled: false
+      agentManagement: false
+    branding:
+      logoUrl: "/vite.svg"
+      primaryColor: "#0f172a"
+      companyName: "Your Company"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# GOVERNANCE SERVICE (Backend API)
+# =============================================================================
+governance-service:
+  enabled: true
+  replicaCount: 2
+
+  # Uncomment to use IRSA instead of static credentials
+  # serviceAccount:
+  #   create: true
+  #   annotations:
+  #     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/governance-service-role
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: governance-service-tls
+        hosts:
+          - governance.yourcompany.com
+
+  # Storage configuration - AWS S3
+  config:
+    logLevel: "info"
+
+    # AWS S3 Storage
+    storageProvider: "aws_s3"
+    awsS3Region: "us-east-1" # Your AWS region
+    awsS3BucketName: "your-governance-attachments" # Your S3 bucket name
+    awsS3Folder: "attachments" # Optional folder prefix
+
+    # AI features
+    ai:
+      enabled: true
+      provider: "anthropic"
+      model: "claude-sonnet-4-20250514"
+
+    # Service account for governance worker
+    serviceAccount:
+      enabled: true
+      serviceName: "governance-worker"
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# INTEGRITY SERVICE (Credentials & Lineage)
+# =============================================================================
+integrity-service:
+  enabled: true
+  replicaCount: 2
+
+  # Uncomment to use IRSA instead of static credentials
+  # serviceAccount:
+  #   create: true
+  #   annotations:
+  #     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/integrity-service-role
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: integrity-service-tls
+        hosts:
+          - governance.yourcompany.com
+
+  # Storage configuration - AWS S3
+  env:
+    integrityAppLoggingLogLevelDefault: "info"
+
+    # AWS S3 Storage
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreRegion: "us-east-1" # Your AWS region
+    integrityAppBlobStoreBucket: "your-integrity-bucket" # Your S3 bucket name
+    integrityAppBlobStoreFolder: "statements" # Optional folder prefix
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# AUTH SERVICE
+# =============================================================================
+auth-service:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: auth-service-tls
+        hosts:
+          - governance.yourcompany.com
+
+  config:
+    server:
+      environment: "production"
+      swaggerEnabled: false
+
+    logging:
+      level: "info"
+      format: "json"
+
+    idp:
+      provider: "auth0"
+      auth0:
+        domain: "your-tenant.us.auth0.com"
+        managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
+
+    database:
+      autoMigrate: true
+
+    # Azure Key Vault for DID key signing
+    keyVault:
+      provider: "azure"
+      azure:
+        vaultUrl: "https://your-vault.vault.azure.net/"
+        tenantId: "your-azure-tenant-id"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# POSTGRESQL
+# =============================================================================
+postgresql:
+  enabled: true
+
+  global:
+    postgresql:
+      auth:
+        database: "governance"
+        username: "postgres"
+        existingSecret: "platform-database"
+        secretKeys:
+          adminPasswordKey: "password"
+          userPasswordKey: "password"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      # Use AWS EBS gp3 storage class for better performance
+      storageClass: "gp3"
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+# =============================================================================
+# ALTERNATIVE: Using Amazon RDS Instead of PostgreSQL Pod
+# =============================================================================
+# For production, consider using Amazon RDS for PostgreSQL:
+#
+# postgresql:
+#   enabled: false  # Disable in-cluster PostgreSQL
+#
+# global:
+#   postgresql:
+#     host: "your-rds-instance.xxxx.us-east-1.rds.amazonaws.com"
+#     port: 5432
+#     database: "governance"
+#     username: "postgres"
+#
+# Then create your database secret with the RDS password.
+
+# =============================================================================
+# SECRET CREATION COMMANDS FOR AWS
+# =============================================================================
+# Run these commands before deploying:
+#
+# # Create namespace
+# kubectl create namespace governance
+#
+# # Database credentials
+# kubectl create secret generic platform-database \
+#   --from-literal=username=postgres \
+#   --from-literal=password="$(openssl rand -base64 24)" \
+#   --namespace governance
+#
+# # Auth0 credentials
+# kubectl create secret generic platform-auth0 \
+#   --from-literal=client-id=YOUR_AUTH0_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AUTH0_CLIENT_SECRET \
+#   --from-literal=mgmt-client-id=YOUR_AUTH0_MGMT_CLIENT_ID \
+#   --from-literal=mgmt-client-secret=YOUR_AUTH0_MGMT_CLIENT_SECRET \
+#   --namespace governance
+#
+# # Auth service secrets
+# kubectl create secret generic platform-auth-service \
+#   --from-literal=db-password="$(openssl rand -base64 24)" \
+#   --from-literal=session-secret="$(openssl rand -base64 32)" \
+#   --from-literal=api-secret="$(openssl rand -base64 32)" \
+#   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
+#   --namespace governance
+#
+# # AWS S3 credentials (skip if using IRSA)
+# kubectl create secret generic platform-aws-s3 \
+#   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
+#   --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
+#   --namespace governance
+#
+# # Azure Key Vault credentials (for credential signing)
+# kubectl create secret generic platform-azure-key-vault \
+#   --from-literal=client-id=YOUR_AZURE_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
+#   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
+#   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
+#   --namespace governance
+#
+# # Encryption key
+# kubectl create secret generic platform-encryption-key \
+#   --from-literal=encryption-key="$(openssl rand -base64 32)" \
+#   --namespace governance
+#
+# # Governance worker credentials
+# kubectl create secret generic platform-governance-worker \
+#   --from-literal=encryption-key="$(openssl rand -base64 32)" \
+#   --from-literal=client-id=YOUR_M2M_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_M2M_CLIENT_SECRET \
+#   --namespace governance
+#
+# # AI credentials (optional)
+# kubectl create secret generic platform-governance-service-ai \
+#   --from-literal=api-key=YOUR_ANTHROPIC_API_KEY \
+#   --namespace governance
+#
+# # Image pull secret
+# kubectl create secret docker-registry platform-image-pull-secret \
+#   --docker-server=ghcr.io \
+#   --docker-username=YOUR_GITHUB_USERNAME \
+#   --docker-password=YOUR_GITHUB_PAT \
+#   --docker-email=YOUR_EMAIL \
+#   --namespace governance
+
+# =============================================================================
+# AWS-SPECIFIC CONSIDERATIONS
+# =============================================================================
+#
+# 1. IAM Roles for Service Accounts (IRSA) - Recommended
+#    Instead of using static credentials, use IRSA to grant S3 access.
+#    Uncomment the serviceAccount sections above and create IAM roles:
+#
+#    # Create IAM policy for S3 access
+#    aws iam create-policy --policy-name GovernanceS3Policy --policy-document '{
+#      "Version": "2012-10-17",
+#      "Statement": [{
+#        "Effect": "Allow",
+#        "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+#        "Resource": [
+#          "arn:aws:s3:::your-governance-attachments",
+#          "arn:aws:s3:::your-governance-attachments/*",
+#          "arn:aws:s3:::your-integrity-bucket",
+#          "arn:aws:s3:::your-integrity-bucket/*"
+#        ]
+#      }]
+#    }'
+#
+#    # Create IAM role with trust policy for EKS OIDC
+#    eksctl create iamserviceaccount \
+#      --name governance-service \
+#      --namespace governance \
+#      --cluster your-cluster \
+#      --attach-policy-arn arn:aws:iam::ACCOUNT_ID:policy/GovernanceS3Policy \
+#      --approve
+#
+# 2. AWS Load Balancer Controller
+#    If using ALB instead of nginx ingress, update ingress annotations:
+#
+#    ingress:
+#      className: "alb"
+#      annotations:
+#        alb.ingress.kubernetes.io/scheme: internet-facing
+#        alb.ingress.kubernetes.io/target-type: ip
+#        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT_ID
+#        alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+#        alb.ingress.kubernetes.io/ssl-redirect: '443'
+#
+# 3. Amazon RDS
+#    For production, use Amazon RDS instead of in-cluster PostgreSQL.
+#    See the "Using Amazon RDS" section above.
+#
+# 4. AWS Secrets Manager
+#    Consider using External Secrets Operator with AWS Secrets Manager
+#    for enhanced secret management:
+#    https://external-secrets.io/latest/provider/aws-secrets-manager/
+#
+# 5. S3 Bucket Configuration
+#    Ensure your S3 buckets have appropriate settings:
+#    - Enable versioning for data protection
+#    - Configure lifecycle policies for cost management
+#    - Enable server-side encryption (SSE-S3 or SSE-KMS)
+#    - Block public access unless specifically required

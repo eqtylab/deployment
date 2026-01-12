@@ -1,92 +1,44 @@
-{{/* vim: set filetype=mustache: */}}
-
-{{- define "name" -}}
-{{- default .Values.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "integrity-service.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "fullname" -}}
-{{- $name := default .Values.name .Values.nameOverride -}}
-{{- printf "%s-%s" .Release.Name  $name | trunc 63 | trimSuffix "-" -}}
+{{/*
+Create a default fully qualified app name.
+*/}}
+{{- define "integrity-service.fullname" -}}
+{{- if .Values.fullnameOverride -}}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name (include "integrity-service.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create chart name and version as used by the chart label.
+*/}}
+{{- define "integrity-service.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
 Common labels
 */}}
-{{- define "labels" -}}
-helm.sh/chart: {{ include "chart" . }}
-{{ include "selectorLabels" . }}
+{{- define "integrity-service.labels" -}}
+helm.sh/chart: {{ include "integrity-service.chart" . }}
+{{ include "integrity-service.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
 
 {{/*
 Selector labels
 */}}
-{{- define "selectorLabels" -}}
-app.kubernetes.io/name: {{ include "name" . }}
+{{- define "integrity-service.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "integrity-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Get compliance secret name from global or use default
-*/}}
-{{- define "integrity.complianceSecretName" -}}
-{{- if .Values.global }}
-{{- if .Values.global.secrets }}
-{{- if .Values.global.secrets.complianceSecretName }}
-{{- .Values.global.secrets.complianceSecretName -}}
-{{- else -}}
-compliance-secrets
-{{- end -}}
-{{- else -}}
-compliance-secrets
-{{- end -}}
-{{- else -}}
-compliance-secrets
-{{- end -}}
-{{- end -}}
-
-{{/*
-Get blob store secret name from global or use default
-*/}}
-{{- define "integrity.blobSecretName" -}}
-{{- if .Values.global }}
-{{- if .Values.global.secrets }}
-{{- if .Values.global.secrets.blobStoreSecretName }}
-{{- .Values.global.secrets.blobStoreSecretName -}}
-{{- else -}}
-blob-secret
-{{- end -}}
-{{- else -}}
-blob-secret
-{{- end -}}
-{{- else -}}
-blob-secret
-{{- end -}}
-{{- end -}}
-
-{{/*
-Get Azure Key Vault secret name from global or use default
-*/}}
-{{- define "integrity.azureKvSecretName" -}}
-{{- if .Values.global }}
-{{- if .Values.global.secrets }}
-{{- if .Values.global.secrets.azureKVSecretName }}
-{{- .Values.global.secrets.azureKVSecretName -}}
-{{- else -}}
-azure-kv-secret
-{{- end -}}
-{{- else -}}
-azure-kv-secret
-{{- end -}}
-{{- else -}}
-azure-kv-secret
-{{- end -}}
 {{- end -}}

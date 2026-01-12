@@ -1,202 +1,235 @@
-# =============================================================================
-# GOVERNANCE STUDIO UI - HELM VALUES CONFIGURATION
-# =============================================================================
-# This values file configures the Governance Studio frontend React application
-#
-# The application uses runtime configuration injection, which means:
-# - Single container image works for all environments
-# - Configuration changes don't require rebuilding containers
-# - Environment-specific settings are injected at container startup
-# =============================================================================
+# Default values for governance-studio.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
 
-# =============================================================================
-# DEPLOYMENT CONFIGURATION
-# =============================================================================
+# -- Enable the Governance Studio frontend application
+enabled: true
 
-# Number of application replicas to run
-# Recommended: 2+ for production for high availability
+# -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
 replicaCount: 1
 
-# Container image configuration
 image:
-  # Container image repository
-  repository: "ghcr.io/eqtylab/governance-studio"
-
-  # Image pull policy
-  # IfNotPresent: Only pull if image doesn't exist locally (recommended for tagged releases)
-  # Always: Always pull the latest version (use for 'latest' tags or development)
-  # Never: Never pull, use local image only
+  # -- Container image repository
+  repository: ghcr.io/eqtylab/governance-studio
+  # -- Image pull policy (IfNotPresent | Always | Never)
   pullPolicy: IfNotPresent
+  # -- Image tag override (defaults to chart appVersion if empty)
+  tag: ""
 
-  # Container image tag - override this for specific versions
-  tag: "main"
-
-# Image pull secrets for private registries
-# Add secrets here if using a private container registry
+# -- Image pull secrets for private registries
+# @default -- Populated from global.secrets.imageRegistry.secretName in templates
 imagePullSecrets: []
 
-# Override the chart name if needed
+# -- Override the chart name used for resource naming
 nameOverride: ""
+# -- Override the full name used for resource naming
 fullnameOverride: ""
+
+serviceAccount:
+  # -- Create a ServiceAccount for the deployment
+  create: false
+  # -- Automatically mount a ServiceAccount's API credentials
+  automount: true
+  # -- Annotations to add to the ServiceAccount
+  annotations: {}
+  # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
+  name: ""
+
+# -- Additional annotations to add to pods
+podAnnotations: {}
+
+# -- Additional labels to add to pods
+podLabels: {}
+
+# -- Security context applied at the pod level
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# -- Security context applied at the container level
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  # -- Create a Kubernetes Service
+  enabled: true
+  # -- Service type (ClusterIP | NodePort | LoadBalancer)
+  type: ClusterIP
+  # -- Service port
+  port: 80
+
+ingress:
+  # -- Create an Ingress resource for external access
+  enabled: false
+  # -- IngressClass name (e.g., "nginx", "traefik")
+  className: ""
+  # -- Additional annotations for the Ingress resource
+  annotations: {}
+    # cert-manager.io/issuer: "letsencrypt-prod"
+    # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+  # -- Ingress host configuration
+  hosts:
+    - host: governance.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration
+  tls: []
+    # - secretName: governance-studio-tls
+    #   hosts:
+    #     - governance.example.com
+
+# -- Resource requests and limits
+resources: {}
+  # requests:
+  #   cpu: 50m
+  #   memory: 128Mi
+  # limits:
+  #   cpu: 200m
+  #   memory: 256Mi
+
+# Horizontal Pod Autoscaler - automatically scales pods based on resource usage
+autoscaling:
+  # -- Enable Horizontal Pod Autoscaler
+  enabled: false
+  # -- Minimum number of replicas
+  minReplicas: 1
+  # -- Maximum number of replicas
+  maxReplicas: 100
+  # -- Target CPU utilization percentage
+  targetCPUUtilizationPercentage: 80
+  # -- Target memory utilization percentage
+  targetMemoryUtilizationPercentage: 80
+
+# Pod Disruption Budget - maintains availability during cluster disruptions
+podDisruptionBudget:
+  # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+  minAvailable: 1
+
+# -- Node labels for pod assignment
+nodeSelector: {}
+
+# -- Tolerations for pod assignment
+tolerations: []
+
+# -- Affinity rules for pod assignment
+affinity: {}
+
+# -- Startup probe configuration
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  failureThreshold: 30
+  periodSeconds: 10
+
+# -- Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+
+# -- Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 2
 
 # =============================================================================
 # APPLICATION CONFIGURATION
 # =============================================================================
-# Runtime configuration injected into the application at startup
-# These values are converted to environment variables and then to a JavaScript config file
 
 config:
-  # --- API Configuration ---
-  # Backend API endpoint URL - MUST be accessible from user browsers
-  # Should match the ingress configuration of your Assurance Engine deployment
-  apiUrl: "https://api.governance.example.com"
+  # -- Base path where the UI is served (useful behind a reverse proxy)
+  basePath: /
 
-  # --- Authentication Configuration (Auth0) ---
-  # Auth0 tenant domain (without https://)
-  # Example: "your-tenant.us.auth0.com" or "your-tenant.eu.auth0.com"
-  auth0Domain: "example.auth0.com"
+  # Backend Service URLs
+  # -- Base API URL for the governance service
+  # @default -- Generated as "https://{global.domain}/governanceService" in templates
+  apiUrl: ""
+  # -- Auth service URL for authentication
+  # @default -- Generated as "https://{global.domain}/authService" in templates
+  authServiceUrl: ""
+  # -- Integrity service URL for lineage and statements
+  # @default -- Generated as "https://{global.domain}/integrityService" in templates
+  integrityServiceUrl: ""
+  # -- Garage service URL (optional compliance integration)
+  # @default -- Generated as "https://{global.domain}/garage" in templates if enabled
+  garageServiceUrl: ""
 
-  # Auth0 application client ID for this frontend application
-  # This should be a Single Page Application (SPA) type in Auth0
-  auth0ClientId: "YOUR_AUTH0_CLIENT_ID"
+  # Authentication Provider Configuration
+  # -- Authentication provider type (auth0 | keycloak)
+  # @default -- Populated from global.secrets.auth.provider in templates
+  authProvider: ""
 
-  # Auth0 audience - should match your API identifier in Auth0
-  # Typically the same as your API URL
-  auth0Audience: "https://api.governance.example.com"
+  # Auth0 Configuration (only used when authProvider is "auth0")
+  # -- Auth0 tenant domain
+  # @default -- `""` (REQUIRED when authProvider is auth0)
+  # Example: your-tenant.us.auth0.com
+  auth0Domain: ""
+  # -- Auth0 client ID (SPA application - public, not a secret)
+  # @default -- `""` (REQUIRED when authProvider is auth0)
+  auth0ClientId: ""
+  # -- Auth0 API audience
+  # @default -- `""` (REQUIRED when authProvider is auth0)
+  # Example: https://your-tenant.us.auth0.com/api/v2/
+  auth0Audience: ""
 
-  # --- Application Settings ---
-  # Deployment environment - affects logging and debugging features
-  # Options: "development", "staging", "production"
-  environment: "production"
+  # Keycloak Configuration (only used when authProvider is "keycloak")
+  # -- Keycloak server URL
+  # @default -- Populated from global.secrets.auth.keycloak.values.url in templates
+  keycloakUrl: ""
+  # -- Keycloak realm name
+  # @default -- Populated from global.secrets.auth.keycloak.values.realm in templates
+  keycloakRealm: ""
+  # -- Keycloak client ID for frontend
+  # @default -- Populated from global.secrets.auth.keycloak.values.frontendClientId in templates
+  keycloakClientId: ""
 
-  # Application title displayed in browser tabs and header
+  # Application Settings
+  # -- Environment label (development | staging | production)
+  # @default -- Populated from global.environmentType in templates
+  environment: ""
+  # -- Application title displayed in browser and UI
   appTitle: "Governance Studio"
+  # -- Public hostname for generating links and redirects
+  # @default -- Populated from global.domain in templates
+  appHostname: ""
 
-  # Application hostname - used for various frontend configurations
-  # Should match your ingress host configuration
-  appHostname: "governance.example.com"
-
-  # --- Feature Flags ---
-  # Enable or disable specific application features
-  # Useful for progressive feature rollouts or customer-specific customizations
+  # Feature Flags
   features:
-    compliance: true # Enable compliance management features
-    governance: true # Enable governance workflow features
-    guardian: true # Enable guardian/approval workflow features
-    lineage: true # Enable data lineage tracking features
+    # -- Enable core governance features
+    governance: true
+    # -- Enable lineage and integrity features (requires integrity-service)
+    lineage: true
+    # -- Enable Guardian feature family (parent toggle)
+    guardianEnabled: false
+    # -- Enable Compliance Garage integration (requires garageServiceUrl)
+    guardianGarage: false
+    # -- Enable Guardian rulebook experiences
+    guardianRulebooks: false
+    # -- Enable OS-oriented Guardian functions
+    guardianOsFunctions: false
+    # -- Enable SDK-oriented Guardian functions
+    guardianSdkFunctions: false
+    # -- Enable agent management UI
+    agentManagement: false
 
-  # --- Branding Configuration ---
-  # Customize the application appearance for your organization
+  # Branding Configuration
   branding:
-    logoUrl: "/vite.svg" # URL or path to your company logo
-    primaryColor: "#0f172a" # Primary brand color (hex format)
-    companyName: "Example Corp" # Company name displayed in the application
-
-# =============================================================================
-# KUBERNETES CONFIGURATION
-# =============================================================================
-
-# Service account configuration
-serviceAccount:
-  create: true # Create a service account for the application
-  annotations: {} # Additional annotations for the service account
-  name: "" # Service account name (auto-generated if empty)
-
-# Pod-level annotations
-# Add custom annotations to pods (useful for monitoring, networking, etc.)
-podAnnotations: {}
-
-# Pod security context - security settings applied to the entire pod
-podSecurityContext: {}
-
-# Container security context - security settings applied to the container
-securityContext: {}
-
-# Kubernetes service configuration
-service:
-  type: ClusterIP # Service type - ClusterIP for internal access only
-  port: 80 # Service port (standard HTTP port)
-
-# Ingress configuration for external access
-ingress:
-  enabled: true # Enable ingress to make the application accessible externally
-  className: "nginx" # Ingress controller class (nginx, traefik, etc.)
-
-  # Ingress annotations for additional configuration
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: / # Rewrite incoming paths
-    cert-manager.io/cluster-issuer: "letsencrypt-prod" # Automatic TLS certificate issuer
-
-  # Host configuration - defines which domains will serve this application
-  hosts:
-    - host: governance.example.com # MUST be overridden with your actual domain
-      paths:
-        - path: / # Serve the application at the root path
-          pathType: Prefix # Match all paths starting with "/"
-
-  # TLS/SSL configuration
-  tls:
-    - secretName: platform-tls # Kubernetes secret containing TLS certificates
-      hosts:
-        - governance.example.com # Domain(s) covered by the TLS certificate
-
-# =============================================================================
-# RESOURCE MANAGEMENT
-# =============================================================================
-
-# CPU and memory resource limits and requests
-# Uncomment and adjust based on your cluster capacity and application needs
-resources:
-  {}
-  # limits:
-  #   cpu: 500m        # Maximum CPU (0.5 cores)
-  #   memory: 512Mi    # Maximum memory
-  # requests:
-  #   cpu: 100m        # Minimum CPU (0.1 cores)
-  #   memory: 128Mi    # Minimum memory
-
-# Horizontal Pod Autoscaler configuration
-# Automatically scale the number of pods based on CPU utilization
-autoscaling:
-  enabled: false # Enable horizontal pod autoscaling
-  minReplicas: 2 # Minimum number of replicas
-  maxReplicas: 10 # Maximum number of replicas
-  targetCPUUtilizationPercentage: 80 # Target CPU utilization for scaling
-
-# =============================================================================
-# ADVANCED SCHEDULING
-# =============================================================================
-
-# Node selector - schedule pods on specific nodes
-# Example: { "disk-type": "ssd", "node-size": "large" }
-nodeSelector: {}
-
-# Tolerations - allow pods to be scheduled on nodes with specific taints
-# Example: [{ "key": "dedicated", "operator": "Equal", "value": "frontend", "effect": "NoSchedule" }]
-tolerations: []
-
-# Affinity rules - control pod placement relative to other pods or nodes
-# Useful for high availability or performance optimization
-affinity: {}
-
-# =============================================================================
-# HEALTH MONITORING
-# =============================================================================
-
-# Liveness probe - Kubernetes will restart the container if this fails
-# Checks if the application is running and responsive
-livenessProbe:
-  httpGet:
-    path: / # Health check endpoint
-    port: 80 # Port to check
-  initialDelaySeconds: 30 # Wait time before first check
-  periodSeconds: 10 # Check interval
-
-# Readiness probe - Kubernetes will remove the pod from service if this fails
-# Checks if the application is ready to serve traffic
-readinessProbe:
-  httpGet:
-    path: / # Readiness check endpoint
-    port: 80 # Port to check
-  initialDelaySeconds: 5 # Wait time before first check
-  periodSeconds: 5 # Check interval
+    # -- URL or path to logo asset
+    logoUrl: /vite.svg
+    # -- Primary brand color (hex code)
+    primaryColor: "#0f172a"
+    # -- Company name for branding
+    companyName: "EQTY Lab"

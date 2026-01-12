@@ -1,0 +1,260 @@
+# Keycloak Configuration for Enterprise/On-Premises Deployment
+# Configuration using Keycloak as identity provider for enterprise environments
+#
+# Usage:
+#   helm install governance-service ./charts/governance-service -f examples/values-keycloak.yaml
+#
+# Prerequisites:
+#   - Keycloak instance configured with realm and clients
+#   - PostgreSQL database accessible
+#   - Storage provider configured (Azure Blob in this example)
+#   - Required Kubernetes secrets created
+#
+# This example demonstrates:
+#   - Keycloak as identity provider (instead of Auth0)
+#   - On-premises/enterprise deployment patterns
+#   - Azure Blob storage (can be switched to S3 or GCS)
+#   - AI features with Anthropic
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+config:
+  appEnv: "production"
+  logLevel: "info"
+
+  server:
+    readTimeout: 30
+    writeTimeout: 30
+    idleTimeout: 120
+
+  # Storage configuration - Azure Blob (change as needed)
+  storageProvider: "azure_blob"
+  azureStorageContainerName: "governance-artifacts"
+  azureUseManagedIdentity: false
+
+  # Integration URLs
+  integrityServiceUrl: "http://governance-platform-integrity-service:3050"
+  authServiceUrl: "http://governance-platform-auth-service:8080"
+
+  # Indicator configuration
+  indicators:
+    configPath: "/app/configs/indicators"
+    reloadInterval: 300
+    osGuardrailsEnabled: false
+
+  # Service account for worker authentication
+  serviceAccount:
+    enabled: true
+    serviceName: "governance-worker"
+
+  # AI features
+  ai:
+    enabled: true
+    provider: "anthropic"
+    model: "claude-3-7-sonnet-latest"
+    temperature: 0.7
+    maxTokens: 4000
+    timeoutSeconds: 60
+    retryAttempts: 3
+    useV2: true
+
+# Disable Auth0 sync when using Keycloak
+auth0SyncAtStartup: false
+auth0SyncPageSize: 100
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+externalDatabase:
+  host: "postgresql.your-domain.local"
+  port: 5432
+  database: "governance"
+  user: "governance_admin"
+  sslmode: "require"
+
+  passwordSecretKeyRef:
+    name: "platform-database"
+    key: "password"
+
+migrations:
+  runAtStartup: true
+  path: "/app/migrations"
+
+# =============================================================================
+# SECRET CONFIGURATION
+# =============================================================================
+#
+# Keycloak secrets must include:
+#   - Backend client ID and secret
+#   - Keycloak URL and realm
+#
+# kubectl create secret generic platform-keycloak \
+#   --from-literal=client-id=governance-backend \
+#   --from-literal=client-secret=YOUR_CLIENT_SECRET \
+#   --from-literal=url=https://keycloak.your-domain.local \
+#   --from-literal=realm=governance
+
+secrets:
+  encryption:
+    name: "platform-encryption"
+    key: "key"
+
+  # Keycloak configuration (instead of auth0)
+  keycloak:
+    enabled: true
+    existingSecret: "platform-keycloak"
+    existingSecretKeys:
+      clientId: "client-id"
+      realm: "realm"
+      url: "url"
+    existingClientSecretKeyRef:
+      name: "platform-keycloak"
+      clientSecretKey: "client-secret"
+
+  storage:
+    azure_blob:
+      name: "platform-azure-storage"
+      accountNameKey: "account-name"
+      accountKeyKey: "account-key"
+      connectionStringKey: "connection-string"
+
+  worker:
+    name: "platform-governance-worker"
+    encryptionKeyKey: "encryption-key"
+    clientIdKey: "client-id"
+    clientSecretKey: "client-secret"
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/eqtylab/governance-service
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets:
+  - name: "platform-image-pull-secret"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Conservative scaling for on-premises
+autoscaling:
+  enabled: false
+
+# =============================================================================
+# INGRESS CONFIGURATION
+# =============================================================================
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "internal-ca"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+  hosts:
+    - host: governance.your-domain.local
+      paths:
+        - path: "/governanceService(/|$)(.*)"
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: governance-service-tls
+      hosts:
+        - governance.your-domain.local
+
+# =============================================================================
+# HIGH AVAILABILITY
+# =============================================================================
+
+podDisruptionBudget:
+  minAvailable: 1
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - governance-service
+          topologyKey: kubernetes.io/hostname
+
+nodeSelector:
+  node-role.kubernetes.io/worker: "true"
+
+tolerations: []
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# =============================================================================
+# PROBES
+# =============================================================================
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  failureThreshold: 30
+  periodSeconds: 10
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 2
+
+# =============================================================================
+# POD LABELS
+# =============================================================================
+
+podLabels:
+  auth-provider: "keycloak"

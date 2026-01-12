@@ -1,10 +1,8 @@
-{{- if .Values.ingress.enabled -}}
-{{- $fullName := include "governance-service.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
+{{- if and .Values.enabled .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
+  name: {{ include "governance-service.fullname" . }}
   labels:
     {{- include "governance-service.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -35,9 +33,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ $fullName }}
+                name: {{ include "governance-service.fullname" $ }}
                 port:
-                  number: {{ $svcPort }}
+                  number: {{ $.Values.service.port }}
           {{- end }}
     {{- end }}
 {{- end }}

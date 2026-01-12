@@ -1,0 +1,239 @@
+# Auth0 with Azure Blob Storage Configuration
+# Production deployment using Auth0 for identity and Azure Blob for file storage
+#
+# Usage:
+#   helm install governance-service ./charts/governance-service -f examples/values-auth0-azure.yaml
+#
+# Prerequisites:
+#   - Azure Blob Storage account and container created
+#   - Auth0 tenant with application configured
+#   - PostgreSQL database accessible
+#   - Required Kubernetes secrets created (see below)
+#
+# This example demonstrates:
+#   - Auth0 as identity provider
+#   - Azure Blob Storage for governance artifacts
+#   - AI features enabled with Anthropic
+#   - Production-ready HA configuration
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+config:
+  # Application environment
+  appEnv: "production"
+  logLevel: "info"
+
+  # HTTP server settings
+  server:
+    readTimeout: 30
+    writeTimeout: 30
+    idleTimeout: 120
+
+  # Storage configuration - Azure Blob
+  storageProvider: "azure_blob"
+  azureStorageContainerName: "governance-artifacts"
+  azureUseManagedIdentity: false # Set true if using Azure Managed Identity
+
+  # Auth0 configuration
+  auth0Domain: "your-tenant.auth0.com"
+
+  # Integration URLs (usually auto-generated in umbrella chart)
+  integrityServiceUrl: "http://governance-platform-integrity-service:3050"
+  authServiceUrl: "http://governance-platform-auth-service:8080"
+
+  # Indicator configuration
+  indicators:
+    configPath: "/app/configs/indicators"
+    reloadInterval: 300
+    osGuardrailsEnabled: false
+
+  # Service account for worker authentication
+  serviceAccount:
+    enabled: true
+    serviceName: "governance-worker"
+
+  # AI features configuration
+  ai:
+    enabled: true
+    provider: "anthropic"
+    model: "claude-3-7-sonnet-latest"
+    temperature: 0.7
+    maxTokens: 4000
+    timeoutSeconds: 60
+    retryAttempts: 3
+    useV2: true
+
+# Auth0 sync settings
+auth0SyncAtStartup: true
+auth0SyncPageSize: 100
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+externalDatabase:
+  host: "your-azure-postgres.postgres.database.azure.com"
+  port: 5432
+  database: "governance"
+  user: "governance_admin"
+  sslmode: "require"
+
+  passwordSecretKeyRef:
+    name: "platform-database"
+    key: "password"
+
+migrations:
+  runAtStartup: true
+  path: "/app/migrations"
+
+# =============================================================================
+# SECRET CONFIGURATION
+# =============================================================================
+#
+# Required secrets (create before deployment):
+#
+# kubectl create secret generic platform-database \
+#   --from-literal=password=YOUR_DB_PASSWORD
+#
+# kubectl create secret generic platform-auth0 \
+#   --from-literal=client-id=YOUR_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_CLIENT_SECRET
+#
+# kubectl create secret generic platform-azure-storage \
+#   --from-literal=account-name=YOUR_STORAGE_ACCOUNT \
+#   --from-literal=account-key=YOUR_STORAGE_KEY \
+#   --from-literal=connection-string=YOUR_CONNECTION_STRING
+#
+# kubectl create secret generic platform-encryption \
+#   --from-literal=key=$(openssl rand -base64 32)
+#
+# kubectl create secret generic platform-governance-worker \
+#   --from-literal=encryption-key=$(openssl rand -base64 32) \
+#   --from-literal=client-id=WORKER_CLIENT_ID \
+#   --from-literal=client-secret=WORKER_CLIENT_SECRET
+#
+# kubectl create secret generic platform-ai \
+#   --from-literal=api-key=YOUR_ANTHROPIC_API_KEY
+
+secrets:
+  encryption:
+    name: "platform-encryption"
+    key: "key"
+
+  auth0:
+    name: "platform-auth0"
+    clientIdKey: "client-id"
+    clientSecretKey: "client-secret"
+
+  storage:
+    azure_blob:
+      name: "platform-azure-storage"
+      accountNameKey: "account-name"
+      accountKeyKey: "account-key"
+      connectionStringKey: "connection-string"
+
+  worker:
+    name: "platform-governance-worker"
+    encryptionKeyKey: "encryption-key"
+    clientIdKey: "client-id"
+    clientSecretKey: "client-secret"
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+replicaCount: 3
+
+image:
+  repository: ghcr.io/eqtylab/governance-service
+  pullPolicy: Always
+  tag: ""
+
+imagePullSecrets:
+  - name: "platform-image-pull-secret"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations:
+    # For Azure Workload Identity
+    # azure.workload.identity/client-id: "YOUR-CLIENT-ID"
+  name: ""
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# =============================================================================
+# INGRESS CONFIGURATION
+# =============================================================================
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+  hosts:
+    - host: governance.your-domain.com
+      paths:
+        - path: "/governanceService(/|$)(.*)"
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: governance-service-tls
+      hosts:
+        - governance.your-domain.com
+
+# =============================================================================
+# HIGH AVAILABILITY
+# =============================================================================
+
+podDisruptionBudget:
+  minAvailable: 2
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - governance-service
+          topologyKey: kubernetes.io/hostname
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000

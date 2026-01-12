@@ -1,38 +1,53 @@
-# Updated values for auth-service with all new configurations
+# Default values for auth-service.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# -- Enable the Auth Service
+enabled: true
+
+# -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
 replicaCount: 2
 
 image:
-  repository: eqtylab/auth-service
+  # -- Container image repository
+  repository: ghcr.io/eqtylab/auth-service
+  # -- Image pull policy (IfNotPresent | Always | Never)
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
+  # -- Image tag override (defaults to chart appVersion if empty)
   tag: ""
 
+# -- Image pull secrets for private registries
+# @default -- Populated from global.secrets.imageRegistry.secretName in templates
 imagePullSecrets: []
+
+# -- Override the chart name used for resource naming
 nameOverride: ""
+# -- Override the full name used for resource naming
 fullnameOverride: ""
 
 serviceAccount:
-  # Specifies whether a service account should be created
+  # -- Create a ServiceAccount for the deployment
   create: true
-  # Automatically mount a ServiceAccount's API credentials?
+  # -- Automatically mount a ServiceAccount's API credentials
   automount: true
-  # Annotations to add to the service account
+  # -- Annotations to add to the ServiceAccount
   annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
+  # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
   name: ""
 
+# -- Additional annotations to add to pods
 podAnnotations: {}
+
+# -- Additional labels to add to pods
 podLabels: {}
 
+# -- Security context applied at the pod level
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 1000
   fsGroup: 1000
 
+# -- Security context applied at the container level
 securityContext:
   allowPrivilegeEscalation: false
   capabilities:
@@ -43,28 +58,36 @@ securityContext:
   runAsUser: 1000
 
 service:
+  # -- Create a Kubernetes Service
+  enabled: true
+  # -- Service type (ClusterIP | NodePort | LoadBalancer)
   type: ClusterIP
+  # -- Service port
   port: 8080
-  targetPort: http
-  annotations: {}
 
 ingress:
+  # -- Create an Ingress resource for external access
   enabled: false
+  # -- IngressClass name (e.g., "nginx", "traefik")
   className: ""
+  # -- Additional annotations for the Ingress resource
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
     # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # nginx.ingress.kubernetes.io/rewrite-target: /$2
+    # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+  # -- Ingress host configuration
   hosts:
-    - host: auth.local
+    - host: auth.example.com
       paths:
-        - path: /
+        - path: "/authService(/|$)(.*)"
           pathType: ImplementationSpecific
+  # -- TLS configuration
   tls: []
-  #  - secretName: auth-tls
-  #    hosts:
-  #      - auth.local
+    # - secretName: auth-service-tls
+    #   hosts:
+    #     - auth.example.com
 
+# -- Resource requests and limits
 resources:
   limits:
     cpu: 500m
@@ -73,30 +96,33 @@ resources:
     cpu: 100m
     memory: 128Mi
 
+# Horizontal Pod Autoscaler - automatically scales pods based on resource usage
 autoscaling:
+  # -- Enable Horizontal Pod Autoscaler
   enabled: false
+  # -- Minimum number of replicas
   minReplicas: 2
+  # -- Maximum number of replicas
   maxReplicas: 10
+  # -- Target CPU utilization percentage
   targetCPUUtilizationPercentage: 80
+  # -- Target memory utilization percentage
   targetMemoryUtilizationPercentage: 80
 
-# Additional volumes on the output Deployment definition.
-volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
+# Pod Disruption Budget - maintains availability during cluster disruptions
+podDisruptionBudget:
+  # -- Enable Pod Disruption Budget
+  enabled: true
+  # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+  minAvailable: 1
 
-# Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
-
+# -- Node labels for pod assignment
 nodeSelector: {}
 
+# -- Tolerations for pod assignment
 tolerations: []
 
+# -- Affinity rules for pod assignment
 affinity:
   podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
@@ -110,294 +136,362 @@ affinity:
                   - auth-service
           topologyKey: kubernetes.io/hostname
 
-# Auth Service Configuration
+# -- Startup probe configuration
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  failureThreshold: 30
+  periodSeconds: 10
+
+# -- Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# -- Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+# -- Additional volumes on the Deployment
+volumes: []
+
+# -- Additional volumeMounts on the Deployment
+volumeMounts: []
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+externalDatabase:
+  # -- Database host
+  # @default -- Populated from global.postgresql.host or generated as "{Release.Name}-postgresql" in templates
+  host: ""
+  # -- Database port
+  # @default -- Populated from global.postgresql.port in templates
+  port: ""
+  # -- Database name
+  # @default -- Populated from global.postgresql.database in templates
+  name: ""
+  # -- Database user
+  # @default -- Populated from global.postgresql.username in templates
+  user: ""
+  # -- Database password (leave empty to use secret reference)
+  password: ""
+  # -- SSL mode (disable | require | verify-ca | verify-full)
+  sslMode: "disable"
+  # -- Maximum open connections
+  maxOpenConns: 25
+  # -- Maximum idle connections
+  maxIdleConns: 5
+  # -- Connection maximum lifetime
+  connMaxLifetime: "5m"
+
+  # Database password secret reference
+  passwordSecretKeyRef:
+    # -- Secret name containing database credentials
+    # @default -- Populated from global.secrets.database.secretName in templates
+    name: ""
+    # -- Secret key name for database password
+    # @default -- Populated from global.secrets.database.keys.password in templates
+    key: ""
+
+# Database migration configuration
+migrations:
+  # -- Run database migrations automatically at startup
+  runAtStartup: true
+  # -- Path to migration files within the container
+  path: "/internal/database/migrations"
+
+# =============================================================================
+# SECRET CONFIGURATION
+# =============================================================================
+
+secrets:
+  # Auth provider credentials (Auth0 or Keycloak)
+  auth:
+    # -- Secret name containing auth provider credentials
+    # @default -- Populated from global.secrets.auth.auth0.secretName or global.secrets.auth.keycloak.secretName in templates
+    name: ""
+    # Secret keys
+    keys:
+      # -- Key for client ID
+      # @default -- Populated from global.secrets.auth.auth0.keys.clientId or "client-id" in templates
+      clientId: "client-id"
+      # -- Key for client secret
+      # @default -- Populated from global.secrets.auth.auth0.keys.clientSecret or "client-secret" in templates
+      clientSecret: "client-secret"
+      # -- Key for management client ID (Auth0 only, separate M2M app)
+      # @default -- Populated from global.secrets.auth.auth0.keys.managementClientId or "mgmt-client-id" in templates
+      managementClientId: "mgmt-client-id"
+      # -- Key for management client secret (Auth0 only, separate M2M app)
+      # @default -- Populated from global.secrets.auth.auth0.keys.managementClientSecret or "mgmt-client-secret" in templates
+      managementClientSecret: "mgmt-client-secret"
+
+  # Security secrets (API and JWT secrets)
+  security:
+    # -- Secret name containing security credentials
+    # @default -- Populated from global.secrets.authService.secretName in templates
+    name: ""
+    # Secret keys
+    keys:
+      # -- Key for API secret
+      apiSecret: "api-secret"
+      # -- Key for JWT secret
+      jwtSecret: "jwt-secret"
+
+  # Session secret reference
+  session:
+    # -- Secret name containing session secret
+    # @default -- Populated from global.secrets.authService.secretName in templates
+    name: ""
+    # Secret keys
+    keys:
+      # -- Key for session secret
+      secret: "session-secret"
+
+  # Azure Key Vault credentials (for DID key signing)
+  keyVault:
+    # -- Secret name containing Key Vault credentials
+    # @default -- Populated from global.secrets.secretManager.azure_key_vault.secretName in templates
+    name: ""
+    # Secret keys
+    keys:
+      # -- Key for Azure client ID
+      clientId: "client-id"
+      # -- Key for Azure client secret
+      clientSecret: "client-secret"
+      # -- Key for Azure tenant ID
+      tenantId: "tenant-id"
+      # -- Key for vault URL
+      vaultUrl: "vault-url"
+
+  # Governance worker credentials
+  worker:
+    # -- Secret name containing worker credentials
+    # @default -- Populated from global.secrets.governanceWorker.secretName in templates
+    name: ""
+    # Secret keys
+    keys:
+      # -- Key for encryption key
+      encryptionKey: "encryption-key"
+      # -- Key for client ID
+      clientId: "client-id"
+      # -- Key for client secret
+      clientSecret: "client-secret"
+
+  # Token exchange private key (for Keycloak token exchange)
+  tokenExchange:
+    # -- Secret name containing private key
+    # @default -- Populated from global.secrets.authService.secretName in templates
+    name: ""
+    # Secret keys
+    keys:
+      # -- Key for private key
+      privateKey: "private-key"
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
 config:
   # Server configuration
   server:
+    # -- Server port
     port: 8080
+    # -- Server host
     host: "0.0.0.0"
-    readTimeout: 30s
-    writeTimeout: 30s
-    idleTimeout: 120s
-    environment: "production" # development, staging, production
-    swaggerEnabled: false # Enable swagger in non-prod environments
+    # -- Read timeout
+    readTimeout: "30s"
+    # -- Write timeout
+    writeTimeout: "30s"
+    # -- Idle timeout
+    idleTimeout: "120s"
+    # -- Environment (development | staging | production)
+    # @default -- Populated from global.environmentType in templates
+    environment: ""
+    # -- Enable Swagger documentation
+    swaggerEnabled: false
 
   # Logging configuration
   logging:
-    level: info # debug, info, warn, error
-    format: json # json, text
+    # -- Log level (debug | info | warn | error)
+    level: "info"
+    # -- Log format (json | text)
+    format: "json"
+    # -- Paths to skip in access logs
     skipPaths: "/health,/health/live,/health/ready,/metrics"
-
-  # Security configuration
-  security:
-    # API Secret for Auth0 Actions / IDP webhooks
-    apiSecret: "" # Required - generate a strong secret
-    # JWT Secret for session tokens (if needed)
-    jwtSecret: "" # Optional - only if using local JWT generation
-    # Use existing secret
-    existingSecret: ""
-    existingSecretKeys:
-      apiSecret: "api-secret"
-      jwtSecret: "jwt-secret"
-
-  # Identity Provider Configuration
-  idp:
-    # Provider type: generic, keycloak, zitadel, auth0
-    provider: "auth0"
-
-    # Common OIDC settings (used by all providers)
-    issuer: "" # e.g., https://your-tenant.auth0.com/
-    clientId: ""
-    clientSecret: ""
-    redirectUri: "" # e.g., https://auth.yourdomain.com/callback
-    scopes: "openid,profile,email"
-
-    # Use existing secret for IDP credentials
-    existingSecret: ""
-    # Keys in the existing secret
-    existingSecretKeys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      managementClientId: "mgmt-client-id"
-      managementClientSecret: "mgmt-client-secret"
-
-    # Provider-specific configurations
-
-    # Generic OIDC provider settings
-    generic:
-      # Claim mappings
-      userIdClaim: "sub"
-      emailClaim: "email"
-      nameClaim: "name"
-      rolesClaim: "roles"
-      groupsClaim: "groups"
-      # Manual endpoint configuration (if auto-discovery fails)
-      authorizationEndpoint: ""
-      tokenEndpoint: ""
-      userinfoEndpoint: ""
-      jwksEndpoint: ""
-
-    # Keycloak-specific settings
-    keycloak:
-      realm: "master"
-      adminUrl: ""
-      # Admin credentials (not recommended for production)
-      adminUsername: ""
-      adminPassword: ""
-      # Service account (recommended)
-      serviceAccountClientId: ""
-      serviceAccountClientSecret: ""
-      # Feature flags
-      enableUserManagement: false
-      enableGroupSync: false
-
-    # Zitadel-specific settings
-    zitadel:
-      projectId: ""
-      organizationId: ""
-      apiEndpoint: ""
-      # Service account key (mounted as volume)
-      serviceKeyPath: "/secrets/zitadel-key.json"
-      enableWebhooks: false
-
-    # Auth0-specific settings
-    auth0:
-      domain: "" # e.g., your-tenant.auth0.com
-      # Management API settings
-      enableManagementAPI: true # Required for user/org management
-      managementClientId: "" # M2M application client ID
-      managementClientSecret: "" # M2M application client secret
-      managementAudience: "" # e.g., https://your-tenant.auth0.com/api/v2/
-      apiIdentifier: "" # Your API identifier in Auth0
-      # User creation settings
-      defaultConnection: "Username-Password-Authentication"
-      defaultRoles: "user" # Comma-separated list
-      sendInvitationEmail: true
-      # Custom domain (optional)
-      customDomain: ""
-      # Sync settings
-      syncAtStartup: false # Enable Auth0 organization sync at startup
-      syncPageSize: 100 # Page size for Auth0 API calls
-
-    # Advanced settings
-    httpTimeout: "30s"
-    skipIssuerVerification: false # DANGEROUS - only for development
-    skipClientIdCheck: false # DANGEROUS - only for development
-    insecureSkipVerify: false # DANGEROUS - only for development
-    cacheTTL: 3600
-    maxRetries: 3
-
-  # Database configuration
-  database:
-    host: "auth-service-postgresql"
-    port: 5432
-    name: "authservice"
-    user: "authservice"
-    password: "" # Will be auto-generated if using subchart
-    sslMode: "disable" # disable, require, verify-ca, verify-full
-    # Connection pool settings
-    maxOpenConns: 25
-    maxIdleConns: 5
-    connMaxLifetime: "5m"
-    # Migration settings
-    autoMigrate: true # Run migrations on startup
-    migrationsPath: "internal/database/migrations"
-    # Use existing secret for database credentials
-    existingSecret: ""
-    # Keys in the existing secret
-    existingSecretKeys:
-      password: "password"
-
-  # Integration with other services
-  integrations:
-    # Integrity Service URL (for DID key fallback)
-    integrityServiceUrl: "" # e.g., http://integrity-service:8080
-    # Governance Service callback URL
-    governanceServiceUrl: "" # e.g., http://governance-service:10001
-
-  # Key Vault configuration (for DID keys)
-  keyVault:
-    provider: "azure" # azure, hashicorp, local
-    # DID Key cache settings
-    cacheTTLMinutes: 15
-    azure:
-      vaultUrl: "" # e.g., https://your-vault.vault.azure.net/
-      tenantId: ""
-      clientId: ""
-      clientSecret: ""
-      # Use existing secret for Azure credentials
-      existingSecret: ""
-      existingSecretKeys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
-        tenantId: "tenant-id"
-    hashicorp:
-      address: "" # e.g., http://vault:8200
-      token: ""
-      # Use existing secret for Vault token
-      existingSecret: ""
-      existingSecretKeys:
-        token: "token"
-
-  # RBAC configuration
-  rbac:
-    # Cache settings for permission checks
-    cache:
-      enabled: true
-      ttl: 300s # 5 minutes
-      maxSize: 1000 # Maximum number of cached entries
 
   # CORS configuration
   cors:
-    enabled: false # Set to false by default for k8s (ingress handles CORS)
-    origins: "*" # Comma-separated list of allowed origins or "*" for all
+    # -- Enable CORS (usually handled by ingress in k8s)
+    enabled: false
+    # -- Allowed origins
+    origins: "*"
 
-  # Session configuration
-  session:
-    secret: "" # Session encryption secret
-    duration: "24h" # Session duration
-    # Use existing secret for session secret
-    existingSecret: ""
-    existingSecretKeys:
-      secret: "session-secret"
+  # Identity provider configuration
+  idp:
+    # -- Identity provider type (auth0 | keycloak)
+    # @default -- Populated from global.secrets.auth.provider in templates
+    provider: ""
+    # -- OIDC issuer URL
+    # @default -- Generated from provider domain in templates
+    issuer: ""
+    # -- Skip issuer verification (DANGEROUS - only for development)
+    skipIssuerVerification: false
 
-  # Service Account configuration
+    # Auth0 configuration (only used when provider is "auth0")
+    auth0:
+      # -- Auth0 tenant domain
+      # @default -- `""` (**must be set** when provider is auth0)
+      domain: ""
+      # -- Enable Auth0 Management API
+      enableManagementAPI: true
+      # -- Management API audience
+      # @default -- `""` (**must be set** when provider is auth0)
+      managementAudience: ""
+      # -- API identifier
+      # @default -- `""` (**must be set** when provider is auth0)
+      apiIdentifier: ""
+      # -- Default connection for user creation
+      defaultConnection: "Username-Password-Authentication"
+      # -- Default roles for new users
+      defaultRoles: ["user"]
+      # -- Send invitation email on user creation
+      sendInvitationEmail: true
+      # -- Sync organizations at startup
+      syncAtStartup: false
+      # -- Page size for Auth0 API calls
+      syncPageSize: 100
+
+    # Keycloak configuration (only used when provider is "keycloak")
+    keycloak:
+      # -- Keycloak realm
+      # @default -- Populated from global.secrets.auth.keycloak.values.realm in templates
+      realm: ""
+      # -- Keycloak admin URL (for admin operations)
+      adminUrl: ""
+      # -- Enable user management via Keycloak admin API
+      enableUserManagement: false
+      # -- Enable group sync with Keycloak
+      enableGroupSync: false
+
+  # Key Vault configuration
+  keyVault:
+    # -- Key Vault provider (azure | hashicorp | local)
+    # @default -- Populated from global.secrets.secretManager.provider in templates
+    provider: ""
+    # -- DID Key cache TTL in minutes
+    cacheTTLMinutes: 15
+
+    # Azure Key Vault configuration (only used when provider is "azure")
+    azure:
+      # -- Azure Key Vault URL
+      # @default -- Populated from global.secrets.secretManager.azure_key_vault.values.vaultUrl in templates
+      vaultUrl: ""
+      # -- Azure tenant ID
+      # @default -- Populated from global.secrets.secretManager.azure_key_vault.values.tenantId in templates
+      tenantId: ""
+
+    # HashiCorp Vault configuration (only used when provider is "hashicorp")
+    hashicorp:
+      # -- Vault address
+      address: ""
+
+  # Service integration configuration
+  integrations:
+    # -- Integrity Service URL
+    # @default -- Generated as "http://{Release.Name}-integrity-service:3050" in templates
+    integrityServiceUrl: ""
+    # -- Governance Service URL
+    # @default -- Generated as "http://{Release.Name}-governance-service:10001" in templates
+    governanceServiceUrl: ""
+
+  # Service account configuration
   serviceAccounts:
-    # Auto-create default service accounts on startup
+    # -- Auto-create default service accounts on startup
     autoCreate: true
-    # Default governance-worker service account
+
+    # Governance Worker service account configuration
     governanceWorker:
+      # -- Enable governance worker service account
       enabled: true
+      # -- Service account name
       name: "governance-worker"
+      # -- Service account description
       description: "Automated governance service worker for processing indicator evaluations"
-      # Platform-wide access (no organization binding)
-      organizationId: "" # Empty for platform-wide access
+      # -- Scopes for service account
       scopes:
         - "governance:declarations:create"
         - "integrity:statements:create"
-      # Auth0 M2M Application credentials for governance-worker
-      # These are required for the service account to authenticate
-      auth0ClientId: "" # AUTH0_GOVERNANCE_WORKER_CLIENT_ID
-      auth0ClientSecret: "" # AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
-    # Encryption key for service account secrets
-    encryptionKey: "" # Base64 encoded 32-byte key
-    # Use existing secret for encryption key
-    existingSecret: ""
-    # kubectl create secret generic governance-worker-credentials --from-literal=key="" --from-literal=governance-worker-client-id="" --from-literal=governance-worker-client-secret="" -n <namespace>
-    existingSecretKeys:
-      encryptionKey: "encryption-key"
-      governanceWorkerClientId: "governance-worker-client-id"
-      governanceWorkerClientSecret: "governance-worker-client-secret"
+      # -- Auth0 API audience for worker
+      # @default -- `""` (must be set explicitly)
+      audience: ""
 
-  # Rate limiting
-  rateLimit:
+  # Token exchange configuration
+  tokenExchange:
+    # -- Enable token exchange (for Keycloak integration)
     enabled: false
+    # -- Key identifier for signing key
+    keyId: "auth-service-prod-001"
+
+  # RBAC configuration
+  rbac:
+    cache:
+      # -- Enable RBAC permission cache
+      enabled: true
+      # -- Cache TTL
+      ttl: "300s"
+      # -- Maximum cache entries
+      maxSize: 1000
+
+  # Rate limiting configuration
+  rateLimit:
+    # -- Enable rate limiting
+    enabled: false
+    # -- Requests per minute
     requestsPerMinute: 60
 
-# PostgreSQL subchart configuration
-postgresql:
-  enabled: false
-  auth:
-    username: authservice
-    password: authservice # Change in production!
-    database: authservice
-  primary:
-    persistence:
-      enabled: true
-      size: 10Gi
-      storageClass: "" # Use default storage class
-  metrics:
-    enabled: false
-    serviceMonitor:
-      enabled: false
+# =============================================================================
+# METRICS CONFIGURATION
+# =============================================================================
 
-# Redis subchart configuration (for caching/sessions)
-redis:
-  enabled: false # Enable if using Redis for caching
-  auth:
-    enabled: true
-    password: "" # Will be auto-generated
-  master:
-    persistence:
-      enabled: false # Enable for production
-      size: 8Gi
-  replica:
-    replicaCount: 1
-    persistence:
-      enabled: false
-
-# Health check configuration
-healthCheck:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
-  readiness:
-    enabled: true
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 3
-    failureThreshold: 3
-    successThreshold: 1
-
-# Metrics configuration
 metrics:
+  # -- Enable Prometheus metrics
   enabled: false
+  # -- Metrics port
   port: 9090
+  # -- Metrics path
   path: /metrics
   serviceMonitor:
+    # -- Enable ServiceMonitor for Prometheus Operator
     enabled: false
-    interval: 30s
-    scrapeTimeout: 10s
+    # -- Scrape interval
+    interval: "30s"
+    # -- Scrape timeout
+    scrapeTimeout: "10s"
+    # -- Additional labels for ServiceMonitor
     labels: {}
-    # Add labels for Prometheus Operator to discover
-    # release: prometheus
 
-# Network policies
+# =============================================================================
+# NETWORK POLICY CONFIGURATION
+# =============================================================================
+
 networkPolicy:
+  # -- Enable NetworkPolicy
   enabled: false
   ingress:
     - from:
@@ -441,52 +535,22 @@ networkPolicy:
               app.kubernetes.io/name: integrity-service
       ports:
         - protocol: TCP
-          port: 8080
+          port: 3050
 
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-  # maxUnavailable: 1
+# =============================================================================
+# MIGRATION JOB CONFIGURATION
+# =============================================================================
 
-# Extra environment variables
-extraEnvVars: []
-# - name: EXTRA_VAR
-#   value: "extra-value"
-
-# Extra environment variables from secrets or configmaps
-extraEnvVarsSecret: ""
-extraEnvVarsConfigMap: ""
-
-# Extra containers to add to the pod
-extraContainers: []
-
-# Extra init containers to add to the pod
-extraInitContainers: []
-# Example: Run migrations as init container (when autoMigrate is false)
-# - name: run-migrations
-#   image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-#   command: ["/app/migrate"]
-#   env:
-#     - name: DATABASE_URL
-#       value: "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)"
-#     - name: DATABASE_MIGRATIONS_PATH
-#       value: "{{ .Values.config.database.migrationsPath }}"
-#   envFrom:
-#     - secretRef:
-#         name: "{{ include \"auth-service.fullname\" . }}-db"
-
-# Extra manifests to deploy
-extraManifests: []
-
-# Migration Job configuration
 migration:
-  enabled: false # Enable to run migrations as a Helm hook job
-  # Job configuration
+  # -- Enable migration as a Helm hook job
+  enabled: false
+  # -- Job backoff limit
   backoffLimit: 3
+  # -- Job active deadline in seconds
   activeDeadlineSeconds: 300
+  # -- TTL for completed jobs
   ttlSecondsAfterFinished: 300
-  # Resources for migration job
+  # -- Resources for migration job
   resources:
     limits:
       cpu: 200m
@@ -495,11 +559,26 @@ migration:
       cpu: 100m
       memory: 128Mi
 
-# Service-specific environment overrides
-# These are useful for different environments (dev, staging, prod)
-envOverrides: {}
-  # Example overrides for staging:
-  # ENVIRONMENT: "staging"
-  # LOG_LEVEL: "debug"
-  # SWAGGER_ENABLED: "true"
-  # IDP_SKIP_ISSUER_VERIFICATION: "true"  # Only for non-prod!
+# =============================================================================
+# EXTRA CONFIGURATION
+# =============================================================================
+
+# -- Extra environment variables
+extraEnvVars: []
+  # - name: EXTRA_VAR
+  #   value: "extra-value"
+
+# -- Extra environment variables from Secret
+extraEnvVarsSecret: ""
+
+# -- Extra environment variables from ConfigMap
+extraEnvVarsConfigMap: ""
+
+# -- Extra containers to add to the pod
+extraContainers: []
+
+# -- Extra init containers to add to the pod
+extraInitContainers: []
+
+# -- Extra manifests to deploy
+extraManifests: []

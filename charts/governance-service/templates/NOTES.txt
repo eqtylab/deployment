@@ -1,47 +1,74 @@
-🚀 Governance Platform Deployed Successfully!
+{{- if .Values.enabled }}
+Governance Service has been deployed!
 
-This chart includes two services:
+Service URL (internal): http://{{ include "governance-service.fullname" . }}:{{ .Values.service.port }}
 
-📡 API Service ({{ include "governance-service.fullname" . }})
-   - Provides REST API endpoints for governance operations
-   - Replicas: {{ .Values.api.replicaCount }}
-   - Image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
-
-⚙️  Worker Service ({{ include "governance-worker.fullname" . }})
-   - Processes background jobs and scheduled tasks
-   - Replicas: {{ .Values.worker.replicaCount }}
-   - Image: {{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag | default .Chart.AppVersion }}
-
-1. Get the API service URL by running these commands:
 {{- if .Values.ingress.enabled }}
-{{- range $host := .Values.ingress.hosts }}
-  {{- range .paths }}
-  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
-  {{- end }}
+{{- range .Values.ingress.hosts }}
+External URL: https://{{ .host }}/governanceService
 {{- end }}
-{{- else if contains "NodePort" .Values.service.type }}
-  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "governance-service.fullname" . }})
-  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
-  echo http://$NODE_IP:$NODE_PORT
-{{- else if contains "LoadBalancer" .Values.service.type }}
-     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "governance-service.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "governance-service.fullname" . }} --template "{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}")
-  echo http://$SERVICE_IP:{{ .Values.service.port }}
-{{- else if contains "ClusterIP" .Values.service.type }}
-  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "governance-service.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
-  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-  echo "Visit http://127.0.0.1:8080 to use your application"
-  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- else }}
+
+To access the service, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "governance-service.fullname" . }} 10001:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:10001/health
 {{- end }}
 
-2. Monitor the services:
+Configuration:
+  Environment: {{ .Values.config.appEnv | default ((.Values.global).environmentType | default "not set") }}
+  Storage Provider: {{ .Values.config.storageProvider | default "not set" }}
+  Log Level: {{ .Values.config.logLevel }}
 
-   # Check API service status
-   kubectl get pods -l app.kubernetes.io/name={{ include "governance-service.name" . }} -n {{ .Release.Namespace }}
+{{- if eq .Values.config.storageProvider "azure" }}
+  Azure Container: {{ .Values.config.azureStorageContainerName | default "not set" }}
+{{- else if eq .Values.config.storageProvider "aws_s3" }}
+  AWS Region: {{ .Values.config.awsS3Region | default "not set" }}
+  AWS Bucket: {{ .Values.config.awsS3BucketName | default "not set" }}
+{{- else if eq .Values.config.storageProvider "gcs" }}
+  GCS Bucket: {{ .Values.config.gcsBucketName | default "not set" }}
+{{- end }}
 
-   # Check worker service status
-   kubectl get pods -l app.kubernetes.io/name={{ include "governance-worker.name" . }} -n {{ .Release.Namespace }}
+Database:
+  Host: {{ .Values.externalDatabase.host | default (printf "%s-postgresql" .Release.Name) }}
+  Database: {{ .Values.externalDatabase.database }}
+  Migrations: {{ if .Values.migrations.runAtStartup }}enabled{{ else }}disabled{{ end }}
 
-   # View worker logs
-   kubectl logs -l app.kubernetes.io/name={{ include "governance-worker.name" . }} -n {{ .Release.Namespace }} --tail=50
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "governance-service.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "governance-service.fullname" . }} -n {{ .Release.Namespace }}
+
+To check health:
+  kubectl exec -it deployment/{{ include "governance-service.fullname" . }} -n {{ .Release.Namespace }} -- curl localhost:{{ .Values.service.port }}{{ .Values.config.path }}
+
+{{- if not .Values.config.storageProvider }}
+
+⚠️  WARNING: Storage provider is not configured!
+Please set: governance-service.config.storageProvider to "gcs", "azure", or "aws_s3"
+{{- end }}
+
+{{- if eq .Values.config.storageProvider "azure" }}
+{{- if not .Values.config.azureStorageContainerName }}
+
+⚠️  WARNING: Azure storage container is not configured!
+Please set: governance-service.config.azureStorageContainerName
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.config.storageProvider "aws_s3" }}
+{{- if or (not .Values.config.awsS3Region) (not .Values.config.awsS3BucketName) }}
+
+⚠️  WARNING: AWS S3 configuration incomplete!
+Please set: governance-service.config.awsS3Region and config.awsS3BucketName
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.config.storageProvider "gcs" }}
+{{- if not .Values.config.gcsBucketName }}
+
+⚠️  WARNING: GCS bucket is not configured!
+Please set: governance-service.config.gcsBucketName
+{{- end }}
+{{- end }}
+{{- end }}

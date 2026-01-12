@@ -1,37 +1,17 @@
-{{- if .Values.service.enabled -}}
-{{- $fullName := include "fullname" . -}}
-{{- $servicePort := .Values.service.port -}}
-{{- $serviceTargetPort := .Values.service.targetPort -}}
-{{- $service := .Values.service -}}
+{{- if and .Values.enabled .Values.service.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $fullName }}
-{{- with $service.annotations }}
-  annotations:
-{{ toYaml . | indent 4 }}
-{{- end }}
+  name: {{ include "integrity-service.fullname" . }}
   labels:
-    app: {{ template "name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    {{- include "integrity-service.labels" . | nindent 4 }}
 spec:
-  type: {{ $service.type }}
-  {{- if $service.loadBalancer.enabled }}
-  loadBalancerIP: {{ $service.loadBalancer.ip }}
-  {{- end }}
+  type: {{ .Values.service.type }}
   ports:
-    - port: {{ $servicePort }}
-      targetPort: {{ $serviceTargetPort }}
+    - port: {{ .Values.service.port }}
+      targetPort: http
       protocol: TCP
       name: http
   selector:
-  {{- if $service.selector }}
-  {{- range $key, $value := $service.selector }}
-    {{ $key }}: {{ $value }}
-  {{- end }}
-  {{- else}}
-    app: {{ template "name" . }}
-  {{- end }}
+    {{- include "integrity-service.selectorLabels" . | nindent 4 }}
 {{- end }}
