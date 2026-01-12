@@ -1977,9 +1977,9 @@ postgresql:
   # Set to false to use an external PostgreSQL instance
   enabled: true
 
-  # -- Global PostgreSQL Configuration
+  # -- Global Storage Class
   # @default -- See values below
-  # Configuration passed to the Bitnami PostgreSQL chart
+  # Storage class configuration for the Bitnami PostgreSQL chart
   global:
     # -- Storage Class
     # @default -- `""` (uses cluster default)
@@ -1996,6 +1996,12 @@ postgresql:
         # @default -- `postgres`
         # PostgreSQL admin username
         username: "postgres"
+
+        # -- Postgres Password
+        # @default -- `"placeholder"` (overridden by existingSecret at runtime)
+        # This placeholder satisfies Bitnami chart validation during upgrades.
+        # The actual password is read from existingSecret at runtime.
+        postgresPassword: "placeholder-overridden-by-secret"
 
         # -- Existing Secret
         # @default -- `platform-database`

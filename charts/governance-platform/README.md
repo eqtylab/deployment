@@ -552,14 +552,19 @@ Authentication and authorization service settings. See [auth-service/README.md](
 
 Bitnami PostgreSQL chart configuration:
 
-| Key                                              | Type   | Default               | Description                 |
-| ------------------------------------------------ | ------ | --------------------- | --------------------------- |
-| postgresql.enabled                               | bool   | `true`                | Enable PostgreSQL database  |
-| postgresql.global.postgresql.auth.database       | string | `"governance"`        | Database name               |
-| postgresql.global.postgresql.auth.username       | string | `"postgres"`          | Database username           |
-| postgresql.global.postgresql.auth.existingSecret | string | `"platform-database"` | Secret name for credentials |
-| postgresql.primary.persistence.enabled           | bool   | `true`                | Enable persistent storage   |
-| postgresql.primary.persistence.size              | string | `"10Gi"`              | Storage size                |
+| Key                                                           | Type   | Default                              | Description                                       |
+| ------------------------------------------------------------- | ------ | ------------------------------------ | ------------------------------------------------- |
+| postgresql.enabled                                            | bool   | `true`                               | Enable PostgreSQL database                        |
+| postgresql.global.postgresql.auth.database                    | string | `"governance"`                       | Database name                                     |
+| postgresql.global.postgresql.auth.username                    | string | `"postgres"`                         | Database username                                 |
+| postgresql.global.postgresql.auth.postgresPassword            | string | `"placeholder-overridden-by-secret"` | Placeholder for validation (overridden by secret) |
+| postgresql.global.postgresql.auth.existingSecret              | string | `"platform-database"`                | Secret name for credentials                       |
+| postgresql.global.postgresql.auth.secretKeys.adminPasswordKey | string | `"password"`                         | Key for admin password in secret                  |
+| postgresql.global.postgresql.auth.secretKeys.userPasswordKey  | string | `"password"`                         | Key for user password in secret                   |
+| postgresql.primary.persistence.enabled                        | bool   | `true`                               | Enable persistent storage                         |
+| postgresql.primary.persistence.size                           | string | `"10Gi"`                             | Storage size                                      |
+
+> **Note:** The `postgresPassword` is a placeholder that satisfies Bitnami chart validation during upgrades. The actual password is read from `existingSecret` at runtime. The secret is created via `global.secrets.database` when `global.secrets.create: true`.
 
 ## Configuration Inheritance
 
