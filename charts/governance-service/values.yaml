@@ -292,30 +292,6 @@ secrets:
     # @default -- Populated from global.secrets.governanceWorker.keys.clientSecret in templates
     clientSecretKey: ""
 
-# --- Keycloak Integration Configuration ---
-# Configure these settings when using Keycloak as the identity provider
-# When enabled, Auth0 configuration is ignored
-keycloakSecretKeyRef:
-  enabled: false # Set to true to use Keycloak instead of Auth0
-  existingSecret: "keycloak-worker-config"
-  existingSecretKeys:
-    clientId: "KEYCLOAK_CLIENT_ID"
-    realm: "KEYCLOAK_REALM"
-    url: "KEYCLOAK_URL"
-  existingClientSecretKeyRef:
-    name: "keycloak-worker-client" # Secret name (e.g., "keycloak-worker-client")
-    clientSecretKey: "client-secret" # Key for Keycloak client secret
-
-# Azure Storage Secret References
-# Reference to Kubernetes secret containing Azure storage credentials
-# When using the governance-platform umbrella chart, these values are typically
-# provided through the global blob storage secret configuration
-azureStorageSecretKeyRef:
-  name: "" # Secret name (e.g., "azure-storage-secret")
-  accountNameKey: "" # Key for storage account name
-  accountKeyKey: "" # Key for storage account key
-  connectionStringKey: "" # Key for connection string
-
 # =============================================================================
 # APPLICATION CONFIGURATION
 # =============================================================================

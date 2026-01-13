@@ -1441,20 +1441,6 @@ governance-studio:
     # -- Service port
     port: 80
 
-    # Key Vault configuration (for DID keys)
-    keyVault:
-      provider: "azure" # azure, hashicorp, local
-      azure:
-        vaultUrl: "https://example-kv.vault.azure.net/"
-        tenantId: "example-tenant-id"
-        clientId: "" # Will use secret
-        clientSecret: "" # Will use secret
-        # Use existing secret for Azure credentials
-        existingSecret: "platform-encryption"
-        existingSecretKeys:
-          clientId: "azure-key-vault-client-id"
-          clientSecret: "azure-key-vault-client-secret"
-
   ingress:
     # -- Create an Ingress resource for external access
     enabled: false
@@ -1626,33 +1612,6 @@ governance-studio:
       primaryColor: "#0f172a"
       # -- Company name for branding
       companyName: "EQTY Lab"
-
-  postgresql:
-    enabled: false # Using existing PostgreSQL in cluster
-
-  healthCheck:
-    liveness:
-      enabled: true
-      initialDelaySeconds: 30
-      periodSeconds: 10
-    readiness:
-      enabled: true
-      initialDelaySeconds: 10
-      periodSeconds: 5
-
-  metrics:
-    enabled: false
-    port: 9090
-    path: /metrics
-
-  extraEnvVars:
-    - name: API_SECRET
-      valueFrom:
-        secretKeyRef:
-          name: auth-service-api-secret
-          key: api-secret
-    - name: SWAGGER_BASE_PATH
-      value: "/auth"
 
 # =============================================================================
 # Integrity Service

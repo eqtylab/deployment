@@ -11,6 +11,7 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 | [governance-service](charts/governance-service/)   | Subchart | Go-based backend API and workflow engine              |
 | [integrity-service](charts/integrity-service/)     | Subchart | Rust-based verifiable credentials and lineage service |
 | [auth-service](charts/auth-service/)               | Subchart | Go-based authentication and authorization service     |
+| [keycloak-bootstrap](charts/keycloak-bootstrap/)   | Utility  | Keycloak realm and client configuration job           |
 
 ## Architecture
 
@@ -25,7 +26,8 @@ charts/
 ├── governance-studio/       # Frontend subchart
 ├── governance-service/      # Backend API subchart
 ├── integrity-service/       # Credentials/lineage subchart
-└── auth-service/            # Authentication subchart
+├── auth-service/            # Authentication subchart
+└── keycloak-bootstrap/      # Keycloak configuration utility
 ```
 
 **Recommended approach**: Deploy using the `governance-platform` umbrella chart. This provides:
@@ -246,6 +248,7 @@ The umbrella chart (`governance-platform`) version is incremented when:
 | [governance-service/README.md](charts/governance-service/README.md)   | Backend API configuration            |
 | [integrity-service/README.md](charts/integrity-service/README.md)     | Credentials service configuration    |
 | [auth-service/README.md](charts/auth-service/README.md)               | Authentication service configuration |
+| [keycloak-bootstrap/README.md](charts/keycloak-bootstrap/README.md)   | Keycloak realm/client configuration  |
 
 ## Support
 
