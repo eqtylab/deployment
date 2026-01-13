@@ -7,260 +7,398 @@
 # IMPORTANT: This file contains example values. For production deployments:
 # 1. Copy this file and customize for your environment
 # 2. NEVER commit actual secrets to version control
-# 3. Use a separate secrets file for sensitive values
+# 3. Use external secret management (create=false) for production
 # 4. Override the 'domain' value with your actual domain
 # =============================================================================
 
 # =============================================================================
 # GLOBAL CONFIGURATION
 # =============================================================================
-# Global settings that are shared across all components in the platform
 global:
-  # --- Environment Configuration ---
+  # -- Environment Configuration
+  # @default -- `production`
   # Defines the deployment environment type, affects logging, security, and performance settings
-  environmentType: "production" # Options: development, staging, production
+  # Options: development, staging, production
+  environmentType: "production"
 
+  # -- Base Domain
+  # @default -- `governance.example.com`
   # Base domain for all ingress hostnames - MUST be overridden for your environment
   # This domain will be used by all services for external access
-  domain: "governance.example.com" # Example: governance.yourcompany.com
+  # Example: governance.yourcompany.com
+  domain: "governance.example.com"
 
-  # --- Secrets Management ---
+  # -- Image Pull Policy
+  # @default -- `IfNotPresent`
+  # Default image pull policy for all containers
+  # - IfNotPresent: Only pull if image doesn't exist locally (recommended for tagged releases)
+  # - Always: Always pull the latest version (use for 'latest' tags or development)
+  # - Never: Never pull, use local image only
+  imagePullPolicy: "IfNotPresent"
+
+  # -- Image Pull Secrets
+  # @default -- `[{"name": "platform-image-pull-secret"}]`
+  # Secrets for accessing private container registries
+  # These secrets must exist in the namespace before deployment
+  imagePullSecrets:
+    - name: "platform-image-pull-secret"
+
+  # -- PostgreSQL Configuration
+  # PostgreSQL connection settings shared across all platform services
+  postgresql:
+    # -- Database Host
+    # @default -- `""` (automatically resolves to deployed PostgreSQL service)
+    host: ""
+    # -- Database Port
+    # @default -- `5432`
+    port: 5432
+    # -- Database Name
+    # @default -- `governance`
+    # Default database name (additional DBs created via initdb)
+    database: "governance"
+    # -- Database Username
+    # @default -- `postgres`
+    username: "postgres"
+    # Note: Password is retrieved from the platform-database secret for security
+
+  # -- Secrets Configuration
   # Centralized secret configuration for all platform components
   # Secrets can be created automatically by the chart or pre-created manually
   secrets:
-    # --- Secret Names ---
-    # These names are used to reference secrets across all components
-    # Change these if you want to use different secret names in your cluster
-    complianceSecretName: "compliance-secrets" # Database credentials, API keys for Compliance Garage
-    auth0SecretName: "auth0-secret" # Auth0 authentication credentials
-    blobStoreSecretName: "blob-secret" # Cloud storage credentials (Azure/GCS/AWS)
-    azureKVSecretName: "azure-kv-secret" # Azure Key Vault access credentials
-    huggingFaceSecretName: "hf-secret" # Hugging Face model access token
-    encryptionKeySecretName: "platform-encryption" # Platform encryption keys
-    imagePullSecretName: "ghcr-pull-secret" # Container registry credentials
-    openaiSecretName: "openai-secret" # OpenAI API key for AI features
-    authServiceDbSecretName: "auth-service-db-credentials" # Auth service database credentials
-    authServiceSessionSecretName: "auth-service-session-secret" # Auth service session secret
-    authServiceApiSecretName: "auth-service-api-secret" # Auth service API secret
-    governanceWorkerSecretName: "governance-worker-credentials" # Governance worker service account
+    # -- Create Secrets
+    # @default -- `false`
+    # Set to true to have the chart create secrets from values below
+    # Set to false to use pre-existing secrets (secrets must exist in namespace)
+    create: false
 
-    # --- Secret Creation Control ---
-    # true: Chart will create secrets using the values below during installation
-    # false: Secrets must be created manually before chart installation
-    # RECOMMENDATION: Use false for production and create secrets via CI/CD or manually
-    createSecrets: true
+    # -- Authentication Configuration
+    # @default -- See values below
+    auth:
+      # -- Auth Provider
+      # @default -- `auth0`
+      # Options: auth0, keycloak
+      provider: "auth0"
 
-    # Secret values - these will be used to create secrets if createSecrets is true
-    # For production use, do NOT include these values in your values.yaml file
-    # Instead, use --set-file or a dedicated values file that is not checked into source control
-    values:
-      # Compliance Garage secrets
-      compliance:
-        # Database connection string (used by all Compliance Garage components)
-        databaseUrl: "" # e.g., postgresql://postgres:password@postgresql:5432/governance
-        # Redis connection string
-        redisUrl: "" # e.g., redis://redis-master:6379
-        # Gemini API key for AI features
-        geminiApiKey: ""
-
-      # Auth0 authentication
+      # -- Auth0 Configuration (M2M credentials only)
+      # @default -- See values below
+      # Only used if provider=auth0
+      # Note: SPA client ID is set via config, not secrets (it's public)
       auth0:
-        clientId: ""
-        clientSecret: ""
-        domain: "" # e.g., your-tenant.us.auth0.com
+        secretName: "platform-auth0"
+        keys:
+          clientId: "client-id"
+          clientSecret: "client-secret"
+          mgmtClientId: "mgmt-client-id"
+          mgmtClientSecret: "mgmt-client-secret"
+        # Only used if create=true and provider=auth0
+        values:
+          # -- Auth0 Client ID (EQTYLab Platform API M2M - token validation)
+          # @default -- `""` (REQUIRED if create=true)
+          clientId: ""
+          # -- Auth0 Client Secret (EQTYLab Platform API M2M)
+          # @default -- `""` (REQUIRED if create=true)
+          clientSecret: ""
+          # -- Management API Client ID (Auth Service Backend M2M app)
+          # @default -- `""` (REQUIRED if create=true)
+          mgmtClientId: ""
+          # -- Management API Client Secret (Auth Service Backend M2M app)
+          # @default -- `""` (REQUIRED if create=true)
+          mgmtClientSecret: ""
 
-      # Database credentials
-      database:
-        postgresPassword: "" # Password for PostgreSQL database
-        redisPassword: "" # Password for Redis
+      # -- Keycloak Configuration
+      # @default -- See values below
+      # Only used if provider=keycloak
+      keycloak:
+        secretName: "platform-keycloak-credentials"
+        keys:
+          url: "url"
+          realm: "realm"
+          frontendClientId: "frontend-client-id"
+          backendClientId: "backend-client-id"
+          backendClientSecret: "backend-client-secret"
+        # Only used if create=true and provider=keycloak
+        values:
+          # -- Keycloak URL
+          # @default -- `""` (REQUIRED if create=true)
+          # Example: https://keycloak.example.com
+          url: ""
+          # -- Keycloak Realm
+          # @default -- `governance`
+          realm: "governance"
+          # -- Frontend Client ID
+          # @default -- `governance-platform-frontend`
+          frontendClientId: "governance-platform-frontend"
+          # -- Backend Client ID
+          # @default -- `governance-platform-backend`
+          backendClientId: "governance-platform-backend"
+          # -- Backend Client Secret
+          # @default -- `""` (REQUIRED if create=true, generate with: openssl rand -hex 32)
+          backendClientSecret: ""
+        # -- Keycloak Organization
+        # @default -- See values below
+        organization:
+          # -- Create Organization
+          # @default -- `false`
+          # Create organization in database on install
+          create: false
+          displayName: "Governance Platform"
+          description: "Main governance organization"
+          # -- Create Platform Admin
+          # @default -- `false`
+          createPlatformAdmin: false
+          # -- Platform Admin Keycloak ID
+          # @default -- `""` (set after Keycloak bootstrap)
+          platformAdminKeycloakId: ""
 
-      # Blob storage
-      blobStorage:
-        # For GCP
-        gcsServiceAccountJson: "" # Base64-encoded service account JSON
-        # For Azure
-        azureStorageAccountName: ""
-        azureStorageAccountKey: ""
-        connectionString: ""
-        emailString: ""
-        # For AWS
-        awsAccessKeyId: ""
-        awsSecretAccessKey: ""
+    # -- Auth Service Credentials
+    # @default -- See values below
+    # Used by: auth-service for application secrets
+    authService:
+      secretName: "platform-auth-service"
+      keys:
+        dbPassword: "db-password"
+        sessionSecret: "session-secret"
+        apiSecret: "api-secret"
+        jwtSecret: "jwt-secret"
+      # Only used if create=true
+      values:
+        # -- Database Password
+        # @default -- `""` (can be same as global database password)
+        dbPassword: ""
+        # -- Session Secret
+        # @default -- `""` (generate with: openssl rand -base64 32)
+        sessionSecret: ""
+        # -- API Secret
+        # @default -- `""` (generate with: openssl rand -base64 32)
+        apiSecret: ""
+        # -- JWT Secret
+        # @default -- `""` (generate with: openssl rand -base64 32)
+        jwtSecret: ""
 
-      # Azure Key Vault
-      azureKeyVault:
-        clientId: ""
-        clientSecret: ""
-        tenantId: ""
-        vaultUrl: ""
+    # -- Database Credentials
+    # @default -- See values below
+    # Used by: governance-service, auth-service, integrity-service
+    database:
+      secretName: "platform-database"
+      keys:
+        username: "username"
+        password: "password"
+      # Only used if create=true
+      values:
+        # -- Database Username
+        # @default -- `postgres`
+        username: "postgres"
+        # -- Database Password
+        # @default -- `""` (REQUIRED if create=true)
+        password: ""
 
-      # AI/ML credentials
-      huggingFace:
-        token: ""
+    # -- Platform Encryption
+    # @default -- See values below
+    # Used for encrypting sensitive data in the database
+    encryption:
+      secretName: "platform-encryption-key"
+      keys:
+        key: "encryption-key"
+      # Only used if create=true
+      values:
+        # -- Encryption Key
+        # @default -- `""` (REQUIRED if create=true, generate with: openssl rand -base64 32)
+        key: ""
 
-      # OpenAI credentials
-      openai:
+    # -- Governance Service AI Credentials
+    # @default -- See values below
+    # Used by: governance-service for AI-based governance decisions
+    governanceServiceAI:
+      secretName: "platform-governance-service-ai"
+      keys:
+        apiKey: "api-key"
+      # Only used if create=true
+      values:
+        # -- AI API Key
+        # @default -- `""` (Anthropic API key)
         apiKey: ""
 
-      # Platform encryption
-      encryption:
-        key: "" # Encryption key for sensitive data
-        azureKeyVaultUrl: ""
-        azureKeyVaultClientId: ""
-        azureKeyVaultClientSecret: ""
-        azureKeySecretName: ""
-        azureKeyVaultTenantId: ""
+    # -- Governance Worker Credentials
+    # @default -- See values below
+    # Used by: governance-service worker for authentication
+    governanceWorker:
+      secretName: "platform-governance-worker"
+      keys:
+        encryptionKey: "encryption-key"
+        clientId: "client-id"
+        clientSecret: "client-secret"
+      # Only used if create=true
+      values:
+        # -- Encryption Key
+        # @default -- `""` (generate with: openssl rand -base64 32)
+        encryptionKey: ""
+        # -- Client ID
+        # @default -- `""` (Auth0 M2M application client ID)
+        clientId: ""
+        # -- Client Secret
+        # @default -- `""` (Auth0 M2M application client secret)
+        clientSecret: ""
 
-      # Container registry credentials
-      imagePull:
-        username: "" # GitHub username or token name
-        password: "" # GitHub PAT with read:packages scope
-        email: "" # Email associated with GitHub account
+    # -- Image Registry Credentials
+    # @default -- See values below
+    # Credentials for pulling images from private registries
+    imageRegistry:
+      secretName: "platform-image-pull-secret"
+      registry: "ghcr.io"
+      # Only used if create=true
+      values:
+        # -- Registry Username
+        # @default -- `""` (GitHub username or token name)
+        username: ""
+        # -- Registry Password
+        # @default -- `""` (GitHub PAT with read:packages scope)
+        password: ""
+        # -- Registry Email
+        # @default -- `""` (email associated with GitHub account)
+        email: ""
 
-      # Auth Service specific secrets
-      authService:
-        dbPassword: "" # Database password for auth service (can be same as postgresPassword)
-        sessionSecret: "" # Session secret for auth service (generate with: openssl rand -base64 32)
-        apiSecret: "" # API secret for auth service (generate with: openssl rand -base64 32)
-        jwtSecret: "" # JWT secret for auth service (generate with: openssl rand -base64 32)
+    # -- Secret Manager Configuration
+    # @default -- See values below
+    # Used by: integrity-service, auth-service, governance-service
+    secretManager:
+      # -- Secret Manager Provider
+      # @default -- `azure_key_vault`
+      # Options: azure_key_vault
+      provider: "azure_key_vault"
 
-      # Governance Worker Service Account
-      governanceWorker:
-        encryptionKey: "" # Encryption key for service accounts (generate with: openssl rand -base64 32)
-        clientId: "" # Auth0 M2M application client ID for governance worker
-        clientSecret: "" # Auth0 M2M application client secret for governance worker
+      # -- Azure Key Vault
+      # @default -- See values below
+      # Only used if provider=azure_key_vault
+      azure_key_vault:
+        enabled: true
+        secretName: "platform-azure-key-vault"
+        keys:
+          clientId: "client-id"
+          clientSecret: "client-secret"
+          tenantId: "tenant-id"
+          vaultUrl: "vault-url"
+        # Only used if create=true and provider=azure_key_vault
+        values:
+          # -- Azure Client ID
+          # @default -- `""` (REQUIRED if create=true)
+          clientId: ""
+          # -- Azure Client Secret
+          # @default -- `""` (REQUIRED if create=true)
+          clientSecret: ""
+          # -- Azure Tenant ID
+          # @default -- `""` (REQUIRED if create=true)
+          tenantId: ""
+          # -- Azure Vault URL
+          # @default -- `""` (REQUIRED if create=true)
+          vaultUrl: ""
 
-  # --- Database Configuration ---
-  # PostgreSQL connection settings shared across all platform services
-  # These values create a consistent database connection configuration
-  postgresql:
-    host: "{{ .Release.Name }}-postgresql" # Automatically resolves to deployed PostgreSQL service
-    port: 5432 # Standard PostgreSQL port
-    database: "governance" # Default database name (additional DBs created via initdb)
-    username: "postgres" # PostgreSQL admin user
-    # Note: Password is retrieved from the compliance-secrets secret for security
+    # -- Storage Configuration
+    # @default -- See values below
+    # Used by: governance-service, integrity-service
+    # Each service can choose its own storage provider independently
+    storage:
+      # -- AWS S3
+      # @default -- See values below
+      aws_s3:
+        secretName: "platform-aws-s3"
+        keys:
+          accessKeyId: "access-key-id"
+          secretAccessKey: "secret-access-key"
+        # Only used if create=true
+        values:
+          # -- AWS Access Key ID
+          # @default -- `""` (REQUIRED if create=true)
+          accessKeyId: ""
+          # -- AWS Secret Access Key
+          # @default -- `""` (REQUIRED if create=true)
+          secretAccessKey: ""
 
-  # --- Container Registry Configuration ---
-  # Uncomment and set if using a private container registry instead of GitHub Container Registry
-  # imageRegistry: "mycompany.registry.io/governance-platform"
+      # -- Azure Blob Storage
+      # @default -- See values below
+      azure_blob:
+        secretName: "platform-azure-blob"
+        keys:
+          accountName: "account-name"
+          accountKey: "account-key"
+          connectionString: "connection-string"
+        # Only used if create=true
+        values:
+          # -- Azure Account Name
+          # @default -- `""` (REQUIRED if create=true)
+          accountName: ""
+          # -- Azure Account Key
+          # @default -- `""` (REQUIRED if create=true)
+          accountKey: ""
+          # -- Azure Connection String
+          # @default -- `""` (REQUIRED if create=true)
+          connectionString: ""
 
-  # Image pull secrets for accessing private container registries
-  # These secrets must exist in the namespace before deployment
-  imagePullSecrets:
-    - name: "ghcr-pull-secret" # Required for GitHub Container Registry access
-
-  # --- Storage Configuration ---
-  # Default storage class for all persistent volumes
-  # Leave empty ("") to use the cluster's default storage class
-  # Examples: "gp2" (AWS), "pd-standard" (GCP), "azure-disk" (Azure)
-  defaultStorageClass: ""
-
-  # --- Ingress Configuration ---
-  # Centralized ingress configuration shared across all platform services
-  # All services will be accessible through path-based routing on a single domain
-  ingress:
-    enabled: true # Enable ingress for external access
-    className: "nginx" # Ingress controller class (nginx, traefik, etc.)
-
-    # Ingress annotations for common configurations
-    annotations:
-      cert-manager.io/issuer: letsencrypt-prod # Automatic TLS certificate issuer
-      nginx.ingress.kubernetes.io/use-regex: "true" # Enable regex matching for paths
-      nginx.ingress.kubernetes.io/enable-cors: "true" # Enable CORS for cross-origin requests
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m" # Maximum request body size
-
-    host: "governance.example.com" # MUST be overridden with your actual domain
-    tlsSecretName: "platform-tls" # Kubernetes secret name for TLS certificates
+      # -- Google Cloud Storage
+      # @default -- See values below
+      gcs:
+        secretName: "platform-gcs"
+        keys:
+          serviceAccountJson: "service-account-json"
+        # Only used if create=true
+        values:
+          # -- GCS Service Account JSON
+          # @default -- `""` (REQUIRED if create=true, base64-encoded)
+          serviceAccountJson: ""
 
 # =============================================================================
-# COMPONENT CONFIGURATION
+# Auth Service
 # =============================================================================
-# Configuration for individual platform components
-# Each component can be enabled/disabled and customized independently
+# Default values for the auth-service Helm chart.
+# ------------------------------------------------------------------------------
+auth-service:
+  # -- Enable the Auth Service
+  enabled: true
 
-# --- Component: Governance Service ---
-# Core governance platform with API and Worker services
-# API provides REST endpoints, Worker processes background jobs
-governance-service:
-  enabled: true # Set to false to disable the Governance Service component
+  # -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 2
 
-  # === API Service Configuration ===
-  api:
-    replicaCount: 1
-    image:
-      repository: "ghcr.io/eqtylab/governance-service"
-      tag: "latest" # Updated to match production
-      pullPolicy: "IfNotPresent"
-    command: ["./governance-service"]
-    args: []
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 250m
-        memory: 256Mi
+  image:
+    # -- Container image repository
+    repository: ghcr.io/eqtylab/auth-service
+    # -- Image pull policy (IfNotPresent | Always | Never)
+    pullPolicy: IfNotPresent
+    # -- Image tag override (defaults to chart appVersion if empty)
+    tag: ""
 
-  # === Worker Service Configuration ===
-  worker:
-    replicaCount: 1
-    image:
-      repository: "ghcr.io/eqtylab/governance-worker"
-      tag: "latest"
-      pullPolicy: "IfNotPresent"
-    command: ["./governance-worker"]
-    args: []
-    resources:
-      limits:
-        cpu: 1000m
-        memory: 1Gi
-      requests:
-        cpu: 500m
-        memory: 512Mi
+  # -- Image pull secrets for private registries
+  # @default -- Populated from global.secrets.imageRegistry.secretName in templates
+  imagePullSecrets: []
 
-  # === Shared Configuration ===
-  imagePullSecrets:
-    - name: ghcr-pull-secret
+  # -- Override the chart name used for resource naming
+  nameOverride: ""
+  # -- Override the full name used for resource naming
+  fullnameOverride: ""
 
-  # Service configuration
-  service:
-    type: ClusterIP
-    port: 10001
+  serviceAccount:
+    # -- Create a ServiceAccount for the deployment
+    create: true
+    # -- Automatically mount a ServiceAccount's API credentials
+    automount: true
+    # -- Annotations to add to the ServiceAccount
+    annotations: {}
+    # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
+    name: ""
 
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/enable-cors: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-    hosts:
-      - host: "governance.example.com"
-        paths:
-          - path: "/governanceService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
-    tls:
-      - secretName: "platform-tls"
-        hosts:
-          - "governance.example.com"
-
-  # Kubernetes deployment settings
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 100
-    targetCPUUtilizationPercentage: 80
-
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-
-  # Pod settings
+  # -- Additional annotations to add to pods
   podAnnotations: {}
-  podSecurityContext: {}
+
+  # -- Additional labels to add to pods
+  podLabels: {}
+
+  # -- Security context applied at the pod level
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # -- Security context applied at the container level
   securityContext:
+    allowPrivilegeEscalation: false
     capabilities:
       drop:
         - ALL
@@ -268,332 +406,1751 @@ governance-service:
     runAsNonRoot: true
     runAsUser: 1000
 
-  # Configure external database settings
-  externalDatabase:
-    host: "governance-platform-postgresql"
-    port: 5432
-    database: "governance"
-    user: "postgres"
-    sslmode: "disable"
-    # Password comes from secret
-    passwordSecretKeyRef:
-      name: "compliance-secrets"
-      key: "postgresPassword"
-
-  migrations:
-    runAtStartup: true
-    path: "/app/migrations"
-
-  config:
-    path: "/api/v1/health" # Health check endpoint path
-    gcsEnabled: false
-    gcsBucketName: "" # Updated to match production
-    integrityServiceUrl: "http://governance-platform-integrity-service:80"
-    appEnv: "production"
-    logLevel: "info"
-
-    # HTTP Server Configuration
-    server:
-      readTimeout: 30
-      writeTimeout: 30
-      idleTimeout: 120
-    # Worker-specific scheduler configuration
-    scheduler:
-      version: "1.0.0"
-      workerType: "general"
-      maxConcurrentJobs: 5
-      pollInterval: 30
-      heartbeatInterval: 60
-      jobClaimTTL: 5
-      capabilities: "evaluation, scheduling"
-      # API-specific scheduler fields
-      workerCount: 5
-      retryLimit: 3
-      retryDelay: 60
-    # Indicator Configuration Management
-    indicators:
-      configPath: "/app/configs/indicators"
-      reloadInterval: 300
-      validateOnLoad: true
-
-  # For sensitive values like tokens/keys, point to keys within the pre-created K8s secrets
-  huggingFaceTokenSecretKeyRef:
-    name: "hf-secret"
-    key: "hugging-face-token"
-  credentialEncryptionKeySecretKeyRef:
-    name: "platform-encryption"
-    key: "key"
-
-  # Auth0 credentials reference
-  auth0SyncAtStartup: true
-  auth0SyncPageSize: 100
-  auth0SecretKeyRef:
-    name: "auth0-secret"
-    domainKey: "domain"
-    clientIdKey: "clientId"
-    clientSecretKey: "clientSecret"
-
-  # For GCS service account, the assurance-engine deployment mounts a secret.
-  serviceAccount:
-    create: false
-    name: "blob-secret"
-
-# --- Component: Governance Studio UI ---
-# React-based frontend application providing the user interface for the platform
-# Handles authentication, data visualization, and user interactions
-governance-studio:
-  enabled: true # Set to false to disable the frontend UI component
-  replicaCount: 1
-  image:
-    repository: "ghcr.io/eqtylab/governance-studio"
-    tag: "main"
-    pullPolicy: IfNotPresent
-  imagePullSecrets:
-    - name: "ghcr-pull-secret"
-  config:
-    integrityServiceUrl: "https://governance.example.com/integrityService"
-    # API Configuration
-    apiUrl: "https://governance.example.com/governanceService"
-
-    # Auth0 Configuration
-    auth0Domain: "governance-studio.us.auth0.com"
-    auth0ClientId: "your_auth0_client_id"
-    auth0Audience: "https://governance.example.com/governanceService"
-
-    # Application Settings
-    environment: "production"
-    appTitle: "Governance Studio"
-    appHostname: "governance.example.com"
-
-    # Feature Flags
-    features:
-      compliance: true
-      governance: true
-      guardian: true
-      lineage: true
-
-    # Branding Configuration
-    branding:
-      logoUrl: "/vite.svg"
-      primaryColor: "#0f172a"
-      companyName: "EQTY Lab"
-
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/enable-cors: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/"
-    hosts:
-      - host: "governance.example.com"
-        paths:
-          - path: "/"
-            pathType: "Prefix"
-    tls:
-      - secretName: "platform-tls"
-        hosts:
-          - "governance.example.com"
-
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "256Mi"
-    limits:
-      cpu: "500m"
-      memory: "512Mi"
-
-# --- Component: Integrity Service ---
-# Data integrity and auditability service providing blockchain integration
-# Handles cryptographic proofs, audit trails, and immutable record keeping
-integrity-service:
-  enabled: true # Set to false to disable the Integrity Service component
-  # Direct ingress configuration
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/enable-cors: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    hosts:
-      - host: "governance.example.com"
-        paths:
-          - path: "/integrityService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
-    tls:
-      - secretName: "platform-tls"
-        hosts:
-          - "governance.example.com"
-  deployment:
-    replicaCount: 1
-  image:
-    repository: "ghcr.io/eqtylab"
-    name: "integrity-service"
-    tag: "d4e4b46" # Updated to match production
-  kvSecret:
-    enabled: true
-    name: "azure-kv-secret"
-    keys:
-      clientSecret: "clientSecret"
-      clientId: "clientId"
-      tenantId: "tenantId"
-      vaultUrl: "vaultUrl"
-  env:
-    # Database connection information
-    integrityDbHost: "{{ .Release.Name }}-postgresql"
-    integrityDbPort: "5432"
-    integrityDbName: "IntegrityServiceDB"
-    integrityDbUser: "postgres"
-    # Storage configuration
-    integrityAppBlobStoreAccount: "" # Name of your azure blob storage account
-    integrityAppBlobStoreContainer: "" # Name of your azure blob storage container
-    integrityServiceUrl: "" # Update to match production
-    rustEnv: "production"
-    rustBacktrace: "0"
-    # Auth configurations
-    integrityAppAuthType: "" # e.g. "auth0"
-    integrityAppAuthClientId: "" # e.g. "your-client-id"
-    integrityAppAuthDomain: "" # e.g. "your-auth0-domain.auth0.com"
-    integrityAppCustomClaimsUrl: "" # URL for custom claims
-  # Service configuration for integrity
   service:
+    # -- Create a Kubernetes Service
     enabled: true
+    # -- Service type (ClusterIP | NodePort | LoadBalancer)
     type: ClusterIP
-    port: 80
-    targetPort: 3050
+    # -- Service port
+    port: 8080
+
+  ingress:
+    # -- Create an Ingress resource for external access
+    enabled: false
+    # -- IngressClass name (e.g., "nginx", "traefik")
+    className: ""
+    # -- Additional annotations for the Ingress resource
+    annotations: {}
+      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/rewrite-target: /$2
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress host configuration
+    hosts:
+      - host: auth.example.com
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    # -- TLS configuration
+    tls: []
+      # - secretName: auth-service-tls
+      #   hosts:
+      #     - auth.example.com
+
+  # -- Resource requests and limits
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Horizontal Pod Autoscaler - automatically scales pods based on resource usage
+  autoscaling:
+    # -- Enable Horizontal Pod Autoscaler
+    enabled: false
+    # -- Minimum number of replicas
+    minReplicas: 2
+    # -- Maximum number of replicas
+    maxReplicas: 10
+    # -- Target CPU utilization percentage
+    targetCPUUtilizationPercentage: 80
+    # -- Target memory utilization percentage
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod Disruption Budget - maintains availability during cluster disruptions
+  podDisruptionBudget:
+    # -- Enable Pod Disruption Budget
+    enabled: true
+    # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+    minAvailable: 1
+
+  # -- Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity rules for pod assignment
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - auth-service
+            topologyKey: kubernetes.io/hostname
+
+  # -- Startup probe configuration
+  startupProbe:
+    httpGet:
+      path: /health
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+    successThreshold: 1
+
+  # -- Additional volumes on the Deployment
+  volumes: []
+
+  # -- Additional volumeMounts on the Deployment
+  volumeMounts: []
+
+  # =============================================================================
+  # DATABASE CONFIGURATION
+  # =============================================================================
+
+  externalDatabase:
+    # -- Database host
+    # @default -- Populated from global.postgresql.host or generated as "{Release.Name}-postgresql" in templates
+    host: ""
+    # -- Database port
+    # @default -- Populated from global.postgresql.port in templates
+    port: ""
+    # -- Database name
+    # @default -- Populated from global.postgresql.database in templates
+    name: ""
+    # -- Database user
+    # @default -- Populated from global.postgresql.username in templates
+    user: ""
+    # -- Database password (leave empty to use secret reference)
+    password: ""
+    # -- SSL mode (disable | require | verify-ca | verify-full)
+    sslMode: "disable"
+    # -- Maximum open connections
+    maxOpenConns: 25
+    # -- Maximum idle connections
+    maxIdleConns: 5
+    # -- Connection maximum lifetime
+    connMaxLifetime: "5m"
+
+    # Database password secret reference
+    passwordSecretKeyRef:
+      # -- Secret name containing database credentials
+      # @default -- Populated from global.secrets.database.secretName in templates
+      name: ""
+      # -- Secret key name for database password
+      # @default -- Populated from global.secrets.database.keys.password in templates
+      key: ""
+
+  # Database migration configuration
+  migrations:
+    # -- Run database migrations automatically at startup
+    runAtStartup: true
+    # -- Path to migration files within the container
+    path: "/internal/database/migrations"
+
+  # =============================================================================
+  # SECRET CONFIGURATION
+  # =============================================================================
+
+  secrets:
+    # Auth provider credentials (Auth0 or Keycloak)
+    auth:
+      # -- Secret name containing auth provider credentials
+      # @default -- Populated from global.secrets.auth.auth0.secretName or global.secrets.auth.keycloak.secretName in templates
+      name: ""
+      # Secret keys
+      keys:
+        # -- Key for client ID
+        # @default -- Populated from global.secrets.auth.auth0.keys.clientId or "client-id" in templates
+        clientId: "client-id"
+        # -- Key for client secret
+        # @default -- Populated from global.secrets.auth.auth0.keys.clientSecret or "client-secret" in templates
+        clientSecret: "client-secret"
+        # -- Key for management client ID (Auth0 only, separate M2M app)
+        # @default -- Populated from global.secrets.auth.auth0.keys.managementClientId or "mgmt-client-id" in templates
+        managementClientId: "mgmt-client-id"
+        # -- Key for management client secret (Auth0 only, separate M2M app)
+        # @default -- Populated from global.secrets.auth.auth0.keys.managementClientSecret or "mgmt-client-secret" in templates
+        managementClientSecret: "mgmt-client-secret"
+
+    # Security secrets (API and JWT secrets)
+    security:
+      # -- Secret name containing security credentials
+      # @default -- Populated from global.secrets.authService.secretName in templates
+      name: ""
+      # Secret keys
+      keys:
+        # -- Key for API secret
+        apiSecret: "api-secret"
+        # -- Key for JWT secret
+        jwtSecret: "jwt-secret"
+
+    # Session secret reference
+    session:
+      # -- Secret name containing session secret
+      # @default -- Populated from global.secrets.authService.secretName in templates
+      name: ""
+      # Secret keys
+      keys:
+        # -- Key for session secret
+        secret: "session-secret"
+
+    # Azure Key Vault credentials (for DID key signing)
+    keyVault:
+      # -- Secret name containing Key Vault credentials
+      # @default -- Populated from global.secrets.secretManager.azure_key_vault.secretName in templates
+      name: ""
+      # Secret keys
+      keys:
+        # -- Key for Azure client ID
+        clientId: "client-id"
+        # -- Key for Azure client secret
+        clientSecret: "client-secret"
+        # -- Key for Azure tenant ID
+        tenantId: "tenant-id"
+        # -- Key for vault URL
+        vaultUrl: "vault-url"
+
+    # Governance worker credentials
+    worker:
+      # -- Secret name containing worker credentials
+      # @default -- Populated from global.secrets.governanceWorker.secretName in templates
+      name: ""
+      # Secret keys
+      keys:
+        # -- Key for encryption key
+        encryptionKey: "encryption-key"
+        # -- Key for client ID
+        clientId: "client-id"
+        # -- Key for client secret
+        clientSecret: "client-secret"
+
+    # Token exchange private key (for Keycloak token exchange)
+    tokenExchange:
+      # -- Secret name containing private key
+      # @default -- Populated from global.secrets.authService.secretName in templates
+      name: ""
+      # Secret keys
+      keys:
+        # -- Key for private key
+        privateKey: "private-key"
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+
+  config:
+    # Server configuration
+    server:
+      # -- Server port
+      port: 8080
+      # -- Server host
+      host: "0.0.0.0"
+      # -- Read timeout
+      readTimeout: "30s"
+      # -- Write timeout
+      writeTimeout: "30s"
+      # -- Idle timeout
+      idleTimeout: "120s"
+      # -- Environment (development | staging | production)
+      # @default -- Populated from global.environmentType in templates
+      environment: ""
+      # -- Enable Swagger documentation
+      swaggerEnabled: false
+
+    # Logging configuration
+    logging:
+      # -- Log level (debug | info | warn | error)
+      level: "info"
+      # -- Log format (json | text)
+      format: "json"
+      # -- Paths to skip in access logs
+      skipPaths: "/health,/health/live,/health/ready,/metrics"
+
+    # CORS configuration
+    cors:
+      # -- Enable CORS (usually handled by ingress in k8s)
+      enabled: false
+      # -- Allowed origins
+      origins: "*"
+
+    # Identity provider configuration
+    idp:
+      # -- Identity provider type (auth0 | keycloak)
+      # @default -- Populated from global.secrets.auth.provider in templates
+      provider: ""
+      # -- OIDC issuer URL
+      # @default -- Generated from provider domain in templates
+      issuer: ""
+      # -- Skip issuer verification (DANGEROUS - only for development)
+      skipIssuerVerification: false
+
+      # Auth0 configuration (only used when provider is "auth0")
+      auth0:
+        # -- Auth0 tenant domain
+        # @default -- `""` (**must be set** when provider is auth0)
+        domain: ""
+        # -- Enable Auth0 Management API
+        enableManagementAPI: true
+        # -- Management API audience
+        # @default -- `""` (**must be set** when provider is auth0)
+        managementAudience: ""
+        # -- API identifier
+        # @default -- `""` (**must be set** when provider is auth0)
+        apiIdentifier: ""
+        # -- Default connection for user creation
+        defaultConnection: "Username-Password-Authentication"
+        # -- Default roles for new users
+        defaultRoles: ["user"]
+        # -- Send invitation email on user creation
+        sendInvitationEmail: true
+        # -- Sync organizations at startup
+        syncAtStartup: false
+        # -- Page size for Auth0 API calls
+        syncPageSize: 100
+
+      # Keycloak configuration (only used when provider is "keycloak")
+      keycloak:
+        # -- Keycloak realm
+        # @default -- Populated from global.secrets.auth.keycloak.values.realm in templates
+        realm: ""
+        # -- Keycloak admin URL (for admin operations)
+        adminUrl: ""
+        # -- Enable user management via Keycloak admin API
+        enableUserManagement: false
+        # -- Enable group sync with Keycloak
+        enableGroupSync: false
+
+    # Key Vault configuration
+    keyVault:
+      # -- Key Vault provider (azure | hashicorp | local)
+      # @default -- Populated from global.secrets.secretManager.provider in templates
+      provider: ""
+      # -- DID Key cache TTL in minutes
+      cacheTTLMinutes: 15
+
+      # Azure Key Vault configuration (only used when provider is "azure")
+      azure:
+        # -- Azure Key Vault URL
+        # @default -- Populated from global.secrets.secretManager.azure_key_vault.values.vaultUrl in templates
+        vaultUrl: ""
+        # -- Azure tenant ID
+        # @default -- Populated from global.secrets.secretManager.azure_key_vault.values.tenantId in templates
+        tenantId: ""
+
+      # HashiCorp Vault configuration (only used when provider is "hashicorp")
+      hashicorp:
+        # -- Vault address
+        address: ""
+
+    # Service integration configuration
+    integrations:
+      # -- Integrity Service URL
+      # @default -- Generated as "http://{Release.Name}-integrity-service:3050" in templates
+      integrityServiceUrl: ""
+      # -- Governance Service URL
+      # @default -- Generated as "http://{Release.Name}-governance-service:10001" in templates
+      governanceServiceUrl: ""
+
+    # Service account configuration
+    serviceAccounts:
+      # -- Auto-create default service accounts on startup
+      autoCreate: true
+
+      # Governance Worker service account configuration
+      governanceWorker:
+        # -- Enable governance worker service account
+        enabled: true
+        # -- Service account name
+        name: "governance-worker"
+        # -- Service account description
+        description: "Automated governance service worker for processing indicator evaluations"
+        # -- Scopes for service account
+        scopes:
+          - "governance:declarations:create"
+          - "integrity:statements:create"
+        # -- Auth0 API audience for worker
+        # @default -- `""` (must be set explicitly)
+        audience: ""
+
+    # Token exchange configuration
+    tokenExchange:
+      # -- Enable token exchange (for Keycloak integration)
+      enabled: false
+      # -- Key identifier for signing key
+      keyId: "auth-service-prod-001"
+
+    # RBAC configuration
+    rbac:
+      cache:
+        # -- Enable RBAC permission cache
+        enabled: true
+        # -- Cache TTL
+        ttl: "300s"
+        # -- Maximum cache entries
+        maxSize: 1000
+
+    # Rate limiting configuration
+    rateLimit:
+      # -- Enable rate limiting
+      enabled: false
+      # -- Requests per minute
+      requestsPerMinute: 60
+
+  # =============================================================================
+  # METRICS CONFIGURATION
+  # =============================================================================
+
+  metrics:
+    # -- Enable Prometheus metrics
+    enabled: false
+    # -- Metrics port
+    port: 9090
+    # -- Metrics path
+    path: /metrics
+    serviceMonitor:
+      # -- Enable ServiceMonitor for Prometheus Operator
+      enabled: false
+      # -- Scrape interval
+      interval: "30s"
+      # -- Scrape timeout
+      scrapeTimeout: "10s"
+      # -- Additional labels for ServiceMonitor
+      labels: {}
+
+  # =============================================================================
+  # NETWORK POLICY CONFIGURATION
+  # =============================================================================
+
+  networkPolicy:
+    # -- Enable NetworkPolicy
+    enabled: false
+    ingress:
+      - from:
+          - namespaceSelector:
+              matchLabels:
+                name: ingress-nginx
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: governance-service
+        ports:
+          - protocol: TCP
+            port: 8080
+    egress:
+      # Allow DNS
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: kube-system
+        ports:
+          - protocol: TCP
+            port: 53
+          - protocol: UDP
+            port: 53
+      # Allow PostgreSQL
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: postgresql
+        ports:
+          - protocol: TCP
+            port: 5432
+      # Allow external HTTPS (for IDP communication)
+      - to: []
+        ports:
+          - protocol: TCP
+            port: 443
+      # Allow internal service communication
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: integrity-service
+        ports:
+          - protocol: TCP
+            port: 3050
+
+  # =============================================================================
+  # MIGRATION JOB CONFIGURATION
+  # =============================================================================
+
+  migration:
+    # -- Enable migration as a Helm hook job
+    enabled: false
+    # -- Job backoff limit
+    backoffLimit: 3
+    # -- Job active deadline in seconds
+    activeDeadlineSeconds: 300
+    # -- TTL for completed jobs
+    ttlSecondsAfterFinished: 300
+    # -- Resources for migration job
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  # =============================================================================
+  # EXTRA CONFIGURATION
+  # =============================================================================
+
+  # -- Extra environment variables
+  extraEnvVars: []
+    # - name: EXTRA_VAR
+    #   value: "extra-value"
+
+  # -- Extra environment variables from Secret
+  extraEnvVarsSecret: ""
+
+  # -- Extra environment variables from ConfigMap
+  extraEnvVarsConfigMap: ""
+
+  # -- Extra containers to add to the pod
+  extraContainers: []
+
+  # -- Extra init containers to add to the pod
+  extraInitContainers: []
+
+  # -- Extra manifests to deploy
+  extraManifests: []
+
+# =============================================================================
+# Governance Service
+# =============================================================================
+governance-service:
+  # -- Enable the Governance Service backend API
+  enabled: true
+
+  # -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 1
+
+  image:
+    # -- Container image repository
+    repository: ghcr.io/eqtylab/governance-service
+    # -- Image pull policy (IfNotPresent | Always | Never)
+    pullPolicy: IfNotPresent
+    # -- Image tag override (defaults to chart appVersion if empty)
+    tag: ""
+
+  # -- Container entrypoint command
+  command: ["./governance-service"]
+
+  # -- Container arguments
+  # @default -- `[]`
+  # Available options: -debug-config, -debug-config-only, -show-secrets, -help
+  args: []
+
+  # -- Image pull secrets for private registries
+  # @default -- Populated from global.secrets.imageRegistry.secretName in templates
+  imagePullSecrets: []
+
+  # -- Override the chart name used for resource naming
+  nameOverride: ""
+  # -- Override the full name used for resource naming
+  fullnameOverride: ""
+
+  serviceAccount:
+    # -- Create a ServiceAccount for the deployment
+    create: false
+    # -- Automatically mount a ServiceAccount's API credentials
+    automount: true
+    # -- Annotations to add to the ServiceAccount
+    annotations: {}
+    # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
+    name: ""
+
+  # -- Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Additional labels to add to pods
+  podLabels: {}
+
+  # -- Security context applied at the pod level
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  # -- Security context applied at the container level
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  service:
+    # -- Create a Kubernetes Service
+    enabled: true
+    # -- Service type (ClusterIP | NodePort | LoadBalancer)
+    type: ClusterIP
+    # -- Service port
+    port: 10001
+
+  ingress:
+    # -- Create an Ingress resource for external access
+    enabled: false
+    # -- IngressClass name (e.g., "nginx", "traefik")
+    className: ""
+    # -- Additional annotations for the Ingress resource
+    annotations: {}
+      # cert-manager.io/issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/rewrite-target: /$2
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress host configuration
+    hosts:
+      - host: governance.example.com
+        paths:
+          # Path uses regex for nginx rewrite - requires rewrite-target annotation
+          - path: "/governanceService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    # -- TLS configuration
+    tls: []
+      # - secretName: governance-service-tls
+      #   hosts:
+      #     - governance.example.com
+
+  # -- Resource requests and limits
   resources: {}
-    # limits:
-    #   cpu: 500m
-    #   memory: 512Mi
     # requests:
     #   cpu: 250m
     #   memory: 256Mi
-  nodeSelector:
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  # Horizontal Pod Autoscaler - automatically scales pods based on resource usage
+  autoscaling:
+    # -- Enable Horizontal Pod Autoscaler
     enabled: false
-    values:
-      node_pool: apps
+    # -- Minimum number of replicas
+    minReplicas: 1
+    # -- Maximum number of replicas
+    maxReplicas: 100
+    # -- Target CPU utilization percentage
+    targetCPUUtilizationPercentage: 80
+    # -- Target memory utilization percentage
+    targetMemoryUtilizationPercentage: 80
 
-# --- Component: Authentication Service ---
-auth-service:
-  enabled: false
-  image:
-    tag: "sha-aee2859"
+  # Pod Disruption Budget - maintains availability during cluster disruptions
+  podDisruptionBudget:
+    # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+    minAvailable: 1
 
-  imagePullSecrets:
-    - name: ghcr-pull-secret
+  # -- Node labels for pod assignment
+  nodeSelector: {}
 
-  # Configure to use shared postgresql instance
-  postgresql:
-    enabled: false # Use shared postgresql instance instead of deploying own
+  # -- Tolerations for pod assignment
+  tolerations: []
 
-  config:
-    keyVault:
-      provider: "azure"
-      azure:
-        vaultUrl: "https://helm-umbrella-akv.vault.azure.net/"
-        tenantId: "6712fe8e-3505-4daf-b881-675312392087"
-        existingSecret: "azure-kv-secret"
-    database:
-      host: "governance-platform-postgresql" # Use shared postgresql instance
-      port: 5432
-      name: "authservice"
-      user: "postgres"
-      existingSecret: "compliance-secrets"
+  # -- Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Startup probe configuration
+  startupProbe:
+    httpGet:
+      path: /health
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # DATABASE CONFIGURATION
+  # =============================================================================
+
+  # -- External Database configuration
+  externalDatabase:
+    # -- Database host
+    # @default -- Generated as "{Release.Name}-postgresql" in templates
+    host: ""
+    # -- Database port
+    port: 5432
+    # -- Database name
+    database: "governance"
+    # -- Database user
+    user: "postgres"
+    # -- Database password (leave empty to use secret reference)
+    password: ""
+    # -- SSL mode (disable | require | verify-ca | verify-full)
+    sslmode: "disable"
+
+    # -- Database password secret reference
+    passwordSecretKeyRef:
+      # -- Secret name containing database credentials
+      # @default -- Populated from global.secrets.database.secretName in templates
+      name: ""
+      # -- Secret key name for database password
+      # @default -- Populated from global.secrets.database.keys.password in templates
+      key: ""
+
+  # -- Database migration configuration
+  migrations:
+    # -- Run database migrations automatically at startup
+    runAtStartup: true
+    # -- Path to migration files within the container
+    path: "/app/migrations"
+
+  # =============================================================================
+  # SECRET CONFIGURATION
+  # =============================================================================
+
+  secrets:
+    # -- Encryption key secret reference
+    encryption:
+      # -- Secret name containing encryption key
+      # @default -- Populated from global.secrets.encryption.secretName in templates
+      name: ""
+      # -- Secret key name for encryption key
+      # @default -- Populated from global.secrets.encryption.keys.key in templates
+      key: ""
+
+    # -- Auth0 secret reference (only used when auth provider is Auth0)
+    auth0:
+      # -- Secret name containing Auth0 credentials
+      # @default -- Populated from global.secrets.auth.auth0.secretName in templates
+      name: ""
+      # -- Secret key name for Auth0 client ID
+      # @default -- Populated from global.secrets.auth.auth0.keys.clientId in templates
+      clientIdKey: ""
+      # -- Secret key name for Auth0 client secret
+      # @default -- Populated from global.secrets.auth.auth0.keys.clientSecret in templates
+      clientSecretKey: ""
+
+    # -- Keycloak secret reference (only used when auth provider is Keycloak)
+    keycloak:
+      # -- Enable Keycloak instead of Auth0
+      # @default -- Auto-detected from global.secrets.auth.provider in templates
+      enabled: false
+      # -- Secret name containing Keycloak configuration
+      # @default -- Populated from global.secrets.auth.keycloak.secretName in templates
+      existingSecret: ""
+      # -- Secret keys for Keycloak configuration
       existingSecretKeys:
-        password: "postgresPassword"
+        clientId: "KEYCLOAK_CLIENT_ID"
+        realm: "KEYCLOAK_REALM"
+        url: "KEYCLOAK_URL"
+      # -- Client secret reference
+      existingClientSecretKeyRef:
+        # -- Secret name containing Keycloak client secret
+        # @default -- Populated from global.secrets.auth.keycloak.secretName in templates
+        name: ""
+        # -- Secret key name for Keycloak client secret
+        # @default -- Populated from global.secrets.auth.keycloak.keys.backendClientSecret in templates
+        clientSecretKey: ""
 
-    idp:
-      provider: "" # Provider for identity provider
-      issuer: "" # Issuer URL for identity provider
-      existingSecret: "auth0-credentials"
-      skipIssuerVerification: true
+    # -- Storage credentials (provider-specific)
+    storage:
+      # -- Azure Blob Storage secret reference (only used when storage provider is azure_blob)
+      azure_blob:
+        # -- Secret name containing Azure storage credentials
+        # @default -- Populated from global.secrets.storage.azure_blob.secretName in templates
+        name: ""
+        # -- Secret key name for Azure storage account name
+        # @default -- Populated from global.secrets.storage.azure_blob.keys.accountName in templates
+        accountNameKey: ""
+        # -- Secret key name for Azure storage account key
+        # @default -- Populated from global.secrets.storage.azure_blob.keys.accountKey in templates
+        accountKeyKey: ""
+        # -- Secret key name for Azure storage connection string
+        # @default -- Populated from global.secrets.storage.azure_blob.keys.connectionString in templates
+        connectionStringKey: ""
 
-      auth0:
-        domain: "" # Domain for Auth0
-        enableManagementAPI: true # Enable Auth0 Management API
-        managementAudience: "" # Management API audience for Auth0
-        apiIdentifier: "" # API identifier for Auth0
-        defaultConnection: "Username-Password-Authentication"
-        defaultRoles: ["user"]
-        sendInvitationEmail: true
-        syncAtStartup: true
-        syncPageSize: 100
+      # -- AWS S3 secret reference (only used when storage provider is aws_s3)
+      aws_s3:
+        # -- Secret name containing AWS credentials
+        # @default -- Populated from global.secrets.storage.aws_s3.secretName in templates
+        name: ""
+        # -- Secret key name for AWS access key ID
+        # @default -- Populated from global.secrets.storage.aws_s3.keys.accessKeyId in templates
+        accessKeyIdKey: ""
+        # -- Secret key name for AWS secret access key
+        # @default -- Populated from global.secrets.storage.aws_s3.keys.secretAccessKey in templates
+        secretAccessKeyKey: ""
 
-    # Integration with other services
-    integrations:
-      # Integrity Service URL (for DID key fallback)
-      integrityServiceUrl: "http://governance-platform-integrity"
-      # Governance Service URL
-      governanceServiceUrl: "http://governance-platform-governance-service:10001"
+      # -- GCS secret reference (only used when storage provider is gcs)
+      gcs:
+        # -- Secret name containing GCS credentials
+        # @default -- Populated from global.secrets.storage.gcs.secretName in templates
+        name: ""
+        # -- Secret key name for service account JSON
+        # @default -- Populated from global.secrets.storage.gcs.keys.serviceAccountJson in templates
+        serviceAccountJsonKey: ""
+
+    # -- Worker secret reference (for worker authentication)
+    worker:
+      # -- Secret name containing worker credentials
+      # @default -- Populated from global.secrets.governanceWorker.secretName in templates
+      name: ""
+      # -- Secret key name for encryption key
+      # @default -- Populated from global.secrets.governanceWorker.keys.encryptionKey in templates
+      encryptionKeyKey: ""
+      # -- Secret key name for client ID
+      # @default -- Populated from global.secrets.governanceWorker.keys.clientId in templates
+      clientIdKey: ""
+      # -- Secret key name for client secret
+      # @default -- Populated from global.secrets.governanceWorker.keys.clientSecret in templates
+      clientSecretKey: ""
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+
+  # Auth0 sync configuration (only used when auth provider is Auth0)
+  # -- Sync Auth0 users at application startup
+  auth0SyncAtStartup: true
+  # -- Number of users to sync per page from Auth0
+  auth0SyncPageSize: 100
+
+  # Application configuration
+  config:
+    # -- Health check endpoint path
+    path: "/health"
+
+    # -- Application environment (development | staging | production)
+    # @default -- Populated from global.environmentType in templates
+    appEnv: ""
+
+    # -- Logging level (debug | info | warn | error)
+    logLevel: "info"
+
+    # -- HTTP server configuration
+    server:
+      # -- Maximum time to read request (seconds)
+      readTimeout: 30
+      # -- Maximum time to write response (seconds)
+      writeTimeout: 30
+      # -- Maximum idle time for connections (seconds)
+      idleTimeout: 120
+
+    # -- Indicator configuration management
+    indicators:
+      # -- Path to indicator configuration files
+      configPath: "/app/configs/indicators"
+      # -- How often to reload configs (seconds)
+      reloadInterval: 300
+      # -- Enable OS guardrails
+      osGuardrailsEnabled: false
+      # -- Batch size for OS guardrails
+      osGuardrailsBatchSize: 100
+      # -- Timeout for OS guardrails (seconds)
+      osGuardrailsTimeoutSeconds: 5
+
+    # -- Cloud storage provider (gcs | azure | aws_s3)
+    # @default -- `""` (must be set explicitly for this service)
+    storageProvider: ""
+
+    # -- Google Cloud Storage bucket name (only used when storageProvider is "gcs")
+    # @default -- `""` (must be set when using GCS)
+    gcsBucketName: ""
+
+    # AWS S3 configuration (only used when storageProvider is "aws_s3")
+    # -- AWS region
+    # @default -- `""` (must be set when using S3)
+    awsS3Region: ""
+    # -- AWS S3 bucket name
+    # @default -- `""` (must be set when using S3)
+    awsS3BucketName: ""
+    # -- AWS S3 folder/prefix
+    # @default -- `""`
+    awsS3Folder: ""
+    # -- AWS access key ID (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.storage.aws_s3 in templates)
+    awsS3AccessKeyId: ""
+    # -- AWS secret access key (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.storage.aws_s3 in templates)
+    awsS3SecretAccessKey: ""
+
+    # Azure Storage configuration (only used when storageProvider is "azure")
+    # -- Azure storage account name
+    # @default -- Secret reference (populated from secrets.storage.azure_blob in templates)
+    azureStorageAccountName: ""
+    # -- Azure storage account key (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.storage.azure_blob in templates)
+    azureStorageAccountKey: ""
+    # -- Azure storage connection string (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.storage.azure_blob in templates)
+    azureStorageConnectionString: ""
+    # -- Azure storage container name
+    # @default -- `""` (must be set when using Azure Blob)
+    azureStorageContainerName: ""
+    # -- Use Azure managed identity for authentication
+    azureUseManagedIdentity: false
+
+    # Auth0 configuration (only used when auth provider is Auth0)
+    # -- Auth0 tenant domain
+    # @default -- `""` (**must be set** when using Auth0)
+    auth0Domain: ""
+    # -- Auth0 client ID (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.auth0 in templates)
+    auth0ClientId: ""
+    # -- Auth0 client secret (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.auth0 in templates)
+    auth0ClientSecret: ""
+
+    # Integration URLs
+    # -- Integrity Service URL
+    # @default -- Generated as "https://{global.domain}/integrityService" in templates
+    integrityServiceUrl: ""
+    # -- Auth Service URL for permission validation
+    # @default -- Generated as "https://{global.domain}/authService" in templates
+    authServiceUrl: ""
+
+    # -- Service account configuration (for worker authentication)
+    serviceAccount:
+      # -- Enable service account authentication for worker
+      enabled: true
+      # -- Auth service URL for token retrieval
+      # @default -- Falls back to config.authServiceUrl in templates
+      authServiceUrl: ""
+      # -- API key for auth service (auto-generated if using auth-service subchart)
+      authServiceApiKey: ""
+      # -- Service account name
+      serviceName: "governance-worker"
+      # -- Use existing secret for API key
+      existingSecret: ""
+      # -- Secret keys
+      existingSecretKeys:
+        apiKey: "api-secret"
+
+    # -- AI configuration
+    ai:
+      # -- Enable AI features
+      enabled: true
+      # -- AI provider (anthropic)
+      provider: "anthropic"
+      # -- AI model name
+      model: "claude-3-7-sonnet-latest"
+      # -- Temperature for AI responses
+      temperature: 0.7
+      # -- Maximum tokens for AI responses
+      maxTokens: 4000
+      # -- Timeout for AI requests (seconds)
+      timeoutSeconds: 60
+      # -- Number of retry attempts for AI requests
+      retryAttempts: 3
+      # -- AI API key secret reference
+      secretKeyRef:
+        # -- Secret name containing AI API key
+        # @default -- Populated from global.secrets.governanceServiceAI.secretName in templates
+        name: ""
+        # -- Secret key name for AI API key
+        # @default -- Populated from global.secrets.governanceServiceAI.keys.apiKey in templates
+        key: ""
+      # -- AI API key (leave empty to use secret reference)
+      # @default -- Secret reference (populated from secretKeyRef in templates)
+      apiKey: ""
+      # -- Use V2 API
+      useV2: true
+
+# =============================================================================
+# Governance Studio
+# =============================================================================
+governance-studio:
+  # -- Enable the Governance Studio frontend application
+  enabled: true
+
+  # -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 1
+
+  image:
+    # -- Container image repository
+    repository: ghcr.io/eqtylab/governance-studio
+    # -- Image pull policy (IfNotPresent | Always | Never)
+    pullPolicy: IfNotPresent
+    # -- Image tag override (defaults to chart appVersion if empty)
+    tag: ""
+
+  # -- Image pull secrets for private registries
+  # @default -- Populated from global.secrets.imageRegistry.secretName in templates
+  imagePullSecrets: []
+
+  # -- Override the chart name used for resource naming
+  nameOverride: ""
+  # -- Override the full name used for resource naming
+  fullnameOverride: ""
+
+  serviceAccount:
+    # -- Create a ServiceAccount for the deployment
+    create: false
+    # -- Automatically mount a ServiceAccount's API credentials
+    automount: true
+    # -- Annotations to add to the ServiceAccount
+    annotations: {}
+    # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
+    name: ""
+
+  # -- Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Additional labels to add to pods
+  podLabels: {}
+
+  # -- Security context applied at the pod level
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  # -- Security context applied at the container level
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  service:
+    # -- Create a Kubernetes Service
+    enabled: true
+    # -- Service type (ClusterIP | NodePort | LoadBalancer)
+    type: ClusterIP
+    # -- Service port
+    port: 80
 
   ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/enable-cors: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    # -- Create an Ingress resource for external access
+    enabled: false
+    # -- IngressClass name (e.g., "nginx", "traefik")
+    className: ""
+    # -- Additional annotations for the Ingress resource
+    annotations: {}
+      # cert-manager.io/issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress host configuration
     hosts:
-      - host: "governance.example.com"
+      - host: governance.example.com
         paths:
-          - path: "/auth(/|$)(.*)"
-            pathType: "ImplementationSpecific"
-    tls:
-      - secretName: "platform-tls"
-        hosts:
-          - "governance.example.com"
+          - path: /
+            pathType: Prefix
+    # -- TLS configuration
+    tls: []
+      # - secretName: governance-studio-tls
+      #   hosts:
+      #     - governance.example.com
+
+  # -- Resource requests and limits
+  resources: {}
+    # requests:
+    #   cpu: 50m
+    #   memory: 128Mi
+    # limits:
+    #   cpu: 200m
+    #   memory: 256Mi
+
+  # Horizontal Pod Autoscaler - automatically scales pods based on resource usage
+  autoscaling:
+    # -- Enable Horizontal Pod Autoscaler
+    enabled: false
+    # -- Minimum number of replicas
+    minReplicas: 1
+    # -- Maximum number of replicas
+    maxReplicas: 100
+    # -- Target CPU utilization percentage
+    targetCPUUtilizationPercentage: 80
+    # -- Target memory utilization percentage
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod Disruption Budget - maintains availability during cluster disruptions
+  podDisruptionBudget:
+    # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+    minAvailable: 1
+
+  # -- Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Startup probe configuration
+  startupProbe:
+    httpGet:
+      path: /
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+
+  config:
+    # -- Base path where the UI is served (useful behind a reverse proxy)
+    basePath: /
+
+    # Backend Service URLs
+    # -- Base API URL for the governance service
+    # @default -- Generated as "https://{global.domain}/governanceService" in templates
+    apiUrl: ""
+    # -- Auth service URL for authentication
+    # @default -- Generated as "https://{global.domain}/authService" in templates
+    authServiceUrl: ""
+    # -- Integrity service URL for lineage and statements
+    # @default -- Generated as "https://{global.domain}/integrityService" in templates
+    integrityServiceUrl: ""
+    # -- Garage service URL (optional compliance integration)
+    # @default -- Generated as "https://{global.domain}/garage" in templates if enabled
+    garageServiceUrl: ""
+
+    # Authentication Provider Configuration
+    # -- Authentication provider type (auth0 | keycloak)
+    # @default -- Populated from global.secrets.auth.provider in templates
+    authProvider: ""
+
+    # Auth0 Configuration (only used when authProvider is "auth0")
+    # -- Auth0 tenant domain
+    # @default -- `""` (REQUIRED when authProvider is auth0)
+    # Example: your-tenant.us.auth0.com
+    auth0Domain: ""
+    # -- Auth0 client ID (SPA application - public, not a secret)
+    # @default -- `""` (REQUIRED when authProvider is auth0)
+    auth0ClientId: ""
+    # -- Auth0 API audience
+    # @default -- `""` (REQUIRED when authProvider is auth0)
+    # Example: https://your-tenant.us.auth0.com/api/v2/
+    auth0Audience: ""
+
+    # Keycloak Configuration (only used when authProvider is "keycloak")
+    # -- Keycloak server URL
+    # @default -- Populated from global.secrets.auth.keycloak.values.url in templates
+    keycloakUrl: ""
+    # -- Keycloak realm name
+    # @default -- Populated from global.secrets.auth.keycloak.values.realm in templates
+    keycloakRealm: ""
+    # -- Keycloak client ID for frontend
+    # @default -- Populated from global.secrets.auth.keycloak.values.frontendClientId in templates
+    keycloakClientId: ""
+
+    # Application Settings
+    # -- Environment label (development | staging | production)
+    # @default -- Populated from global.environmentType in templates
+    environment: ""
+    # -- Application title displayed in browser and UI
+    appTitle: "Governance Studio"
+    # -- Public hostname for generating links and redirects
+    # @default -- Populated from global.domain in templates
+    appHostname: ""
+
+    # Feature Flags
+    features:
+      # -- Enable core governance features
+      governance: true
+      # -- Enable lineage and integrity features (requires integrity-service)
+      lineage: true
+      # -- Enable Guardian feature family (parent toggle)
+      guardianEnabled: false
+      # -- Enable Compliance Garage integration (requires garageServiceUrl)
+      guardianGarage: false
+      # -- Enable Guardian rulebook experiences
+      guardianRulebooks: false
+      # -- Enable OS-oriented Guardian functions
+      guardianOsFunctions: false
+      # -- Enable SDK-oriented Guardian functions
+      guardianSdkFunctions: false
+      # -- Enable agent management UI
+      agentManagement: false
+
+    # Branding Configuration
+    branding:
+      # -- URL or path to logo asset
+      logoUrl: /vite.svg
+      # -- Primary brand color (hex code)
+      primaryColor: "#0f172a"
+      # -- Company name for branding
+      companyName: "EQTY Lab"
 
 # =============================================================================
-# INFRASTRUCTURE COMPONENTS
+# Integrity Service
 # =============================================================================
-# Database and infrastructure services required by the platform
+# Default values for the integrity-service Helm chart.
+# ------------------------------------------------------------------------------
+integrity-service:
+  # -- Enable the Integrity Service for lineage and verifiable credentials
+  enabled: true
 
-# --- PostgreSQL Configuration ---
-# Primary database for all platform services
-# Automatically creates separate databases for each component
+  # -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 1
+
+  image:
+    # -- Container image repository
+    repository: ghcr.io/eqtylab/integrity-service
+    # -- Image pull policy (IfNotPresent | Always | Never)
+    pullPolicy: IfNotPresent
+    # -- Image tag override (defaults to chart appVersion if empty)
+    tag: ""
+
+  # -- Image pull secrets for private registries
+  # @default -- Populated from global.secrets.imageRegistry.secretName in templates
+  imagePullSecrets: []
+
+  # -- Override the chart name used for resource naming
+  nameOverride: ""
+  # -- Override the full name used for resource naming
+  fullnameOverride: ""
+
+  serviceAccount:
+    # -- Create a ServiceAccount for the deployment
+    create: false
+    # -- Automatically mount a ServiceAccount's API credentials
+    automount: true
+    # -- Annotations to add to the ServiceAccount
+    annotations: {}
+    # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
+    name: ""
+
+  # -- Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Additional labels to add to pods
+  podLabels: {}
+
+  # -- Security context applied at the pod level
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  # -- Security context applied at the container level
+  securityContext:
+    # Read-only root filesystem disabled to allow Rust app file operations
+    readOnlyRootFilesystem: false
+
+  service:
+    # -- Create a Kubernetes Service
+    enabled: true
+    # -- Service type (ClusterIP | NodePort | LoadBalancer)
+    type: ClusterIP
+    # -- Service port
+    port: 3050
+
+  ingress:
+    # -- Create an Ingress resource for external access
+    enabled: false
+    # -- IngressClass name (e.g., "nginx", "traefik")
+    className: ""
+    # -- Additional annotations for the Ingress resource
+    annotations: {}
+      # cert-manager.io/issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/rewrite-target: /$2
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress host configuration
+    hosts:
+      - host: governance.example.com
+        paths:
+          # Path uses regex for nginx rewrite - requires rewrite-target annotation
+          - path: "/integrityService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    # -- TLS configuration
+    tls: []
+      # - secretName: integrity-service-tls
+      #   hosts:
+      #     - governance.example.com
+
+  # -- Resource requests and limits
+  resources: {}
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  # Horizontal Pod Autoscaler - automatically scales pods based on resource usage
+  autoscaling:
+    # -- Enable Horizontal Pod Autoscaler
+    enabled: false
+    # -- Minimum number of replicas
+    minReplicas: 1
+    # -- Maximum number of replicas
+    maxReplicas: 100
+    # -- Target CPU utilization percentage
+    targetCPUUtilizationPercentage: 80
+    # -- Target memory utilization percentage
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod Disruption Budget - maintains availability during cluster disruptions
+  podDisruptionBudget:
+    # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+    minAvailable: 1
+
+  # -- Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Startup probe configuration
+  startupProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness probe configuration
+  livenessProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness probe configuration
+  readinessProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # PERSISTENCE CONFIGURATION
+  # =============================================================================
+
+  persistence:
+    # -- Enable persistent volume for integrity data
+    enabled: false
+    # -- Integrity data volume configuration
+    integrity:
+      # -- Container mount path for integrity data
+      mountPath: /data/integrity
+      # -- Host path for integrity data storage (only used when persistence.enabled is true)
+      hostPath: /var/lib/integrity
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+
+  env:
+    # -- Rust application environment (development | staging | production)
+    # @default -- Populated from global.environmentType in templates
+    rustEnv: ""
+
+    # Database Configuration
+    # -- Database host
+    # @default -- Generated as "{Release.Name}-postgresql" in templates
+    integrityAppDbHost: ""
+    # -- Database name
+    integrityAppDbName: "IntegrityServiceDB"
+    # -- Database user
+    # @default -- Populated from global.postgresql.username in templates
+    integrityAppDbUser: ""
+    # -- Database password (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.database in templates)
+    integrityAppDbPassword: ""
+
+    # Storage Configuration
+    # -- Blob storage backend type (aws_s3 | azure_blob)
+    # @default -- `""` (must be set explicitly for this service)
+    integrityAppBlobStoreType: ""
+
+    # AWS S3 Configuration (only used when integrityAppBlobStoreType is "aws_s3")
+    # -- AWS region
+    # @default -- `""` (must be set when using AWS S3)
+    integrityAppBlobStoreRegion: ""
+    # -- AWS S3 bucket name
+    # @default -- `""` (must be set when using AWS S3)
+    integrityAppBlobStoreBucket: ""
+    # -- AWS S3 folder/prefix
+    # @default -- `""` (optional prefix for S3 objects)
+    integrityAppBlobStoreFolder: ""
+    # -- AWS access key ID (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.storage.aws_s3 in templates)
+    integrityAppBlobStoreAccessKeyId: ""
+    # -- AWS secret access key (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.storage.aws_s3 in templates)
+    integrityAppBlobStoreSecretAccessKey: ""
+
+    # Azure Blob Storage Configuration (only used when integrityAppBlobStoreType is "azure_blob")
+    # -- Azure storage account name (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.storage.azure_blob in templates)
+    integrityAppBlobStoreAccount: ""
+    # -- Azure blob container name
+    # @default -- `""` (must be set when using Azure Blob Storage)
+    integrityAppBlobStoreContainer: ""
+    # -- Azure storage account key (leave empty to use secret reference)
+    integrityAppBlobStoreKey: ""
+
+    # Logging Configuration
+    # -- Default log level (trace | debug | info | warn | error)
+    integrityAppLoggingLogLevelDefault: "warn"
+    # -- Integrity service specific log level (trace | debug | info | warn | error)
+    integrityAppLoggingLogLevelIntegrityService: "trace"
+
+    # Authentication Configuration
+    # -- Authentication type (auth_service)
+    integrityAppAuthType: "auth_service"
+    # -- Auth service URL for authentication
+    # @default -- Generated as "http://{Release.Name}-auth-service:8080" in templates
+    integrityAppAuthUrl: ""
+
+    # Legacy Key Vault Configuration (Azure Key Vault)
+    # NOTE: Deprecated - kept for backward compatibility during auth-service migration
+    # -- Azure Key Vault tenant ID (legacy - still needed until full auth-service migration)
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppKeyVaultTenantId: ""
+    # -- Azure Key Vault client ID (legacy - still needed until full auth-service migration)
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppKeyVaultClientId: ""
+    # -- Azure Key Vault URL (legacy - still needed until full auth-service migration)
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppKeyVaultVaultUrl: ""
+    # -- Azure Key Vault client secret (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppKeyVaultClientSecret: ""
+
+    # Auth Signer Configuration (Azure Key Vault)
+    # NOTE: Active configuration for credential signing (uses same Azure Key Vault credentials)
+    # -- Auth Signer backend type (azure_key_vault)
+    # @default -- Populated from global.secrets.secretManager.provider in templates
+    integrityAppAuthSignerConfigType: ""
+    # -- Azure Key Vault tenant ID (only used when integrityAppAuthSignerConfigType is "azure_key_vault")
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppAuthSignerConfigTenantId: ""
+    # -- Azure Key Vault client ID (only used when integrityAppAuthSignerConfigType is "azure_key_vault")
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppAuthSignerConfigClientId: ""
+    # -- Azure Key Vault URL (only used when integrityAppAuthSignerConfigType is "azure_key_vault")
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppAuthSignerConfigVaultUrl: ""
+    # -- Azure Key Vault client secret (leave empty to use secret reference)
+    # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
+    integrityAppAuthSignerConfigClientSecret: ""
+
+    # Service URL Configuration
+    # -- Public URL for this service
+    # @default -- Generated from global.domain and ingress path in templates
+    integrityServiceUrl: ""
+
+  # =============================================================================
+  # SECRET CONFIGURATION
+  # =============================================================================
+
+  secrets:
+    # Database credentials
+    database:
+      # -- Enable database credentials secret
+      # @default -- Auto-enabled when deployed via umbrella chart
+      enabled: false
+      # -- Secret name containing database credentials
+      # @default -- Populated from global.secrets.database.secretName in templates
+      name: ""
+      # Secret keys
+      keys:
+        # -- Secret key name for database username
+        # @default -- Populated from global.secrets.database.keys.username in templates
+        username: "username"
+        # -- Secret key name for database password
+        # @default -- Populated from global.secrets.database.keys.password in templates
+        password: "password"
+
+    # Storage credentials (provider-specific)
+    storage:
+      # AWS S3 credentials (only used when integrityAppBlobStoreType is "aws_s3")
+      aws_s3:
+        # -- Enable AWS credentials secret
+        # @default -- Auto-enabled when integrityAppBlobStoreType is "aws_s3"
+        enabled: false
+        # -- Secret name containing AWS credentials
+        # @default -- Populated from global.secrets.storage.aws_s3.secretName in templates
+        name: ""
+        # Secret keys
+        keys:
+          # -- Secret key name for AWS access key ID
+          # @default -- Populated from global.secrets.storage.aws_s3.keys.accessKeyId in templates
+          accessKeyId: "access-key-id"
+          # -- Secret key name for AWS secret access key
+          # @default -- Populated from global.secrets.storage.aws_s3.keys.secretAccessKey in templates
+          secretAccessKey: "secret-access-key"
+
+      # Azure Blob Storage credentials (only used when integrityAppBlobStoreType is "azure_blob")
+      azure_blob:
+        # -- Enable Azure Blob Storage credentials secret
+        # @default -- Auto-enabled when integrityAppBlobStoreType is "azure_blob"
+        enabled: false
+        # -- Secret name containing Azure Blob Storage credentials
+        # @default -- Populated from global.secrets.storage.azure_blob.secretName in templates
+        name: ""
+        # Secret keys
+        keys:
+          # -- Secret key name for Azure storage account name
+          # @default -- Populated from global.secrets.storage.azure_blob.keys.accountName in templates
+          accountName: "account-name"
+          # -- Secret key name for Azure storage account key
+          # @default -- Populated from global.secrets.storage.azure_blob.keys.accountKey in templates
+          accountKey: "account-key"
+          # -- Secret key name for Azure storage connection string
+          # @default -- Populated from global.secrets.storage.azure_blob.keys.connectionString in templates
+          connectionString: "connection-string"
+
+    # Secret manager credentials
+    # Note: Used for both key_vault and auth_signer_config (same credentials)
+    secretManager:
+      # Azure Key Vault credentials
+      azure_key_vault:
+        # -- Enable Azure Key Vault credentials secret
+        # @default -- Auto-enabled when global.secrets.secretManager.provider is "azure_key_vault"
+        enabled: false
+        # -- Secret name containing Azure Key Vault credentials
+        # @default -- Populated from global.secrets.secretManager.azure_key_vault.secretName in templates
+        name: ""
+        # Secret keys
+        keys:
+          # -- Secret key name for Azure client ID
+          # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.clientId in templates
+          clientId: "client-id"
+          # -- Secret key name for Azure client secret
+          # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.clientSecret in templates
+          clientSecret: "client-secret"
+          # -- Secret key name for Azure tenant ID
+          # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.tenantId in templates
+          tenantId: "tenant-id"
+          # -- Secret key name for Azure Key Vault URL
+          # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.vaultUrl in templates
+          vaultUrl: "vault-url"
+
+# =============================================================================
+# PostgreSQL
+# =============================================================================
+# Bitnami PostgreSQL chart configuration for platform database
+# ------------------------------------------------------------------------------
 postgresql:
-  enabled: true # Set to false to use an external PostgreSQL instance
-  # Global PostgreSQL values
+  # -- Enable PostgreSQL
+  # @default -- `true`
+  # Set to false to use an external PostgreSQL instance
+  enabled: true
+
+  # -- Global Storage Class
+  # @default -- See values below
+  # Storage class configuration for the Bitnami PostgreSQL chart
   global:
+    # -- Storage Class
+    # @default -- `""` (uses cluster default)
+    defaultStorageClass: ""
+
     postgresql:
       auth:
+        # -- Database Name
+        # @default -- `governance`
+        # Default database for platform services
         database: "governance"
+
+        # -- Database Username
+        # @default -- `postgres`
+        # PostgreSQL admin username
         username: "postgres"
-        existingSecret: "{{ .Values.global.secrets.complianceSecretName }}"
+
+        # -- Postgres Password
+        # @default -- `"placeholder"` (overridden by existingSecret at runtime)
+        # This placeholder satisfies Bitnami chart validation during upgrades.
+        # The actual password is read from existingSecret at runtime.
+        postgresPassword: "placeholder-overridden-by-secret"
+
+        # -- Existing Secret
+        # @default -- `platform-database`
+        # References global.secrets.database.secretName
+        existingSecret: "platform-database"
+
+        # -- Secret Keys
+        # @default -- See values below
+        # Keys within the existing secret for password retrieval
         secretKeys:
-          adminPasswordKey: "postgresPassword"
-          userPasswordKey: "postgresPassword"
-  # Primary PostgreSQL instance configuration
+          # -- Admin Password Key
+          # @default -- `password`
+          # Key name for PostgreSQL admin password in secret
+          adminPasswordKey: "password"
+
+          # -- User Password Key
+          # @default -- `password`
+          # Key name for regular user password in secret
+          userPasswordKey: "password"
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Bitnami PostgreSQL 17 image
+  image:
+    # -- Image Registry
+    # @default -- `docker.io`
+    registry: docker.io
+
+    # -- Image Repository
+    # @default -- `bitnamilegacy/postgresql`
+    repository: bitnamilegacy/postgresql
+
+    # -- Image Tag
+    # @default -- `17-debian-12`
+    tag: 17-debian-12
+
+  # -- Primary Instance Configuration
+  # @default -- See values below
+  # Configuration for the primary PostgreSQL instance
   primary:
+    # -- Persistence Configuration
+    # @default -- See values below
     persistence:
+      # -- Enable Persistence
+      # @default -- `true`
+      # Enable persistent volume for database data
       enabled: true
+
+      # -- Storage Size
+      # @default -- `10Gi`
+      # Size of persistent volume for database
       size: 10Gi
-      storageClass: "default"
+
+    # -- Resource Configuration
+    # @default -- See values below
+    # CPU and memory resources for PostgreSQL pod
     resources:
+      # -- Resource Requests
+      # @default -- See values below
       requests:
+        # -- CPU Request
+        # @default -- `500m`
         cpu: 500m
+
+        # -- Memory Request
+        # @default -- `1Gi`
         memory: 1Gi
+
+      # -- Resource Limits
+      # @default -- See values below
       limits:
+        # -- CPU Limit
+        # @default -- `2000m`
         cpu: 2000m
+
+        # -- Memory Limit
+        # @default -- `2Gi`
         memory: 2Gi
-    # Initialize additional databases beyond the default 'governance' database
+
+    # -- Database Initialization
+    # @default -- See values below
+    # Scripts to run when initializing the database
+    # Creates additional databases beyond the default 'governance' database
     initdb:
+      # -- Initialization Scripts
+      # @default -- See values below
       scripts:
+        # -- Create Additional Databases
+        # @default -- Creates governance and IntegrityServiceDB databases
         create-additional-dbs.sql: |
           CREATE DATABASE governance;
           GRANT ALL PRIVILEGES ON DATABASE governance TO postgres;
 
-          CREATE DATABASE compliance;
-          GRANT ALL PRIVILEGES ON DATABASE compliance TO postgres;
-
           CREATE DATABASE "IntegrityServiceDB";
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
 
-          CREATE DATABASE authservice;
-          GRANT ALL PRIVILEGES ON DATABASE authservice TO postgres;
+# =============================================================================
+# Keycloak Integration
+# =============================================================================
+# Configuration for Keycloak identity provider integration
+# Creates the necessary organization and admin user in the governance database
+# Only used when global.secrets.auth.provider is set to "keycloak"
+# ------------------------------------------------------------------------------
+keycloak:
+  # -- Create Organization
+  # @default -- `false`
+  # Enable automatic organization creation for Keycloak realm
+  # Set to true to create organization in database on install/upgrade
+  # Organization name will match the Keycloak realm name
+  createOrganization: false
+
+  # -- Realm Name
+  # @default -- `governance`
+  # Keycloak realm name for the platform
+  # Must match global.secrets.auth.keycloak.values.realm
+  # This name is used as the organization identifier in the database
+  realmName: "governance"
+
+  # -- Display Name
+  # @default -- `Governance Platform`
+  # Human-readable display name for the organization
+  # Shown in UI and organization management interfaces
+  displayName: "Governance Platform"
+
+  # -- Create Platform Admin
+  # @default -- `false`
+  # Create platform-admin user in auth service tables
+  # Set to true to create an initial platform administrator
+  # Requires platformAdminKeycloakId to be set
+  createPlatformAdmin: false
+
+  # -- Platform Admin Keycloak ID
+  # @default -- `""` (must be set if createPlatformAdmin is true)
+  # Keycloak user ID for the platform administrator
+  # Obtain this ID from Keycloak after creating the admin user
+  # Example: Set after Keycloak bootstrap via Keycloak admin console
+  platformAdminKeycloakId: ""
+
+  # -- Organization Settings
+  # @default -- See values below
+  # Additional configuration for the organization
+  organizationSettings:
+    # -- Organization Description
+    # @default -- `Main governance organization`
+    # Detailed description of the organization's purpose
+    description: "Main governance organization"
+
+    # -- Additional Settings
+    # @default -- `{}`
+    # JSON string containing custom organization settings
+    # Example: '{"theme": "dark", "features": ["advanced-governance"]}'
+    settings: "{}"

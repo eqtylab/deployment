@@ -1,4 +1,4 @@
-{{- if .Values.podDisruptionBudget.enabled }}
+{{- if and .Values.enabled (or .Values.autoscaling.enabled (gt (int .Values.replicaCount) 1)) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -6,11 +6,10 @@ metadata:
   labels:
     {{- include "auth-service.labels" . | nindent 4 }}
 spec:
-  {{- if .Values.podDisruptionBudget.minAvailable }}
+  {{- if gt (int .Values.replicaCount) 1 }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
-  {{- end }}
-  {{- if .Values.podDisruptionBudget.maxUnavailable }}
-  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
   {{- end }}
   selector:
     matchLabels:

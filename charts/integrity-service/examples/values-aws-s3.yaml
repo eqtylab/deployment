@@ -1,0 +1,249 @@
+# AWS S3 Storage Configuration
+# Production deployment using AWS S3 for blob storage with EKS
+#
+# Usage:
+#   helm install integrity-service ./charts/integrity-service -f examples/values-aws-s3.yaml
+#
+# Prerequisites:
+#   - AWS EKS cluster with IRSA (IAM Roles for Service Accounts)
+#   - S3 bucket created with appropriate IAM policies
+#   - RDS PostgreSQL instance
+#   - Azure Key Vault for credential signing (cross-cloud)
+#   - ALB Ingress Controller or nginx ingress
+#
+# This example demonstrates:
+#   - AWS S3 storage configuration
+#   - EKS with IRSA for S3 access (recommended over access keys)
+#   - RDS PostgreSQL connection
+#   - Production-ready settings
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/eqtylab/integrity-service
+  pullPolicy: Always
+  tag: ""
+
+imagePullSecrets:
+  - name: "ecr-registry-credentials"
+
+# EKS Service Account with IRSA
+serviceAccount:
+  create: true
+  automount: true
+  annotations:
+    # IRSA annotation for S3 access
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/integrity-service-s3-role"
+  name: ""
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 3050
+
+# =============================================================================
+# INGRESS CONFIGURATION (ALB or nginx)
+# =============================================================================
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "SAMEORIGIN" always;
+  hosts:
+    - host: governance.your-domain.com
+      paths:
+        - path: "/integrityService(/|$)(.*)"
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: integrity-service-tls
+      hosts:
+        - governance.your-domain.com
+
+# Alternative: AWS ALB Ingress
+# ingress:
+#   enabled: true
+#   className: "alb"
+#   annotations:
+#     alb.ingress.kubernetes.io/scheme: internet-facing
+#     alb.ingress.kubernetes.io/target-type: ip
+#     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:123456789012:certificate/xxx"
+#     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+#     alb.ingress.kubernetes.io/ssl-redirect: "443"
+#   hosts:
+#     - host: governance.your-domain.com
+#       paths:
+#         - path: /integrityService
+#           pathType: Prefix
+
+# =============================================================================
+# APPLICATION CONFIGURATION - AWS S3
+# =============================================================================
+
+env:
+  rustEnv: "production"
+
+  # RDS PostgreSQL connection
+  integrityAppDbHost: "integrity-db.cluster-xxxxx.us-east-1.rds.amazonaws.com"
+  integrityAppDbName: "IntegrityServiceDB"
+  # User from secrets
+
+  # AWS S3 Storage Configuration
+  integrityAppBlobStoreType: "aws_s3"
+  integrityAppBlobStoreRegion: "us-east-1"
+  integrityAppBlobStoreBucket: "your-company-integrity-artifacts"
+  integrityAppBlobStoreFolder: "integrity"
+  # Access keys from secrets (or use IRSA - recommended)
+
+  # Production logging
+  integrityAppLoggingLogLevelDefault: "warn"
+  integrityAppLoggingLogLevelIntegrityService: "info"
+
+  # Auth service URL
+  integrityAppAuthType: "auth_service"
+  integrityAppAuthUrl: "http://governance-platform-auth-service:8080"
+
+  # Auth signer - Azure Key Vault (cross-cloud for signing)
+  integrityAppAuthSignerConfigType: "azure_key_vault"
+
+  # Public service URL
+  integrityServiceUrl: "https://governance.your-domain.com/integrityService"
+
+# =============================================================================
+# SECRET CONFIGURATION
+# =============================================================================
+
+secrets:
+  # RDS database credentials
+  database:
+    enabled: true
+    name: "platform-database"
+    keys:
+      username: "username"
+      password: "password"
+
+  # AWS S3 credentials (optional if using IRSA)
+  # With IRSA, the service account role provides access
+  storage:
+    aws_s3:
+      enabled: true # Set to false if using IRSA
+      name: "platform-aws-s3"
+      keys:
+        accessKeyId: "access-key-id"
+        secretAccessKey: "secret-access-key"
+
+  # Azure Key Vault for signing operations
+  secretManager:
+    azure_key_vault:
+      enabled: true
+      name: "platform-azure-key-vault"
+      keys:
+        clientId: "client-id"
+        clientSecret: "client-secret"
+        tenantId: "tenant-id"
+        vaultUrl: "vault-url"
+
+# =============================================================================
+# HIGH AVAILABILITY
+# =============================================================================
+
+podDisruptionBudget:
+  minAvailable: 1
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - integrity-service
+          topologyKey: topology.kubernetes.io/zone
+
+nodeSelector: {}
+tolerations: []
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false # Rust app needs write access
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# =============================================================================
+# PROBES
+# =============================================================================
+
+startupProbe:
+  httpGet:
+    path: /health/v1
+    port: http
+  failureThreshold: 30
+  periodSeconds: 10
+
+livenessProbe:
+  httpGet:
+    path: /health/v1
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/v1
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 2
+
+# =============================================================================
+# POD LABELS
+# =============================================================================
+
+podLabels:
+  storage-provider: "aws-s3"
+  cloud-provider: "aws"

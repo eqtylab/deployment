@@ -2,39 +2,42 @@ apiVersion: v2
 name: governance-platform
 description: A Helm chart for the complete Governance Studio platform.
 type: application
-version: 1.0.0
-
-# This is the version number of the application being deployed.
-appVersion: "1.0.0"
-
+version: 1.6.0
+appVersion: "1.6.0"
+home: https://github.com/eqtylab/governance-studio-infrastructure
+sources:
+  - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/governance-platform
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io
 dependencies:
-  # 1. Governance Service API
+  # Auth Service
+  - name: auth-service
+    version: "1.1.0"
+    repository: "file://../auth-service"
+    condition: auth-service.enabled
+
+  # Governance Service API
   - name: governance-service
-    version: "1.0.0"
+    version: "1.9.0"
     repository: "file://../governance-service"
     condition: governance-service.enabled
 
-  # 2. Integrity Service
-  - name: integrity-service
-    version: "1.0.0"
-    repository: "file://../integrity-service"
-    condition: integrity-service.enabled
-
-  # 3. PostgreSQL
-  - name: postgresql
-    version: "~12.5.5" # Bitnami chart version
-    repository: "https://charts.bitnami.com/bitnami"
-    alias: postgresql
-    condition: postgresql.enabled
-
-  # 4. Governance Studio UI
+  # Governance Studio UI
   - name: governance-studio
-    version: "1.0.0"
+    version: "1.4.0"
     repository: "file://../governance-studio"
     condition: governance-studio.enabled
 
-  # 5. Auth Service
-  - name: auth-service
-    version: "1.0.0"
-    repository: "file://../auth-service"
-    condition: auth-service.enabled
+  # Integrity Service
+  - name: integrity-service
+    version: "1.2.0"
+    repository: "file://../integrity-service"
+    condition: integrity-service.enabled
+
+  # PostgreSQL - used by governance-service, auth-service, and integrity services
+  - name: postgresql
+    version: "~18.1.1" # Bitnami chart version
+    repository: "https://charts.bitnami.com/bitnami"
+    alias: postgresql
+    condition: postgresql.enabled

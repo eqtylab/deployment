@@ -1,0 +1,247 @@
+# Full Features Configuration
+# Configuration with all features and integrations enabled
+#
+# Usage:
+#   helm install governance-studio ./charts/governance-studio -f examples/values-full-features.yaml
+#
+# Prerequisites:
+#   - All backend services deployed:
+#     - governance-service
+#     - auth-service
+#     - integrity-service
+#     - garage-service (for Guardian Garage)
+#   - Auth0 or Keycloak configured
+#   - Storage provider configured for artifact storage
+#
+# This example demonstrates:
+#   - All Guardian features enabled
+#   - Agent management enabled
+#   - Compliance Garage integration
+#   - Full lineage and governance capabilities
+#   - Custom branding configuration
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+replicaCount: 3
+
+image:
+  repository: ghcr.io/eqtylab/governance-studio
+  pullPolicy: Always
+  tag: ""
+
+imagePullSecrets:
+  - name: "registry-credentials"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 15
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+
+# =============================================================================
+# INGRESS CONFIGURATION
+# =============================================================================
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "128m" # Larger for artifacts
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  hosts:
+    - host: governance.your-domain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: governance-studio-tls
+      hosts:
+        - governance.your-domain.com
+
+# =============================================================================
+# APPLICATION CONFIGURATION - ALL FEATURES ENABLED
+# =============================================================================
+
+config:
+  basePath: /
+
+  # Backend service URLs
+  apiUrl: "https://governance.your-domain.com/governanceService"
+  authServiceUrl: "https://governance.your-domain.com/authService"
+  integrityServiceUrl: "https://governance.your-domain.com/integrityService"
+  # Garage service for Guardian Garage feature
+  garageServiceUrl: "https://governance.your-domain.com/garage"
+
+  # Authentication - Auth0 example
+  authProvider: "auth0"
+  auth0Domain: "your-tenant.us.auth0.com"
+  auth0ClientId: "YOUR_AUTH0_SPA_CLIENT_ID"
+  auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+
+  # Environment settings
+  environment: "production"
+  appTitle: "Governance Studio - Full Edition"
+  appHostname: "governance.your-domain.com"
+
+  # ==========================================================================
+  # ALL FEATURES ENABLED
+  # ==========================================================================
+  features:
+    # Core governance features - policy management, artifacts, etc.
+    governance: true
+
+    # Lineage and integrity tracking (requires integrity-service)
+    lineage: true
+
+    # Guardian feature family - parent toggle (enables Guardian section in UI)
+    guardianEnabled: true
+
+    # Compliance Garage integration (requires garage-service)
+    # Provides automated compliance checking and artifact verification
+    guardianGarage: true
+
+    # Guardian rulebook experiences
+    # Allows creation and management of governance rulebooks
+    guardianRulebooks: true
+
+    # OS-oriented Guardian functions
+    # Provides operating system level governance capabilities
+    guardianOsFunctions: true
+
+    # SDK-oriented Guardian functions
+    # Provides SDK integration and development governance
+    guardianSdkFunctions: true
+
+    # Agent management UI
+    # Enables management of AI/ML agents and their governance policies
+    agentManagement: true
+
+  # Custom branding configuration
+  branding:
+    # Custom logo URL (can be relative path or absolute URL)
+    logoUrl: "https://your-cdn.com/company-logo.svg"
+    # Primary brand color (used for buttons, links, etc.)
+    primaryColor: "#2563eb"
+    # Company name displayed in UI
+    companyName: "Your Company Name"
+
+# =============================================================================
+# HIGH AVAILABILITY
+# =============================================================================
+
+podDisruptionBudget:
+  minAvailable: 2
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - governance-studio
+        topologyKey: kubernetes.io/hostname
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - governance-studio
+          topologyKey: topology.kubernetes.io/zone
+
+nodeSelector: {}
+tolerations: []
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# =============================================================================
+# PROBES
+# =============================================================================
+
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  failureThreshold: 30
+  periodSeconds: 10
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 2
+
+# =============================================================================
+# POD LABELS
+# =============================================================================
+
+podLabels:
+  feature-tier: "full"
+  guardian-enabled: "true"
+  agent-management: "true"
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "80"

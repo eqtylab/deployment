@@ -1,3 +1,4 @@
+{{- if .Values.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,362 +20,25 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "auth-service.labels" . | nindent 8 }}
+        {{- include "auth-service.selectorLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- if and .Values.global (((.Values.global).secrets).imageRegistry).secretName }}
       imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
+      {{- else if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "auth-service.serviceAccountName" . }}
+      {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name | default (include "auth-service.fullname" .) }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- with .Values.extraInitContainers }}
-      initContainers:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      containers:
-        - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: {{ .Values.config.server.port }}
-              protocol: TCP
-            {{- if .Values.metrics.enabled }}
-            - name: metrics
-              containerPort: {{ .Values.metrics.port }}
-              protocol: TCP
-            {{- end }}
-          env:
-            # Server configuration
-            - name: PORT
-              value: {{ .Values.config.server.port | quote }}
-            - name: HOST
-              value: {{ .Values.config.server.host | quote }}
-            - name: SERVER_READ_TIMEOUT
-              value: {{ .Values.config.server.readTimeout | quote }}
-            - name: SERVER_WRITE_TIMEOUT
-              value: {{ .Values.config.server.writeTimeout | quote }}
-            - name: SERVER_IDLE_TIMEOUT
-              value: {{ .Values.config.server.idleTimeout | quote }}
-
-            # Environment
-            - name: ENVIRONMENT
-              value: {{ .Values.config.server.environment | default "production" | quote }}
-            - name: SWAGGER_ENABLED
-              value: {{ .Values.config.server.swaggerEnabled | default false | quote }}
-
-            # Logging configuration
-            - name: LOG_LEVEL
-              value: {{ .Values.config.logging.level | quote }}
-            - name: LOG_FORMAT
-              value: {{ .Values.config.logging.format | quote }}
-            - name: LOGGER_SKIP_PATHS
-              {{- if .Values.config.logging.skipPaths }}
-              value: {{ .Values.config.logging.skipPaths | quote }}
-              {{- else }}
-              value: "/health,/health/live,/health/ready"
-              {{- end }}
-
-            # CORS configuration
-            - name: CORS_ENABLED
-              value: {{ .Values.config.cors.enabled | quote }}
-            - name: CORS_ORIGINS
-              value: {{ .Values.config.cors.origins | quote }}
-
-            # IDP configuration
-            - name: IDP_PROVIDER
-              value: {{ .Values.config.idp.provider | quote }}
-            - name: IDP_ISSUER
-              value: {{ .Values.config.idp.issuer | quote }}
-            - name: IDP_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.idpSecretName" . }}
-                  key: {{ .Values.config.idp.existingSecretKeys.clientId | default "client-id" }}
-            - name: IDP_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.idpSecretName" . }}
-                  key: {{ .Values.config.idp.existingSecretKeys.clientSecret | default "client-secret" }}
-            - name: IDP_SKIP_ISSUER_VERIFICATION
-              value: {{ .Values.config.idp.skipIssuerVerification | default "false" | quote }}
-
-            {{- if eq .Values.config.idp.provider "auth0" }}
-            # Auth0 specific configuration
-            - name: IDP_AUTH0_DOMAIN
-              value: {{ .Values.config.idp.auth0.domain | quote }}
-            {{- if .Values.config.idp.auth0.enableManagementAPI }}
-            - name: IDP_AUTH0_MANAGEMENT_CLIENT_ID
-              {{- if .Values.config.idp.auth0.managementClientId }}
-              value: {{ .Values.config.idp.auth0.managementClientId | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.idpSecretName" . }}
-                  key: {{ .Values.config.idp.existingSecretKeys.managementClientId | default "mgmt-client-id" }}
-              {{- end }}
-            - name: IDP_AUTH0_MANAGEMENT_CLIENT_SECRET
-              {{- if .Values.config.idp.auth0.managementClientSecret }}
-              value: {{ .Values.config.idp.auth0.managementClientSecret | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.idpSecretName" . }}
-                  key: {{ .Values.config.idp.existingSecretKeys.managementClientSecret | default "mgmt-client-secret" }}
-              {{- end }}
-            {{- end }}
-            {{- if .Values.config.idp.auth0.managementAudience }}
-            - name: IDP_AUTH0_MANAGEMENT_AUDIENCE
-              value: {{ .Values.config.idp.auth0.managementAudience | quote }}
-            {{- end }}
-            {{- if .Values.config.idp.auth0.apiIdentifier }}
-            - name: IDP_AUTH0_API_IDENTIFIER
-              value: {{ .Values.config.idp.auth0.apiIdentifier | quote }}
-            {{- end }}
-            - name: IDP_AUTH0_DEFAULT_CONNECTION
-              value: {{ .Values.config.idp.auth0.defaultConnection | quote }}
-            {{- if .Values.config.idp.auth0.defaultRoles }}
-            - name: IDP_AUTH0_DEFAULT_ROLES
-              value: {{ .Values.config.idp.auth0.defaultRoles | join "," | quote }}
-            {{- end }}
-            {{- end }}
-
-            {{- if eq .Values.config.idp.provider "keycloak" }}
-            # Keycloak specific configuration
-            - name: IDP_KEYCLOAK_REALM
-              value: {{ .Values.config.idp.keycloak.realm | quote }}
-            {{- if .Values.config.idp.keycloak.adminUrl }}
-            - name: IDP_KEYCLOAK_ADMIN_URL
-              value: {{ .Values.config.idp.keycloak.adminUrl | quote }}
-            {{- end }}
-            {{- if .Values.config.idp.keycloak.adminUsername }}
-            - name: IDP_KEYCLOAK_ADMIN_USERNAME
-              value: {{ .Values.config.idp.keycloak.adminUsername | quote }}
-            {{- end }}
-            {{- if .Values.config.idp.keycloak.adminPassword }}
-            - name: IDP_KEYCLOAK_ADMIN_PASSWORD
-              value: {{ .Values.config.idp.keycloak.adminPassword | quote }}
-            {{- end }}
-            {{- if .Values.config.idp.keycloak.serviceAccountClientId }}
-            - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID
-              value: {{ .Values.config.idp.keycloak.serviceAccountClientId | quote }}
-            {{- end }}
-            {{- if .Values.config.idp.keycloak.serviceAccountClientSecret }}
-            - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET
-              value: {{ .Values.config.idp.keycloak.serviceAccountClientSecret | quote }}
-            {{- end }}
-            {{- end }}
-
-            {{- if eq .Values.config.idp.provider "zitadel" }}
-            # Zitadel specific configuration
-            {{- if .Values.config.idp.zitadel.projectId }}
-            - name: IDP_ZITADEL_PROJECT_ID
-              value: {{ .Values.config.idp.zitadel.projectId | quote }}
-            {{- end }}
-            {{- if .Values.config.idp.zitadel.organizationId }}
-            - name: IDP_ZITADEL_ORGANIZATION_ID
-              value: {{ .Values.config.idp.zitadel.organizationId | quote }}
-            {{- end }}
-            {{- if .Values.config.idp.zitadel.serviceKeyPath }}
-            - name: IDP_ZITADEL_SERVICE_KEY_PATH
-              value: {{ .Values.config.idp.zitadel.serviceKeyPath | quote }}
-            {{- end }}
-            {{- end }}
-
-            # Database configuration
-            - name: DB_HOST
-              value: {{ include "auth-service.databaseHost" . | quote }}
-            - name: DB_PORT
-              value: {{ .Values.config.database.port | quote }}
-            - name: DB_NAME
-              value: {{ .Values.config.database.name | quote }}
-            - name: DB_USER
-              value: {{ .Values.config.database.user | quote }}
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.databaseSecretName" . }}
-                  key: {{ include "auth-service.databaseSecretKey" . }}
-            - name: DB_SSL_MODE
-              value: {{ .Values.config.database.sslMode | quote }}
-            - name: DATABASE_AUTO_MIGRATE
-              value: {{ .Values.config.database.autoMigrate | default "true" | quote }}
-            - name: DATABASE_MIGRATIONS_PATH
-              value: {{ .Values.config.database.migrationsPath | default "/internal/database/migrations" | quote }}
-
-            # Key Vault configuration
-            - name: KEY_VAULT_PROVIDER
-              value: {{ .Values.config.keyVault.provider | quote }}
-            {{- if eq .Values.config.keyVault.provider "azure" }}
-            - name: AZURE_KEY_VAULT_URL
-              value: {{ .Values.config.keyVault.azure.vaultUrl | quote }}
-            - name: AZURE_TENANT_ID
-              value: {{ .Values.config.keyVault.azure.tenantId | quote }}
-            - name: AZURE_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.keyVaultSecretName" . }}
-                  key: {{ .Values.config.keyVault.azure.existingSecretKeys.clientId | default "client-id" }}
-            - name: AZURE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.keyVaultSecretName" . }}
-                  key: {{ .Values.config.keyVault.azure.existingSecretKeys.clientSecret | default "client-secret" }}
-            {{- else if eq .Values.config.keyVault.provider "hashicorp" }}
-            - name: VAULT_ADDR
-              value: {{ .Values.config.keyVault.hashicorp.address | quote }}
-            - name: VAULT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.keyVaultSecretName" . }}
-                  key: {{ .Values.config.keyVault.hashicorp.existingSecretKeys.token | default "token" }}
-            {{- end }}
-
-            # Security configuration
-            {{- if .Values.config.security.apiSecret }}
-            - name: API_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.securitySecretName" . }}
-                  key: {{ .Values.config.security.existingSecretKeys.apiSecret | default "api-secret" }}
-            {{- end }}
-            {{- if .Values.config.security.jwtSecret }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.securitySecretName" . }}
-                  key: {{ .Values.config.security.existingSecretKeys.jwtSecret | default "jwt-secret" }}
-            {{- end }}
-
-            # Integration URLs
-            {{- if .Values.config.integrations.integrityServiceUrl }}
-            - name: INTEGRITY_SERVICE_URL
-              value: {{ .Values.config.integrations.integrityServiceUrl | quote }}
-            {{- end }}
-
-            # RBAC cache configuration
-            - name: RBAC_CACHE_ENABLED
-              value: {{ .Values.config.rbac.cache.enabled | quote }}
-            - name: RBAC_CACHE_TTL
-              value: {{ .Values.config.rbac.cache.ttl | quote }}
-            - name: RBAC_CACHE_MAX_SIZE
-              value: {{ .Values.config.rbac.cache.maxSize | quote }}
-
-            # DID Key cache configuration
-            - name: DID_KEY_CACHE_TTL_MINUTES
-              value: {{ .Values.config.keyVault.cacheTTLMinutes | default 15 | quote }}
-
-            # Service Account configuration
-            - name: SERVICE_ACCOUNT_AUTO_CREATE
-              value: {{ .Values.config.serviceAccounts.autoCreate | default false | quote }}
-            {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
-            - name: SERVICE_ACCOUNT_DEFAULT_NAME
-              value: {{ .Values.config.serviceAccounts.governanceWorker.name | quote }}
-            # Auth0 M2M credentials for governance-worker
-            {{- if .Values.config.serviceAccounts.governanceWorker.auth0ClientId }}
-            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_ID
-              value: {{ .Values.config.serviceAccounts.governanceWorker.auth0ClientId | quote }}
-            {{- else if .Values.config.serviceAccounts.existingSecret }}
-            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.serviceAccountSecretName" . }}
-                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.governanceWorkerClientId | default "governance-worker-client-id" }}
-            {{- end }}
-            {{- if .Values.config.serviceAccounts.governanceWorker.auth0ClientSecret }}
-            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
-              value: {{ .Values.config.serviceAccounts.governanceWorker.auth0ClientSecret | quote }}
-            {{- else if .Values.config.serviceAccounts.existingSecret }}
-            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.serviceAccountSecretName" . }}
-                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.governanceWorkerClientSecret | default "governance-worker-client-secret" }}
-            {{- end }}
-            {{- if .Values.config.serviceAccounts.governanceWorker.audience }}
-            - name: AUTH0_GOVERNANCE_WORKER_AUDIENCE
-              value: {{ .Values.config.serviceAccounts.governanceWorker.audience | quote }}
-            {{- end }}
-            {{- end }}
-            {{- if .Values.config.serviceAccounts.existingSecret }}
-            - name: SERVICE_ACCOUNT_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "auth-service.serviceAccountSecretName" . }}
-                  key: {{ .Values.config.serviceAccounts.existingSecretKeys.encryptionKey | default "key" }}
-            {{- end }}
-
-            # Metrics configuration
-            {{- if .Values.metrics.enabled }}
-            - name: METRICS_ENABLED
-              value: "true"
-            - name: METRICS_PORT
-              value: {{ .Values.metrics.port | quote }}
-            - name: METRICS_PATH
-              value: {{ .Values.metrics.path | quote }}
-            {{- end }}
-
-            {{- with .Values.extraEnvVars }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          {{- if or .Values.extraEnvVarsSecret .Values.extraEnvVarsConfigMap }}
-          envFrom:
-            {{- if .Values.extraEnvVarsSecret }}
-            - secretRef:
-                name: {{ .Values.extraEnvVarsSecret }}
-            {{- end }}
-            {{- if .Values.extraEnvVarsConfigMap }}
-            - configMapRef:
-                name: {{ .Values.extraEnvVarsConfigMap }}
-            {{- end }}
-          {{- end }}
-          {{- if .Values.healthCheck.liveness.enabled }}
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
-            periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
-            timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
-            failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
-            successThreshold: {{ .Values.healthCheck.liveness.successThreshold }}
-          {{- end }}
-          {{- if .Values.healthCheck.readiness.enabled }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
-            periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
-            timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
-            failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
-            successThreshold: {{ .Values.healthCheck.readiness.successThreshold }}
-          {{- end }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          volumeMounts:
-            - name: config
-              mountPath: /config
-              readOnly: true
-            {{- with .Values.volumeMounts }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-        {{- with .Values.extraContainers }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-      volumes:
-        - name: config
-          configMap:
-            name: {{ include "auth-service.fullname" . }}
-        {{- with .Values.volumes }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -387,3 +51,244 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default ((.Values.global).imagePullPolicy | default "IfNotPresent") }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.server.port }}
+              protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "auth-service.fullname" . }}
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.extraEnvVarsSecret }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsConfigMap }}
+            - configMapRef:
+                name: {{ .Values.extraEnvVarsConfigMap }}
+            {{- end }}
+          env:
+            # ========================================================================
+            # Database Credentials (from secrets)
+            # ========================================================================
+
+            - name: DB_PASSWORD
+              {{- if .Values.externalDatabase.password }}
+              value: {{ .Values.externalDatabase.password | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
+                  key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
+              {{- end }}
+
+            # ========================================================================
+            # Identity Provider Credentials (from secrets)
+            # ========================================================================
+
+            {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
+            {{- $authSecretName := .Values.secrets.auth.name | default (eq $idpProvider "keycloak" | ternary ((((.Values.global).secrets).auth).keycloak).secretName ((((.Values.global).secrets).auth).auth0).secretName) | default "" }}
+            {{- $authClientIdKey := .Values.secrets.auth.keys.clientId | default (((((.Values.global).secrets).auth).auth0).keys).clientId | default "client-id" }}
+            {{- $authClientSecretKey := .Values.secrets.auth.keys.clientSecret | default (((((.Values.global).secrets).auth).auth0).keys).clientSecret | default "client-secret" }}
+            {{- $authMgmtClientIdKey := .Values.secrets.auth.keys.managementClientId | default (((((.Values.global).secrets).auth).auth0).keys).managementClientId | default "mgmt-client-id" }}
+            {{- $authMgmtClientSecretKey := .Values.secrets.auth.keys.managementClientSecret | default (((((.Values.global).secrets).auth).auth0).keys).managementClientSecret | default "mgmt-client-secret" }}
+
+            {{- if $authSecretName }}
+            - name: IDP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $authSecretName | quote }}
+                  key: {{ $authClientIdKey | quote }}
+            - name: IDP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $authSecretName | quote }}
+                  key: {{ $authClientSecretKey | quote }}
+
+            {{- if or (eq $idpProvider "auth0") (not $idpProvider) }}
+            {{- if .Values.config.idp.auth0.enableManagementAPI }}
+            - name: IDP_AUTH0_MANAGEMENT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $authSecretName | quote }}
+                  key: {{ $authMgmtClientIdKey | quote }}
+            - name: IDP_AUTH0_MANAGEMENT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $authSecretName | quote }}
+                  key: {{ $authMgmtClientSecretKey | quote }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+
+            # ========================================================================
+            # Security Credentials (API/JWT secrets)
+            # ========================================================================
+
+            {{- $securitySecretName := .Values.secrets.security.name | default (((.Values.global).secrets).authService).secretName | default "" }}
+            {{- if $securitySecretName }}
+            - name: API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $securitySecretName | quote }}
+                  key: {{ .Values.secrets.security.keys.apiSecret | quote }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $securitySecretName | quote }}
+                  key: {{ .Values.secrets.security.keys.jwtSecret | quote }}
+            {{- end }}
+
+            # ========================================================================
+            # Session Secret
+            # ========================================================================
+
+            {{- $sessionSecretName := .Values.secrets.session.name | default (((.Values.global).secrets).authService).secretName | default "" }}
+            {{- if $sessionSecretName }}
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $sessionSecretName | quote }}
+                  key: {{ .Values.secrets.session.keys.secret | quote }}
+            {{- end }}
+
+            # ========================================================================
+            # Key Vault Credentials (for DID key signing)
+            # ========================================================================
+
+            {{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
+            {{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
+            {{- $keyVaultSecretName := .Values.secrets.keyVault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName | default "" }}
+            {{- if $keyVaultSecretName }}
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $keyVaultSecretName | quote }}
+                  key: {{ .Values.secrets.keyVault.keys.clientId | quote }}
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $keyVaultSecretName | quote }}
+                  key: {{ .Values.secrets.keyVault.keys.clientSecret | quote }}
+            {{- end }}
+            {{- end }}
+
+            {{- if eq $keyVaultProvider "hashicorp" }}
+            {{- $vaultSecretName := .Values.secrets.keyVault.name | default "" }}
+            {{- if $vaultSecretName }}
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $vaultSecretName | quote }}
+                  key: "token"
+            {{- end }}
+            {{- end }}
+
+            # ========================================================================
+            # Worker Credentials (governance-worker service account)
+            # ========================================================================
+
+            {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
+            {{- $workerSecretName := .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | default "" }}
+            {{- if $workerSecretName }}
+            - name: SERVICE_ACCOUNT_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $workerSecretName | quote }}
+                  key: {{ .Values.secrets.worker.keys.encryptionKey | quote }}
+
+            {{- if or (eq $idpProvider "auth0") (not $idpProvider) }}
+            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $workerSecretName | quote }}
+                  key: {{ .Values.secrets.worker.keys.clientId | quote }}
+            - name: AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $workerSecretName | quote }}
+                  key: {{ .Values.secrets.worker.keys.clientSecret | quote }}
+            {{- end }}
+
+            {{- if eq $idpProvider "keycloak" }}
+            - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $workerSecretName | quote }}
+                  key: {{ .Values.secrets.worker.keys.clientId | quote }}
+            - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $workerSecretName | quote }}
+                  key: {{ .Values.secrets.worker.keys.clientSecret | quote }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+
+            # ========================================================================
+            # Token Exchange (Keycloak)
+            # ========================================================================
+
+            {{- if .Values.config.tokenExchange.enabled }}
+            {{- $tokenExchangeSecretName := .Values.secrets.tokenExchange.name | default (((.Values.global).secrets).authService).secretName | default "" }}
+            {{- if $tokenExchangeSecretName }}
+            - name: AUTH_SERVICE_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $tokenExchangeSecretName | quote }}
+                  key: {{ .Values.secrets.tokenExchange.keys.privateKey | quote }}
+            {{- end }}
+            {{- end }}
+
+            # ========================================================================
+            # Extra Environment Variables
+            # ========================================================================
+
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- with .Values.extraContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}

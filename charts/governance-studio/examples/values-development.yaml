@@ -1,0 +1,168 @@
+# Development/Local Configuration
+# Configuration optimized for local development and testing
+#
+# Usage:
+#   helm install governance-studio ./charts/governance-studio -f examples/values-development.yaml
+#
+# Prerequisites:
+#   - Local Kubernetes cluster (minikube, kind, Docker Desktop)
+#   - Backend services running locally or accessible
+#   - Auth0 development tenant or local Keycloak
+#
+# This example demonstrates:
+#   - Single replica (no HA)
+#   - Minimal resource requirements
+#   - Relaxed security settings for debugging
+#   - Port-forward friendly configuration
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+# Single replica for development
+replicaCount: 1
+
+image:
+  repository: ghcr.io/eqtylab/governance-studio
+  pullPolicy: IfNotPresent
+  tag: "" # Use latest or specific dev version
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: false
+  automount: false
+  name: ""
+
+# Minimal resources for local development
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# No autoscaling for development
+autoscaling:
+  enabled: false
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+
+# No ingress for development - use port-forward:
+#   kubectl port-forward svc/governance-studio 8080:80
+ingress:
+  enabled: false
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+config:
+  basePath: /
+
+  # Local backend services (adjust ports as needed)
+  # Option 1: Services in same cluster
+  apiUrl: "http://governance-service:10001"
+  authServiceUrl: "http://auth-service:8080"
+  integrityServiceUrl: "http://integrity-service:3050"
+
+  # Option 2: Port-forwarded services on localhost
+  # apiUrl: "http://localhost:10001"
+  # authServiceUrl: "http://localhost:8080"
+  # integrityServiceUrl: "http://localhost:3050"
+
+  # Authentication - Auth0 development tenant
+  authProvider: "auth0"
+  auth0Domain: "dev-your-tenant.auth0.com"
+  auth0ClientId: "YOUR_DEV_AUTH0_SPA_CLIENT_ID"
+  auth0Audience: "https://dev-your-tenant.auth0.com/api/v2/"
+
+  # Alternative: Local Keycloak
+  # authProvider: "keycloak"
+  # keycloakUrl: "http://localhost:8180"
+  # keycloakRealm: "governance-dev"
+  # keycloakClientId: "governance-studio-dev"
+
+  # Environment settings
+  environment: "development"
+  appTitle: "Governance Studio (Dev)"
+  appHostname: "localhost"
+
+  # Enable core features for development
+  features:
+    governance: true
+    lineage: true
+    guardianEnabled: false
+    guardianGarage: false
+    guardianRulebooks: false
+    guardianOsFunctions: false
+    guardianSdkFunctions: false
+    agentManagement: false
+
+  # Development branding
+  branding:
+    logoUrl: /vite.svg
+    primaryColor: "#0f172a"
+    companyName: "EQTY Lab (Dev)"
+
+# =============================================================================
+# SECURITY (RELAXED FOR DEVELOPMENT)
+# =============================================================================
+
+podSecurityContext: {}
+
+securityContext: {}
+
+# No PDB for development
+podDisruptionBudget:
+  minAvailable: 0
+
+# No affinity for development
+affinity: {}
+nodeSelector: {}
+tolerations: []
+
+# =============================================================================
+# PROBES (RELAXED FOR DEVELOPMENT)
+# =============================================================================
+
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  failureThreshold: 60 # More time for slow startup
+  periodSeconds: 5
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  failureThreshold: 5
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 5
+
+# =============================================================================
+# POD LABELS
+# =============================================================================
+
+podLabels:
+  environment: "development"
+
+podAnnotations:
+  sidecar.istio.io/inject: "false"

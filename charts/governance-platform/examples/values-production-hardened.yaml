@@ -1,0 +1,773 @@
+# =============================================================================
+# GOVERNANCE PLATFORM - PRODUCTION HARDENED CONFIGURATION
+# =============================================================================
+# Maximum security configuration for production environments.
+#
+# This example demonstrates:
+#   - Strict security contexts and pod security
+#   - Network policies enabled
+#   - Resource limits and quotas
+#   - High availability with anti-affinity
+#   - Comprehensive monitoring (ServiceMonitor)
+#   - Read-only file systems where possible
+#   - Non-root execution
+#   - Rate limiting and security headers
+#   - Conservative health probes
+#
+# PREREQUISITES:
+#   - Production-grade Kubernetes cluster
+#   - External database (RDS, Cloud SQL, Azure DB)
+#   - Managed storage (S3, Azure Blob, GCS)
+#   - Azure Key Vault for credential signing
+#   - cert-manager with production issuer
+#   - Prometheus Operator for ServiceMonitor
+#   - Network policy controller (Calico, Cilium)
+#
+# USAGE:
+#   helm dependency update ./charts/governance-platform
+#   helm install governance-platform ./charts/governance-platform \
+#     --namespace governance \
+#     --create-namespace \
+#     --values values-production-hardened.yaml
+# =============================================================================
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+global:
+  domain: "governance.production-domain.com"
+  environmentType: "production"
+  imagePullPolicy: "Always"
+
+  imagePullSecrets:
+    - name: "prod-registry-credentials"
+
+  secrets:
+    create: false
+
+    auth:
+      provider: "auth0"
+      auth0:
+        secretName: "prod-auth0"
+
+    database:
+      secretName: "prod-database"
+
+    storage:
+      aws_s3:
+        secretName: "prod-aws-s3"
+
+    secretManager:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        enabled: true
+        secretName: "prod-azure-key-vault"
+
+    encryption:
+      secretName: "prod-encryption"
+
+    governanceWorker:
+      secretName: "prod-governance-worker"
+
+    governanceServiceAI:
+      secretName: "prod-governance-ai"
+
+# =============================================================================
+# GOVERNANCE STUDIO (Frontend) - HARDENED
+# =============================================================================
+governance-studio:
+  enabled: true
+  replicaCount: 5
+
+  image:
+    pullPolicy: Always
+    tag: "1.0.0" # Pin to specific version
+
+  serviceAccount:
+    create: true
+    automount: false
+    name: "governance-studio-prod"
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.auth0.com; frame-ancestors 'none';" always;
+        add_header Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()" always;
+      nginx.ingress.kubernetes.io/limit-rps: "50"
+      nginx.ingress.kubernetes.io/limit-connections: "30"
+    hosts:
+      - host: governance.production-domain.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: governance-studio-prod-tls
+        hosts:
+          - governance.production-domain.com
+
+  config:
+    # Auth0 SPA settings
+    auth0Domain: "your-tenant.us.auth0.com"
+    auth0ClientId: "your-prod-spa-client-id"
+    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+
+    appTitle: "Governance Studio"
+    features:
+      governance: true
+      lineage: true
+      guardianEnabled: false
+      agentManagement: false
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+      ephemeral-storage: "50Mi"
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+      ephemeral-storage: "200Mi"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+  podDisruptionBudget:
+    minAvailable: 3
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - governance-studio
+          topologyKey: "kubernetes.io/hostname"
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - governance-studio
+          topologyKey: "topology.kubernetes.io/zone"
+
+  nodeSelector:
+    node-type: "production"
+
+  tolerations:
+    - key: "production"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+
+  startupProbe:
+    httpGet:
+      path: /
+      port: http
+    failureThreshold: 60
+    periodSeconds: 5
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  podLabels:
+    security.kubernetes.io/audit: "true"
+    environment: "production"
+
+  podAnnotations:
+    seccomp.security.alpha.kubernetes.io/pod: runtime/default
+
+# =============================================================================
+# GOVERNANCE SERVICE (Backend API) - HARDENED
+# =============================================================================
+governance-service:
+  enabled: true
+  replicaCount: 5
+
+  image:
+    pullPolicy: Always
+    tag: "1.0.0" # Pin to specific version
+
+  serviceAccount:
+    create: true
+    automount: false
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/governance-service-prod"
+    name: "governance-service-prod"
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+      nginx.ingress.kubernetes.io/limit-rps: "20"
+      nginx.ingress.kubernetes.io/limit-connections: "10"
+      nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    hosts:
+      - host: governance.production-domain.com
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: governance-service-prod-tls
+        hosts:
+          - governance.production-domain.com
+
+  # Use external database (RDS/Cloud SQL/Azure DB)
+  externalDatabase:
+    host: "prod-postgres.internal"
+    port: 5432
+    database: "governance"
+    user: "governance_prod"
+    sslmode: "verify-full"
+
+  migrations:
+    runAtStartup: false # Run migrations separately
+
+  auth0SyncAtStartup: false # Run separately
+
+  config:
+    appEnv: "production"
+    logLevel: "warn"
+
+    server:
+      readTimeout: 15
+      writeTimeout: 15
+      idleTimeout: 60
+
+    storageProvider: "aws_s3"
+    awsS3Region: "us-east-1"
+    awsS3BucketName: "prod-governance-artifacts"
+    awsS3Folder: "artifacts"
+
+    indicators:
+      reloadInterval: 600
+
+    ai:
+      enabled: true
+      provider: "anthropic"
+      model: "claude-3-7-sonnet-latest"
+      temperature: 0.5
+      retryAttempts: 2
+
+    serviceAccount:
+      enabled: true
+      serviceName: "governance-worker"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+      ephemeral-storage: "100Mi"
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+      ephemeral-storage: "500Mi"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+  podDisruptionBudget:
+    minAvailable: 3
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - governance-service
+          topologyKey: "kubernetes.io/hostname"
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - governance-service
+          topologyKey: "topology.kubernetes.io/zone"
+
+  nodeSelector:
+    node-type: "production"
+
+  tolerations:
+    - key: "production"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+
+  startupProbe:
+    httpGet:
+      path: /health
+      port: http
+    failureThreshold: 60
+    periodSeconds: 5
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  podLabels:
+    security.kubernetes.io/audit: "true"
+    environment: "production"
+
+# =============================================================================
+# INTEGRITY SERVICE - HARDENED
+# =============================================================================
+integrity-service:
+  enabled: true
+  replicaCount: 5
+
+  image:
+    pullPolicy: Always
+    tag: "1.0.0"
+
+  serviceAccount:
+    create: true
+    automount: false
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/integrity-service-prod"
+    name: "integrity-service-prod"
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: false # Rust app needs write access
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/limit-rps: "20"
+      nginx.ingress.kubernetes.io/limit-connections: "10"
+    hosts:
+      - host: governance.production-domain.com
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: integrity-service-prod-tls
+        hosts:
+          - governance.production-domain.com
+
+  env:
+    rustEnv: "production"
+    integrityAppDbHost: "prod-postgres.internal"
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreRegion: "us-east-1"
+    integrityAppBlobStoreBucket: "prod-integrity-artifacts"
+    integrityAppLoggingLogLevelDefault: "warn"
+    integrityAppLoggingLogLevelIntegrityService: "warn"
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+      ephemeral-storage: "100Mi"
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+      ephemeral-storage: "500Mi"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+  podDisruptionBudget:
+    minAvailable: 3
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - integrity-service
+          topologyKey: "kubernetes.io/hostname"
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - integrity-service
+          topologyKey: "topology.kubernetes.io/zone"
+
+  nodeSelector:
+    node-type: "production"
+
+  tolerations:
+    - key: "production"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+
+  startupProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    failureThreshold: 60
+    periodSeconds: 5
+
+  livenessProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  podLabels:
+    security.kubernetes.io/audit: "true"
+    environment: "production"
+
+# =============================================================================
+# AUTH SERVICE - HARDENED
+# =============================================================================
+auth-service:
+  enabled: true
+  replicaCount: 5
+
+  image:
+    pullPolicy: Always
+    tag: "1.0.0"
+
+  serviceAccount:
+    create: true
+    automount: false
+    name: "auth-service-prod"
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/limit-rps: "30"
+      nginx.ingress.kubernetes.io/limit-connections: "15"
+    hosts:
+      - host: governance.production-domain.com
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: auth-service-prod-tls
+        hosts:
+          - governance.production-domain.com
+
+  externalDatabase:
+    host: "prod-postgres.internal"
+    sslMode: "verify-full"
+
+  migrations:
+    runAtStartup: false
+
+  config:
+    server:
+      environment: "production"
+      swaggerEnabled: false
+
+    logging:
+      level: "warn"
+      format: "json"
+
+    idp:
+      provider: "auth0"
+      auth0:
+        syncAtStartup: false
+
+    rateLimit:
+      enabled: true
+      requestsPerMinute: 60
+
+    rbac:
+      cache:
+        enabled: true
+        ttl: "600s"
+        maxSize: 5000
+
+  # Enable metrics for Prometheus
+  metrics:
+    enabled: true
+    port: 9090
+    serviceMonitor:
+      enabled: true
+      interval: "30s"
+      labels:
+        release: prometheus
+
+  # Enable network policy
+  networkPolicy:
+    enabled: true
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+      ephemeral-storage: "100Mi"
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+      ephemeral-storage: "500Mi"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 3
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - auth-service
+          topologyKey: "kubernetes.io/hostname"
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - auth-service
+          topologyKey: "topology.kubernetes.io/zone"
+
+  nodeSelector:
+    node-type: "production"
+
+  tolerations:
+    - key: "production"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+
+  startupProbe:
+    httpGet:
+      path: /health
+      port: http
+    failureThreshold: 60
+    periodSeconds: 5
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  podLabels:
+    security.kubernetes.io/audit: "true"
+    environment: "production"
+
+# =============================================================================
+# POSTGRESQL - DISABLED (Use External Database)
+# =============================================================================
+postgresql:
+  enabled: false
+# =============================================================================
+# PRODUCTION NOTES
+# =============================================================================
+#
+# 1. External Database (REQUIRED)
+#    Use a managed database service for production:
+#    - AWS: Amazon RDS for PostgreSQL
+#    - Azure: Azure Database for PostgreSQL
+#    - GCP: Cloud SQL for PostgreSQL
+#
+# 2. Secret Management
+#    Consider using:
+#    - AWS Secrets Manager with External Secrets Operator
+#    - Azure Key Vault with Secrets Store CSI Driver
+#    - HashiCorp Vault
+#
+# 3. Monitoring
+#    Ensure Prometheus Operator is installed for ServiceMonitor
+#    Enable Grafana dashboards for observability
+#
+# 4. Backup Strategy
+#    - Database: Use managed database backup features
+#    - Storage: Enable versioning on S3/Azure Blob buckets
+#
+# 5. Disaster Recovery
+#    - Multi-region deployment for critical workloads
+#    - Regular backup testing
+#    - Documented runbooks
+#
+# 6. Security Audit
+#    - Regular vulnerability scanning
+#    - Penetration testing
+#    - Security policy review
