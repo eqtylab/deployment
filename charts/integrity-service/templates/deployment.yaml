@@ -80,7 +80,7 @@ spec:
             # ========================================================================
             
             - name: INTEGRITY_APP__db__host
-              value: {{ .Values.env.integrityAppDbHost | default (printf "%s-postgresql" .Release.Name) | quote }}
+              value: {{ .Values.env.integrityAppDbHost | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
             - name: INTEGRITY_APP__db__db_name
               value: {{ .Values.env.integrityAppDbName | quote }}
             - name: INTEGRITY_APP__db__user

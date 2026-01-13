@@ -79,7 +79,7 @@ spec:
           # ========================================================================
           
           - name: DB_HOST
-            value: {{ .Values.externalDatabase.host | default (printf "%s-postgresql" .Release.Name) | quote }}
+            value: {{ .Values.externalDatabase.host | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
           - name: DB_PORT
             value: {{ .Values.externalDatabase.port | quote }}
           - name: DB_NAME

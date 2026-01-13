@@ -110,7 +110,7 @@ enabled: true
 externalDatabase:
   host: "postgresql.default.svc.cluster.local"
   database: "governance"
-  user: "assurance"
+  user: "postgres"
   password: "YOUR_PASSWORD" # Or use secret reference
 
 config:
@@ -337,7 +337,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | externalDatabase.host                      | string | `""`                | Database host (auto-generated as {Release.Name}-postgresql) |
 | externalDatabase.port                      | int    | `5432`              | Database port                                               |
 | externalDatabase.database                  | string | `"governance"`      | Database name                                               |
-| externalDatabase.user                      | string | `"assurance"`       | Database user                                               |
+| externalDatabase.user                      | string | `"postgres"`        | Database user                                               |
 | externalDatabase.password                  | string | `""`                | Database password (leave empty to use secret reference)     |
 | externalDatabase.sslmode                   | string | `"disable"`         | SSL mode (disable/require/verify-ca/verify-full)            |
 | externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name containing database password                    |

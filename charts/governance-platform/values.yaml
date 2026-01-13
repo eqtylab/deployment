@@ -1103,7 +1103,7 @@ governance-service:
     # -- Database name
     database: "governance"
     # -- Database user
-    user: "assurance"
+    user: "postgres"
     # -- Database password (leave empty to use secret reference)
     password: ""
     # -- SSL mode (disable | require | verify-ca | verify-full)
@@ -2024,7 +2024,7 @@ postgresql:
 
   # -- Image Configuration
   # @default -- See values below
-  # Using legacy Bitnami PostgreSQL image for compatibility
+  # Bitnami PostgreSQL 17 image
   image:
     # -- Image Registry
     # @default -- `docker.io`
@@ -2035,8 +2035,8 @@ postgresql:
     repository: bitnamilegacy/postgresql
 
     # -- Image Tag
-    # @default -- `15.3.0-debian-11-r17`
-    tag: 15.3.0-debian-11-r17
+    # @default -- `17-debian-12`
+    tag: 17-debian-12
 
   # -- Primary Instance Configuration
   # @default -- See values below

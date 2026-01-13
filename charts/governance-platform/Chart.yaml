@@ -2,8 +2,8 @@ apiVersion: v2
 name: governance-platform
 description: A Helm chart for the complete Governance Studio platform.
 type: application
-version: 1.5.0
-appVersion: "1.5.0"
+version: 1.6.0
+appVersion: "1.6.0"
 home: https://github.com/eqtylab/governance-studio-infrastructure
 sources:
   - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/governance-platform
@@ -37,7 +37,7 @@ dependencies:
 
   # PostgreSQL - used by governance-service, auth-service, and integrity services
   - name: postgresql
-    version: "~12.5.5" # Bitnami chart version
+    version: "~18.1.1" # Bitnami chart version
     repository: "https://charts.bitnami.com/bitnami"
     alias: postgresql
     condition: postgresql.enabled
