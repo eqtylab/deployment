@@ -1,6 +1,6 @@
-# Governance Studio Helm Charts
+# Governance Platform Helm Charts
 
-This repository contains Helm charts for deploying the EQTY Lab Governance Studio platform on Kubernetes.
+This repository contains Helm charts for deploying the EQTY Lab Governance Platform on Kubernetes.
 
 ## Chart Catalog
 
