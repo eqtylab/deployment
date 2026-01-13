@@ -1,3 +1,4 @@
+{{- if .Values.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,228 +7,319 @@ metadata:
     {{- include "governance-service.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.api.replicaCount }}
+  replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "governance-service.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "governance-service.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- if and .Values.global (((.Values.global).secrets).imageRegistry).secretName }}
       imagePullSecrets:
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
+      {{- else if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name | default (include "governance-service.fullname" .) }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.serviceAccount.create }}
-      serviceAccount:
-        name: {{ include "governance-service.serviceAccountName" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
       {{- end }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
-          command: {{ .Values.api.command }}
-          args: {{ .Values.api.args }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default ((.Values.global).imagePullPolicy | default "IfNotPresent") }}
+          command: {{ .Values.command }}
+          args: {{ .Values.args }}
           envFrom:
             - configMapRef:
                 name: {{ include "governance-service.fullname" . }}
-            - secretRef:
-                name: {{ include "governance-service.fullname" . }}
           env:
+          # ========================================================================
+          # Application Configuration
+          # ========================================================================
+          
           - name: LOG_LEVEL
-            value: {{ .Values.config.logLevel }}
+            value: {{ .Values.config.logLevel | quote }}
           - name: APP_ENV
-            value: {{ .Values.config.appEnv }}
+            value: {{ .Values.config.appEnv | default ((.Values.global).environmentType | default "") | quote }}
+
+          # ========================================================================
+          # Database Configuration
+          # ========================================================================
+          
           - name: DB_HOST
-            value: "{{ .Release.Name }}-postgresql"
+            value: {{ .Values.externalDatabase.host | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
           - name: DB_PORT
-            value: "{{ .Values.externalDatabase.port }}"
+            value: {{ .Values.externalDatabase.port | quote }}
           - name: DB_NAME
-            value: {{ .Values.externalDatabase.database }}
+            value: {{ .Values.externalDatabase.database | quote }}
+          - name: DB_USER
+            value: {{ .Values.externalDatabase.user | quote }}
           - name: DB_PASSWORD
+            {{- if .Values.externalDatabase.password }}
+            value: {{ .Values.externalDatabase.password | quote }}
+            {{- else }}
             valueFrom:
               secretKeyRef:
-                {{- if .Values.externalDatabase.passwordSecretKeyRef }}
-                name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | quote }}
-                key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | quote }}
-                {{- else }}
-                name: "postgresql"
-                key: "postgres-password"
-                {{- end }}
+                name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
+                key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | quote }}
+            {{- end }}
+          - name: DB_SSLMODE
+            value: {{ .Values.externalDatabase.sslmode | quote }}
+
+          # ========================================================================
+          # Storage Configuration
+          # ========================================================================
+          
+          {{- $storageProvider := .Values.config.storageProvider }}
+          {{- if $storageProvider }}
           - name: STORAGE_PROVIDER
-            value: {{ .Values.config.storageProvider | quote }}
-          {{- if .Values.config.gcsBucketName }}
+            value: {{ $storageProvider | quote }}
+          {{- end }}
+
+          {{- if eq $storageProvider "gcs" }}
+          # GCS Configuration
           - name: GCS_BUCKET_NAME
-            value: {{ .Values.config.gcsBucketName }}
-          {{- end }}
-          {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
+            value: {{ .Values.config.gcsBucketName | quote }}
           - name: GCS_CREDENTIALS_FILE
-            value: "/var/secrets/google/attachments-sa.json"
+            value: "/var/secrets/google/service-account.json"
           {{- end }}
-          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageAccountName }}
+
+          {{- if eq $storageProvider "azure_blob" }}
+          # Azure Blob Storage Configuration
           - name: AZURE_STORAGE_ACCOUNT_NAME
-            {{- if .Values.azureStorageSecretKeyRef.name }}
+            {{- if .Values.config.azureStorageAccountName }}
+            value: {{ .Values.config.azureStorageAccountName | quote }}
+            {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
-                key: {{ .Values.azureStorageSecretKeyRef.accountNameKey | quote }}
-            {{- else }}
-            value: {{ .Values.config.azureStorageAccountName }}
+                name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
+                key: {{ .Values.secrets.storage.azure_blob.accountNameKey | default (((((.Values.global).secrets).storage).azure_blob).keys).accountName | quote }}
             {{- end }}
-          {{- end }}
-          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageAccountKey }}
           - name: AZURE_STORAGE_ACCOUNT_KEY
-            {{- if .Values.azureStorageSecretKeyRef.name }}
+            {{- if .Values.config.azureStorageAccountKey }}
+            value: {{ .Values.config.azureStorageAccountKey | quote }}
+            {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
-                key: {{ .Values.azureStorageSecretKeyRef.accountKeyKey | quote }}
-            {{- else }}
-            value: {{ .Values.config.azureStorageAccountKey }}
+                name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
+                key: {{ .Values.secrets.storage.azure_blob.accountKeyKey | default (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | quote }}
             {{- end }}
-          {{- end }}
-          {{- if or .Values.azureStorageSecretKeyRef.name .Values.config.azureStorageConnectionString }}
+          {{- if or .Values.config.azureStorageConnectionString .Values.secrets.storage.azure_blob.name }}
           - name: AZURE_STORAGE_CONNECTION_STRING
-            {{- if .Values.azureStorageSecretKeyRef.name }}
+            {{- if .Values.config.azureStorageConnectionString }}
+            value: {{ .Values.config.azureStorageConnectionString | quote }}
+            {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.azureStorageSecretKeyRef.name | quote }}
-                key: {{ .Values.azureStorageSecretKeyRef.connectionStringKey | quote }}
-            {{- else }}
-            value: {{ .Values.config.azureStorageConnectionString }}
+                name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
+                key: {{ .Values.secrets.storage.azure_blob.connectionStringKey | default (((((.Values.global).secrets).storage).azure_blob).keys).connectionString | quote }}
             {{- end }}
           {{- end }}
-          {{- if .Values.config.azureStorageContainerName }}
           - name: AZURE_STORAGE_CONTAINER_NAME
-            value: {{ .Values.config.azureStorageContainerName }}
-          {{- end }}
+            value: {{ .Values.config.azureStorageContainerName | quote }}
           - name: AZURE_USE_MANAGED_IDENTITY
             value: {{ .Values.config.azureUseManagedIdentity | quote }}
-          {{- if not .Values.keycloakSecretKeyRef.enabled }}
+          {{- end }}
+
+          {{- if eq $storageProvider "aws_s3" }}
+          # AWS S3 Configuration
+          - name: AWS_REGION
+            value: {{ .Values.config.awsS3Region | quote }}
+          - name: AWS_S3_BUCKET
+            value: {{ .Values.config.awsS3BucketName | quote }}
+          {{- if .Values.config.awsS3Folder }}
+          - name: AWS_S3_FOLDER
+            value: {{ .Values.config.awsS3Folder | quote }}
+          {{- end }}
+          - name: AWS_ACCESS_KEY_ID
+            {{- if .Values.config.awsS3AccessKeyId }}
+            value: {{ .Values.config.awsS3AccessKeyId | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | quote }}
+                key: {{ .Values.secrets.storage.aws_s3.accessKeyIdKey | default (((((.Values.global).secrets).storage).aws_s3).keys).accessKeyId | quote }}
+            {{- end }}
+          - name: AWS_SECRET_ACCESS_KEY
+            {{- if .Values.config.awsS3SecretAccessKey }}
+            value: {{ .Values.config.awsS3SecretAccessKey | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | quote }}
+                key: {{ .Values.secrets.storage.aws_s3.secretAccessKeyKey | default (((((.Values.global).secrets).storage).aws_s3).keys).secretAccessKey | quote }}
+            {{- end }}
+          {{- end }}
+
+          # ========================================================================
+          # Authentication Configuration
+          # ========================================================================
+          
+          {{- $authProvider := .Values.secrets.keycloak.enabled | ternary "keycloak" "auth0" }}
+          
+          {{- if eq $authProvider "auth0" }}
+          # Auth0 Configuration
           {{- if .Values.config.auth0Domain }}
           - name: AUTH0_DOMAIN
-            value: {{ .Values.config.auth0Domain }}
+            value: {{ .Values.config.auth0Domain | quote }}
           {{- end }}
           - name: AUTH0_CLIENT_ID
+            {{- if .Values.config.auth0ClientId }}
+            value: {{ .Values.config.auth0ClientId | quote }}
+            {{- else }}
             valueFrom:
               secretKeyRef:
-                {{- if .Values.auth0SecretKeyRef }}
-                name: {{ .Values.auth0SecretKeyRef.name | quote }}
-                key: {{ .Values.auth0SecretKeyRef.clientIdKey | quote }}
-                {{- else }}
-                name: "auth0-secret"
-                key: "auth0-client-id"
-                {{- end }}
+                name: {{ .Values.secrets.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | quote }}
+                key: {{ .Values.secrets.auth0.clientIdKey | default (((((.Values.global).secrets).auth).auth0).keys).clientId | quote }}
+            {{- end }}
           - name: AUTH0_CLIENT_SECRET
+            {{- if .Values.config.auth0ClientSecret }}
+            value: {{ .Values.config.auth0ClientSecret | quote }}
+            {{- else }}
             valueFrom:
               secretKeyRef:
-                {{- if .Values.auth0SecretKeyRef }}
-                name: {{ .Values.auth0SecretKeyRef.name | quote }}
-                key: {{ .Values.auth0SecretKeyRef.clientSecretKey | quote }}
-                {{- else }}
-                name: "auth0-secret"
-                key: "auth0-client-secret"
-                {{- end }}
+                name: {{ .Values.secrets.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | quote }}
+                key: {{ .Values.secrets.auth0.clientSecretKey | default (((((.Values.global).secrets).auth).auth0).keys).clientSecret | quote }}
+            {{- end }}
           - name: AUTH0_SYNC_AT_STARTUP
             value: {{ .Values.auth0SyncAtStartup | quote }}
           - name: AUTH0_SYNC_PAGE_SIZE
             value: {{ .Values.auth0SyncPageSize | quote }}
           {{- end }}
+
+          {{- if eq $authProvider "keycloak" }}
+          # Keycloak Configuration
+          - name: KEYCLOAK_URL
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.keycloak.existingSecret | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
+                key: {{ .Values.secrets.keycloak.existingSecretKeys.url | default (((((.Values.global).secrets).auth).keycloak).keys).url | quote }}
+          - name: KEYCLOAK_REALM
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.keycloak.existingSecret | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
+                key: {{ .Values.secrets.keycloak.existingSecretKeys.realm | default (((((.Values.global).secrets).auth).keycloak).keys).realm | quote }}
+          - name: KEYCLOAK_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.keycloak.existingSecret | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
+                key: {{ .Values.secrets.keycloak.existingSecretKeys.clientId | default (((((.Values.global).secrets).auth).keycloak).keys).backendClientId | quote }}
+          - name: KEYCLOAK_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.keycloak.existingClientSecretKeyRef.name | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
+                key: {{ .Values.secrets.keycloak.existingClientSecretKeyRef.clientSecretKey | default (((((.Values.global).secrets).auth).keycloak).keys).backendClientSecret | quote }}
+          {{- end }}
+
+          # ========================================================================
+          # Encryption Configuration
+          # ========================================================================
+          
+          - name: CREDENTIAL_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.encryption.name | default (((.Values.global).secrets).encryption).secretName | quote }}
+                key: {{ .Values.secrets.encryption.key | default ((((.Values.global).secrets).encryption).keys).key | quote }}
+
+          # ========================================================================
+          # Integration URLs
+          # ========================================================================
+          
           - name: INTEGRITY_SERVICE_URL
-            value: {{ .Values.config.integrityServiceUrl }}
-          {{- if .Values.config.serviceAccount.enabled }}
+            value: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "")) | quote }}
           - name: AUTH_SERVICE_URL
-            value: {{ .Values.config.serviceAccount.authServiceUrl | default .Values.config.authServiceUrl }}
+            value: {{ .Values.config.authServiceUrl | default (printf "https://%s/authService" ((.Values.global).domain | default "")) | quote }}
+
+          # ========================================================================
+          # Worker Configuration
+          # ========================================================================
+          
+          {{- if .Values.config.serviceAccount.enabled }}
+          - name: WORKER_ENCRYPTION_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | quote }}
+                key: {{ .Values.secrets.worker.encryptionKeyKey | default ((((.Values.global).secrets).governanceWorker).keys).encryptionKey | quote }}
+          - name: WORKER_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | quote }}
+                key: {{ .Values.secrets.worker.clientIdKey | default ((((.Values.global).secrets).governanceWorker).keys).clientId | quote }}
+          - name: WORKER_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | quote }}
+                key: {{ .Values.secrets.worker.clientSecretKey | default ((((.Values.global).secrets).governanceWorker).keys).clientSecret | quote }}
           - name: AUTH_SERVICE_API_KEY
             valueFrom:
               secretKeyRef:
                 {{- if .Values.config.serviceAccount.existingSecret }}
-                name: {{ .Values.config.serviceAccount.existingSecret }}
-                key: {{ .Values.config.serviceAccount.existingSecretKeys.apiKey | default "auth-service-api-key" }}
+                name: {{ .Values.config.serviceAccount.existingSecret | quote }}
+                key: {{ .Values.config.serviceAccount.existingSecretKeys.apiKey | quote }}
                 {{- else }}
                 name: {{ include "governance-service.fullname" . }}-service-account
                 key: auth-service-api-key
                 {{- end }}
           {{- end }}
-          {{- if .Values.keycloakSecretKeyRef.enabled }}
-          - name: KEYCLOAK_URL
-            value: {{ .Values.keycloakSecretKeyRef.url | default "https://keycloak.example.com" }}
-          - name: KEYCLOAK_CLIENT_ID
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.keycloakSecretKeyRef.existingSecret }}
-                name: {{ .Values.keycloakSecretKeyRef.existingSecret }}
-                key: {{ .Values.keycloakSecretKeyRef.existingSecretKeys.clientId | default "keycloak-client-id" }}
-                {{- else }}
-                name: {{ include "governance-service.fullname" . }}-keycloak
-                key: keycloak-client-id
-                {{- end }}
-          - name: KEYCLOAK_CLIENT_SECRET
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.keycloakSecretKeyRef.existingClientSecretKeyRef }}
-                name: {{ .Values.keycloakSecretKeyRef.existingClientSecretKeyRef.name }}
-                key: {{ .Values.keycloakSecretKeyRef.existingClientSecretKeyRef.clientSecret | default "client-secret" }}
-                {{- else }}
-                name: {{ include "governance-service.fullname" . }}-keycloak
-                key: keycloak-client-secret
-                {{- end }}
-          - name: KEYCLOAK_REALM
-            valueFrom:
-              secretKeyRef:
-                {{- if .Values.keycloakSecretKeyRef.existingSecret }}
-                name: {{ .Values.keycloakSecretKeyRef.existingSecret }}
-                key: {{ .Values.keycloakSecretKeyRef.existingSecretKeys.realm | default "governance" }}
-                {{- else }}
-                name: {{ include "governance-service.fullname" . }}-keycloak
-                key: realm
-                {{- end }}
-          {{- end }}
-          {{- if .Values.huggingFaceTokenSecretKeyRef }}
-          # Get token from external secret
-          - name: HUGGING_FACE_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.huggingFaceTokenSecretKeyRef.name | quote }}
-                key: {{ .Values.huggingFaceTokenSecretKeyRef.key | quote }}
-          {{- end }}
-          {{- if .Values.credentialEncryptionKeySecretKeyRef }}
-          # Get encryption key from external secret
-          - name: CREDENTIAL_ENCRYPTION_KEY
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.credentialEncryptionKeySecretKeyRef.name | quote }}
-                key: {{ .Values.credentialEncryptionKeySecretKeyRef.key | quote }}
-          {{- end }}
+
+          # ========================================================================
+          # Migration Configuration
+          # ========================================================================
+          
           {{- if .Values.migrations }}
-          # Run migrations on startup
           - name: MIGRATIONS_RUN_AT_STARTUP
             value: {{ .Values.migrations.runAtStartup | quote }}
           - name: MIGRATIONS_PATH
             value: {{ .Values.migrations.path | quote }}
           {{- end }}
 
+          # ========================================================================
+          # AI Configuration
+          # ========================================================================
+          
           {{- if .Values.config.ai.enabled }}
           - name: AI_ENABLED
             value: {{ .Values.config.ai.enabled | quote }}
           - name: AI_API_KEY
-            {{- if .Values.config.ai.secretKeyRef }}
+            {{- if .Values.config.ai.apiKey }}
+            value: {{ .Values.config.ai.apiKey | quote }}
+            {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.config.ai.secretKeyRef.name | quote }}
-                key: {{ .Values.config.ai.secretKeyRef.key | quote }}
-            {{- else }}
-            value: {{ .Values.config.ai.apiKey | quote }}
+                name: {{ .Values.config.ai.secretKeyRef.name | default (((.Values.global).secrets).governanceServiceAI).secretName | quote }}
+                key: {{ .Values.config.ai.secretKeyRef.key | default ((((.Values.global).secrets).governanceServiceAI).keys).apiKey | quote }}
             {{- end }}
           - name: AI_PROVIDER
             value: {{ .Values.config.ai.provider | quote }}
@@ -244,19 +336,27 @@ spec:
           - name: AI_USE_V2
             value: {{ .Values.config.ai.useV2 | quote }}
           {{- end }}
+
+          # ========================================================================
+          # Indicator Configuration
+          # ========================================================================
+          
           - name: ENABLE_OS_GUARDRAIL_EVENTS
             value: {{ .Values.config.indicators.osGuardrailsEnabled | quote }}
           {{- if .Values.config.indicators.osGuardrailsEnabled }}
           - name: GUARDRAIL_EVENT_BATCH_SIZE
             value: {{ .Values.config.indicators.osGuardrailsBatchSize | quote }}
-          {{- end }}
-          {{- if .Values.config.indicators.osGuardrailsEnabled }}
           - name: GUARDRAIL_EVENT_TIMEOUT_SECONDS
             value: {{ .Values.config.indicators.osGuardrailsTimeoutSeconds | quote }}
           {{- end }}
+
+          # TODO: Remove this once it is already enforced on the backend, this is a bandaid.
+          - name: INDICATORS_V2_ENABLED
+            value: "true"
+
           volumeMounts:
-            {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
-            - name: gcp-sa-volume
+            {{- if eq $storageProvider "gcs" }}
+            - name: gcs-sa-volume
               mountPath: /var/secrets/google
               readOnly: true
             {{- end }}
@@ -264,45 +364,29 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+          {{- with .Values.startupProbe }}
           startupProbe:
-            httpGet:
-              path: {{ .Values.config.path }} # TODO: Endpoint that checks DB
-              port: http
-            failureThreshold: 30 # e.g., 30 * 10s = 5 minutes for DB to be ready
-            periodSeconds: 10
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
           livenessProbe:
-            httpGet:
-              path: {{ .Values.config.path }}
-              port: http
-            initialDelaySeconds: 10 # After startupProbe succeeds
-            periodSeconds: 10
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
           readinessProbe:
-            httpGet:
-              path: {{ .Values.config.path }} # Same as startup or more comprehensive
-              port: http
-            # initialDelaySeconds can be short here as startupProbe handles initial delay
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
           resources:
-            {{- toYaml .Values.api.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       volumes:
-        {{- if or (eq .Values.config.storageProvider "gcs") (not .Values.config.storageProvider) }}
-        - name: gcp-sa-volume
+        {{- if eq $storageProvider "gcs" }}
+        - name: gcs-sa-volume
           secret:
-            secretName: {{ .Values.serviceAccount.name | quote }}
+            secretName: {{ .Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName | quote }}
             items:
-              - key: "gcs-sa.json"
-                path: "attachments-sa.json"
+              - key: {{ .Values.secrets.storage.gcs.serviceAccountJsonKey | default (((((.Values.global).secrets).storage).gcs).keys).serviceAccountJson | quote }}
+                path: "service-account.json"
         {{- end }}
+{{- end }}

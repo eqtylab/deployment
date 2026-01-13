@@ -1,0 +1,385 @@
+# =============================================================================
+# GOVERNANCE PLATFORM - DEVELOPMENT CONFIGURATION
+# =============================================================================
+# Configuration optimized for local development and testing environments.
+#
+# PREREQUISITES:
+#   - Local Kubernetes cluster (minikube, kind, Docker Desktop, Rancher Desktop)
+#   - Auth0 development tenant or local Keycloak
+#   - MinIO for S3-compatible storage (or Azure Storage Emulator)
+#   - Optional: Azure Key Vault for credential signing
+#
+# USAGE:
+#   helm dependency update ./charts/governance-platform
+#   helm install governance-platform ./charts/governance-platform \
+#     --namespace governance \
+#     --create-namespace \
+#     --values values-development.yaml
+#
+# This example demonstrates:
+#   - Single replica services (no HA)
+#   - Debug-level logging
+#   - Minimal resource requirements
+#   - Relaxed security settings for debugging
+#   - No ingress (use port-forward)
+#   - MinIO for S3-compatible local storage
+# =============================================================================
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+global:
+  domain: "localhost"
+  environmentType: "development"
+  imagePullPolicy: "IfNotPresent"
+
+  # Image pull secrets (optional for development)
+  imagePullSecrets: []
+
+  secrets:
+    create: false
+
+    auth:
+      provider: "auth0"
+      auth0:
+        secretName: "dev-auth0"
+
+    database:
+      secretName: "dev-database"
+
+    storage:
+      aws_s3:
+        secretName: "dev-minio"
+
+    secretManager:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        enabled: true
+        secretName: "dev-azure-key-vault"
+
+    encryption:
+      secretName: "dev-encryption"
+
+    governanceWorker:
+      secretName: "dev-governance-worker"
+
+# =============================================================================
+# GOVERNANCE STUDIO (Frontend)
+# =============================================================================
+governance-studio:
+  enabled: true
+  replicaCount: 1
+
+  # No ingress - use port-forward:
+  #   kubectl port-forward svc/governance-platform-governance-studio 8080:80 -n governance
+  ingress:
+    enabled: false
+
+  config:
+    # Auth0 SPA settings (public, not secrets)
+    auth0Domain: "dev-your-tenant.auth0.com"
+    auth0ClientId: "your-dev-spa-client-id"
+    auth0Audience: "https://dev-your-tenant.auth0.com/api/v2/"
+
+    appTitle: "Governance Studio (Dev)"
+    environment: "development"
+    features:
+      governance: true
+      lineage: true
+      guardianEnabled: false
+      agentManagement: false
+    branding:
+      logoUrl: "/vite.svg"
+      primaryColor: "#0f172a"
+      companyName: "Development"
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: false
+
+  podSecurityContext: {}
+  securityContext: {}
+
+# =============================================================================
+# GOVERNANCE SERVICE (Backend API)
+# =============================================================================
+governance-service:
+  enabled: true
+  replicaCount: 1
+
+  ingress:
+    enabled: false
+
+  config:
+    appEnv: "development"
+    logLevel: "debug"
+
+    # MinIO (S3-compatible) for local development
+    storageProvider: "aws_s3"
+    awsS3Region: "us-east-1"
+    awsS3BucketName: "governance-dev"
+    awsS3Folder: ""
+
+    server:
+      readTimeout: 60
+      writeTimeout: 60
+      idleTimeout: 300
+
+    # AI features - disabled by default for development
+    ai:
+      enabled: false
+      provider: "anthropic"
+      model: "claude-3-haiku-20240307" # Cheaper model for development
+
+    # Service account for worker
+    serviceAccount:
+      enabled: false
+
+  # Disable Auth0 sync for faster startup
+  auth0SyncAtStartup: false
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: false
+
+  podSecurityContext: {}
+  securityContext: {}
+
+  # Relaxed probes for development
+  startupProbe:
+    failureThreshold: 60
+    periodSeconds: 5
+
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 5
+
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 5
+
+# =============================================================================
+# INTEGRITY SERVICE (Credentials & Lineage)
+# =============================================================================
+integrity-service:
+  enabled: true
+  replicaCount: 1
+
+  ingress:
+    enabled: false
+
+  env:
+    rustEnv: "development"
+
+    # MinIO (S3-compatible) for local development
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreRegion: "us-east-1"
+    integrityAppBlobStoreBucket: "integrity-dev"
+
+    # Debug logging
+    integrityAppLoggingLogLevelDefault: "debug"
+    integrityAppLoggingLogLevelIntegrityService: "trace"
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: false
+
+  podSecurityContext: {}
+  securityContext:
+    readOnlyRootFilesystem: false
+
+  # Relaxed probes for development
+  startupProbe:
+    failureThreshold: 60
+    periodSeconds: 5
+
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 5
+
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 5
+
+# =============================================================================
+# AUTH SERVICE
+# =============================================================================
+auth-service:
+  enabled: true
+  replicaCount: 1
+
+  ingress:
+    enabled: false
+
+  config:
+    server:
+      environment: "development"
+      swaggerEnabled: true # Enable Swagger for development
+
+    logging:
+      level: "debug"
+      format: "text" # Human-readable logs for development
+
+    idp:
+      provider: "auth0"
+      auth0:
+        domain: "dev-your-tenant.auth0.com"
+        syncAtStartup: false # Disable for faster startup
+
+    rateLimit:
+      enabled: false # Disable rate limiting for development
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: false
+
+  podSecurityContext: {}
+  securityContext: {}
+
+  # Relaxed probes for development
+  startupProbe:
+    failureThreshold: 60
+    periodSeconds: 5
+
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 5
+
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 5
+
+# =============================================================================
+# POSTGRESQL
+# =============================================================================
+postgresql:
+  enabled: true
+
+  global:
+    postgresql:
+      auth:
+        database: "governance"
+        username: "postgres"
+        existingSecret: "dev-database"
+        secretKeys:
+          adminPasswordKey: "password"
+          userPasswordKey: "password"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 5Gi
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+# =============================================================================
+# DEVELOPMENT SECRET CREATION
+# =============================================================================
+# Run these commands before deploying:
+#
+# # Create namespace
+# kubectl create namespace governance
+#
+# # Database credentials (simple password for dev)
+# kubectl create secret generic dev-database \
+#   --from-literal=username=postgres \
+#   --from-literal=password=postgres \
+#   --namespace governance
+#
+# # Auth0 development credentials
+# kubectl create secret generic dev-auth0 \
+#   --from-literal=client-id=YOUR_DEV_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_DEV_CLIENT_SECRET \
+#   --from-literal=mgmt-client-id=YOUR_DEV_MGMT_CLIENT_ID \
+#   --from-literal=mgmt-client-secret=YOUR_DEV_MGMT_CLIENT_SECRET \
+#   --namespace governance
+#
+# # MinIO credentials (default MinIO credentials)
+# kubectl create secret generic dev-minio \
+#   --from-literal=access-key-id=minioadmin \
+#   --from-literal=secret-access-key=minioadmin \
+#   --namespace governance
+#
+# # Azure Key Vault (use dev/sandbox vault)
+# kubectl create secret generic dev-azure-key-vault \
+#   --from-literal=client-id=YOUR_DEV_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_DEV_CLIENT_SECRET \
+#   --from-literal=tenant-id=YOUR_TENANT_ID \
+#   --from-literal=vault-url=https://your-dev-vault.vault.azure.net/ \
+#   --namespace governance
+#
+# # Encryption key
+# kubectl create secret generic dev-encryption \
+#   --from-literal=encryption-key=development-key-not-for-production \
+#   --namespace governance
+#
+# # Governance worker credentials
+# kubectl create secret generic dev-governance-worker \
+#   --from-literal=encryption-key=development-key-not-for-production \
+#   --from-literal=client-id=YOUR_M2M_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_M2M_CLIENT_SECRET \
+#   --namespace governance
+
+# =============================================================================
+# ACCESSING SERVICES IN DEVELOPMENT
+# =============================================================================
+# Use kubectl port-forward to access services:
+#
+# # Frontend (Governance Studio)
+# kubectl port-forward svc/governance-platform-governance-studio 8080:80 -n governance
+# # Access at: http://localhost:8080
+#
+# # Governance Service API
+# kubectl port-forward svc/governance-platform-governance-service 10001:10001 -n governance
+# # Access at: http://localhost:10001
+#
+# # Auth Service API
+# kubectl port-forward svc/governance-platform-auth-service 8081:8080 -n governance
+# # Access at: http://localhost:8081
+#
+# # Integrity Service API
+# kubectl port-forward svc/governance-platform-integrity-service 3050:3050 -n governance
+# # Access at: http://localhost:3050
+#
+# # PostgreSQL
+# kubectl port-forward svc/governance-platform-postgresql 5432:5432 -n governance
+# # Connect with: psql -h localhost -U postgres -d governance

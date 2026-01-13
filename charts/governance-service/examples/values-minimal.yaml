@@ -1,0 +1,124 @@
+# Minimal Configuration (Quick Start)
+# The absolute minimum configuration needed to get governance-service running
+#
+# Usage:
+#   helm install governance-service ./charts/governance-service -f examples/values-minimal.yaml
+#
+# This example shows ONLY the values you MUST customize.
+# All other values use sensible defaults from values.yaml
+#
+# Prerequisites:
+#   1. PostgreSQL database accessible
+#   2. Auth0 tenant with configured application
+#   3. Storage provider (Azure Blob, AWS S3, or GCS)
+#   4. Required Kubernetes secrets created (see below)
+
+# =============================================================================
+# REQUIRED: Storage Provider
+# =============================================================================
+
+config:
+  # REQUIRED: Choose ONE storage provider
+  storageProvider: "aws_s3" # Options: "aws_s3", "azure_blob", "gcs"
+
+  # For AWS S3:
+  awsS3Region: "us-east-1"
+  awsS3BucketName: "YOUR-BUCKET-NAME"
+
+  # For Azure Blob:
+  # azureStorageContainerName: "YOUR-CONTAINER-NAME"
+
+  # For GCS:
+  # gcsBucketName: "YOUR-BUCKET-NAME"
+
+  # REQUIRED: Auth0 domain
+  auth0Domain: "YOUR-TENANT.auth0.com"
+
+# =============================================================================
+# REQUIRED: Database
+# =============================================================================
+
+externalDatabase:
+  host: "YOUR-DATABASE-HOST"
+  port: 5432
+  database: "governance"
+  user: "postgres"
+  sslmode: "require"
+
+  passwordSecretKeyRef:
+    name: "database-credentials"
+    key: "password"
+
+# =============================================================================
+# REQUIRED: Secrets
+# =============================================================================
+#
+# Create these secrets before installing:
+#
+# kubectl create secret generic database-credentials \
+#   --from-literal=password=YOUR_DB_PASSWORD
+#
+# kubectl create secret generic auth0-credentials \
+#   --from-literal=client-id=YOUR_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_CLIENT_SECRET
+#
+# kubectl create secret generic encryption-key \
+#   --from-literal=key=$(openssl rand -base64 32)
+#
+# For AWS S3:
+# kubectl create secret generic aws-s3-credentials \
+#   --from-literal=access-key-id=YOUR_ACCESS_KEY \
+#   --from-literal=secret-access-key=YOUR_SECRET_KEY
+#
+# For Azure Blob:
+# kubectl create secret generic azure-storage-credentials \
+#   --from-literal=account-name=YOUR_ACCOUNT \
+#   --from-literal=account-key=YOUR_KEY \
+#   --from-literal=connection-string=YOUR_CONNECTION_STRING
+#
+# For GCS:
+# kubectl create secret generic gcs-credentials \
+#   --from-file=service-account.json=/path/to/sa.json
+
+secrets:
+  encryption:
+    name: "encryption-key"
+    key: "key"
+
+  auth0:
+    name: "auth0-credentials"
+    clientIdKey: "client-id"
+    clientSecretKey: "client-secret"
+
+  # Choose based on your storage provider:
+  storage:
+    aws_s3:
+      name: "aws-s3-credentials"
+      accessKeyIdKey: "access-key-id"
+      secretAccessKeyKey: "secret-access-key"
+
+    # azure_blob:
+    #   name: "azure-storage-credentials"
+    #   accountNameKey: "account-name"
+    #   accountKeyKey: "account-key"
+    #   connectionStringKey: "connection-string"
+
+    # gcs:
+    #   name: "gcs-credentials"
+    #   serviceAccountJsonKey: "service-account.json"
+# =============================================================================
+# OPTIONAL: Enable ingress for external access
+# =============================================================================
+
+# ingress:
+#   enabled: true
+#   className: "nginx"
+#   hosts:
+#     - host: governance.your-domain.com
+#       paths:
+#         - path: "/governanceService(/|$)(.*)"
+#           pathType: ImplementationSpecific
+#   tls:
+#     - secretName: governance-tls
+#       hosts:
+#         - governance.your-domain.com

@@ -1,18 +1,18 @@
 dependencies:
-- name: governance-service
-  repository: file://../governance-service
-  version: 1.4.0
-- name: integrity-service
-  repository: file://../integrity-service
-  version: 1.1.5
-- name: postgresql
-  repository: https://charts.bitnami.com/bitnami
-  version: 12.5.9
-- name: governance-studio
-  repository: file://../governance-studio
-  version: 1.2.0
-- name: auth-service
-  repository: file://../auth-service
-  version: 1.0.4
-digest: sha256:6d5c684123aa1f3aefd4573800b084aaf93772c0f87691431ab2de7f2f5a81cb
-generated: "2025-10-06T09:32:57.439536-04:00"
+  - name: auth-service
+    repository: file://../auth-service
+    version: 1.1.0
+  - name: governance-service
+    repository: file://../governance-service
+    version: 1.9.0
+  - name: governance-studio
+    repository: file://../governance-studio
+    version: 1.4.0
+  - name: integrity-service
+    repository: file://../integrity-service
+    version: 1.2.0
+  - name: postgresql
+    repository: https://charts.bitnami.com/bitnami
+    version: 18.1.13
+digest: sha256:fc149356bcdc19700c475d7c163482fb7ac7f702dc10a50a4410bd25588fe202
+generated: "2026-01-12T15:17:26.873637-05:00"

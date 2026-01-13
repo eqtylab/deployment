@@ -1,3 +1,4 @@
+{{- if .Values.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,16 +6,23 @@ metadata:
   labels:
     {{- include "governance-studio.labels" . | nindent 4 }}
 data:
-  API_URL: {{ .Values.config.apiUrl | quote }}
-  AUTH_SERVICE_URL: {{ .Values.config.authServiceUrl | quote }}
-  INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | quote }}
-  GARAGE_SERVICE_URL: {{ .Values.config.garageServiceUrl | quote }}
+  # API Configuration
+  API_URL: {{ .Values.config.apiUrl | default (printf "https://%s/governanceService" (((.Values.global).domain) | default "")) | quote }}
+  AUTH_SERVICE_URL: {{ .Values.config.authServiceUrl | default (printf "https://%s/authService" (((.Values.global).domain) | default "")) | quote }}
+  {{- if .Values.config.features.lineage }}
+  INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" (((.Values.global).domain) | default "")) | quote }}
+  {{- end }}
+  {{- if .Values.config.features.guardianGarage }}
+  GARAGE_SERVICE_URL: {{ .Values.config.garageServiceUrl | default (printf "https://%s/garage" (((.Values.global).domain) | default "")) | quote }}
+  {{- end }}
 
-  ENVIRONMENT: {{ .Values.config.environment | quote }}
+  # Application Settings
+  ENVIRONMENT: {{ .Values.config.environment | default ((.Values.global).environmentType | default "") | quote }}
   APP_TITLE: {{ .Values.config.appTitle | quote }}
-  APP_HOSTNAME: {{ .Values.config.appHostname | quote }}
+  APP_HOSTNAME: {{ .Values.config.appHostname | default ((.Values.global).domain | default "") | quote }}
   BASE_PATH: {{ .Values.config.basePath | quote }}
 
+  # Feature Flags
   FEATURE_GOVERNANCE: {{ .Values.config.features.governance | quote }}
   FEATURE_LINEAGE: {{ .Values.config.features.lineage | quote }}
   FEATURE_GUARDIAN_ENABLED: {{ .Values.config.features.guardianEnabled | quote }}
@@ -24,20 +32,25 @@ data:
   FEATURE_GUARDIAN_SDK_FUNCTIONS: {{ .Values.config.features.guardianSdkFunctions | quote }}
   FEATURE_GUARDIAN_AGENT_MANAGEMENT: {{ .Values.config.features.agentManagement | quote }}
 
+  # Branding Configuration
   BRANDING_LOGO_URL: {{ .Values.config.branding.logoUrl | quote }}
   BRANDING_PRIMARY_COLOR: {{ .Values.config.branding.primaryColor | quote }}
   BRANDING_COMPANY_NAME: {{ .Values.config.branding.companyName | quote }}
 
-  AUTH_PROVIDER: {{ .Values.config.authProvider | quote }}
-  # AUTH0 Settings
-  {{- if eq .Values.config.authProvider "auth0" }}
+  # Auth Configuration
+  AUTH_PROVIDER: {{ .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "" | quote }}
+
+  # Auth0 Settings (only included when Auth0 is the provider)
+  {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "auth0" }}
   AUTH0_DOMAIN: {{ .Values.config.auth0Domain | quote }}
   AUTH0_CLIENT_ID: {{ .Values.config.auth0ClientId | quote }}
   AUTH0_AUDIENCE: {{ .Values.config.auth0Audience | quote }}
   {{- end }}
-  # Keycloak Settings
-  {{- if eq .Values.config.authProvider "keycloak" }}
-  KEYCLOAK_URL: {{ .Values.config.keycloakUrl | quote }}
-  KEYCLOAK_REALM: {{ .Values.config.keycloakRealm | quote }}
-  KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | quote }}
+
+  # Keycloak Settings (only included when Keycloak is the provider)
+  {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "keycloak" }}
+  KEYCLOAK_URL: {{ .Values.config.keycloakUrl | default ((((.Values.global).secrets).auth).keycloak).values.url | default "" | quote }}
+  KEYCLOAK_REALM: {{ .Values.config.keycloakRealm | default ((((.Values.global).secrets).auth).keycloak).values.realm | default "" | quote }}
+  KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | default ((((.Values.global).secrets).auth).keycloak).values.frontendClientId | default "" | quote }}
   {{- end }}
+{{- end }}

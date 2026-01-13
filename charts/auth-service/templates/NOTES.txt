@@ -1,0 +1,89 @@
+{{- if .Values.enabled }}
+Auth Service has been deployed!
+
+Service URL (internal): http://{{ include "auth-service.fullname" . }}:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+External URL: https://{{ .host }}/authService
+{{- end }}
+{{- else }}
+
+To access the service, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "auth-service.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:8080/health
+{{- end }}
+
+Configuration:
+  Environment: {{ .Values.config.server.environment | default ((.Values.global).environmentType | default "not set") }}
+  IDP Provider: {{ .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "not set" }}
+  Key Vault Provider: {{ .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "not set" }}
+  Log Level: {{ .Values.config.logging.level }}
+
+{{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
+{{- if eq $idpProvider "auth0" }}
+Auth0 Configuration:
+  Domain: {{ .Values.config.idp.auth0.domain | default ((((.Values.global).secrets).auth).auth0).values.domain | default "not set" }}
+  Management API: {{ if .Values.config.idp.auth0.enableManagementAPI }}enabled{{ else }}disabled{{ end }}
+  Sync at Startup: {{ if .Values.config.idp.auth0.syncAtStartup }}enabled{{ else }}disabled{{ end }}
+{{- else if eq $idpProvider "keycloak" }}
+Keycloak Configuration:
+  Realm: {{ .Values.config.idp.keycloak.realm | default ((((.Values.global).secrets).auth).keycloak).values.realm | default "not set" }}
+  User Management: {{ if .Values.config.idp.keycloak.enableUserManagement }}enabled{{ else }}disabled{{ end }}
+{{- end }}
+
+{{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
+{{- if eq $keyVaultProvider "azure" }}
+Azure Key Vault:
+  Vault URL: {{ .Values.config.keyVault.azure.vaultUrl | default (((((.Values.global).secrets).secretManager).azure_key_vault).values).vaultUrl | default "not set" }}
+{{- else if eq $keyVaultProvider "hashicorp" }}
+HashiCorp Vault:
+  Address: {{ .Values.config.keyVault.hashicorp.address | default "not set" }}
+{{- end }}
+
+Database:
+  Host: {{ .Values.externalDatabase.host | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) }}
+  Database: {{ .Values.externalDatabase.name | default ((.Values.global).postgresql).database | default "governance" }}
+  Migrations: {{ if .Values.migrations.runAtStartup }}enabled{{ else }}disabled{{ end }}
+
+Service Accounts:
+  Auto-Create: {{ if .Values.config.serviceAccounts.autoCreate }}enabled{{ else }}disabled{{ end }}
+  Governance Worker: {{ if .Values.config.serviceAccounts.governanceWorker.enabled }}enabled{{ else }}disabled{{ end }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "auth-service.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "auth-service.fullname" . }} -n {{ .Release.Namespace }}
+
+To check health:
+  kubectl exec -it deployment/{{ include "auth-service.fullname" . }} -n {{ .Release.Namespace }} -- wget -qO- localhost:{{ .Values.service.port }}/health
+
+{{- if not $idpProvider }}
+
+WARNING: Identity provider is not configured!
+Please set: auth-service.config.idp.provider to "auth0" or "keycloak"
+{{- end }}
+
+{{- if eq $idpProvider "auth0" }}
+{{- if not (or .Values.config.idp.auth0.domain ((((.Values.global).secrets).auth).auth0).values.domain) }}
+
+WARNING: Auth0 domain is not configured!
+Please set: auth-service.config.idp.auth0.domain
+{{- end }}
+{{- end }}
+
+{{- if not $keyVaultProvider }}
+
+WARNING: Key Vault provider is not configured!
+Please set: auth-service.config.keyVault.provider to "azure" or "hashicorp"
+{{- end }}
+
+{{- if eq $keyVaultProvider "azure" }}
+{{- if not (or .Values.config.keyVault.azure.vaultUrl (((((.Values.global).secrets).secretManager).azure_key_vault).values).vaultUrl) }}
+
+WARNING: Azure Key Vault URL is not configured!
+Please set: auth-service.config.keyVault.azure.vaultUrl
+{{- end }}
+{{- end }}
+{{- end }}

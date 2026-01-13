@@ -1,0 +1,405 @@
+# =============================================================================
+# GOVERNANCE PLATFORM - GCP DEPLOYMENT EXAMPLE
+# =============================================================================
+# Complete example for deploying the Governance Platform on Google Cloud Platform
+# using GKE (Google Kubernetes Engine) with GCS for storage.
+#
+# PREREQUISITES:
+#   - GKE cluster with ingress-nginx installed
+#   - GCS bucket created for governance attachments
+#   - Service account with Storage Object Admin role
+#   - Auth0 tenant configured (or Keycloak)
+#   - Azure Key Vault for credential signing (cross-cloud requirement)
+#   - cert-manager installed for TLS certificates
+#
+# USAGE:
+#   1. Copy this file and customize for your environment
+#   2. Create secrets using secrets-sample.yaml as reference
+#   3. Deploy:
+#      helm dependency update ./charts/governance-platform
+#      helm install governance-platform ./charts/governance-platform \
+#        --namespace governance \
+#        --create-namespace \
+#        --values values-gcp-example.yaml
+# =============================================================================
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+global:
+  # Your GCP domain - update this to your actual domain
+  domain: "governance.yourcompany.com"
+  environmentType: "production"
+  imagePullPolicy: "IfNotPresent"
+
+  # ---------------------------------------------------------------------------
+  # Secret Configuration
+  # ---------------------------------------------------------------------------
+  # Set create: false for production - create secrets manually before deployment
+  secrets:
+    create: false
+
+    # Database credentials
+    database:
+      secretName: "platform-database"
+
+    # Authentication - Auth0
+    auth:
+      provider: "auth0"
+      auth0:
+        secretName: "platform-auth0"
+
+    # Auth service credentials
+    authService:
+      secretName: "platform-auth-service"
+
+    # Storage - Google Cloud Storage
+    storage:
+      gcs:
+        secretName: "platform-gcs"
+
+    # Secret Manager - Azure Key Vault (required for credential signing)
+    # Note: Even on GCP, Azure Key Vault is used for signing credentials
+    secretManager:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        enabled: true
+        secretName: "platform-azure-key-vault"
+
+    # Platform encryption
+    encryption:
+      secretName: "platform-encryption-key"
+
+    # Governance worker credentials
+    governanceWorker:
+      secretName: "platform-governance-worker"
+
+    # AI service credentials (optional)
+    governanceServiceAI:
+      secretName: "platform-governance-service-ai"
+
+    # Image registry credentials
+    imageRegistry:
+      secretName: "platform-image-pull-secret"
+      registry: "ghcr.io"
+
+# =============================================================================
+# GOVERNANCE STUDIO (Frontend)
+# =============================================================================
+governance-studio:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: governance-studio-tls
+        hosts:
+          - governance.yourcompany.com
+
+  config:
+    # Auth0 SPA settings (public, not secrets)
+    auth0Domain: "your-tenant.us.auth0.com"
+    auth0ClientId: "your-spa-client-id"
+    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+
+    appTitle: "Governance Studio"
+    features:
+      governance: true
+      lineage: true
+      guardianEnabled: false
+      agentManagement: false
+    branding:
+      logoUrl: "/vite.svg"
+      primaryColor: "#0f172a"
+      companyName: "Your Company"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# GOVERNANCE SERVICE (Backend API)
+# =============================================================================
+governance-service:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: governance-service-tls
+        hosts:
+          - governance.yourcompany.com
+
+  # Storage configuration - GCS
+  config:
+    logLevel: "info"
+
+    # Google Cloud Storage
+    storageProvider: "gcs"
+    gcsBucketName: "your-governance-attachments" # Your GCS bucket name
+
+    # AI features
+    ai:
+      enabled: true
+      provider: "anthropic"
+      model: "claude-3-7-sonnet-latest"
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# INTEGRITY SERVICE (Credentials & Lineage)
+# =============================================================================
+integrity-service:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: integrity-service-tls
+        hosts:
+          - governance.yourcompany.com
+
+  # Storage configuration - GCS is NOT supported for integrity-service
+  # Must use Azure Blob or AWS S3
+  # Using AWS S3 in this example (can also use Azure Blob)
+  env:
+    integrityAppLoggingLogLevelDefault: "info"
+
+    # AWS S3 for integrity service (GCS not supported)
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreRegion: "us-east-1"
+    integrityAppBlobStoreBucket: "your-integrity-bucket"
+    integrityAppBlobStoreFolder: "statements"
+
+  # Enable AWS S3 secrets for integrity service
+  secrets:
+    storage:
+      aws_s3:
+        enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# AUTH SERVICE
+# =============================================================================
+auth-service:
+  enabled: true
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.yourcompany.com
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: auth-service-tls
+        hosts:
+          - governance.yourcompany.com
+
+  config:
+    server:
+      environment: "production"
+      swaggerEnabled: false
+
+    logging:
+      level: "info"
+      format: "json"
+
+    idp:
+      provider: "auth0"
+
+    database:
+      autoMigrate: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# POSTGRESQL
+# =============================================================================
+postgresql:
+  enabled: true
+
+  global:
+    postgresql:
+      auth:
+        database: "governance"
+        username: "postgres"
+        existingSecret: "platform-database"
+        secretKeys:
+          adminPasswordKey: "password"
+          userPasswordKey: "password"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      # Use GCP SSD storage class for better performance
+      storageClass: "premium-rwo"
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+# =============================================================================
+# SECRET CREATION COMMANDS FOR GCP
+# =============================================================================
+# Run these commands before deploying:
+#
+# # Create namespace
+# kubectl create namespace governance
+#
+# # Database credentials
+# kubectl create secret generic platform-database \
+#   --from-literal=username=postgres \
+#   --from-literal=password="$(openssl rand -base64 24)" \
+#   --namespace governance
+#
+# # Auth0 credentials (includes management API creds)
+# kubectl create secret generic platform-auth0 \
+#   --from-literal=client-id=YOUR_AUTH0_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AUTH0_CLIENT_SECRET \
+#   --from-literal=mgmt-client-id=YOUR_AUTH0_MGMT_CLIENT_ID \
+#   --from-literal=mgmt-client-secret=YOUR_AUTH0_MGMT_CLIENT_SECRET \
+#   --namespace governance
+#
+# # GCS credentials
+# kubectl create secret generic platform-gcs \
+#   --from-literal=service-account-json="$(cat gcs-service-account.json | base64 -w 0)" \
+#   --namespace governance
+#
+# # AWS S3 credentials (for integrity-service)
+# kubectl create secret generic platform-aws-s3 \
+#   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY \
+#   --from-literal=secret-access-key=YOUR_AWS_SECRET_KEY \
+#   --namespace governance
+#
+# # Azure Key Vault credentials (for credential signing)
+# kubectl create secret generic platform-azure-key-vault \
+#   --from-literal=client-id=YOUR_AZURE_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
+#   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
+#   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
+#   --namespace governance
+#
+# # Encryption key
+# kubectl create secret generic platform-encryption-key \
+#   --from-literal=encryption-key="$(openssl rand -base64 32)" \
+#   --namespace governance
+#
+# # Governance worker credentials
+# kubectl create secret generic platform-governance-worker \
+#   --from-literal=encryption-key="$(openssl rand -base64 32)" \
+#   --from-literal=client-id=YOUR_M2M_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_M2M_CLIENT_SECRET \
+#   --namespace governance
+#
+# # AI credentials (optional)
+# kubectl create secret generic platform-governance-service-ai \
+#   --from-literal=api-key=YOUR_ANTHROPIC_API_KEY \
+#   --namespace governance
+#
+# # Auth service credentials
+# kubectl create secret generic platform-auth-service \
+#   --from-literal=db-password="$(openssl rand -base64 24)" \
+#   --from-literal=session-secret="$(openssl rand -base64 32)" \
+#   --from-literal=api-secret="$(openssl rand -base64 32)" \
+#   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
+#   --namespace governance
+#
+# # Image pull secret
+# kubectl create secret docker-registry platform-image-pull-secret \
+#   --docker-server=ghcr.io \
+#   --docker-username=YOUR_GITHUB_USERNAME \
+#   --docker-password=YOUR_GITHUB_PAT \
+#   --docker-email=YOUR_EMAIL \
+#   --namespace governance

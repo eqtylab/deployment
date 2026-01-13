@@ -1,3 +1,4 @@
+{{- if .Values.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,78 +6,162 @@ metadata:
   labels:
     {{- include "auth-service.labels" . | nindent 4 }}
 data:
-  config.yaml: |
-    server:
-      port: {{ .Values.config.server.port }}
-      host: {{ .Values.config.server.host | quote }}
-      readTimeout: {{ .Values.config.server.readTimeout }}
-      writeTimeout: {{ .Values.config.server.writeTimeout }}
-      idleTimeout: {{ .Values.config.server.idleTimeout }}
+  # ==========================================================================
+  # Server Configuration
+  # ==========================================================================
+  PORT: "{{ .Values.config.server.port }}"
+  HOST: "{{ .Values.config.server.host }}"
+  SERVER_READ_TIMEOUT: "{{ .Values.config.server.readTimeout }}"
+  SERVER_WRITE_TIMEOUT: "{{ .Values.config.server.writeTimeout }}"
+  SERVER_IDLE_TIMEOUT: "{{ .Values.config.server.idleTimeout }}"
+  ENVIRONMENT: "{{ .Values.config.server.environment | default ((.Values.global).environmentType) | default "production" }}"
+  SWAGGER_ENABLED: "{{ .Values.config.server.swaggerEnabled }}"
 
-    logging:
-      level: {{ .Values.config.logging.level }}
-      format: {{ .Values.config.logging.format }}
-      skipPaths: {{ .Values.config.logging.skipPaths | quote }}
+  # ==========================================================================
+  # Logging Configuration
+  # ==========================================================================
+  LOG_LEVEL: "{{ .Values.config.logging.level }}"
+  LOG_FORMAT: "{{ .Values.config.logging.format }}"
+  LOGGER_SKIP_PATHS: "{{ .Values.config.logging.skipPaths }}"
 
-    idp:
-      provider: {{ .Values.config.idp.provider | quote }}
-      issuer: {{ .Values.config.idp.issuer | quote }}
-      {{- if eq .Values.config.idp.provider "auth0" }}
-      auth0:
-        domain: {{ .Values.config.idp.auth0.domain | quote }}
-        {{- if .Values.config.idp.auth0.managementAudience }}
-        managementAudience: {{ .Values.config.idp.auth0.managementAudience | quote }}
-        {{- end }}
-        {{- if .Values.config.idp.auth0.apiIdentifier }}
-        apiIdentifier: {{ .Values.config.idp.auth0.apiIdentifier | quote }}
-        {{- end }}
-        defaultConnection: {{ .Values.config.idp.auth0.defaultConnection | quote }}
-        sendInvitationEmail: {{ .Values.config.idp.auth0.sendInvitationEmail }}
-      {{- end }}
-      {{- if eq .Values.config.idp.provider "keycloak" }}
-      keycloak:
-        realm: {{ .Values.config.idp.keycloak.realm | quote }}
-        {{- if .Values.config.idp.keycloak.adminUrl }}
-        adminUrl: {{ .Values.config.idp.keycloak.adminUrl | quote }}
-        {{- end }}
-      {{- end }}
-      {{- if eq .Values.config.idp.provider "zitadel" }}
-      zitadel:
-        {{- if .Values.config.idp.zitadel.projectId }}
-        projectId: {{ .Values.config.idp.zitadel.projectId | quote }}
-        {{- end }}
-        {{- if .Values.config.idp.zitadel.organizationId }}
-        organizationId: {{ .Values.config.idp.zitadel.organizationId | quote }}
-        {{- end }}
-      {{- end }}
+  # ==========================================================================
+  # CORS Configuration
+  # ==========================================================================
+  CORS_ENABLED: "{{ .Values.config.cors.enabled }}"
+  CORS_ORIGINS: "{{ .Values.config.cors.origins }}"
 
-    database:
-      host: {{ include "auth-service.databaseHost" . | quote }}
-      port: {{ .Values.config.database.port }}
-      name: {{ .Values.config.database.name | quote }}
-      user: {{ .Values.config.database.user | quote }}
-      sslMode: {{ .Values.config.database.sslMode | quote }}
+  # ==========================================================================
+  # Database Configuration
+  # ==========================================================================
+  DB_HOST: "{{ .Values.externalDatabase.host | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) }}"
+  DB_PORT: "{{ .Values.externalDatabase.port | default ((.Values.global).postgresql).port | default 5432 }}"
+  DB_NAME: "{{ .Values.externalDatabase.name | default ((.Values.global).postgresql).database | default "governance" }}"
+  DB_USER: "{{ .Values.externalDatabase.user | default ((.Values.global).postgresql).username | default "postgres" }}"
+  DB_SSL_MODE: "{{ .Values.externalDatabase.sslMode }}"
+  DB_MAX_OPEN_CONNS: "{{ .Values.externalDatabase.maxOpenConns }}"
+  DB_MAX_IDLE_CONNS: "{{ .Values.externalDatabase.maxIdleConns }}"
+  DB_CONN_MAX_LIFETIME: "{{ .Values.externalDatabase.connMaxLifetime }}"
+  DATABASE_AUTO_MIGRATE: "{{ .Values.migrations.runAtStartup }}"
+  DATABASE_MIGRATIONS_PATH: "{{ .Values.migrations.path }}"
 
-    keyVault:
-      provider: {{ .Values.config.keyVault.provider | quote }}
-      {{- if eq .Values.config.keyVault.provider "azure" }}
-      azure:
-        vaultUrl: {{ .Values.config.keyVault.azure.vaultUrl | quote }}
-        tenantId: {{ .Values.config.keyVault.azure.tenantId | quote }}
-      {{- else if eq .Values.config.keyVault.provider "hashicorp" }}
-      hashicorp:
-        address: {{ .Values.config.keyVault.hashicorp.address | quote }}
-      {{- end }}
+  # ==========================================================================
+  # Identity Provider Configuration
+  # ==========================================================================
+  {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
+  IDP_PROVIDER: "{{ $idpProvider }}"
+  {{- if .Values.config.idp.issuer }}
+  IDP_ISSUER: "{{ .Values.config.idp.issuer }}"
+  {{- end }}
+  IDP_SKIP_ISSUER_VERIFICATION: "{{ .Values.config.idp.skipIssuerVerification }}"
 
-    rbac:
-      cache:
-        enabled: {{ .Values.config.rbac.cache.enabled }}
-        ttl: {{ .Values.config.rbac.cache.ttl }}
-        maxSize: {{ .Values.config.rbac.cache.maxSize }}
+  # Auth0 Configuration
+  {{- if or (eq $idpProvider "auth0") (not $idpProvider) }}
+  {{- if .Values.config.idp.auth0.domain }}
+  IDP_AUTH0_DOMAIN: {{ .Values.config.idp.auth0.domain | quote }}
+  {{- end }}
+  IDP_AUTH0_ENABLE_MANAGEMENT_API: "{{ .Values.config.idp.auth0.enableManagementAPI }}"
+  {{- if .Values.config.idp.auth0.managementAudience }}
+  IDP_AUTH0_MANAGEMENT_AUDIENCE: {{ .Values.config.idp.auth0.managementAudience | quote }}
+  {{- end }}
+  {{- if .Values.config.idp.auth0.apiIdentifier }}
+  IDP_AUTH0_API_IDENTIFIER: "{{ .Values.config.idp.auth0.apiIdentifier }}"
+  {{- end }}
+  IDP_AUTH0_DEFAULT_CONNECTION: "{{ .Values.config.idp.auth0.defaultConnection }}"
+  IDP_AUTH0_DEFAULT_ROLES: "{{ .Values.config.idp.auth0.defaultRoles | join "," }}"
+  IDP_AUTH0_SEND_INVITATION_EMAIL: "{{ .Values.config.idp.auth0.sendInvitationEmail }}"
+  IDP_AUTH0_SYNC_AT_STARTUP: "{{ .Values.config.idp.auth0.syncAtStartup }}"
+  IDP_AUTH0_SYNC_PAGE_SIZE: "{{ .Values.config.idp.auth0.syncPageSize }}"
+  {{- end }}
 
-    {{- if .Values.metrics.enabled }}
-    metrics:
-      enabled: true
-      port: {{ .Values.metrics.port }}
-      path: {{ .Values.metrics.path | quote }}
-    {{- end }}
+  # Keycloak Configuration
+  {{- if eq $idpProvider "keycloak" }}
+  {{- $keycloakRealm := .Values.config.idp.keycloak.realm | default ((((.Values.global).secrets).auth).keycloak).values.realm | default "" }}
+  {{- if $keycloakRealm }}
+  IDP_KEYCLOAK_REALM: "{{ $keycloakRealm }}"
+  {{- end }}
+  {{- if .Values.config.idp.keycloak.adminUrl }}
+  IDP_KEYCLOAK_ADMIN_URL: "{{ .Values.config.idp.keycloak.adminUrl }}"
+  {{- end }}
+  IDP_KEYCLOAK_ENABLE_USER_MANAGEMENT: "{{ .Values.config.idp.keycloak.enableUserManagement }}"
+  IDP_KEYCLOAK_ENABLE_GROUP_SYNC: "{{ .Values.config.idp.keycloak.enableGroupSync }}"
+  {{- end }}
+
+  # ==========================================================================
+  # Key Vault Configuration
+  # ==========================================================================
+  {{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
+  KEY_VAULT_PROVIDER: "{{ $keyVaultProvider }}"
+  DID_KEY_CACHE_TTL_MINUTES: "{{ .Values.config.keyVault.cacheTTLMinutes }}"
+
+  # Azure Key Vault Configuration
+  {{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
+  {{- $vaultUrl := .Values.config.keyVault.azure.vaultUrl | default ((((.Values.global).secrets).secretManager).azure_key_vault).values.vaultUrl | default "" }}
+  {{- if $vaultUrl }}
+  AZURE_KEY_VAULT_URL: "{{ $vaultUrl }}"
+  {{- end }}
+  {{- $tenantId := .Values.config.keyVault.azure.tenantId | default ((((.Values.global).secrets).secretManager).azure_key_vault).values.tenantId | default "" }}
+  {{- if $tenantId }}
+  AZURE_TENANT_ID: "{{ $tenantId }}"
+  {{- end }}
+  {{- end }}
+
+  # HashiCorp Vault Configuration
+  {{- if eq $keyVaultProvider "hashicorp" }}
+  {{- if .Values.config.keyVault.hashicorp.address }}
+  VAULT_ADDR: "{{ .Values.config.keyVault.hashicorp.address }}"
+  {{- end }}
+  {{- end }}
+
+  # ==========================================================================
+  # Service Integration Configuration
+  # ==========================================================================
+  {{- $integrityServiceUrl := .Values.config.integrations.integrityServiceUrl | default (printf "http://%s-integrity-service:3050" .Release.Name) }}
+  INTEGRITY_SERVICE_URL: "{{ $integrityServiceUrl }}"
+  {{- $governanceServiceUrl := .Values.config.integrations.governanceServiceUrl | default (printf "http://%s-governance-service:10001" .Release.Name) }}
+  GOVERNANCE_SERVICE_URL: "{{ $governanceServiceUrl }}"
+
+  # ==========================================================================
+  # Service Account Configuration
+  # ==========================================================================
+  SERVICE_ACCOUNT_AUTO_CREATE: "{{ .Values.config.serviceAccounts.autoCreate }}"
+  {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
+  SERVICE_ACCOUNT_DEFAULT_NAME: "{{ .Values.config.serviceAccounts.governanceWorker.name }}"
+  SERVICE_ACCOUNT_DEFAULT_DESCRIPTION: "{{ .Values.config.serviceAccounts.governanceWorker.description }}"
+  {{- $workerAudience := .Values.config.serviceAccounts.governanceWorker.audience | default (((((.Values.global).secrets).auth).auth0).management).audience | default "" }}
+  {{- if $workerAudience }}
+  AUTH0_GOVERNANCE_WORKER_AUDIENCE: "{{ $workerAudience }}"
+  {{- end }}
+  {{- end }}
+
+  # ==========================================================================
+  # Token Exchange Configuration
+  # ==========================================================================
+  {{- if .Values.config.tokenExchange.enabled }}
+  TOKEN_EXCHANGE_ENABLED: "true"
+  AUTH_SERVICE_KEY_ID: "{{ .Values.config.tokenExchange.keyId }}"
+  {{- end }}
+
+  # ==========================================================================
+  # RBAC Configuration
+  # ==========================================================================
+  RBAC_CACHE_ENABLED: "{{ .Values.config.rbac.cache.enabled }}"
+  RBAC_CACHE_TTL: "{{ .Values.config.rbac.cache.ttl }}"
+  RBAC_CACHE_MAX_SIZE: "{{ .Values.config.rbac.cache.maxSize }}"
+
+  # ==========================================================================
+  # Rate Limiting Configuration
+  # ==========================================================================
+  {{- if .Values.config.rateLimit.enabled }}
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "{{ .Values.config.rateLimit.requestsPerMinute }}"
+  {{- end }}
+
+  # ==========================================================================
+  # Metrics Configuration
+  # ==========================================================================
+  {{- if .Values.metrics.enabled }}
+  METRICS_ENABLED: "true"
+  METRICS_PORT: "{{ .Values.metrics.port }}"
+  METRICS_PATH: "{{ .Values.metrics.path }}"
+  {{- end }}
+{{- end }}

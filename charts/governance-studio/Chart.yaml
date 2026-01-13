@@ -1,17 +1,12 @@
 apiVersion: v2
 name: governance-studio
-description: A Helm chart for deploying EQTY Lab Governance Studio frontend
+description: A Helm chart for deploying the EQTY Lab Governance Studio UI - frontend application for the Governance Platform
 type: application
-version: 1.2.0
-appVersion: "1.0.0"
-keywords:
-  - governance
-  - compliance
-  - frontend
-  - react
-home: https://github.com/eqtylab/governance-studio
+version: 1.4.0
+appVersion: "1.4.0"
+home: https://github.com/eqtylab/governance-studio-infrastructure
 sources:
-  - https://github.com/eqtylab/governance-studio
+  - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/governance-studio
 maintainers:
   - name: EQTY Lab
     email: support@eqtylab.io

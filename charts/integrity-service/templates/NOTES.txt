@@ -1,0 +1,58 @@
+{{- if .Values.enabled }}
+Integrity Service has been deployed!
+
+Service URL (internal): http://{{ include "integrity-service.fullname" . }}:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+External URL: {{ .Values.env.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "governance.example.com")) }}
+{{- else }}
+
+To access the service, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "integrity-service.fullname" . }} 3050:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:3050/health/v1
+{{- end }}
+
+Configuration:
+  Environment: {{ .Values.env.rustEnv | default ((.Values.global).environmentType | default "not set") }}
+  Storage Provider: {{ .Values.env.integrityAppBlobStoreType | default "not set" }}
+  Auth Type: {{ .Values.env.integrityAppAuthType }}
+
+{{- if eq .Values.env.integrityAppBlobStoreType "azure_blob" }}
+  Azure Storage Account: {{ .Values.env.integrityAppBlobStoreAccount | default "from secret" }}
+  Azure Container: {{ .Values.env.integrityAppBlobStoreContainer | default "not set" }}
+{{- else if eq .Values.env.integrityAppBlobStoreType "aws_s3" }}
+  AWS Region: {{ .Values.env.integrityAppBlobStoreRegion | default "not set" }}
+  AWS Bucket: {{ .Values.env.integrityAppBlobStoreBucket | default "not set" }}
+{{- end }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "integrity-service.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "integrity-service.fullname" . }} -n {{ .Release.Namespace }}
+
+To check environment configuration:
+  kubectl exec -it deployment/{{ include "integrity-service.fullname" . }} -n {{ .Release.Namespace }} -- env | grep INTEGRITY_APP
+
+{{- if not .Values.env.integrityAppBlobStoreType }}
+
+⚠️  WARNING: Blob storage type is not configured!
+Please set: integrity-service.env.integrityAppBlobStoreType to "azure_blob" or "aws_s3"
+{{- end }}
+
+{{- if eq .Values.env.integrityAppBlobStoreType "azure_blob" }}
+{{- if not .Values.env.integrityAppBlobStoreContainer }}
+
+⚠️  WARNING: Azure blob container is not configured!
+Please set: integrity-service.env.integrityAppBlobStoreContainer
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.env.integrityAppBlobStoreType "aws_s3" }}
+{{- if or (not .Values.env.integrityAppBlobStoreRegion) (not .Values.env.integrityAppBlobStoreBucket) }}
+
+⚠️  WARNING: AWS S3 configuration incomplete!
+Please set: integrity-service.env.integrityAppBlobStoreRegion and integrityAppBlobStoreBucket
+{{- end }}
+{{- end }}
+{{- end }}

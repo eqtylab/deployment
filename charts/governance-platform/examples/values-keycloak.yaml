@@ -1,0 +1,482 @@
+# =============================================================================
+# GOVERNANCE PLATFORM - KEYCLOAK CONFIGURATION
+# =============================================================================
+# Complete example for deploying the Governance Platform using Keycloak
+# as the identity provider instead of Auth0.
+#
+# PREREQUISITES:
+#   - Kubernetes cluster with ingress controller
+#   - Keycloak instance with realm and clients configured
+#   - Storage provider (AWS S3 or Azure Blob)
+#   - Azure Key Vault for credential signing
+#   - cert-manager for TLS certificates
+#
+# KEYCLOAK SETUP REQUIREMENTS:
+#   1. Create a realm (e.g., "governance")
+#   2. Create a frontend client (public, for SPA):
+#      - Client ID: governance-platform-frontend
+#      - Access Type: public
+#      - Valid Redirect URIs: https://governance.your-domain.com/*
+#      - Web Origins: https://governance.your-domain.com
+#   3. Create a backend client (confidential, for service-to-service):
+#      - Client ID: governance-platform-backend
+#      - Access Type: confidential
+#      - Service Accounts Enabled: ON
+#
+# USAGE:
+#   helm dependency update ./charts/governance-platform
+#   helm install governance-platform ./charts/governance-platform \
+#     --namespace governance \
+#     --create-namespace \
+#     --values values-keycloak.yaml
+# =============================================================================
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+global:
+  domain: "governance.your-domain.com"
+  environmentType: "production"
+  imagePullPolicy: "IfNotPresent"
+
+  secrets:
+    create: false
+
+    # Authentication - Keycloak
+    auth:
+      provider: "keycloak"
+      keycloak:
+        secretName: "platform-keycloak-credentials"
+        keys:
+          url: "url"
+          realm: "realm"
+          frontendClientId: "frontend-client-id"
+          backendClientId: "backend-client-id"
+          backendClientSecret: "backend-client-secret"
+        # Only used if create: true
+        values:
+          url: "https://keycloak.your-domain.com"
+          realm: "governance"
+          frontendClientId: "governance-platform-frontend"
+          backendClientId: "governance-platform-backend"
+          backendClientSecret: ""
+        # Create organization in database on install
+        organization:
+          create: true
+          displayName: "Governance Platform"
+          description: "Main governance organization"
+          createPlatformAdmin: false
+          platformAdminKeycloakId: ""
+
+    # Database credentials
+    database:
+      secretName: "platform-database"
+      keys:
+        username: "username"
+        password: "password"
+
+    # Auth service secrets
+    authService:
+      secretName: "platform-auth-service"
+      keys:
+        dbPassword: "db-password"
+        sessionSecret: "session-secret"
+        apiSecret: "api-secret"
+        jwtSecret: "jwt-secret"
+
+    # Storage - Azure Blob (can be changed to AWS S3)
+    storage:
+      azure_blob:
+        secretName: "platform-azure-blob"
+        keys:
+          accountName: "account-name"
+          accountKey: "account-key"
+          connectionString: "connection-string"
+
+    # Secret Manager - Azure Key Vault
+    secretManager:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        enabled: true
+        secretName: "platform-azure-key-vault"
+        keys:
+          clientId: "client-id"
+          clientSecret: "client-secret"
+          tenantId: "tenant-id"
+          vaultUrl: "vault-url"
+
+    # Platform encryption
+    encryption:
+      secretName: "platform-encryption-key"
+      keys:
+        key: "encryption-key"
+
+    # Governance worker (optional with Keycloak)
+    governanceWorker:
+      secretName: "platform-governance-worker"
+      keys:
+        encryptionKey: "encryption-key"
+        clientId: "client-id"
+        clientSecret: "client-secret"
+
+    # Image registry credentials
+    imageRegistry:
+      secretName: "platform-image-pull-secret"
+      registry: "ghcr.io"
+
+# =============================================================================
+# KEYCLOAK INTEGRATION
+# =============================================================================
+keycloak:
+  # Create organization in auth-service database
+  createOrganization: true
+  realmName: "governance"
+  displayName: "Governance Platform"
+
+  # Create platform admin user (set after Keycloak bootstrap)
+  createPlatformAdmin: false
+  platformAdminKeycloakId: "" # Set after creating admin user in Keycloak
+
+  organizationSettings:
+    description: "Main governance organization"
+    settings: "{}"
+
+# =============================================================================
+# GOVERNANCE STUDIO (Frontend)
+# =============================================================================
+governance-studio:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.your-domain.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: governance-studio-tls
+        hosts:
+          - governance.your-domain.com
+
+  config:
+    appTitle: "Governance Studio"
+
+    # Keycloak frontend configuration
+    authProvider: "keycloak"
+    keycloakUrl: "https://keycloak.your-domain.com"
+    keycloakRealm: "governance"
+    keycloakClientId: "governance-platform-frontend"
+
+    features:
+      governance: true
+      lineage: true
+      guardianEnabled: false
+      agentManagement: false
+
+    branding:
+      logoUrl: "/vite.svg"
+      primaryColor: "#1e40af"
+      companyName: "Your Organization"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# GOVERNANCE SERVICE (Backend API)
+# =============================================================================
+governance-service:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.your-domain.com
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: governance-service-tls
+        hosts:
+          - governance.your-domain.com
+
+  # Keycloak configuration
+  secrets:
+    keycloak:
+      enabled: true
+      existingSecret: "platform-keycloak-credentials"
+      existingSecretKeys:
+        clientId: "backend-client-id"
+        realm: "realm"
+        url: "url"
+      existingClientSecretKeyRef:
+        name: "platform-keycloak-credentials"
+        clientSecretKey: "backend-client-secret"
+
+  # Disable Auth0 sync when using Keycloak
+  auth0SyncAtStartup: false
+
+  config:
+    logLevel: "info"
+
+    # Azure Blob Storage
+    storageProvider: "azure_blob"
+    azureStorageContainerName: "governance-attachments"
+    azureUseManagedIdentity: false
+
+    # AI features
+    ai:
+      enabled: true
+      provider: "anthropic"
+      model: "claude-3-7-sonnet-latest"
+
+    # Service account (uses Keycloak service account)
+    serviceAccount:
+      enabled: true
+      serviceName: "governance-worker"
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# INTEGRITY SERVICE (Credentials & Lineage)
+# =============================================================================
+integrity-service:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.your-domain.com
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: integrity-service-tls
+        hosts:
+          - governance.your-domain.com
+
+  env:
+    integrityAppLoggingLogLevelDefault: "info"
+
+    # Azure Blob Storage
+    integrityAppBlobStoreType: "azure_blob"
+    integrityAppBlobStoreContainer: "integrity-data"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# AUTH SERVICE
+# =============================================================================
+auth-service:
+  enabled: true
+  replicaCount: 2
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: governance.your-domain.com
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: auth-service-tls
+        hosts:
+          - governance.your-domain.com
+
+  config:
+    server:
+      environment: "production"
+      swaggerEnabled: false
+
+    logging:
+      level: "info"
+      format: "json"
+
+    # Keycloak identity provider configuration
+    idp:
+      provider: "keycloak"
+      keycloak:
+        realm: "governance"
+        adminUrl: "https://keycloak.your-domain.com/admin"
+        enableUserManagement: true
+        enableGroupSync: true
+
+    # Token exchange for Keycloak
+    tokenExchange:
+      enabled: true
+      keyId: "auth-service-prod-001"
+
+    # Azure Key Vault for DID key signing
+    keyVault:
+      provider: "azure"
+      azure:
+        vaultUrl: "https://your-vault.vault.azure.net/"
+        tenantId: "your-azure-tenant-id"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# =============================================================================
+# POSTGRESQL
+# =============================================================================
+postgresql:
+  enabled: true
+
+  global:
+    postgresql:
+      auth:
+        database: "governance"
+        username: "postgres"
+        existingSecret: "platform-database"
+        secretKeys:
+          adminPasswordKey: "password"
+          userPasswordKey: "password"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+# =============================================================================
+# SECRET CREATION COMMANDS FOR KEYCLOAK
+# =============================================================================
+# Run these commands before deploying:
+#
+# # Create namespace
+# kubectl create namespace governance
+#
+# # Keycloak credentials
+# kubectl create secret generic platform-keycloak-credentials \
+#   --from-literal=url=https://keycloak.your-domain.com \
+#   --from-literal=realm=governance \
+#   --from-literal=frontend-client-id=governance-platform-frontend \
+#   --from-literal=backend-client-id=governance-platform-backend \
+#   --from-literal=backend-client-secret=YOUR_BACKEND_CLIENT_SECRET \
+#   --namespace governance
+#
+# # Database credentials
+# kubectl create secret generic platform-database \
+#   --from-literal=username=postgres \
+#   --from-literal=password="$(openssl rand -base64 24)" \
+#   --namespace governance
+#
+# # Auth service secrets
+# kubectl create secret generic platform-auth-service \
+#   --from-literal=db-password="$(openssl rand -base64 24)" \
+#   --from-literal=session-secret="$(openssl rand -base64 32)" \
+#   --from-literal=api-secret="$(openssl rand -base64 32)" \
+#   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
+#   --namespace governance
+#
+# # Azure Blob Storage credentials
+# kubectl create secret generic platform-azure-blob \
+#   --from-literal=account-name=yourstorageaccount \
+#   --from-literal=account-key=YOUR_STORAGE_ACCOUNT_KEY \
+#   --from-literal=connection-string="DefaultEndpointsProtocol=https;..." \
+#   --namespace governance
+#
+# # Azure Key Vault credentials
+# kubectl create secret generic platform-azure-key-vault \
+#   --from-literal=client-id=YOUR_AZURE_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
+#   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
+#   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
+#   --namespace governance
+#
+# # Encryption key
+# kubectl create secret generic platform-encryption-key \
+#   --from-literal=encryption-key="$(openssl rand -base64 32)" \
+#   --namespace governance
+#
+# # Governance worker (uses Keycloak service account)
+# kubectl create secret generic platform-governance-worker \
+#   --from-literal=encryption-key="$(openssl rand -base64 32)" \
+#   --from-literal=client-id=governance-platform-backend \
+#   --from-literal=client-secret=YOUR_BACKEND_CLIENT_SECRET \
+#   --namespace governance
+#
+# # Image pull secret
+# kubectl create secret docker-registry platform-image-pull-secret \
+#   --docker-server=ghcr.io \
+#   --docker-username=YOUR_GITHUB_USERNAME \
+#   --docker-password=YOUR_GITHUB_PAT \
+#   --docker-email=YOUR_EMAIL \
+#   --namespace governance

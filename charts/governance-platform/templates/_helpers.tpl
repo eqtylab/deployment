@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "governance-studio.name" -}}
+{{- define "governance-platform.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "governance-studio.fullname" -}}
+{{- define "governance-platform.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "governance-studio.chart" -}}
+{{- define "governance-platform.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "governance-studio.labels" -}}
-helm.sh/chart: {{ include "governance-studio.chart" . }}
-{{ include "governance-studio.selectorLabels" . }}
+{{- define "governance-platform.labels" -}}
+helm.sh/chart: {{ include "governance-platform.chart" . }}
+{{ include "governance-platform.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "governance-studio.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "governance-studio.name" . }}
+{{- define "governance-platform.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "governance-platform.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "governance-studio.serviceAccountName" -}}
+{{- define "governance-platform.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "governance-studio.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "governance-platform.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
