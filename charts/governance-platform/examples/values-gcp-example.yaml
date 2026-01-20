@@ -218,7 +218,7 @@ integrity-service:
   # Storage configuration - GCS is NOT supported for integrity-service
   # Must use Azure Blob or AWS S3
   # Using AWS S3 in this example (can also use Azure Blob)
-  env:
+  config:
     integrityAppLoggingLogLevelDefault: "info"
 
     # AWS S3 for integrity service (GCS not supported)

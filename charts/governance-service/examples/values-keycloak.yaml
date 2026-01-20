@@ -92,40 +92,26 @@ migrations:
 #   - Keycloak URL and realm
 #
 # kubectl create secret generic platform-keycloak \
-#   --from-literal=client-id=governance-backend \
-#   --from-literal=client-secret=YOUR_CLIENT_SECRET \
+#   --from-literal=backend-client-id=governance-backend \
+#   --from-literal=backend-client-secret=YOUR_CLIENT_SECRET \
 #   --from-literal=url=https://keycloak.your-domain.local \
 #   --from-literal=realm=governance
 
 secrets:
   encryption:
     name: "platform-encryption"
-    key: "key"
 
   # Keycloak configuration (instead of auth0)
   keycloak:
     enabled: true
-    existingSecret: "platform-keycloak"
-    existingSecretKeys:
-      clientId: "client-id"
-      realm: "realm"
-      url: "url"
-    existingClientSecretKeyRef:
-      name: "platform-keycloak"
-      clientSecretKey: "client-secret"
+    name: "platform-keycloak"
 
   storage:
     azure_blob:
       name: "platform-azure-storage"
-      accountNameKey: "account-name"
-      accountKeyKey: "account-key"
-      connectionStringKey: "connection-string"
 
   worker:
     name: "platform-governance-worker"
-    encryptionKeyKey: "encryption-key"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

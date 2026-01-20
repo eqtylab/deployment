@@ -74,17 +74,19 @@ externalDatabase:
 #   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET
 
 secrets:
+  # Auth0 credentials
   auth:
-    name: "auth0-credentials"
+    auth0:
+      name: "auth0-credentials"
 
-  security:
+  # Auth service credentials
+  authService:
     name: "auth-service-secrets"
 
-  session:
-    name: "auth-service-secrets"
-
-  keyVault:
-    name: "azure-keyvault-credentials"
+  # Secret manager credentials
+  secretManager:
+    azure_key_vault:
+      name: "azure-keyvault-credentials"
 # =============================================================================
 # OPTIONAL: Enable ingress for external access
 # =============================================================================

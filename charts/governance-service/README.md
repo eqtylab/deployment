@@ -224,6 +224,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | --------------------------------------------- | ------ | ------------------------------------------------- |
 | global.domain                                 | string | Base domain for all services                      |
 | global.environmentType                        | string | Environment type (development/staging/production) |
+| global.postgresql.host                        | string | PostgreSQL host                                   |
 | global.secrets.database.secretName            | string | Name of database credentials secret               |
 | global.secrets.encryption.secretName          | string | Name of encryption key secret                     |
 | global.secrets.auth.provider                  | string | Auth provider (auth0 or keycloak)                 |
@@ -234,13 +235,14 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.secrets.storage.aws_s3.secretName      | string | AWS S3 credentials secret name                    |
 | global.secrets.governanceWorker.secretName    | string | Worker credentials secret name                    |
 | global.secrets.governanceServiceAI.secretName | string | AI API key secret name                            |
+| global.secrets.imageRegistry.secretName       | string | Image registry credentials secret name            |
 
 ### Chart-Specific Parameters
 
 | Key              | Type   | Default                                | Description                                           |
 | ---------------- | ------ | -------------------------------------- | ----------------------------------------------------- |
 | enabled          | bool   | `true`                                 | Enable this subchart (umbrella chart only)            |
-| replicaCount     | int    | `1`                                    | Number of replicas to deploy                          |
+| replicaCount     | int    | `2`                                    | Number of replicas to deploy                          |
 | image.repository | string | `"ghcr.io/eqtylab/governance-service"` | Container image repository                            |
 | image.pullPolicy | string | `"IfNotPresent"`                       | Image pull policy                                     |
 | image.tag        | string | `""`                                   | Overrides the image tag (default is chart appVersion) |
@@ -301,6 +303,7 @@ When deployed via the umbrella chart, these global values are automatically used
 
 | Key                              | Type | Default | Description                                                                                           |
 | -------------------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------- |
+| podDisruptionBudget.enabled      | bool | `true`  | Enable Pod Disruption Budget                                                                          |
 | podDisruptionBudget.minAvailable | int  | `1`     | Minimum available pods during disruptions (only applied when replicaCount > 1 or autoscaling.enabled) |
 
 ### Node Scheduling
@@ -340,8 +343,8 @@ When deployed via the umbrella chart, these global values are automatically used
 | externalDatabase.user                      | string | `"postgres"`        | Database user                                               |
 | externalDatabase.password                  | string | `""`                | Database password (leave empty to use secret reference)     |
 | externalDatabase.sslmode                   | string | `"disable"`         | SSL mode (disable/require/verify-ca/verify-full)            |
-| externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name containing database password                    |
-| externalDatabase.passwordSecretKeyRef.key  | string | `""`                | Secret key name for password                                |
+| externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name containing database password (auto-populated)   |
+| externalDatabase.passwordSecretKeyRef.key  | string | `"password"`        | Secret key name for password                                |
 | migrations.runAtStartup                    | bool   | `true`              | Run database migrations automatically at startup            |
 | migrations.path                            | string | `"/app/migrations"` | Path to migration files within the container                |
 
@@ -349,67 +352,88 @@ When deployed via the umbrella chart, these global values are automatically used
 
 All secret references support global fallbacks when deployed via umbrella chart.
 
+#### Secret Key Names
+
+Secret key names (the keys within each Kubernetes Secret) follow this pattern:
+
+- **Umbrella chart deployment**: Key names are defined in `global.secrets.*.keys` - this is the single source of truth
+- **Standalone deployment**: Templates use hardcoded defaults (e.g., `client-id`, `access-key-id`, `encryption-key`)
+
+When deploying standalone, create your secrets using the default key names:
+
+```bash
+# Example: Encryption key
+kubectl create secret generic governance-encryption \
+  --from-literal=encryption-key=$(openssl rand -base64 32)
+
+# Example: Auth0 credentials
+kubectl create secret generic governance-auth0 \
+  --from-literal=client-id=YOUR_CLIENT_ID \
+  --from-literal=client-secret=YOUR_CLIENT_SECRET
+
+# Example: AWS S3 storage
+kubectl create secret generic governance-aws-s3 \
+  --from-literal=access-key-id=YOUR_ACCESS_KEY \
+  --from-literal=secret-access-key=YOUR_SECRET_KEY
+```
+
+If your existing secrets use different key names, you can override them via `global.secrets.*.keys` in your values file.
+
+**Default key names by secret type:**
+
+| Secret Type | Default Key Names                                  |
+| ----------- | -------------------------------------------------- |
+| Encryption  | `encryption-key`                                   |
+| Auth0       | `client-id`, `client-secret`                       |
+| Keycloak    | `backend-client-id`, `backend-client-secret`       |
+| Azure Blob  | `account-name`, `account-key`, `connection-string` |
+| AWS S3      | `access-key-id`, `secret-access-key`               |
+| GCS         | `service-account-json`                             |
+| Worker      | `encryption-key`, `client-id`, `client-secret`     |
+
 #### Encryption Secret
 
-| Key                     | Type   | Default | Description                                  |
-| ----------------------- | ------ | ------- | -------------------------------------------- |
-| secrets.encryption.name | string | `""`    | Secret name (auto-populated from global)     |
-| secrets.encryption.key  | string | `""`    | Secret key name (auto-populated from global) |
+| Key                     | Type   | Description                              |
+| ----------------------- | ------ | ---------------------------------------- |
+| secrets.encryption.name | string | Secret name (auto-populated from global) |
 
 #### Auth0 Secret (only used when auth provider is Auth0)
 
-| Key                           | Type   | Default | Description                                   |
-| ----------------------------- | ------ | ------- | --------------------------------------------- |
-| secrets.auth0.name            | string | `""`    | Secret name (auto-populated from global)      |
-| secrets.auth0.clientIdKey     | string | `""`    | Secret key for client ID (auto-populated)     |
-| secrets.auth0.clientSecretKey | string | `""`    | Secret key for client secret (auto-populated) |
+| Key                     | Type   | Description                              |
+| ----------------------- | ------ | ---------------------------------------- |
+| secrets.auth.auth0.name | string | Secret name (auto-populated from global) |
 
 #### Keycloak Secret (only used when auth provider is Keycloak)
 
-| Key                                                         | Type   | Default                | Description                                     |
-| ----------------------------------------------------------- | ------ | ---------------------- | ----------------------------------------------- |
-| secrets.keycloak.enabled                                    | bool   | `false`                | Enable Keycloak (auto-detected from global)     |
-| secrets.keycloak.existingSecret                             | string | `""`                   | Secret name (auto-populated from global)        |
-| secrets.keycloak.existingSecretKeys.clientId                | string | `"KEYCLOAK_CLIENT_ID"` | Secret key for client ID                        |
-| secrets.keycloak.existingSecretKeys.realm                   | string | `"KEYCLOAK_REALM"`     | Secret key for realm                            |
-| secrets.keycloak.existingSecretKeys.url                     | string | `"KEYCLOAK_URL"`       | Secret key for URL                              |
-| secrets.keycloak.existingClientSecretKeyRef.name            | string | `""`                   | Client secret name (auto-populated from global) |
-| secrets.keycloak.existingClientSecretKeyRef.clientSecretKey | string | `""`                   | Client secret key (auto-populated from global)  |
+| Key                        | Type   | Description                              |
+| -------------------------- | ------ | ---------------------------------------- |
+| secrets.auth.keycloak.name | string | Secret name (auto-populated from global) |
 
 #### Storage Secrets
 
 **Azure Blob Storage (only used when storage provider is azure_blob):**
 
-| Key                                            | Type   | Default | Description                              |
-| ---------------------------------------------- | ------ | ------- | ---------------------------------------- |
-| secrets.storage.azure_blob.name                | string | `""`    | Secret name (auto-populated from global) |
-| secrets.storage.azure_blob.accountNameKey      | string | `""`    | Account name key (auto-populated)        |
-| secrets.storage.azure_blob.accountKeyKey       | string | `""`    | Account key (auto-populated)             |
-| secrets.storage.azure_blob.connectionStringKey | string | `""`    | Connection string key (auto-populated)   |
+| Key                             | Type   | Description                              |
+| ------------------------------- | ------ | ---------------------------------------- |
+| secrets.storage.azure_blob.name | string | Secret name (auto-populated from global) |
 
 **AWS S3 (only used when storage provider is aws_s3):**
 
-| Key                                       | Type   | Default | Description                              |
-| ----------------------------------------- | ------ | ------- | ---------------------------------------- |
-| secrets.storage.aws_s3.name               | string | `""`    | Secret name (auto-populated from global) |
-| secrets.storage.aws_s3.accessKeyIdKey     | string | `""`    | Access key ID key (auto-populated)       |
-| secrets.storage.aws_s3.secretAccessKeyKey | string | `""`    | Secret access key (auto-populated)       |
+| Key                         | Type   | Description                              |
+| --------------------------- | ------ | ---------------------------------------- |
+| secrets.storage.aws_s3.name | string | Secret name (auto-populated from global) |
 
 **Google Cloud Storage (only used when storage provider is gcs):**
 
-| Key                                       | Type   | Default | Description                               |
-| ----------------------------------------- | ------ | ------- | ----------------------------------------- |
-| secrets.storage.gcs.name                  | string | `""`    | Secret name (auto-populated from global)  |
-| secrets.storage.gcs.serviceAccountJsonKey | string | `""`    | Service account JSON key (auto-populated) |
+| Key                      | Type   | Description                              |
+| ------------------------ | ------ | ---------------------------------------- |
+| secrets.storage.gcs.name | string | Secret name (auto-populated from global) |
 
 #### Worker Secret
 
-| Key                             | Type   | Default | Description                              |
-| ------------------------------- | ------ | ------- | ---------------------------------------- |
-| secrets.worker.name             | string | `""`    | Secret name (auto-populated from global) |
-| secrets.worker.encryptionKeyKey | string | `""`    | Encryption key (auto-populated)          |
-| secrets.worker.clientIdKey      | string | `""`    | Client ID key (auto-populated)           |
-| secrets.worker.clientSecretKey  | string | `""`    | Client secret key (auto-populated)       |
+| Key                 | Type   | Description                              |
+| ------------------- | ------ | ---------------------------------------- |
+| secrets.worker.name | string | Secret name (auto-populated from global) |
 
 ### Auth0 Sync Configuration
 
@@ -444,7 +468,6 @@ All config values support global fallbacks when deployed via umbrella chart.
 | -------------------------------------------- | ------ | --------------------------- | ------------------------------------- |
 | config.indicators.configPath                 | string | `"/app/configs/indicators"` | Path to indicator configuration files |
 | config.indicators.reloadInterval             | int    | `300`                       | How often to reload configs (seconds) |
-| config.indicators.validateOnLoad             | bool   | `true`                      | Validate configurations when loading  |
 | config.indicators.osGuardrailsEnabled        | bool   | `false`                     | Enable OS guardrails                  |
 | config.indicators.osGuardrailsBatchSize      | int    | `100`                       | Batch size for OS guardrails          |
 | config.indicators.osGuardrailsTimeoutSeconds | int    | `5`                         | Timeout for OS guardrails (seconds)   |
@@ -519,7 +542,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.ai.timeoutSeconds    | int    | `60`                         | Timeout for AI requests (seconds)              |
 | config.ai.retryAttempts     | int    | `3`                          | Number of retry attempts for AI requests       |
 | config.ai.secretKeyRef.name | string | `""`                         | AI API key secret (auto-populated from global) |
-| config.ai.secretKeyRef.key  | string | `""`                         | AI API key secret key (auto-populated)         |
+| config.ai.secretKeyRef.key  | string | `"api-key"`                  | AI API key secret key                          |
 | config.ai.apiKey            | string | `""`                         | AI API key (leave empty to use secret)         |
 | config.ai.useV2             | bool   | `true`                       | Use V2 API                                     |
 

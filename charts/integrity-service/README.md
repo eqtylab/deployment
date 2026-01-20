@@ -45,21 +45,11 @@ global:
           accountKey: "YOUR_STORAGE_KEY"
           connectionString: "YOUR_CONNECTION_STRING"
 
-    secretManager:
-      provider: "azure_key_vault"
-      azure_key_vault:
-        secretName: "platform-azure-key-vault"
-        values:
-          clientId: "YOUR_CLIENT_ID"
-          clientSecret: "YOUR_CLIENT_SECRET"
-          tenantId: "YOUR_TENANT_ID"
-          vaultUrl: "https://your-vault.vault.azure.net"
-
 integrity-service:
   enabled: true
   replicaCount: 2
 
-  env:
+  config:
     integrityAppBlobStoreType: "azure_blob" # Explicitly set storage provider
     integrityAppBlobStoreAccount: "yourstorageaccount"
     integrityAppBlobStoreContainer: "integrity-data"
@@ -73,7 +63,7 @@ integrity-service:
     enabled: true
     className: nginx
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+      cert-manager.io/issuer: letsencrypt-prod
       nginx.ingress.kubernetes.io/rewrite-target: /$2
 ```
 
@@ -81,13 +71,12 @@ integrity-service:
 
 - ✅ Database connection (host, port, credentials)
 - ✅ Storage credentials (Azure Blob, AWS S3)
-- ✅ Secret manager configuration (Azure Key Vault)
 - ✅ Auth service URL
 - ✅ Environment type
 - ✅ Image pull secrets
 - ✅ Public service URL
 
-**Note:** Storage provider type must be explicitly set via `env.integrityAppBlobStoreType`. This allows different services to use different storage providers.
+**Note:** Storage provider type must be explicitly set via `config.integrityAppBlobStoreType`. This allows different services to use different storage providers.
 
 ### Option 2: Standalone Deployment
 
@@ -96,7 +85,7 @@ For standalone deployments outside the umbrella chart:
 ```yaml
 enabled: true
 
-env:
+config:
   rustEnv: "production"
 
   # Database configuration
@@ -120,29 +109,11 @@ env:
 
 secrets:
   database:
-    enabled: true
     name: "integrity-db-credentials"
-    keys:
-      username: "username"
-      password: "password"
 
   storage:
     azure_blob:
-      enabled: true
       name: "integrity-storage-credentials"
-      keys:
-        accountName: "account-name"
-        accountKey: "account-key"
-
-  secretManager:
-    azure_key_vault:
-      enabled: true
-      name: "integrity-keyvault-credentials"
-      keys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
-        tenantId: "tenant-id"
-        vaultUrl: "vault-url"
 
 service:
   enabled: true
@@ -180,7 +151,6 @@ resources:
 - Helm 3.8+
 - PostgreSQL database (can be deployed via umbrella chart)
 - Azure Blob Storage or AWS S3 account
-- Azure Key Vault (for credential signing)
 - Ingress controller (nginx, traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
@@ -218,16 +188,15 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                                     | Type   | Description                                       |
-| ------------------------------------------------------- | ------ | ------------------------------------------------- |
-| global.domain                                           | string | Base domain for all services                      |
-| global.environmentType                                  | string | Environment type (development/staging/production) |
-| global.postgresql.username                              | string | PostgreSQL username                               |
-| global.secrets.database.secretName                      | string | Name of database credentials secret               |
-| global.secrets.storage.aws_s3.secretName                | string | AWS S3 credentials secret name                    |
-| global.secrets.storage.azure_blob.secretName            | string | Azure Blob credentials secret name                |
-| global.secrets.secretManager.provider                   | string | Secret manager provider (azure_key_vault)         |
-| global.secrets.secretManager.azure_key_vault.secretName | string | Azure Key Vault credentials secret name           |
+| Key                                          | Type   | Description                                       |
+| -------------------------------------------- | ------ | ------------------------------------------------- |
+| global.domain                                | string | Base domain for all services                      |
+| global.environmentType                       | string | Environment type (development/staging/production) |
+| global.postgresql.username                   | string | PostgreSQL username                               |
+| global.secrets.database.secretName           | string | Name of database credentials secret               |
+| global.secrets.imageRegistry.secretName      | string | Name of image pull secret                         |
+| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                |
+| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                    |
 
 ### Chart-Specific Parameters
 
@@ -242,12 +211,12 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Service Account
 
-| Key                        | Type   | Default | Description                                              |
-| -------------------------- | ------ | ------- | -------------------------------------------------------- |
-| serviceAccount.create      | bool   | `false` | Specifies whether a service account should be created    |
-| serviceAccount.automount   | bool   | `true`  | Automatically mount the ServiceAccount's API credentials |
-| serviceAccount.annotations | object | `{}`    | Annotations to add to the service account                |
-| serviceAccount.name        | string | `""`    | The name of the service account (generated if not set)   |
+| Key                        | Type   | Default | Description                                                                  |
+| -------------------------- | ------ | ------- | ---------------------------------------------------------------------------- |
+| serviceAccount.create      | bool   | `false` | Specifies whether a service account should be created                        |
+| serviceAccount.automount   | bool   | `true`  | Automatically mount the ServiceAccount's API credentials                     |
+| serviceAccount.annotations | object | `{}`    | Annotations to add to the service account                                    |
+| serviceAccount.name        | string | `""`    | The name of the service account (generated if serviceAccount.create is true) |
 
 ### Security
 
@@ -260,11 +229,11 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Service
 
-| Key             | Type   | Default       | Description                                         |
-| --------------- | ------ | ------------- | --------------------------------------------------- |
-| service.enabled | bool   | `true`        | Create a Service resource                           |
-| service.type    | string | `"ClusterIP"` | Kubernetes service type                             |
-| service.port    | int    | `3050`        | Service port (external port exposed by the service) |
+| Key             | Type   | Default       | Description                                    |
+| --------------- | ------ | ------------- | ---------------------------------------------- |
+| service.enabled | bool   | `true`        | Create a Service resource                      |
+| service.type    | string | `"ClusterIP"` | Kubernetes service type                        |
+| service.port    | int    | `3050`        | Service port exposed by the Kubernetes Service |
 
 ### Ingress
 
@@ -293,6 +262,7 @@ When deployed via the umbrella chart, these global values are automatically used
 
 | Key                              | Type | Default | Description                                                                                              |
 | -------------------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------- |
+| podDisruptionBudget.enabled      | bool | `false` | Enable Pod Disruption Budget                                                                             |
 | podDisruptionBudget.minAvailable | int  | `1`     | Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1) |
 
 ### Node Scheduling
@@ -322,8 +292,6 @@ When deployed via the umbrella chart, these global values are automatically used
 | readinessProbe.periodSeconds       | int    | `5`            | Readiness probe period        |
 | readinessProbe.failureThreshold    | int    | `2`            | Readiness failure threshold   |
 
-> 💡 **Note:** Currently using Swagger endpoint for health checks. A dedicated `/health` endpoint is in development and will replace this temporary solution.
-
 ### Persistence
 
 | Key                             | Type   | Default                | Description                                                             |
@@ -338,123 +306,107 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Application Settings
 
-| Key                     | Type   | Default | Description                                             |
-| ----------------------- | ------ | ------- | ------------------------------------------------------- |
-| env.rustEnv             | string | `""`    | Rust environment (auto-set from global.environmentType) |
-| env.integrityServiceUrl | string | `""`    | Public URL for this service (auto-generated)            |
+| Key                        | Type   | Default | Description                                             |
+| -------------------------- | ------ | ------- | ------------------------------------------------------- |
+| config.rustEnv             | string | `""`    | Rust environment (auto-set from global.environmentType) |
+| config.integrityServiceUrl | string | `""`    | Public URL for this service (auto-generated)            |
 
 #### Database Configuration
 
-| Key                        | Type   | Default                | Description                                                 |
-| -------------------------- | ------ | ---------------------- | ----------------------------------------------------------- |
-| env.integrityAppDbHost     | string | `""`                   | Database host (auto-generated as {Release.Name}-postgresql) |
-| env.integrityAppDbName     | string | `"IntegrityServiceDB"` | Database name                                               |
-| env.integrityAppDbUser     | string | `""`                   | Database user (auto-set from global.postgresql.username)    |
-| env.integrityAppDbPassword | string | `""`                   | Database password (leave empty to use secret reference)     |
+| Key                           | Type   | Default                | Description                                                 |
+| ----------------------------- | ------ | ---------------------- | ----------------------------------------------------------- |
+| config.integrityAppDbHost     | string | `""`                   | Database host (auto-generated as {Release.Name}-postgresql) |
+| config.integrityAppDbName     | string | `"IntegrityServiceDB"` | Database name                                               |
+| config.integrityAppDbUser     | string | `""`                   | Database user (auto-set from global.postgresql.username)    |
+| config.integrityAppDbPassword | string | `""`                   | Database password (leave empty to use secret reference)     |
 
 #### Blob Storage Configuration
 
-| Key                                      | Type   | Default | Description                                                     |
-| ---------------------------------------- | ------ | ------- | --------------------------------------------------------------- |
-| env.integrityAppBlobStoreType            | string | `""`    | Storage provider (aws_s3 or azure_blob, must be set explicitly) |
-| env.integrityAppBlobStoreRegion          | string | `""`    | AWS region (AWS S3 only, must be set when using S3)             |
-| env.integrityAppBlobStoreBucket          | string | `""`    | AWS S3 bucket name (AWS S3 only, must be set when using S3)     |
-| env.integrityAppBlobStoreFolder          | string | `""`    | AWS S3 folder/prefix (AWS S3 only)                              |
-| env.integrityAppBlobStoreAccessKeyId     | string | `""`    | AWS access key ID (leave empty to use secret, AWS S3 only)      |
-| env.integrityAppBlobStoreSecretAccessKey | string | `""`    | AWS secret access key (leave empty to use secret, AWS S3 only)  |
-| env.integrityAppBlobStoreAccount         | string | `""`    | Azure storage account name (Azure Blob only)                    |
-| env.integrityAppBlobStoreContainer       | string | `""`    | Azure blob container name (Azure Blob only, must be set)        |
-| env.integrityAppBlobStoreKey             | string | `""`    | Azure storage key (leave empty to use secret, Azure Blob only)  |
+| Key                                         | Type   | Default | Description                                                     |
+| ------------------------------------------- | ------ | ------- | --------------------------------------------------------------- |
+| config.integrityAppBlobStoreType            | string | `""`    | Storage provider (aws_s3 or azure_blob, must be set explicitly) |
+| config.integrityAppBlobStoreRegion          | string | `""`    | AWS region (AWS S3 only, must be set when using S3)             |
+| config.integrityAppBlobStoreBucket          | string | `""`    | AWS S3 bucket name (AWS S3 only, must be set when using S3)     |
+| config.integrityAppBlobStoreFolder          | string | `""`    | AWS S3 folder/prefix (AWS S3 only)                              |
+| config.integrityAppBlobStoreAccessKeyId     | string | `""`    | AWS access key ID (leave empty to use secret, AWS S3 only)      |
+| config.integrityAppBlobStoreSecretAccessKey | string | `""`    | AWS secret access key (leave empty to use secret, AWS S3 only)  |
+| config.integrityAppBlobStoreAccount         | string | `""`    | Azure storage account name (Azure Blob only)                    |
+| config.integrityAppBlobStoreContainer       | string | `""`    | Azure blob container name (Azure Blob only, must be set)        |
+| config.integrityAppBlobStoreKey             | string | `""`    | Azure storage key (leave empty to use secret, Azure Blob only)  |
 
 #### Logging Configuration
 
-| Key                                             | Type   | Default   | Description                                               |
-| ----------------------------------------------- | ------ | --------- | --------------------------------------------------------- |
-| env.integrityAppLoggingLogLevelDefault          | string | `"warn"`  | Default log level (trace/debug/info/warn/error)           |
-| env.integrityAppLoggingLogLevelIntegrityService | string | `"trace"` | Integrity service log level (trace/debug/info/warn/error) |
+| Key                                                | Type   | Default   | Description                                               |
+| -------------------------------------------------- | ------ | --------- | --------------------------------------------------------- |
+| config.integrityAppLoggingLogLevelDefault          | string | `"warn"`  | Default log level (trace/debug/info/warn/error)           |
+| config.integrityAppLoggingLogLevelIntegrityService | string | `"trace"` | Integrity service log level (trace/debug/info/warn/error) |
 
 #### Authentication Configuration
 
-| Key                      | Type   | Default          | Description                       |
-| ------------------------ | ------ | ---------------- | --------------------------------- |
-| env.integrityAppAuthType | string | `"auth_service"` | Authentication type               |
-| env.integrityAppAuthUrl  | string | `""`             | Auth service URL (auto-generated) |
-
-#### Azure Key Vault Configuration
-
-**Legacy key_vault configuration** (deprecated - kept for backward compatibility during auth-service migration):
-
-| Key                                  | Type   | Default | Description                                 |
-| ------------------------------------ | ------ | ------- | ------------------------------------------- |
-| env.integrityAppKeyVaultTenantId     | string | `""`    | Azure tenant ID (from secret reference)     |
-| env.integrityAppKeyVaultClientId     | string | `""`    | Azure client ID (from secret reference)     |
-| env.integrityAppKeyVaultVaultUrl     | string | `""`    | Azure Key Vault URL (from secret reference) |
-| env.integrityAppKeyVaultClientSecret | string | `""`    | Azure client secret (from secret reference) |
-
-**Auth signer configuration** (active configuration for credential signing):
-
-This is the current configuration used for signing credentials. It uses the same Azure Key Vault credentials as the legacy config above (from `secrets.secretManager.azure_key_vault`).
-
-| Key                                          | Type   | Default | Description                                 |
-| -------------------------------------------- | ------ | ------- | ------------------------------------------- |
-| env.integrityAppAuthSignerConfigType         | string | `""`    | Auth signer type (auto-set from global)     |
-| env.integrityAppAuthSignerConfigTenantId     | string | `""`    | Azure tenant ID (from secret reference)     |
-| env.integrityAppAuthSignerConfigClientId     | string | `""`    | Azure client ID (from secret reference)     |
-| env.integrityAppAuthSignerConfigVaultUrl     | string | `""`    | Azure Key Vault URL (from secret reference) |
-| env.integrityAppAuthSignerConfigClientSecret | string | `""`    | Azure client secret (from secret reference) |
+| Key                         | Type   | Default          | Description                       |
+| --------------------------- | ------ | ---------------- | --------------------------------- |
+| config.integrityAppAuthType | string | `"auth_service"` | Authentication type               |
+| config.integrityAppAuthUrl  | string | `""`             | Auth service URL (auto-generated) |
 
 ### Secret Configuration
 
 Secrets reference Kubernetes Secret resources created by the umbrella chart or manually.
 
+#### Secret Key Names
+
+Secret key names (the keys within each Kubernetes Secret) follow this pattern:
+
+- **Umbrella chart deployment**: Key names are defined in `global.secrets.*.keys` - this is the single source of truth
+- **Standalone deployment**: Templates use hardcoded defaults (e.g., `access-key-id`, `client-id`, `password`)
+
+When deploying standalone, create your secrets using the default key names:
+
+```bash
+# Example: Database credentials
+kubectl create secret generic integrity-database \
+  --from-literal=password=YOUR_PASSWORD
+
+# Example: AWS S3 storage
+kubectl create secret generic integrity-aws-s3 \
+  --from-literal=access-key-id=YOUR_ACCESS_KEY \
+  --from-literal=secret-access-key=YOUR_SECRET_KEY
+```
+
+If your existing secrets use different key names, you can override them via `global.secrets.*.keys` in your values file.
+
+**Default key names by secret type:**
+
+| Secret Type | Default Key Names                    |
+| ----------- | ------------------------------------ |
+| Database    | `password`                           |
+| AWS S3      | `access-key-id`, `secret-access-key` |
+| Azure Blob  | `account-key`                        |
+
 #### Database Secrets
 
-| Key                            | Type   | Default      | Description                                              |
-| ------------------------------ | ------ | ------------ | -------------------------------------------------------- |
-| secrets.database.enabled       | bool   | `false`      | Enable database secret (auto-enabled via umbrella chart) |
-| secrets.database.name          | string | `""`         | Secret name (auto-populated from global)                 |
-| secrets.database.keys.username | string | `"username"` | Secret key for username                                  |
-| secrets.database.keys.password | string | `"password"` | Secret key for password                                  |
+| Key                   | Type   | Description                              |
+| --------------------- | ------ | ---------------------------------------- |
+| secrets.database.name | string | Secret name (auto-populated from global) |
 
 #### Storage Secrets
 
 AWS S3 (only used when integrityAppBlobStoreType is "aws_s3"):
 
-| Key                                         | Type   | Default               | Description                              |
-| ------------------------------------------- | ------ | --------------------- | ---------------------------------------- |
-| secrets.storage.aws_s3.enabled              | bool   | `false`               | Enable AWS S3 secret                     |
-| secrets.storage.aws_s3.name                 | string | `""`                  | Secret name (auto-populated from global) |
-| secrets.storage.aws_s3.keys.accessKeyId     | string | `"access-key-id"`     | Secret key for access key ID             |
-| secrets.storage.aws_s3.keys.secretAccessKey | string | `"secret-access-key"` | Secret key for secret access key         |
+| Key                         | Type   | Description                              |
+| --------------------------- | ------ | ---------------------------------------- |
+| secrets.storage.aws_s3.name | string | Secret name (auto-populated from global) |
 
 Azure Blob Storage (only used when integrityAppBlobStoreType is "azure_blob"):
 
-| Key                                              | Type   | Default               | Description                              |
-| ------------------------------------------------ | ------ | --------------------- | ---------------------------------------- |
-| secrets.storage.azure_blob.enabled               | bool   | `false`               | Enable Azure Blob secret                 |
-| secrets.storage.azure_blob.name                  | string | `""`                  | Secret name (auto-populated from global) |
-| secrets.storage.azure_blob.keys.accountName      | string | `"account-name"`      | Secret key for account name              |
-| secrets.storage.azure_blob.keys.accountKey       | string | `"account-key"`       | Secret key for account key               |
-| secrets.storage.azure_blob.keys.connectionString | string | `"connection-string"` | Secret key for connection string         |
-
-#### Secret Manager Secrets
-
-Azure Key Vault (used for both key_vault and auth_signer_config):
-
-| Key                                                     | Type   | Default           | Description                                                                   |
-| ------------------------------------------------------- | ------ | ----------------- | ----------------------------------------------------------------------------- |
-| secrets.secretManager.azure_key_vault.enabled           | bool   | `false`           | Enable Azure Key Vault secret (auto-enabled when provider is azure_key_vault) |
-| secrets.secretManager.azure_key_vault.name              | string | `""`              | Secret name (auto-populated from global)                                      |
-| secrets.secretManager.azure_key_vault.keys.clientId     | string | `"client-id"`     | Secret key for client ID                                                      |
-| secrets.secretManager.azure_key_vault.keys.clientSecret | string | `"client-secret"` | Secret key for client secret                                                  |
-| secrets.secretManager.azure_key_vault.keys.tenantId     | string | `"tenant-id"`     | Secret key for tenant ID                                                      |
-| secrets.secretManager.azure_key_vault.keys.vaultUrl     | string | `"vault-url"`     | Secret key for vault URL                                                      |
+| Key                             | Type   | Description                              |
+| ------------------------------- | ------ | ---------------------------------------- |
+| secrets.storage.azure_blob.name | string | Secret name (auto-populated from global) |
 
 ## Configuration Inheritance
 
 When deployed via the umbrella chart, configuration follows this precedence (highest to lowest):
 
-1. **Service-level config values** - Explicitly set in `integrity-service.env.*`
+1. **Service-level config values** - Explicitly set in `integrity-service.config.*`
 2. **Global values** - Set in `global.*` (umbrella chart)
 3. **Chart defaults** - Default values from `values.yaml`
 
@@ -470,12 +422,12 @@ global:
 
 integrity-service:
   enabled: true
-  # env.rustEnv automatically becomes: production
-  # env.integrityAppDbUser automatically becomes: postgres
-  # env.integrityAppDbHost automatically becomes: {Release.Name}-postgresql
+  # config.rustEnv automatically becomes: production
+  # config.integrityAppDbUser automatically becomes: postgres
+  # config.integrityAppDbHost automatically becomes: {Release.Name}-postgresql
 
   # Must explicitly set storage provider:
-  env:
+  config:
     integrityAppBlobStoreType: "azure_blob" # Required - not auto-set
     integrityAppBlobStoreContainer: "integrity-data" # Required - not auto-set
 ```
@@ -492,7 +444,7 @@ global:
         secretName: "platform-azure-blob"
 
 integrity-service:
-  env:
+  config:
     integrityAppBlobStoreType: "azure_blob" # Explicitly set storage provider
     integrityAppBlobStoreContainer: "integrity-data" # Must be set
 ```
@@ -507,7 +459,7 @@ global:
         secretName: "platform-aws-s3"
 
 integrity-service:
-  env:
+  config:
     integrityAppBlobStoreType: "aws_s3" # Explicitly set storage provider
     integrityAppBlobStoreRegion: "us-east-1" # Must be set
     integrityAppBlobStoreBucket: "integrity-data" # Must be set
@@ -578,13 +530,6 @@ kubectl exec -it deployment/integrity-service -n governance -- env | grep INTEGR
 - For Azure: verify account name and container exist, container name must be set explicitly
 - For AWS: verify bucket exists, region and bucket name must be set explicitly
 - Ensure service has network access to storage
-
-**Azure Key Vault errors**
-
-- Verify client ID, tenant ID, and vault URL are correct
-- Check client secret in secret
-- Ensure service principal has proper permissions on Key Vault
-- Verify network access to Key Vault
 
 **Authentication fails**
 

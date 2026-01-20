@@ -46,13 +46,14 @@ global:
     auth:
       provider: "keycloak"
       keycloak:
-        secretName: "platform-keycloak-credentials"
+        secretName: "platform-keycloak"
         keys:
           url: "url"
           realm: "realm"
           frontendClientId: "frontend-client-id"
           backendClientId: "backend-client-id"
           backendClientSecret: "backend-client-secret"
+          tokenExchangePrivateKey: "token-exchange-private-key"
         # Only used if create: true
         values:
           url: "https://keycloak.your-domain.com"
@@ -60,13 +61,7 @@ global:
           frontendClientId: "governance-platform-frontend"
           backendClientId: "governance-platform-backend"
           backendClientSecret: ""
-        # Create organization in database on install
-        organization:
-          create: true
-          displayName: "Governance Platform"
-          description: "Main governance organization"
-          createPlatformAdmin: false
-          platformAdminKeycloakId: ""
+          tokenExchangePrivateKey: ""
 
     # Database credentials
     database:
@@ -223,19 +218,6 @@ governance-service:
         hosts:
           - governance.your-domain.com
 
-  # Keycloak configuration
-  secrets:
-    keycloak:
-      enabled: true
-      existingSecret: "platform-keycloak-credentials"
-      existingSecretKeys:
-        clientId: "backend-client-id"
-        realm: "realm"
-        url: "url"
-      existingClientSecretKeyRef:
-        name: "platform-keycloak-credentials"
-        clientSecretKey: "backend-client-secret"
-
   # Disable Auth0 sync when using Keycloak
   auth0SyncAtStartup: false
 
@@ -297,7 +279,7 @@ integrity-service:
         hosts:
           - governance.your-domain.com
 
-  env:
+  config:
     integrityAppLoggingLogLevelDefault: "info"
 
     # Azure Blob Storage
@@ -424,7 +406,7 @@ postgresql:
 # kubectl create namespace governance
 #
 # # Keycloak credentials
-# kubectl create secret generic platform-keycloak-credentials \
+# kubectl create secret generic platform-keycloak \
 #   --from-literal=url=https://keycloak.your-domain.com \
 #   --from-literal=realm=governance \
 #   --from-literal=frontend-client-id=governance-platform-frontend \

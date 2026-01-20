@@ -107,7 +107,7 @@ migrations:
 #   --from-literal=connection-string=YOUR_CONNECTION_STRING
 #
 # kubectl create secret generic platform-encryption \
-#   --from-literal=key=$(openssl rand -base64 32)
+#   --from-literal=encryption-key=$(openssl rand -base64 32)
 #
 # kubectl create secret generic platform-governance-worker \
 #   --from-literal=encryption-key=$(openssl rand -base64 32) \
@@ -120,25 +120,16 @@ migrations:
 secrets:
   encryption:
     name: "platform-encryption"
-    key: "key"
 
   auth0:
     name: "platform-auth0"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
   storage:
     azure_blob:
       name: "platform-azure-storage"
-      accountNameKey: "account-name"
-      accountKeyKey: "account-key"
-      connectionStringKey: "connection-string"
 
   worker:
     name: "platform-governance-worker"
-    encryptionKeyKey: "encryption-key"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

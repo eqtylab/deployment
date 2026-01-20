@@ -71,9 +71,8 @@ helm upgrade --install auth-service ./charts/auth-service \
   --set config.idp.keycloak.enableUserManagement=true \
   --set config.serviceAccounts.governanceWorker.enabled=true \
   --set config.tokenExchange.enabled=true \
-  --set secrets.auth.name="platform-keycloak" \
-  --set secrets.security.name="platform-auth-service" \
-  --set secrets.session.name="platform-auth-service" \
+  --set secrets.auth.keycloak.name="platform-keycloak" \
+  --set secrets.authService.name="platform-auth-service" \
   --set secrets.worker.name="platform-governance-worker" \
   --set secrets.tokenExchange.name="platform-auth-service" \
   --set externalDatabase.passwordSecretKeyRef.name="platform-database" \

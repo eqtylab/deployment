@@ -1,4 +1,4 @@
-{{- if and .Values.enabled (or .Values.autoscaling.enabled (gt (int .Values.replicaCount) 1)) }}
+{{- if and .Values.enabled .Values.podDisruptionBudget.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:

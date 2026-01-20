@@ -8,14 +8,12 @@
 #   - Azure AKS cluster with Workload Identity (recommended)
 #   - Azure Storage Account with Blob container
 #   - Azure Database for PostgreSQL
-#   - Azure Key Vault for credential signing
 #   - nginx ingress or Azure Application Gateway
 #
 # This example demonstrates:
 #   - Azure Blob Storage configuration
 #   - AKS with Workload Identity (recommended over access keys)
 #   - Azure PostgreSQL connection
-#   - Azure Key Vault integration
 #   - Production-ready settings
 
 # =============================================================================
@@ -107,7 +105,7 @@ ingress:
 # APPLICATION CONFIGURATION - AZURE BLOB
 # =============================================================================
 
-env:
+config:
   rustEnv: "production"
 
   # Azure Database for PostgreSQL connection
@@ -128,9 +126,6 @@ env:
   integrityAppAuthType: "auth_service"
   integrityAppAuthUrl: "http://governance-platform-auth-service:8080"
 
-  # Auth signer - Azure Key Vault
-  integrityAppAuthSignerConfigType: "azure_key_vault"
-
   # Public service URL
   integrityServiceUrl: "https://governance.your-domain.com/integrityService"
 
@@ -143,9 +138,6 @@ secrets:
   database:
     enabled: true
     name: "platform-database"
-    keys:
-      username: "username"
-      password: "password"
 
   # Azure Blob Storage credentials
   # With Workload Identity, you may only need accountName
@@ -153,21 +145,6 @@ secrets:
     azure_blob:
       enabled: true
       name: "platform-azure-storage"
-      keys:
-        accountName: "account-name"
-        accountKey: "account-key"
-        connectionString: "connection-string"
-
-  # Azure Key Vault for signing operations
-  secretManager:
-    azure_key_vault:
-      enabled: true
-      name: "platform-azure-key-vault"
-      keys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
-        tenantId: "tenant-id"
-        vaultUrl: "vault-url"
 
 # =============================================================================
 # HIGH AVAILABILITY

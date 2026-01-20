@@ -122,25 +122,17 @@ migrations:
 secrets:
   encryption:
     name: "platform-encryption"
-    key: "key"
 
   auth0:
     name: "platform-auth0"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
   # S3 credentials - not needed if using IRSA
   storage:
     aws_s3:
       name: "platform-aws-s3"
-      accessKeyIdKey: "access-key-id"
-      secretAccessKeyKey: "secret-access-key"
 
   worker:
     name: "platform-governance-worker"
-    encryptionKeyKey: "encryption-key"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

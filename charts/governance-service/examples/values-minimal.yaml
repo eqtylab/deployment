@@ -63,7 +63,7 @@ externalDatabase:
 #   --from-literal=client-secret=YOUR_CLIENT_SECRET
 #
 # kubectl create secret generic encryption-key \
-#   --from-literal=key=$(openssl rand -base64 32)
+#   --from-literal=encryption-key=$(openssl rand -base64 32)
 #
 # For AWS S3:
 # kubectl create secret generic aws-s3-credentials \
@@ -78,34 +78,25 @@ externalDatabase:
 #
 # For GCS:
 # kubectl create secret generic gcs-credentials \
-#   --from-file=service-account.json=/path/to/sa.json
+#   --from-file=service-account-json=/path/to/sa.json
 
 secrets:
   encryption:
     name: "encryption-key"
-    key: "key"
 
   auth0:
     name: "auth0-credentials"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
   # Choose based on your storage provider:
   storage:
     aws_s3:
       name: "aws-s3-credentials"
-      accessKeyIdKey: "access-key-id"
-      secretAccessKeyKey: "secret-access-key"
 
     # azure_blob:
     #   name: "azure-storage-credentials"
-    #   accountNameKey: "account-name"
-    #   accountKeyKey: "account-key"
-    #   connectionStringKey: "connection-string"
 
     # gcs:
     #   name: "gcs-credentials"
-    #   serviceAccountJsonKey: "service-account.json"
 # =============================================================================
 # OPTIONAL: Enable ingress for external access
 # =============================================================================

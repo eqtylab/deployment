@@ -240,7 +240,7 @@ integrity-service:
           - governance.yourcompany.com
 
   # Storage configuration - AWS S3
-  env:
+  config:
     integrityAppLoggingLogLevelDefault: "info"
 
     # AWS S3 Storage

@@ -76,7 +76,6 @@ config:
 
   # Service URLs - REQUIRED (no auto-generation without umbrella)
   integrations:
-    integrityServiceUrl: "http://integrity-service:3050"
     governanceServiceUrl: "http://governance-service:10001"
 
   serviceAccounts:
@@ -154,50 +153,31 @@ migrations:
 #   --from-literal=tenant-id=<azure-tenant-id> \
 #   --from-literal=vault-url=<vault-url>
 #
-# kubectl create secret generic auth-service-worker \
+# kubectl create secret generic auth-service-governance-worker \
 #   --from-literal=encryption-key=$(openssl rand -base64 32) \
 #   --from-literal=client-id=<worker-client-id> \
 #   --from-literal=client-secret=<worker-client-secret>
 
 secrets:
+  # Auth0 credentials
   auth:
-    name: "auth-service-auth"
-    keys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      managementClientId: "mgmt-client-id"
-      managementClientSecret: "mgmt-client-secret"
+    auth0:
+      name: "auth-service-auth"
+    keycloak:
+      name: "" # For token exchange if using Keycloak
 
-  security:
+  # Auth service credentials
+  authService:
     name: "auth-service-security"
-    keys:
-      apiSecret: "api-secret"
-      jwtSecret: "jwt-secret"
 
-  session:
-    name: "auth-service-security"
-    keys:
-      secret: "session-secret"
+  # Secret manager credentials
+  secretManager:
+    azure_key_vault:
+      name: "auth-service-keyvault"
 
-  keyVault:
-    name: "auth-service-keyvault"
-    keys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      tenantId: "tenant-id"
-      vaultUrl: "vault-url"
-
-  worker:
-    name: "auth-service-worker"
-    keys:
-      encryptionKey: "encryption-key"
-      clientId: "client-id"
-      clientSecret: "client-secret"
-
-  tokenExchange:
-    name: ""
-    keys:
-      privateKey: "private-key"
+  # Governance worker credentials
+  governanceWorker:
+    name: "auth-service-governance-worker"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

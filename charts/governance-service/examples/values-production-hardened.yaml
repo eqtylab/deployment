@@ -92,24 +92,16 @@ migrations:
 secrets:
   encryption:
     name: "prod-encryption"
-    key: "key"
 
   auth0:
     name: "prod-auth0"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
   storage:
     aws_s3:
       name: "prod-aws-s3"
-      accessKeyIdKey: "access-key-id"
-      secretAccessKeyKey: "secret-access-key"
 
   worker:
     name: "prod-governance-worker"
-    encryptionKeyKey: "encryption-key"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

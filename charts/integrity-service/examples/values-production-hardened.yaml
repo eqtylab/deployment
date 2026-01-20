@@ -142,7 +142,7 @@ persistence:
 # APPLICATION CONFIGURATION
 # =============================================================================
 
-env:
+config:
   rustEnv: "production"
 
   # Production database
@@ -164,9 +164,6 @@ env:
   integrityAppAuthType: "auth_service"
   integrityAppAuthUrl: "http://governance-platform-auth-service:8080"
 
-  # Auth signer - Azure Key Vault
-  integrityAppAuthSignerConfigType: "azure_key_vault"
-
   # Public service URL
   integrityServiceUrl: "https://governance.production-domain.com/integrityService"
 
@@ -178,27 +175,11 @@ secrets:
   database:
     enabled: true
     name: "prod-database-credentials"
-    keys:
-      username: "username"
-      password: "password"
 
   storage:
     aws_s3:
       enabled: true
       name: "prod-aws-s3"
-      keys:
-        accessKeyId: "access-key-id"
-        secretAccessKey: "secret-access-key"
-
-  secretManager:
-    azure_key_vault:
-      enabled: true
-      name: "prod-azure-key-vault"
-      keys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
-        tenantId: "tenant-id"
-        vaultUrl: "vault-url"
 
 # =============================================================================
 # HIGH AVAILABILITY (HARDENED)

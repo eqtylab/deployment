@@ -1,89 +1,142 @@
-# Default values for governance-studio.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# =============================================================================
+# GOVERNANCE STUDIO - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Governance Studio frontend application.
+#
+# When deployed via the umbrella chart (governance-platform), most values
+# are auto-configured from global settings. For standalone deployment,
+# you must configure auth and backend service URLs manually.
+# =============================================================================
 
-# -- Enable the Governance Studio frontend application
+# -- Enable Service
+# @default -- `true`
+# Enable the Governance Studio frontend application
 enabled: true
 
-# -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
+# -- Replica Count
+# @default -- `1`
+# Number of pod replicas to run (ignored if autoscaling.enabled is true)
 replicaCount: 1
 
+# -- Image Configuration
+# @default -- See values below
+# Container image settings for Governance Studio
 image:
-  # -- Container image repository
+  # -- Image Repository
+  # @default -- `ghcr.io/eqtylab/governance-studio`
   repository: ghcr.io/eqtylab/governance-studio
-  # -- Image pull policy (IfNotPresent | Always | Never)
+  # -- Image Pull Policy
+  # @default -- `IfNotPresent`
+  # Options: IfNotPresent, Always, Never
   pullPolicy: IfNotPresent
-  # -- Image tag override (defaults to chart appVersion if empty)
+  # -- Image Tag
+  # @default -- `""` (uses chart appVersion)
   tag: ""
 
-# -- Image pull secrets for private registries
-# @default -- Populated from global.secrets.imageRegistry.secretName in templates
+# -- Image Pull Secrets
+# @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+# Additional secrets for pulling images from private registries
 imagePullSecrets: []
 
-# -- Override the chart name used for resource naming
+# -- Name Override
+# @default -- `""`
+# Override the chart name used for resource naming
 nameOverride: ""
-# -- Override the full name used for resource naming
+
+# -- Full Name Override
+# @default -- `""`
+# Override the full name used for resource naming
 fullnameOverride: ""
 
+# -- Service Account Configuration
+# @default -- See values below
 serviceAccount:
-  # -- Create a ServiceAccount for the deployment
+  # -- Create Service Account
+  # @default -- `false`
   create: false
-  # -- Automatically mount a ServiceAccount's API credentials
+  # -- Automount API Credentials
+  # @default -- `true`
   automount: true
-  # -- Annotations to add to the ServiceAccount
+  # -- Service Account Annotations
+  # @default -- `{}`
   annotations: {}
-  # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
+  # -- Service Account Name
+  # @default -- `""` (generated if create is true)
   name: ""
 
-# -- Additional annotations to add to pods
+# -- Pod Annotations
+# @default -- `{}`
+# Additional annotations to add to pods
 podAnnotations: {}
 
-# -- Additional labels to add to pods
+# -- Pod Labels
+# @default -- `{}`
+# Additional labels to add to pods
 podLabels: {}
 
-# -- Security context applied at the pod level
+# -- Pod Security Context
+# @default -- `{}`
+# Security context applied at the pod level
 podSecurityContext: {}
   # fsGroup: 2000
 
-# -- Security context applied at the container level
+# -- Container Security Context
+# @default -- `{}`
+# Security context applied at the container level
 securityContext: {}
   # capabilities:
   #   drop:
-  #   - ALL
+  #     - ALL
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# -- Service Configuration
+# @default -- See values below
 service:
-  # -- Create a Kubernetes Service
+  # -- Enable Service
+  # @default -- `true`
   enabled: true
-  # -- Service type (ClusterIP | NodePort | LoadBalancer)
+  # -- Service Type
+  # @default -- `ClusterIP`
+  # Options: ClusterIP, NodePort, LoadBalancer
   type: ClusterIP
-  # -- Service port
+  # -- Service Port
+  # @default -- `80`
   port: 80
 
+# -- Ingress Configuration
+# @default -- See values below
 ingress:
-  # -- Create an Ingress resource for external access
+  # -- Enable Ingress
+  # @default -- `false`
   enabled: false
-  # -- IngressClass name (e.g., "nginx", "traefik")
+  # -- Ingress Class Name
+  # @default -- `""`
+  # Example: "nginx", "traefik"
   className: ""
-  # -- Additional annotations for the Ingress resource
+  # -- Ingress Annotations
+  # @default -- `{}`
   annotations: {}
     # cert-manager.io/issuer: "letsencrypt-prod"
     # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-  # -- Ingress host configuration
+  # -- Ingress Hosts
+  # @default -- See values below
   hosts:
     - host: governance.example.com
       paths:
         - path: /
           pathType: Prefix
-  # -- TLS configuration
+  # -- TLS Configuration
+  # @default -- `[]`
   tls: []
     # - secretName: governance-studio-tls
     #   hosts:
     #     - governance.example.com
 
-# -- Resource requests and limits
+# -- Resource Configuration
+# @default -- `{}`
+# CPU and memory resource requests and limits
 resources: {}
   # requests:
   #   cpu: 50m
@@ -92,34 +145,53 @@ resources: {}
   #   cpu: 200m
   #   memory: 256Mi
 
-# Horizontal Pod Autoscaler - automatically scales pods based on resource usage
+# -- Autoscaling Configuration
+# @default -- See values below
 autoscaling:
-  # -- Enable Horizontal Pod Autoscaler
+  # -- Enable Autoscaling
+  # @default -- `false`
   enabled: false
-  # -- Minimum number of replicas
+  # -- Minimum Replicas
+  # @default -- `1`
   minReplicas: 1
-  # -- Maximum number of replicas
+  # -- Maximum Replicas
+  # @default -- `100`
   maxReplicas: 100
-  # -- Target CPU utilization percentage
+  # -- Target CPU Utilization
+  # @default -- `80`
   targetCPUUtilizationPercentage: 80
-  # -- Target memory utilization percentage
+  # -- Target Memory Utilization
+  # @default -- `80`
   targetMemoryUtilizationPercentage: 80
 
-# Pod Disruption Budget - maintains availability during cluster disruptions
+# -- Pod Disruption Budget
+# @default -- See values below
 podDisruptionBudget:
-  # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+  # -- Enable PDB
+  # @default -- `false`
+  enabled: false
+  # -- Minimum Available
+  # @default -- `1`
+  # Note: typically only applied when autoscaling is enabled or replicaCount > 1
   minAvailable: 1
 
-# -- Node labels for pod assignment
+# -- Node Selector
+# @default -- `{}`
+# Node labels for pod assignment
 nodeSelector: {}
 
-# -- Tolerations for pod assignment
+# -- Tolerations
+# @default -- `[]`
+# Tolerations for pod assignment
 tolerations: []
 
-# -- Affinity rules for pod assignment
+# -- Affinity
+# @default -- `{}`
+# Affinity rules for pod assignment
 affinity: {}
 
-# -- Startup probe configuration
+# -- Startup Probe
+# @default -- See values below
 startupProbe:
   httpGet:
     path: /
@@ -127,7 +199,8 @@ startupProbe:
   failureThreshold: 30
   periodSeconds: 10
 
-# -- Liveness probe configuration
+# -- Liveness Probe
+# @default -- See values below
 livenessProbe:
   httpGet:
     path: /
@@ -136,7 +209,8 @@ livenessProbe:
   periodSeconds: 10
   failureThreshold: 3
 
-# -- Readiness probe configuration
+# -- Readiness Probe
+# @default -- See values below
 readinessProbe:
   httpGet:
     path: /
@@ -148,88 +222,163 @@ readinessProbe:
 # =============================================================================
 # APPLICATION CONFIGURATION
 # =============================================================================
-
 config:
-  # -- Base path where the UI is served (useful behind a reverse proxy)
+  # -- Base Path
+  # @default -- `/`
+  # Base path where the UI is served (useful behind a reverse proxy)
   basePath: /
 
+  # ---------------------------------------------------------------------------
   # Backend Service URLs
-  # -- Base API URL for the governance service
-  # @default -- Generated as "https://{global.domain}/governanceService" in templates
+  # ---------------------------------------------------------------------------
+
+  # -- API URL
+  # @default -- `""` (auto-generated: "https://{global.domain}/governanceService")
+  # Base API URL for the governance service
   apiUrl: ""
-  # -- Auth service URL for authentication
-  # @default -- Generated as "https://{global.domain}/authService" in templates
+
+  # -- Auth Service URL
+  # @default -- `""` (auto-generated: "https://{global.domain}/authService")
   authServiceUrl: ""
-  # -- Integrity service URL for lineage and statements
-  # @default -- Generated as "https://{global.domain}/integrityService" in templates
+
+  # -- Integrity Service URL
+  # @default -- `""` (auto-generated: "https://{global.domain}/integrityService")
   integrityServiceUrl: ""
-  # -- Garage service URL (optional compliance integration)
-  # @default -- Generated as "https://{global.domain}/garage" in templates if enabled
+
+  # -- Garage Service URL
+  # @default -- `""` (auto-generated: "https://{global.domain}/garage" when enabled)
   garageServiceUrl: ""
 
+  # ---------------------------------------------------------------------------
   # Authentication Provider Configuration
-  # -- Authentication provider type (auth0 | keycloak)
-  # @default -- Populated from global.secrets.auth.provider in templates
+  # ---------------------------------------------------------------------------
+
+  # -- Auth Provider
+  # @default -- `""` (auto-configured from global.secrets.auth.provider)
+  # Authentication provider type
+  # Options: auth0, keycloak
   authProvider: ""
 
-  # Auth0 Configuration (only used when authProvider is "auth0")
-  # -- Auth0 tenant domain
-  # @default -- `""` (REQUIRED when authProvider is auth0)
-  # Example: your-tenant.us.auth0.com
+  # -- Auth0 Domain
+  # @default -- `""`
+  # **REQUIRED for Auth0**: Tenant domain (e.g., "your-tenant.us.auth0.com")
+  # Only used when authProvider is "auth0"
   auth0Domain: ""
-  # -- Auth0 client ID (SPA application - public, not a secret)
-  # @default -- `""` (REQUIRED when authProvider is auth0)
+
+  # -- Auth0 Client ID
+  # @default -- `""`
+  # **REQUIRED for Auth0**: SPA client ID (public, not a secret)
+  # Only used when authProvider is "auth0"
   auth0ClientId: ""
-  # -- Auth0 API audience
-  # @default -- `""` (REQUIRED when authProvider is auth0)
-  # Example: https://your-tenant.us.auth0.com/api/v2/
+
+  # -- Auth0 Audience
+  # @default -- `""`
+  # **REQUIRED for Auth0**: API audience (e.g., "https://your-tenant.us.auth0.com/api/v2/")
+  # Only used when authProvider is "auth0"
   auth0Audience: ""
 
-  # Keycloak Configuration (only used when authProvider is "keycloak")
-  # -- Keycloak server URL
-  # @default -- Populated from global.secrets.auth.keycloak.values.url in templates
+  # -- Keycloak URL
+  # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.url)
+  # Keycloak server URL
+  # Only used when authProvider is "keycloak"
   keycloakUrl: ""
-  # -- Keycloak realm name
-  # @default -- Populated from global.secrets.auth.keycloak.values.realm in templates
+
+  # -- Keycloak Realm
+  # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.realm)
+  # Keycloak realm name
+  # Only used when authProvider is "keycloak"
   keycloakRealm: ""
-  # -- Keycloak client ID for frontend
-  # @default -- Populated from global.secrets.auth.keycloak.values.frontendClientId in templates
+
+  # -- Keycloak Client ID
+  # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.frontendClientId)
+  # Keycloak client ID for frontend
+  # Only used when authProvider is "keycloak"
   keycloakClientId: ""
 
+  # ---------------------------------------------------------------------------
   # Application Settings
-  # -- Environment label (development | staging | production)
-  # @default -- Populated from global.environmentType in templates
+  # ---------------------------------------------------------------------------
+
+  # -- Environment
+  # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+  # Environment label
   environment: ""
-  # -- Application title displayed in browser and UI
+
+  # -- App Title
+  # @default -- `Governance Studio`
+  # Application title displayed in browser and UI
   appTitle: "Governance Studio"
-  # -- Public hostname for generating links and redirects
-  # @default -- Populated from global.domain in templates
+
+  # -- App Hostname
+  # @default -- `""` (auto-configured from global.domain)
+  # Public hostname
   appHostname: ""
 
+  # ---------------------------------------------------------------------------
   # Feature Flags
+  # ---------------------------------------------------------------------------
+
+  # -- Feature Flags
+  # @default -- See values below
   features:
-    # -- Enable core governance features
+    # -- Governance Features
+    # @default -- `true`
+    # Enable core governance features
     governance: true
-    # -- Enable lineage and integrity features (requires integrity-service)
+
+    # -- Lineage Features
+    # @default -- `true`
+    # Enable lineage and integrity features (requires integrity-service)
     lineage: true
-    # -- Enable Guardian feature family (parent toggle)
+
+    # -- Guardian Enabled
+    # @default -- `false`
+    # Enable Guardian feature family (parent toggle)
     guardianEnabled: false
-    # -- Enable Compliance Garage integration (requires garageServiceUrl)
+
+    # -- Guardian Garage
+    # @default -- `false`
+    # Enable Compliance Garage integration (requires garageServiceUrl)
     guardianGarage: false
-    # -- Enable Guardian rulebook experiences
+
+    # -- Guardian Rulebooks
+    # @default -- `false`
+    # Enable Guardian rulebook experiences
     guardianRulebooks: false
-    # -- Enable OS-oriented Guardian functions
+
+    # -- Guardian OS Functions
+    # @default -- `false`
+    # Enable OS-oriented Guardian functions
     guardianOsFunctions: false
-    # -- Enable SDK-oriented Guardian functions
+
+    # -- Guardian SDK Functions
+    # @default -- `false`
+    # Enable SDK-oriented Guardian functions
     guardianSdkFunctions: false
-    # -- Enable agent management UI
+
+    # -- Agent Management
+    # @default -- `false`
+    # Enable agent management UI
     agentManagement: false
 
+  # ---------------------------------------------------------------------------
   # Branding Configuration
+  # ---------------------------------------------------------------------------
+
+  # -- Branding Configuration
+  # @default -- See values below
   branding:
-    # -- URL or path to logo asset
+    # -- Logo URL
+    # @default -- `/vite.svg`
+    # URL or path to logo asset
     logoUrl: /vite.svg
-    # -- Primary brand color (hex code)
+
+    # -- Primary Color
+    # @default -- `#0f172a`
+    # Primary brand color (hex code)
     primaryColor: "#0f172a"
-    # -- Company name for branding
+
+    # -- Company Name
+    # @default -- `EQTY Lab`
+    # Company name for branding
     companyName: "EQTY Lab"
