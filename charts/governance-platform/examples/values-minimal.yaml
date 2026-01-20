@@ -64,7 +64,7 @@ governance-service:
 
 integrity-service:
   enabled: true
-  env:
+  config:
     # REQUIRED: Choose storage (GCS not supported for integrity-service)
     integrityAppBlobStoreType: "aws_s3" # Options: "aws_s3", "azure_blob"
 

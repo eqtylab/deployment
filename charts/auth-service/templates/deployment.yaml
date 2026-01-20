@@ -103,141 +103,131 @@ spec:
             # ========================================================================
 
             {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
-            {{- $authSecretName := .Values.secrets.auth.name | default (eq $idpProvider "keycloak" | ternary ((((.Values.global).secrets).auth).keycloak).secretName ((((.Values.global).secrets).auth).auth0).secretName) | default "" }}
-            {{- $authClientIdKey := .Values.secrets.auth.keys.clientId | default (((((.Values.global).secrets).auth).auth0).keys).clientId | default "client-id" }}
-            {{- $authClientSecretKey := .Values.secrets.auth.keys.clientSecret | default (((((.Values.global).secrets).auth).auth0).keys).clientSecret | default "client-secret" }}
-            {{- $authMgmtClientIdKey := .Values.secrets.auth.keys.managementClientId | default (((((.Values.global).secrets).auth).auth0).keys).managementClientId | default "mgmt-client-id" }}
-            {{- $authMgmtClientSecretKey := .Values.secrets.auth.keys.managementClientSecret | default (((((.Values.global).secrets).auth).auth0).keys).managementClientSecret | default "mgmt-client-secret" }}
+            {{- if eq $idpProvider "keycloak" }}
+            {{- /* Keycloak credentials */}}
+            {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName }}
+            - name: IDP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $keycloakSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientId | default "backend-client-id" | quote }}
+            - name: IDP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $keycloakSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientSecret | default "backend-client-secret" | quote }}
 
-            {{- if $authSecretName }}
+            {{- else }}
+            {{- /* Auth0 credentials (default) */}}
+            {{- $authSecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName }}
             - name: IDP_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ $authSecretName | quote }}
-                  key: {{ $authClientIdKey | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientId | default "client-id" | quote }}
             - name: IDP_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ $authSecretName | quote }}
-                  key: {{ $authClientSecretKey | quote }}
-
-            {{- if or (eq $idpProvider "auth0") (not $idpProvider) }}
+                  key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientSecret | default "client-secret" | quote }}
             {{- if .Values.config.idp.auth0.enableManagementAPI }}
             - name: IDP_AUTH0_MANAGEMENT_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ $authSecretName | quote }}
-                  key: {{ $authMgmtClientIdKey | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).auth0).keys).mgmtClientId | default "mgmt-client-id" | quote }}
             - name: IDP_AUTH0_MANAGEMENT_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ $authSecretName | quote }}
-                  key: {{ $authMgmtClientSecretKey | quote }}
-            {{- end }}
+                  key: {{ (((((.Values.global).secrets).auth).auth0).keys).mgmtClientSecret | default "mgmt-client-secret" | quote }}
             {{- end }}
             {{- end }}
 
             # ========================================================================
-            # Security Credentials (API/JWT secrets)
+            # Auth Service Credentials (API, JWT, and Session secrets)
             # ========================================================================
 
-            {{- $securitySecretName := .Values.secrets.security.name | default (((.Values.global).secrets).authService).secretName | default "" }}
-            {{- if $securitySecretName }}
+            {{- $authServiceSecretName := .Values.secrets.authService.name | default (((.Values.global).secrets).authService).secretName }}
             - name: API_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $securitySecretName | quote }}
-                  key: {{ .Values.secrets.security.keys.apiSecret | quote }}
+                  name: {{ $authServiceSecretName | quote }}
+                  key: {{ ((((.Values.global).secrets).authService).keys).apiSecret | default "api-secret" | quote }}
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $securitySecretName | quote }}
-                  key: {{ .Values.secrets.security.keys.jwtSecret | quote }}
-            {{- end }}
-
-            # ========================================================================
-            # Session Secret
-            # ========================================================================
-
-            {{- $sessionSecretName := .Values.secrets.session.name | default (((.Values.global).secrets).authService).secretName | default "" }}
-            {{- if $sessionSecretName }}
+                  name: {{ $authServiceSecretName | quote }}
+                  key: {{ ((((.Values.global).secrets).authService).keys).jwtSecret | default "jwt-secret" | quote }}
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $sessionSecretName | quote }}
-                  key: {{ .Values.secrets.session.keys.secret | quote }}
-            {{- end }}
+                  name: {{ $authServiceSecretName | quote }}
+                  key: {{ ((((.Values.global).secrets).authService).keys).sessionSecret | default "session-secret" | quote }}
 
             # ========================================================================
-            # Key Vault Credentials (for DID key signing)
+            # Secret Manager Credentials (for DID key signing)
             # ========================================================================
 
             {{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
             {{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
-            {{- $keyVaultSecretName := .Values.secrets.keyVault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName | default "" }}
-            {{- if $keyVaultSecretName }}
+            {{- $keyVaultSecretName := .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
             - name: AZURE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ $keyVaultSecretName | quote }}
-                  key: {{ .Values.secrets.keyVault.keys.clientId | quote }}
+                  key: {{ (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientId | default "client-id" | quote }}
             - name: AZURE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ $keyVaultSecretName | quote }}
-                  key: {{ .Values.secrets.keyVault.keys.clientSecret | quote }}
-            {{- end }}
+                  key: {{ (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientSecret | default "client-secret" | quote }}
             {{- end }}
 
             {{- if eq $keyVaultProvider "hashicorp" }}
-            {{- $vaultSecretName := .Values.secrets.keyVault.name | default "" }}
-            {{- if $vaultSecretName }}
             - name: VAULT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ $vaultSecretName | quote }}
+                  name: {{ ((.Values.secrets.secretManager).hashicorp).name | quote }}
                   key: "token"
-            {{- end }}
             {{- end }}
 
             # ========================================================================
-            # Worker Credentials (governance-worker service account)
+            # Governance Worker Credentials (governance-worker service account)
             # ========================================================================
 
             {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
-            {{- $workerSecretName := .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | default "" }}
-            {{- if $workerSecretName }}
+            {{- $workerSecretName := .Values.secrets.governanceWorker.name | default (((.Values.global).secrets).governanceWorker).secretName }}
+            {{- $workerClientIdKey := ((((.Values.global).secrets).governanceWorker).keys).clientId | default "client-id" }}
+            {{- $workerClientSecretKey := ((((.Values.global).secrets).governanceWorker).keys).clientSecret | default "client-secret" }}
             - name: SERVICE_ACCOUNT_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ $workerSecretName | quote }}
-                  key: {{ .Values.secrets.worker.keys.encryptionKey | quote }}
-
+                  key: {{ ((((.Values.global).secrets).governanceWorker).keys).encryptionKey | default "encryption-key" | quote }}
             {{- if or (eq $idpProvider "auth0") (not $idpProvider) }}
             - name: AUTH0_GOVERNANCE_WORKER_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ $workerSecretName | quote }}
-                  key: {{ .Values.secrets.worker.keys.clientId | quote }}
+                  key: {{ $workerClientIdKey | quote }}
             - name: AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ $workerSecretName | quote }}
-                  key: {{ .Values.secrets.worker.keys.clientSecret | quote }}
+                  key: {{ $workerClientSecretKey | quote }}
             {{- end }}
-
             {{- if eq $idpProvider "keycloak" }}
             - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: {{ $workerSecretName | quote }}
-                  key: {{ .Values.secrets.worker.keys.clientId | quote }}
+                  key: {{ $workerClientIdKey | quote }}
             - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ $workerSecretName | quote }}
-                  key: {{ .Values.secrets.worker.keys.clientSecret | quote }}
-            {{- end }}
+                  key: {{ $workerClientSecretKey | quote }}
             {{- end }}
             {{- end }}
 
@@ -246,14 +236,11 @@ spec:
             # ========================================================================
 
             {{- if .Values.config.tokenExchange.enabled }}
-            {{- $tokenExchangeSecretName := .Values.secrets.tokenExchange.name | default (((.Values.global).secrets).authService).secretName | default "" }}
-            {{- if $tokenExchangeSecretName }}
             - name: AUTH_SERVICE_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ $tokenExchangeSecretName | quote }}
-                  key: {{ .Values.secrets.tokenExchange.keys.privateKey | quote }}
-            {{- end }}
+                  name: {{ .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).keycloak).keys).tokenExchangePrivateKey | default "token-exchange-private-key" | quote }}
             {{- end }}
 
             # ========================================================================

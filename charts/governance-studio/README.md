@@ -154,14 +154,14 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                    | Type   | Description                                       |
-| -------------------------------------- | ------ | ------------------------------------------------- |
-| global.domain                          | string | Base domain for all services                      |
-| global.environmentType                 | string | Environment type (development/staging/production) |
-| global.imagePullSecrets                | list   | Image pull secrets for all services               |
-| global.secrets.auth.provider           | string | Auth provider (auth0 or keycloak)                 |
-| global.secrets.auth.auth0.values.\*    | object | Auth0 configuration                               |
-| global.secrets.auth.keycloak.values.\* | object | Keycloak configuration                            |
+| Key                                     | Type   | Description                                       |
+| --------------------------------------- | ------ | ------------------------------------------------- |
+| global.domain                           | string | Base domain for all services                      |
+| global.environmentType                  | string | Environment type (development/staging/production) |
+| global.secrets.imageRegistry.secretName | string | Name of image pull secret                         |
+| global.secrets.auth.provider            | string | Auth provider (auth0 or keycloak)                 |
+| global.secrets.auth.auth0.values.\*     | object | Auth0 configuration values                        |
+| global.secrets.auth.keycloak.values.\*  | object | Keycloak configuration values                     |
 
 ### Chart-Specific Parameters
 
@@ -225,6 +225,7 @@ When deployed via the umbrella chart, these global values are automatically used
 
 | Key                              | Type | Default | Description                                                                                              |
 | -------------------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------- |
+| podDisruptionBudget.enabled      | bool | `false` | Enable Pod Disruption Budget                                                                             |
 | podDisruptionBudget.minAvailable | int  | `1`     | Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1) |
 
 ### Node Scheduling

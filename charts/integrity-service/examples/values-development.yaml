@@ -78,7 +78,7 @@ persistence:
 # APPLICATION CONFIGURATION
 # =============================================================================
 
-env:
+config:
   # Development environment
   rustEnv: "development"
 
@@ -109,9 +109,6 @@ env:
   integrityAppAuthType: "auth_service"
   integrityAppAuthUrl: "http://auth-service:8080"
 
-  # Auth signer - Azure Key Vault (still required for signing)
-  integrityAppAuthSignerConfigType: "azure_key_vault"
-
   # Service URL for local development
   integrityServiceUrl: "http://localhost:3050"
 
@@ -129,20 +126,6 @@ secrets:
     aws_s3:
       enabled: true
       name: "dev-minio"
-      keys:
-        accessKeyId: "access-key"
-        secretAccessKey: "secret-key"
-
-  # Azure Key Vault (still needed for signing operations)
-  secretManager:
-    azure_key_vault:
-      enabled: true
-      name: "dev-azure-key-vault"
-      keys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
-        tenantId: "tenant-id"
-        vaultUrl: "vault-url"
 
 # =============================================================================
 # SECURITY (RELAXED FOR DEVELOPMENT)

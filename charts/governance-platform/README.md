@@ -156,7 +156,7 @@ governance-service:
 
 integrity-service:
   enabled: true
-  env:
+  config:
     integrityAppBlobStoreType: "azure_blob"
     integrityAppBlobStoreAccount: "yourstorageacct"
     integrityAppBlobStoreContainer: "integrity-data"
@@ -359,8 +359,7 @@ helm upgrade governance-platform ./charts/governance-platform \
   --namespace governance \
   --values ./configs/values.yaml \
   --values ./secrets/secrets.yaml \
-  --set global.secrets.database.values.password=$PASSWORD \
-  --set global.postgresql.auth.postgresPassword=$PASSWORD
+  --set global.secrets.database.values.password=$PASSWORD
 ```
 
 ## Prerequisites
@@ -474,13 +473,14 @@ Centralized secret configuration for all platform components:
 | global.secrets.database.secretName                      | string | `"platform-database"`              | Database credentials secret name               |
 | global.secrets.auth.provider                            | string | `"auth0"`                          | Auth provider (auth0 or keycloak)              |
 | global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`                 | Auth0 credentials secret name                  |
-| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak-credentials"`  | Keycloak credentials secret name               |
+| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`              | Keycloak credentials secret name               |
 | global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`                   | GCS credentials secret name                    |
 | global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`            | Azure Blob credentials secret name             |
 | global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`                | AWS S3 credentials secret name                 |
 | global.secrets.secretManager.provider                   | string | `"azure_key_vault"`                | Secret manager provider for credential signing |
 | global.secrets.secretManager.azure_key_vault.secretName | string | `"platform-azure-key-vault"`       | Azure Key Vault credentials secret name        |
 | global.secrets.encryption.secretName                    | string | `"platform-encryption-key"`        | Platform encryption key secret name            |
+| global.secrets.authService.secretName                   | string | `"platform-auth-service"`          | Auth service secrets (session, JWT, API keys)  |
 | global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"`     | Governance worker credentials secret name      |
 | global.secrets.governanceServiceAI.secretName           | string | `"platform-governance-service-ai"` | AI API key secret name                         |
 | global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"`     | Container registry credentials secret name     |
@@ -516,7 +516,7 @@ Backend API service settings. See [governance-service/README.md](../governance-s
 | Key                                       | Type   | Default | Description                                       |
 | ----------------------------------------- | ------ | ------- | ------------------------------------------------- |
 | governance-service.enabled                | bool   | `true`  | Enable Governance Service                         |
-| governance-service.replicaCount           | int    | `1`     | Number of replicas                                |
+| governance-service.replicaCount           | int    | `2`     | Number of replicas                                |
 | governance-service.ingress.enabled        | bool   | `false` | Enable ingress                                    |
 | governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: gcs/azure/aws_s3) |
 | governance-service.config.gcsBucketName   | string | `""`    | GCS bucket name (required if provider is gcs)     |
@@ -527,13 +527,13 @@ Backend API service settings. See [governance-service/README.md](../governance-s
 
 Credential and lineage service settings. See [integrity-service/README.md](../integrity-service/README.md) for complete documentation.
 
-| Key                                             | Type   | Default | Description                                        |
-| ----------------------------------------------- | ------ | ------- | -------------------------------------------------- |
-| integrity-service.enabled                       | bool   | `true`  | Enable Integrity Service                           |
-| integrity-service.replicaCount                  | int    | `1`     | Number of replicas                                 |
-| integrity-service.ingress.enabled               | bool   | `false` | Enable ingress                                     |
-| integrity-service.env.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob) |
-| integrity-service.autoscaling.enabled           | bool   | `false` | Enable horizontal pod autoscaling                  |
+| Key                                                | Type   | Default | Description                                        |
+| -------------------------------------------------- | ------ | ------- | -------------------------------------------------- |
+| integrity-service.enabled                          | bool   | `true`  | Enable Integrity Service                           |
+| integrity-service.replicaCount                     | int    | `1`     | Number of replicas                                 |
+| integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                     |
+| integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob) |
+| integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                  |
 
 ### Auth Service Configuration
 
@@ -644,7 +644,7 @@ integrity-service:
   # Database credentials auto-populated from global secrets
   # Storage credentials auto-populated from global secrets
 
-  env:
+  config:
     # Must explicitly set storage provider and container
     integrityAppBlobStoreType: "azure_blob"
     integrityAppBlobStoreAccount: "mystorageacct"
@@ -685,7 +685,7 @@ governance-service:
     azureStorageContainerName: "governance-data"
 
 integrity-service:
-  env:
+  config:
     integrityAppBlobStoreType: "azure_blob"
     integrityAppBlobStoreAccount: "mystorageacct"
     integrityAppBlobStoreContainer: "integrity-data"
@@ -707,7 +707,7 @@ governance-service:
     awsS3BucketName: "governance-bucket"
 
 integrity-service:
-  env:
+  config:
     integrityAppBlobStoreType: "aws_s3"
     integrityAppBlobStoreRegion: "us-east-1"
     integrityAppBlobStoreBucket: "integrity-bucket"
@@ -759,7 +759,7 @@ global:
     auth:
       provider: "keycloak"
       keycloak:
-        secretName: "platform-keycloak-credentials"
+        secretName: "platform-keycloak"
 
     governanceWorker:
       secretName: "platform-governance-worker"
@@ -792,7 +792,7 @@ governance-service:
 
 integrity-service:
   replicaCount: 1
-  env:
+  config:
     integrityAppLoggingLogLevelDefault: "debug"
 
 postgresql:
@@ -848,7 +848,7 @@ governance-service:
 
 integrity-service:
   replicaCount: 3
-  env:
+  config:
     integrityAppLoggingLogLevelDefault: "warn"
   autoscaling:
     enabled: true
@@ -1005,7 +1005,7 @@ governance-service:
     logLevel: "debug"
 
 integrity-service:
-  env:
+  config:
     integrityAppLoggingLogLevelDefault: "debug"
 
 auth-service:

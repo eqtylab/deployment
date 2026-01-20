@@ -145,17 +145,18 @@ config:
       tenantId: "your-tenant-id"
 
   integrations:
-    integrityServiceUrl: "http://integrity-service:3050"
     governanceServiceUrl: "http://governance-service:10001"
 
 secrets:
   auth:
-    name: "auth0-credentials"
-  security:
+    auth0:
+      name: "auth0-credentials"
+  authService:
     name: "auth-service-security"
-  keyVault:
-    name: "azure-key-vault-credentials"
-  worker:
+  secretManager:
+    azure_key_vault:
+      name: "azure-key-vault-credentials"
+  governanceWorker:
     name: "governance-worker-credentials"
 
 service:
@@ -296,7 +297,10 @@ When deployed via the umbrella chart, these global values are automatically used
 | podSecurityContext.runAsUser             | int    | `1000`  | User ID to run container       |
 | podSecurityContext.fsGroup               | int    | `1000`  | Filesystem group               |
 | securityContext.allowPrivilegeEscalation | bool   | `false` | Prevent privilege escalation   |
+| securityContext.capabilities.drop        | list   | `[ALL]` | Drop all capabilities          |
 | securityContext.readOnlyRootFilesystem   | bool   | `true`  | Read-only root filesystem      |
+| securityContext.runAsNonRoot             | bool   | `true`  | Run as non-root user           |
+| securityContext.runAsUser                | int    | `1000`  | User ID to run container       |
 
 ### Service
 
@@ -357,12 +361,16 @@ When deployed via the umbrella chart, these global values are automatically used
 | livenessProbe.httpGet.port         | string | `"http"`    | Liveness probe port           |
 | livenessProbe.initialDelaySeconds  | int    | `30`        | Liveness probe initial delay  |
 | livenessProbe.periodSeconds        | int    | `10`        | Liveness probe period         |
+| livenessProbe.timeoutSeconds       | int    | `5`         | Liveness probe timeout        |
 | livenessProbe.failureThreshold     | int    | `3`         | Liveness failure threshold    |
+| livenessProbe.successThreshold     | int    | `1`         | Liveness success threshold    |
 | readinessProbe.httpGet.path        | string | `"/health"` | Readiness probe HTTP path     |
 | readinessProbe.httpGet.port        | string | `"http"`    | Readiness probe port          |
 | readinessProbe.initialDelaySeconds | int    | `10`        | Readiness probe initial delay |
 | readinessProbe.periodSeconds       | int    | `5`         | Readiness probe period        |
+| readinessProbe.timeoutSeconds      | int    | `3`         | Readiness probe timeout       |
 | readinessProbe.failureThreshold    | int    | `3`         | Readiness failure threshold   |
+| readinessProbe.successThreshold    | int    | `1`         | Readiness success threshold   |
 
 ### Database Configuration
 
@@ -386,49 +394,71 @@ When deployed via the umbrella chart, these global values are automatically used
 
 All secret references support global fallbacks when deployed via umbrella chart.
 
-#### Auth Provider Secret
+#### Secret Key Names
 
-| Key                                      | Type   | Default           | Description                                 |
-| ---------------------------------------- | ------ | ----------------- | ------------------------------------------- |
-| secrets.auth.name                        | string | `""`              | Secret name (auto-populated from global)    |
-| secrets.auth.keys.clientId               | string | `"client-id"`     | Secret key for client ID                    |
-| secrets.auth.keys.clientSecret           | string | `"client-secret"` | Secret key for client secret                |
-| secrets.auth.keys.managementClientId     | string | `"client-id"`     | Secret key for management client ID (Auth0) |
-| secrets.auth.keys.managementClientSecret | string | `"client-secret"` | Secret key for management client secret     |
+Secret key names (the keys within each Kubernetes Secret) follow this pattern:
 
-#### Security Secret
+- **Umbrella chart deployment**: Key names are defined in `global.secrets.*.keys` - this is the single source of truth
+- **Standalone deployment**: Templates use hardcoded defaults (e.g., `client-id`, `client-secret`, `api-secret`)
 
-| Key                             | Type   | Default        | Description                              |
-| ------------------------------- | ------ | -------------- | ---------------------------------------- |
-| secrets.security.name           | string | `""`           | Secret name (auto-populated from global) |
-| secrets.security.keys.apiSecret | string | `"api-secret"` | Secret key for API secret                |
-| secrets.security.keys.jwtSecret | string | `"jwt-secret"` | Secret key for JWT secret                |
+When deploying standalone, create your secrets using the default key names:
 
-#### Session Secret
+```bash
+# Example: Auth0 credentials with default key names
+kubectl create secret generic auth-service-auth \
+  --from-literal=client-id=YOUR_CLIENT_ID \
+  --from-literal=client-secret=YOUR_CLIENT_SECRET \
+  --from-literal=mgmt-client-id=YOUR_MGMT_CLIENT_ID \
+  --from-literal=mgmt-client-secret=YOUR_MGMT_CLIENT_SECRET
 
-| Key                         | Type   | Default            | Description                              |
-| --------------------------- | ------ | ------------------ | ---------------------------------------- |
-| secrets.session.name        | string | `""`               | Secret name (auto-populated from global) |
-| secrets.session.keys.secret | string | `"session-secret"` | Secret key for session secret            |
+# Example: Security secrets with default key names
+kubectl create secret generic auth-service-security \
+  --from-literal=api-secret=$(openssl rand -base64 32) \
+  --from-literal=jwt-secret=$(openssl rand -base64 32) \
+  --from-literal=session-secret=$(openssl rand -base64 32)
+```
 
-#### Key Vault Secret
+If your existing secrets use different key names, you can override them via `global.secrets.*.keys` in your values file.
 
-| Key                                | Type   | Default           | Description                              |
-| ---------------------------------- | ------ | ----------------- | ---------------------------------------- |
-| secrets.keyVault.name              | string | `""`              | Secret name (auto-populated from global) |
-| secrets.keyVault.keys.clientId     | string | `"client-id"`     | Secret key for Azure client ID           |
-| secrets.keyVault.keys.clientSecret | string | `"client-secret"` | Secret key for Azure client secret       |
-| secrets.keyVault.keys.tenantId     | string | `"tenant-id"`     | Secret key for Azure tenant ID           |
-| secrets.keyVault.keys.vaultUrl     | string | `"vault-url"`     | Secret key for vault URL                 |
+**Default key names by secret type:**
 
-#### Worker Secret
+| Secret Type  | Default Key Names                                                    |
+| ------------ | -------------------------------------------------------------------- |
+| Auth0        | `client-id`, `client-secret`, `mgmt-client-id`, `mgmt-client-secret` |
+| Keycloak     | `backend-client-id`, `backend-client-secret`                         |
+| Auth Service | `api-secret`, `jwt-secret`, `session-secret`                         |
+| Key Vault    | `client-id`, `client-secret`, `tenant-id`, `vault-url`               |
+| Worker       | `encryption-key`, `client-id`, `client-secret`                       |
 
-| Key                               | Type   | Default            | Description                              |
-| --------------------------------- | ------ | ------------------ | ---------------------------------------- |
-| secrets.worker.name               | string | `""`               | Secret name (auto-populated from global) |
-| secrets.worker.keys.encryptionKey | string | `"encryption-key"` | Secret key for encryption key            |
-| secrets.worker.keys.clientId      | string | `"client-id"`      | Secret key for client ID                 |
-| secrets.worker.keys.clientSecret  | string | `"client-secret"`  | Secret key for client secret             |
+#### Auth0 Secret (only used when auth provider is Auth0)
+
+| Key                     | Type   | Description                              |
+| ----------------------- | ------ | ---------------------------------------- |
+| secrets.auth.auth0.name | string | Secret name (auto-populated from global) |
+
+#### Keycloak Secret (only used when auth provider is Keycloak)
+
+| Key                        | Type   | Description                              |
+| -------------------------- | ------ | ---------------------------------------- |
+| secrets.auth.keycloak.name | string | Secret name (auto-populated from global) |
+
+#### Auth Service Secret
+
+| Key                      | Type   | Description                                                              |
+| ------------------------ | ------ | ------------------------------------------------------------------------ |
+| secrets.authService.name | string | Secret name (auto-configured from global.secrets.authService.secretName) |
+
+#### Secret Manager Secret
+
+| Key                                        | Type   | Description                                                                                |
+| ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------ |
+| secrets.secretManager.azure_key_vault.name | string | Secret name (auto-configured from global.secrets.secretManager.azure_key_vault.secretName) |
+
+#### Governance Worker Secret
+
+| Key                           | Type   | Description                                                                   |
+| ----------------------------- | ------ | ----------------------------------------------------------------------------- |
+| secrets.governanceWorker.name | string | Secret name (auto-configured from global.secrets.governanceWorker.secretName) |
 
 ### Application Configuration
 
@@ -504,7 +534,6 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 | Key                                      | Type   | Default | Description                                               |
 | ---------------------------------------- | ------ | ------- | --------------------------------------------------------- |
-| config.integrations.integrityServiceUrl  | string | `""`    | Integrity Service URL (auto-generated from Release.Name)  |
 | config.integrations.governanceServiceUrl | string | `""`    | Governance Service URL (auto-generated from Release.Name) |
 
 #### Service Account Configuration
@@ -542,14 +571,15 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 ### Metrics Configuration
 
-| Key                                  | Type   | Default    | Description               |
-| ------------------------------------ | ------ | ---------- | ------------------------- |
-| metrics.enabled                      | bool   | `false`    | Enable Prometheus metrics |
-| metrics.port                         | int    | `9090`     | Metrics port              |
-| metrics.path                         | string | `/metrics` | Metrics path              |
-| metrics.serviceMonitor.enabled       | bool   | `false`    | Enable ServiceMonitor     |
-| metrics.serviceMonitor.interval      | string | `"30s"`    | Scrape interval           |
-| metrics.serviceMonitor.scrapeTimeout | string | `"10s"`    | Scrape timeout            |
+| Key                                  | Type   | Default      | Description                      |
+| ------------------------------------ | ------ | ------------ | -------------------------------- |
+| metrics.enabled                      | bool   | `false`      | Enable Prometheus metrics        |
+| metrics.port                         | int    | `9090`       | Metrics port                     |
+| metrics.path                         | string | `"/metrics"` | Metrics path                     |
+| metrics.serviceMonitor.enabled       | bool   | `false`      | Enable ServiceMonitor            |
+| metrics.serviceMonitor.interval      | string | `"30s"`      | Scrape interval                  |
+| metrics.serviceMonitor.scrapeTimeout | string | `"10s"`      | Scrape timeout                   |
+| metrics.serviceMonitor.labels        | object | `{}`         | Additional ServiceMonitor labels |
 
 ### Network Policy Configuration
 
@@ -561,12 +591,29 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 ### Migration Job Configuration
 
-| Key                               | Type | Default | Description                   |
-| --------------------------------- | ---- | ------- | ----------------------------- |
-| migration.enabled                 | bool | `false` | Enable migration as Helm hook |
-| migration.backoffLimit            | int  | `3`     | Job backoff limit             |
-| migration.activeDeadlineSeconds   | int  | `300`   | Job active deadline           |
-| migration.ttlSecondsAfterFinished | int  | `300`   | TTL for completed jobs        |
+| Key                                 | Type   | Default | Description                   |
+| ----------------------------------- | ------ | ------- | ----------------------------- |
+| migration.enabled                   | bool   | `false` | Enable migration as Helm hook |
+| migration.backoffLimit              | int    | `3`     | Job backoff limit             |
+| migration.activeDeadlineSeconds     | int    | `300`   | Job active deadline           |
+| migration.ttlSecondsAfterFinished   | int    | `300`   | TTL for completed jobs        |
+| migration.resources.limits.cpu      | string | `200m`  | Migration job CPU limit       |
+| migration.resources.limits.memory   | string | `256Mi` | Migration job memory limit    |
+| migration.resources.requests.cpu    | string | `100m`  | Migration job CPU request     |
+| migration.resources.requests.memory | string | `128Mi` | Migration job memory request  |
+
+### Extra Configuration
+
+| Key                   | Type   | Default | Description                               |
+| --------------------- | ------ | ------- | ----------------------------------------- |
+| volumes               | list   | `[]`    | Additional volumes on the Deployment      |
+| volumeMounts          | list   | `[]`    | Additional volumeMounts on the Deployment |
+| extraEnvVars          | list   | `[]`    | Extra environment variables               |
+| extraEnvVarsSecret    | string | `""`    | Secret containing extra env vars          |
+| extraEnvVarsConfigMap | string | `""`    | ConfigMap containing extra env vars       |
+| extraContainers       | list   | `[]`    | Extra containers to add to the pod        |
+| extraInitContainers   | list   | `[]`    | Extra init containers to add to the pod   |
+| extraManifests        | list   | `[]`    | Extra manifests to deploy                 |
 
 ## Configuration Inheritance
 
@@ -703,12 +750,9 @@ config:
       tenantId: "your-azure-tenant-id"
 
 secrets:
-  keyVault:
-    name: "platform-azure-key-vault"
-    keys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      tenantId: "tenant-id"
+  secretManager:
+    azure_key_vault:
+      name: "platform-azure-key-vault"
 ```
 
 ### Secret Creation

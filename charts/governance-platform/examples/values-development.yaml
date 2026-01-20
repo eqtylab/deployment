@@ -184,7 +184,7 @@ integrity-service:
   ingress:
     enabled: false
 
-  env:
+  config:
     rustEnv: "development"
 
     # MinIO (S3-compatible) for local development

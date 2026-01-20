@@ -124,24 +124,17 @@ migrations:
 secrets:
   encryption:
     name: "platform-encryption"
-    key: "key"
 
   auth0:
     name: "platform-auth0"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
   # GCS credentials - not needed if using Workload Identity
   storage:
     gcs:
       name: "platform-gcs"
-      serviceAccountJsonKey: "service-account.json"
 
   worker:
     name: "platform-governance-worker"
-    encryptionKeyKey: "encryption-key"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

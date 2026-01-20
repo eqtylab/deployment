@@ -61,7 +61,6 @@ config:
 
   # Service integration URLs (assuming local docker-compose or k8s)
   integrations:
-    integrityServiceUrl: "http://integrity-service:3050"
     governanceServiceUrl: "http://governance-service:10001"
 
   # Service accounts can be disabled for simpler development
@@ -106,26 +105,15 @@ migrations:
 # SECRET CONFIGURATION
 # =============================================================================
 
-# For development, you can use inline values or simple secrets
 secrets:
+  # Auth0 credentials
   auth:
-    name: "auth-service-dev-auth"
-    keys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      managementClientId: "client-id"
-      managementClientSecret: "client-secret"
+    auth0:
+      name: "platform-auth0"
 
-  security:
-    name: "auth-service-dev-security"
-    keys:
-      apiSecret: "api-secret"
-      jwtSecret: "jwt-secret"
-
-  session:
-    name: "auth-service-dev-security"
-    keys:
-      secret: "session-secret"
+  # Auth service credentials
+  authService:
+    name: "platform-auth-service"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

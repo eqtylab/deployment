@@ -118,14 +118,15 @@ spec:
 
           {{- if eq $storageProvider "azure_blob" }}
           # Azure Blob Storage Configuration
+          {{- $azureSecretName := .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | default "" }}
           - name: AZURE_STORAGE_ACCOUNT_NAME
             {{- if .Values.config.azureStorageAccountName }}
             value: {{ .Values.config.azureStorageAccountName | quote }}
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
-                key: {{ .Values.secrets.storage.azure_blob.accountNameKey | default (((((.Values.global).secrets).storage).azure_blob).keys).accountName | quote }}
+                name: {{ $azureSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountName | default "account-name" | quote }}
             {{- end }}
           - name: AZURE_STORAGE_ACCOUNT_KEY
             {{- if .Values.config.azureStorageAccountKey }}
@@ -133,18 +134,18 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
-                key: {{ .Values.secrets.storage.azure_blob.accountKeyKey | default (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | quote }}
+                name: {{ $azureSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | default "account-key" | quote }}
             {{- end }}
-          {{- if or .Values.config.azureStorageConnectionString .Values.secrets.storage.azure_blob.name }}
+          {{- if or .Values.config.azureStorageConnectionString $azureSecretName }}
           - name: AZURE_STORAGE_CONNECTION_STRING
             {{- if .Values.config.azureStorageConnectionString }}
             value: {{ .Values.config.azureStorageConnectionString | quote }}
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
-                key: {{ .Values.secrets.storage.azure_blob.connectionStringKey | default (((((.Values.global).secrets).storage).azure_blob).keys).connectionString | quote }}
+                name: {{ $azureSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).connectionString | default "connection-string" | quote }}
             {{- end }}
           {{- end }}
           - name: AZURE_STORAGE_CONTAINER_NAME
@@ -155,6 +156,7 @@ spec:
 
           {{- if eq $storageProvider "aws_s3" }}
           # AWS S3 Configuration
+          {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | default "" }}
           - name: AWS_REGION
             value: {{ .Values.config.awsS3Region | quote }}
           - name: AWS_S3_BUCKET
@@ -169,8 +171,8 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | quote }}
-                key: {{ .Values.secrets.storage.aws_s3.accessKeyIdKey | default (((((.Values.global).secrets).storage).aws_s3).keys).accessKeyId | quote }}
+                name: {{ $s3SecretName | quote }}
+                key: {{ (((((.Values.global).secrets).storage).aws_s3).keys).accessKeyId | default "access-key-id" | quote }}
             {{- end }}
           - name: AWS_SECRET_ACCESS_KEY
             {{- if .Values.config.awsS3SecretAccessKey }}
@@ -178,19 +180,20 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | quote }}
-                key: {{ .Values.secrets.storage.aws_s3.secretAccessKeyKey | default (((((.Values.global).secrets).storage).aws_s3).keys).secretAccessKey | quote }}
+                name: {{ $s3SecretName | quote }}
+                key: {{ (((((.Values.global).secrets).storage).aws_s3).keys).secretAccessKey | default "secret-access-key" | quote }}
             {{- end }}
           {{- end }}
 
           # ========================================================================
           # Authentication Configuration
           # ========================================================================
-          
-          {{- $authProvider := .Values.secrets.keycloak.enabled | ternary "keycloak" "auth0" }}
-          
+
+          {{- $authProvider := (((.Values.global).secrets).auth).provider | default "auth0" }}
+
           {{- if eq $authProvider "auth0" }}
           # Auth0 Configuration
+          {{- $auth0SecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}
           {{- if .Values.config.auth0Domain }}
           - name: AUTH0_DOMAIN
             value: {{ .Values.config.auth0Domain | quote }}
@@ -201,8 +204,8 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | quote }}
-                key: {{ .Values.secrets.auth0.clientIdKey | default (((((.Values.global).secrets).auth).auth0).keys).clientId | quote }}
+                name: {{ $auth0SecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientId | default "client-id" | quote }}
             {{- end }}
           - name: AUTH0_CLIENT_SECRET
             {{- if .Values.config.auth0ClientSecret }}
@@ -210,8 +213,8 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | quote }}
-                key: {{ .Values.secrets.auth0.clientSecretKey | default (((((.Values.global).secrets).auth).auth0).keys).clientSecret | quote }}
+                name: {{ $auth0SecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientSecret | default "client-secret" | quote }}
             {{- end }}
           - name: AUTH0_SYNC_AT_STARTUP
             value: {{ .Values.auth0SyncAtStartup | quote }}
@@ -221,37 +224,38 @@ spec:
 
           {{- if eq $authProvider "keycloak" }}
           # Keycloak Configuration
+          {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
           - name: KEYCLOAK_URL
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.keycloak.existingSecret | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
-                key: {{ .Values.secrets.keycloak.existingSecretKeys.url | default (((((.Values.global).secrets).auth).keycloak).keys).url | quote }}
+                name: {{ $keycloakSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).url | default "url" | quote }}
           - name: KEYCLOAK_REALM
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.keycloak.existingSecret | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
-                key: {{ .Values.secrets.keycloak.existingSecretKeys.realm | default (((((.Values.global).secrets).auth).keycloak).keys).realm | quote }}
+                name: {{ $keycloakSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).realm | default "realm" | quote }}
           - name: KEYCLOAK_CLIENT_ID
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.keycloak.existingSecret | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
-                key: {{ .Values.secrets.keycloak.existingSecretKeys.clientId | default (((((.Values.global).secrets).auth).keycloak).keys).backendClientId | quote }}
+                name: {{ $keycloakSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientId | default "backend-client-id" | quote }}
           - name: KEYCLOAK_CLIENT_SECRET
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.keycloak.existingClientSecretKeyRef.name | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
-                key: {{ .Values.secrets.keycloak.existingClientSecretKeyRef.clientSecretKey | default (((((.Values.global).secrets).auth).keycloak).keys).backendClientSecret | quote }}
+                name: {{ $keycloakSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientSecret | default "backend-client-secret" | quote }}
           {{- end }}
 
           # ========================================================================
           # Encryption Configuration
           # ========================================================================
-          
+
           - name: CREDENTIAL_ENCRYPTION_KEY
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.encryption.name | default (((.Values.global).secrets).encryption).secretName | quote }}
-                key: {{ .Values.secrets.encryption.key | default ((((.Values.global).secrets).encryption).keys).key | quote }}
+                name: {{ .Values.secrets.encryption.name | default (((.Values.global).secrets).encryption).secretName | default "" | quote }}
+                key: {{ ((((.Values.global).secrets).encryption).keys).key | default "encryption-key" | quote }}
 
           # ========================================================================
           # Integration URLs
@@ -265,23 +269,24 @@ spec:
           # ========================================================================
           # Worker Configuration
           # ========================================================================
-          
+
           {{- if .Values.config.serviceAccount.enabled }}
+          {{- $workerSecretName := .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | default "" }}
           - name: WORKER_ENCRYPTION_KEY
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | quote }}
-                key: {{ .Values.secrets.worker.encryptionKeyKey | default ((((.Values.global).secrets).governanceWorker).keys).encryptionKey | quote }}
+                name: {{ $workerSecretName | quote }}
+                key: {{ ((((.Values.global).secrets).governanceWorker).keys).encryptionKey | default "encryption-key" | quote }}
           - name: WORKER_CLIENT_ID
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | quote }}
-                key: {{ .Values.secrets.worker.clientIdKey | default ((((.Values.global).secrets).governanceWorker).keys).clientId | quote }}
+                name: {{ $workerSecretName | quote }}
+                key: {{ ((((.Values.global).secrets).governanceWorker).keys).clientId | default "client-id" | quote }}
           - name: WORKER_CLIENT_SECRET
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.secrets.worker.name | default (((.Values.global).secrets).governanceWorker).secretName | quote }}
-                key: {{ .Values.secrets.worker.clientSecretKey | default ((((.Values.global).secrets).governanceWorker).keys).clientSecret | quote }}
+                name: {{ $workerSecretName | quote }}
+                key: {{ ((((.Values.global).secrets).governanceWorker).keys).clientSecret | default "client-secret" | quote }}
           - name: AUTH_SERVICE_API_KEY
             valueFrom:
               secretKeyRef:
@@ -308,7 +313,7 @@ spec:
           # ========================================================================
           # AI Configuration
           # ========================================================================
-          
+
           {{- if .Values.config.ai.enabled }}
           - name: AI_ENABLED
             value: {{ .Values.config.ai.enabled | quote }}
@@ -318,8 +323,8 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.config.ai.secretKeyRef.name | default (((.Values.global).secrets).governanceServiceAI).secretName | quote }}
-                key: {{ .Values.config.ai.secretKeyRef.key | default ((((.Values.global).secrets).governanceServiceAI).keys).apiKey | quote }}
+                name: {{ .Values.config.ai.secretKeyRef.name | default (((.Values.global).secrets).governanceServiceAI).secretName | default "" | quote }}
+                key: {{ ((((.Values.global).secrets).governanceServiceAI).keys).apiKey | default "api-key" | quote }}
             {{- end }}
           - name: AI_PROVIDER
             value: {{ .Values.config.ai.provider | quote }}
@@ -384,9 +389,9 @@ spec:
         {{- if eq $storageProvider "gcs" }}
         - name: gcs-sa-volume
           secret:
-            secretName: {{ .Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName | quote }}
+            secretName: {{ .Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName | default "" | quote }}
             items:
-              - key: {{ .Values.secrets.storage.gcs.serviceAccountJsonKey | default (((((.Values.global).secrets).storage).gcs).keys).serviceAccountJson | quote }}
+              - key: {{ (((((.Values.global).secrets).storage).gcs).keys).serviceAccountJson | default "service-account-json" | quote }}
                 path: "service-account.json"
         {{- end }}
 {{- end }}

@@ -8,7 +8,6 @@
 #   - AWS EKS cluster with IRSA (IAM Roles for Service Accounts)
 #   - S3 bucket created with appropriate IAM policies
 #   - RDS PostgreSQL instance
-#   - Azure Key Vault for credential signing (cross-cloud)
 #   - ALB Ingress Controller or nginx ingress
 #
 # This example demonstrates:
@@ -109,7 +108,7 @@ ingress:
 # APPLICATION CONFIGURATION - AWS S3
 # =============================================================================
 
-env:
+config:
   rustEnv: "production"
 
   # RDS PostgreSQL connection
@@ -132,9 +131,6 @@ env:
   integrityAppAuthType: "auth_service"
   integrityAppAuthUrl: "http://governance-platform-auth-service:8080"
 
-  # Auth signer - Azure Key Vault (cross-cloud for signing)
-  integrityAppAuthSignerConfigType: "azure_key_vault"
-
   # Public service URL
   integrityServiceUrl: "https://governance.your-domain.com/integrityService"
 
@@ -147,9 +143,6 @@ secrets:
   database:
     enabled: true
     name: "platform-database"
-    keys:
-      username: "username"
-      password: "password"
 
   # AWS S3 credentials (optional if using IRSA)
   # With IRSA, the service account role provides access
@@ -157,20 +150,6 @@ secrets:
     aws_s3:
       enabled: true # Set to false if using IRSA
       name: "platform-aws-s3"
-      keys:
-        accessKeyId: "access-key-id"
-        secretAccessKey: "secret-access-key"
-
-  # Azure Key Vault for signing operations
-  secretManager:
-    azure_key_vault:
-      enabled: true
-      name: "platform-azure-key-vault"
-      keys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
-        tenantId: "tenant-id"
-        vaultUrl: "vault-url"
 
 # =============================================================================
 # HIGH AVAILABILITY

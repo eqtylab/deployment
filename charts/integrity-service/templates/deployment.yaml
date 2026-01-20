@@ -69,85 +69,86 @@ spec:
             
             # Rust Environment
             - name: RUST_ENVIRONMENT
-              value: {{ .Values.env.rustEnv | default ((.Values.global).environmentType | default "") | quote }}
+              value: {{ .Values.config.rustEnv | default ((.Values.global).environmentType | default "") | quote }}
 
             # Service URLs
             - name: INTEGRITY_SERVICE_URL
-              value: {{ .Values.env.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "")) | quote }}
+              value: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "")) | quote }}
 
             # ========================================================================
             # Database Configuration
             # ========================================================================
             
             - name: INTEGRITY_APP__db__host
-              value: {{ .Values.env.integrityAppDbHost | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
+              value: {{ .Values.config.integrityAppDbHost | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
             - name: INTEGRITY_APP__db__db_name
-              value: {{ .Values.env.integrityAppDbName | quote }}
+              value: {{ .Values.config.integrityAppDbName | quote }}
             - name: INTEGRITY_APP__db__user
-              value: {{ .Values.env.integrityAppDbUser | default (((.Values.global).postgresql).username | default "postgres") | quote }}
+              value: {{ .Values.config.integrityAppDbUser | default (((.Values.global).postgresql).username | default "postgres") | quote }}
             - name: INTEGRITY_APP__db__password
-              {{- if .Values.env.integrityAppDbPassword }}
-              value: {{ .Values.env.integrityAppDbPassword | quote }}
+              {{- if .Values.config.integrityAppDbPassword }}
+              value: {{ .Values.config.integrityAppDbPassword | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.database.name | default (((.Values.global).secrets).database).secretName }}
-                  key: {{ .Values.secrets.database.keys.password | default ((((.Values.global).secrets).database).keys).password }}
+                  name: {{ .Values.secrets.database.name | default (((.Values.global).secrets).database).secretName | quote }}
+                  key: {{ ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
               {{- end }}
 
             # ========================================================================
             # Blob Storage Configuration
             # ========================================================================
             
-            {{- $storageProvider := .Values.env.integrityAppBlobStoreType }}
+            {{- $storageProvider := .Values.config.integrityAppBlobStoreType }}
             
             {{- if $storageProvider }}
             - name: INTEGRITY_APP__blob_store__type
               value: {{ $storageProvider | quote }}
             {{- end }}
             
-            {{- if or (eq $storageProvider "aws_s3") (.Values.secrets.storage.aws_s3.enabled) }}
+            {{- if eq $storageProvider "aws_s3" }}
             # AWS S3 Configuration
+            {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
             - name: INTEGRITY_APP__blob_store__region
-              value: {{ .Values.env.integrityAppBlobStoreRegion | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreRegion | quote }}
             - name: INTEGRITY_APP__blob_store__bucket
-              value: {{ .Values.env.integrityAppBlobStoreBucket | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreBucket | quote }}
             - name: INTEGRITY_APP__blob_store__folder
-              value: {{ .Values.env.integrityAppBlobStoreFolder | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreFolder | quote }}
             - name: AWS_ACCESS_KEY_ID
-              {{- if .Values.env.integrityAppBlobStoreAccessKeyId }}
-              value: {{ .Values.env.integrityAppBlobStoreAccessKeyId | quote }}
+              {{- if .Values.config.integrityAppBlobStoreAccessKeyId }}
+              value: {{ .Values.config.integrityAppBlobStoreAccessKeyId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
-                  key: {{ .Values.secrets.storage.aws_s3.keys.accessKeyId | default (((((.Values.global).secrets).storage).aws_s3).keys).accessKeyId }}
+                  name: {{ $s3SecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).storage).aws_s3).keys).accessKeyId | default "access-key-id" | quote }}
               {{- end }}
             - name: AWS_SECRET_ACCESS_KEY
-              {{- if .Values.env.integrityAppBlobStoreSecretAccessKey }}
-              value: {{ .Values.env.integrityAppBlobStoreSecretAccessKey | quote }}
+              {{- if .Values.config.integrityAppBlobStoreSecretAccessKey }}
+              value: {{ .Values.config.integrityAppBlobStoreSecretAccessKey | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
-                  key: {{ .Values.secrets.storage.aws_s3.keys.secretAccessKey | default (((((.Values.global).secrets).storage).aws_s3).keys).secretAccessKey }}
+                  name: {{ $s3SecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).storage).aws_s3).keys).secretAccessKey | default "secret-access-key" | quote }}
               {{- end }}
             {{- end }}
 
-            {{- if or (eq $storageProvider "azure_blob") (.Values.secrets.storage.azure_blob.enabled) }}
+            {{- if eq $storageProvider "azure_blob" }}
             # Azure Blob Storage Configuration
             - name: INTEGRITY_APP__blob_store__account
-              value: {{ .Values.env.integrityAppBlobStoreAccount | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreAccount | quote }}
             - name: INTEGRITY_APP__blob_store__container
-              value: {{ .Values.env.integrityAppBlobStoreContainer | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreContainer | quote }}
             - name: INTEGRITY_APP__blob_store__key
-              {{- if .Values.env.integrityAppBlobStoreKey }}
-              value: {{ .Values.env.integrityAppBlobStoreKey | quote }}
+              {{- if .Values.config.integrityAppBlobStoreKey }}
+              value: {{ .Values.config.integrityAppBlobStoreKey | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName }}
-                  key: {{ .Values.secrets.storage.azure_blob.keys.accountKey | default (((((.Values.global).secrets).storage).azure_blob).keys).accountKey }}
+                  name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
+                  key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | default "account-key" | quote }}
               {{- end }}
             {{- end }}
 
@@ -156,104 +157,19 @@ spec:
             # ========================================================================
             
             - name: INTEGRITY_APP__logging__log_level__default
-              value: {{ .Values.env.integrityAppLoggingLogLevelDefault | quote }}
+              value: {{ .Values.config.integrityAppLoggingLogLevelDefault | quote }}
             - name: INTEGRITY_APP__logging__log_level__integrity_service
-              value: {{ .Values.env.integrityAppLoggingLogLevelIntegrityService | quote }}
+              value: {{ .Values.config.integrityAppLoggingLogLevelIntegrityService | quote }}
 
             # ========================================================================
             # Authentication Configuration
             # ========================================================================
             
             - name: INTEGRITY_APP__auth__type
-              value: {{ .Values.env.integrityAppAuthType | quote }}
+              value: {{ .Values.config.integrityAppAuthType | quote }}
             - name: INTEGRITY_APP__auth__url
-              value: {{ .Values.env.integrityAppAuthUrl | default (printf "http://%s-auth-service:8080" .Release.Name) | quote }}
+              value: {{ .Values.config.integrityAppAuthUrl | default (printf "http://%s-auth-service:8080" .Release.Name) | quote }}
 
-            # ========================================================================
-            # Azure Key Vault Configuration
-            # ========================================================================
-            
-            {{- $secretManagerProvider := .Values.env.integrityAppAuthSignerConfigType | default (((.Values.global).secrets).secretManager).provider }}
-            {{- if or (eq $secretManagerProvider "azure_key_vault") (.Values.secrets.secretManager.azure_key_vault.enabled) }}
-            
-            # Auth Signer Config (for signing credentials)
-            - name: INTEGRITY_APP__auth_signer_config__type
-              value: {{ $secretManagerProvider | quote }}
-            - name: INTEGRITY_APP__auth_signer_config__tenant_id
-              {{- if .Values.env.integrityAppAuthSignerConfigTenantId }}
-              value: {{ .Values.env.integrityAppAuthSignerConfigTenantId | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.tenantId | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).tenantId }}
-              {{- end }}
-            - name: INTEGRITY_APP__auth_signer_config__client_id
-              {{- if .Values.env.integrityAppAuthSignerConfigClientId }}
-              value: {{ .Values.env.integrityAppAuthSignerConfigClientId | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.clientId | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientId }}
-              {{- end }}
-            - name: INTEGRITY_APP__auth_signer_config__vault_url
-              {{- if .Values.env.integrityAppAuthSignerConfigVaultUrl }}
-              value: {{ .Values.env.integrityAppAuthSignerConfigVaultUrl | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.vaultUrl | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).vaultUrl }}
-              {{- end }}
-            - name: INTEGRITY_APP__auth_signer_config__client_secret
-              {{- if .Values.env.integrityAppAuthSignerConfigClientSecret }}
-              value: {{ .Values.env.integrityAppAuthSignerConfigClientSecret | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.clientSecret | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientSecret }}
-              {{- end }}
-
-            # Legacy Key Vault Config (still needed during migration)
-            - name: INTEGRITY_APP__key_vault__tenant_id
-              {{- if .Values.env.integrityAppKeyVaultTenantId }}
-              value: {{ .Values.env.integrityAppKeyVaultTenantId | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.tenantId | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).tenantId }}
-              {{- end }}
-            - name: INTEGRITY_APP__key_vault__client_id
-              {{- if .Values.env.integrityAppKeyVaultClientId }}
-              value: {{ .Values.env.integrityAppKeyVaultClientId | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.clientId | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientId }}
-              {{- end }}
-            - name: INTEGRITY_APP__key_vault__vault_url
-              {{- if .Values.env.integrityAppKeyVaultVaultUrl }}
-              value: {{ .Values.env.integrityAppKeyVaultVaultUrl | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.vaultUrl | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).vaultUrl }}
-              {{- end }}
-            - name: INTEGRITY_APP__key_vault__client_secret
-              {{- if .Values.env.integrityAppKeyVaultClientSecret }}
-              value: {{ .Values.env.integrityAppKeyVaultClientSecret | quote }}
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName }}
-                  key: {{ .Values.secrets.secretManager.azure_key_vault.keys.clientSecret | default (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientSecret }}
-              {{- end }}
-            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}

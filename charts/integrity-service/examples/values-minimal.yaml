@@ -10,15 +10,14 @@
 # Prerequisites:
 #   1. PostgreSQL database accessible
 #   2. Storage provider (AWS S3 or Azure Blob)
-#   3. Azure Key Vault for credential signing
-#   4. Auth service deployed
-#   5. Required Kubernetes secrets created (see below)
+#   3. Auth service deployed
+#   4. Required Kubernetes secrets created (see below)
 
 # =============================================================================
 # REQUIRED: Storage Provider
 # =============================================================================
 
-env:
+config:
   # REQUIRED: Choose storage backend
   integrityAppBlobStoreType: "aws_s3" # Options: "aws_s3", "azure_blob"
 
@@ -32,9 +31,6 @@ env:
 
   # REQUIRED: Auth service URL
   integrityAppAuthUrl: "http://auth-service:8080"
-
-  # REQUIRED: Auth signer type (Azure Key Vault)
-  integrityAppAuthSignerConfigType: "azure_key_vault"
 
 # =============================================================================
 # REQUIRED: Database
@@ -67,48 +63,21 @@ env:
 #   --from-literal=account-name=YOUR_ACCOUNT \
 #   --from-literal=account-key=YOUR_KEY \
 #   --from-literal=connection-string=YOUR_CONNECTION_STRING
-#
-# Azure Key Vault (required for signing):
-# kubectl create secret generic azure-key-vault-credentials \
-#   --from-literal=client-id=YOUR_CLIENT_ID \
-#   --from-literal=client-secret=YOUR_CLIENT_SECRET \
-#   --from-literal=tenant-id=YOUR_TENANT_ID \
-#   --from-literal=vault-url=https://YOUR-VAULT.vault.azure.net/
 
 secrets:
   database:
     enabled: true
     name: "database-credentials"
-    keys:
-      username: "username"
-      password: "password"
 
   # Choose based on your storage provider:
   storage:
     aws_s3:
       enabled: true
       name: "aws-s3-credentials"
-      keys:
-        accessKeyId: "access-key-id"
-        secretAccessKey: "secret-access-key"
 
     # azure_blob:
     #   enabled: true
     #   name: "azure-storage-credentials"
-    #   keys:
-    #     accountName: "account-name"
-    #     accountKey: "account-key"
-    #     connectionString: "connection-string"
-
-  secretManager:
-    azure_key_vault:
-      enabled: true
-      name: "azure-key-vault-credentials"
-      keys:
-        clientId: "client-id"
-        clientSecret: "client-secret"
-        tenantId: "tenant-id"
-        vaultUrl: "vault-url"
 # =============================================================================
 # OPTIONAL: Enable ingress for external access
 # =============================================================================

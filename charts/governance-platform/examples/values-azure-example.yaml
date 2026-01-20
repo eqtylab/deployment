@@ -237,7 +237,7 @@ integrity-service:
           - governance.yourcompany.com
 
   # Storage configuration - Azure Blob Storage
-  env:
+  config:
     integrityAppLoggingLogLevelDefault: "info"
 
     # Azure Blob Storage

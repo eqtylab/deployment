@@ -97,18 +97,13 @@ migrations:
 secrets:
   encryption:
     name: "dev-encryption"
-    key: "key"
 
   auth0:
     name: "dev-auth0"
-    clientIdKey: "client-id"
-    clientSecretKey: "client-secret"
 
   storage:
     aws_s3:
       name: "dev-minio"
-      accessKeyIdKey: "access-key"
-      secretAccessKeyKey: "secret-key"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

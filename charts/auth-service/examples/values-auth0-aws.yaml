@@ -58,7 +58,6 @@ config:
     cacheTTLMinutes: 15
 
   integrations:
-    integrityServiceUrl: "http://governance-platform-integrity-service:3050"
     governanceServiceUrl: "http://governance-platform-governance-service:10001"
 
   serviceAccounts:
@@ -134,31 +133,18 @@ migrations:
 #           property: client_id
 
 secrets:
+  # Auth0 credentials
   auth:
-    name: "platform-auth0"
-    keys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      managementClientId: "mgmt-client-id"
-      managementClientSecret: "mgmt-client-secret"
+    auth0:
+      name: "platform-auth0"
 
-  security:
+  # Auth service credentials
+  authService:
     name: "platform-auth-service"
-    keys:
-      apiSecret: "api-secret"
-      jwtSecret: "jwt-secret"
 
-  session:
-    name: "platform-auth-service"
-    keys:
-      secret: "session-secret"
-
-  worker:
+  # Governance worker credentials
+  governanceWorker:
     name: "platform-governance-worker"
-    keys:
-      encryptionKey: "encryption-key"
-      clientId: "client-id"
-      clientSecret: "client-secret"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

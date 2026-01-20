@@ -1,87 +1,143 @@
-# Default values for integrity-service.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# =============================================================================
+# INTEGRITY SERVICE - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Integrity Service for lineage tracking
+# and verifiable credentials management.
+#
+# When deployed via the umbrella chart (governance-platform), most values
+# are auto-configured from global settings. For standalone deployment,
+# you must configure database, storage, and auth settings manually.
+# =============================================================================
 
-# -- Enable the Integrity Service for lineage and verifiable credentials
+# -- Enable Service
+# @default -- `true`
+# Enable the Integrity Service for lineage and verifiable credentials
 enabled: true
 
-# -- Number of pod replicas to run (ignored if autoscaling.enabled is true)
+# -- Replica Count
+# @default -- `1`
+# Number of pod replicas to run (ignored if autoscaling.enabled is true)
 replicaCount: 1
 
+# -- Image Configuration
+# @default -- See values below
+# Container image settings for the Integrity Service
 image:
-  # -- Container image repository
+  # -- Image Repository
+  # @default -- `ghcr.io/eqtylab/integrity-service`
   repository: ghcr.io/eqtylab/integrity-service
-  # -- Image pull policy (IfNotPresent | Always | Never)
+  # -- Image Pull Policy
+  # @default -- `IfNotPresent`
+  # Options: IfNotPresent, Always, Never
   pullPolicy: IfNotPresent
-  # -- Image tag override (defaults to chart appVersion if empty)
+  # -- Image Tag
+  # @default -- `""` (uses chart appVersion)
   tag: ""
 
-# -- Image pull secrets for private registries
-# @default -- Populated from global.secrets.imageRegistry.secretName in templates
+# -- Image Pull Secrets
+# @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+# Additional secrets for pulling images from private registries
 imagePullSecrets: []
 
-# -- Override the chart name used for resource naming
+# -- Name Override
+# @default -- `""`
+# Override the chart name used for resource naming
 nameOverride: ""
-# -- Override the full name used for resource naming
+
+# -- Full Name Override
+# @default -- `""`
+# Override the full name used for resource naming
 fullnameOverride: ""
 
+# -- Service Account Configuration
+# @default -- See values below
 serviceAccount:
-  # -- Create a ServiceAccount for the deployment
+  # -- Create Service Account
+  # @default -- `false`
   create: false
-  # -- Automatically mount a ServiceAccount's API credentials
+  # -- Automount API Credentials
+  # @default -- `true`
   automount: true
-  # -- Annotations to add to the ServiceAccount
+  # -- Service Account Annotations
+  # @default -- `{}`
   annotations: {}
-  # -- Name of an existing ServiceAccount to use (generated if empty and create is true)
+  # -- Service Account Name
+  # @default -- `""` (generated if create is true)
   name: ""
 
-# -- Additional annotations to add to pods
+# -- Pod Annotations
+# @default -- `{}`
+# Additional annotations to add to pods
 podAnnotations: {}
 
-# -- Additional labels to add to pods
+# -- Pod Labels
+# @default -- `{}`
+# Additional labels to add to pods
 podLabels: {}
 
-# -- Security context applied at the pod level
+# -- Pod Security Context
+# @default -- `{}`
+# Security context applied at the pod level
 podSecurityContext: {}
   # fsGroup: 2000
 
-# -- Security context applied at the container level
+# -- Container Security Context
+# @default -- See values below
+# Security context applied at the container level
 securityContext:
-  # Read-only root filesystem disabled to allow Rust app file operations
+  # -- Read-Only Root Filesystem
+  # @default -- `false`
+  # Disabled to allow Rust app file operations
   readOnlyRootFilesystem: false
 
+# -- Service Configuration
+# @default -- See values below
 service:
-  # -- Create a Kubernetes Service
+  # -- Enable Service
+  # @default -- `true`
   enabled: true
-  # -- Service type (ClusterIP | NodePort | LoadBalancer)
+  # -- Service Type
+  # @default -- `ClusterIP`
+  # Options: ClusterIP, NodePort, LoadBalancer
   type: ClusterIP
-  # -- Service port
+  # -- Service Port
+  # @default -- `3050`
   port: 3050
 
+# -- Ingress Configuration
+# @default -- See values below
 ingress:
-  # -- Create an Ingress resource for external access
+  # -- Enable Ingress
+  # @default -- `false`
   enabled: false
-  # -- IngressClass name (e.g., "nginx", "traefik")
+  # -- Ingress Class Name
+  # @default -- `""`
+  # Example: "nginx", "traefik"
   className: ""
-  # -- Additional annotations for the Ingress resource
+  # -- Ingress Annotations
+  # @default -- `{}`
   annotations: {}
     # cert-manager.io/issuer: "letsencrypt-prod"
     # nginx.ingress.kubernetes.io/rewrite-target: /$2
     # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-  # -- Ingress host configuration
+  # -- Ingress Hosts
+  # @default -- See values below
   hosts:
     - host: governance.example.com
       paths:
         # Path uses regex for nginx rewrite - requires rewrite-target annotation
         - path: "/integrityService(/|$)(.*)"
           pathType: ImplementationSpecific
-  # -- TLS configuration
+  # -- TLS Configuration
+  # @default -- `[]`
   tls: []
     # - secretName: integrity-service-tls
     #   hosts:
     #     - governance.example.com
 
-# -- Resource requests and limits
+# -- Resource Configuration
+# @default -- `{}`
+# CPU and memory resource requests and limits
 resources: {}
   # requests:
   #   cpu: 100m
@@ -90,34 +146,53 @@ resources: {}
   #   cpu: 500m
   #   memory: 512Mi
 
-# Horizontal Pod Autoscaler - automatically scales pods based on resource usage
+# -- Autoscaling Configuration
+# @default -- See values below
 autoscaling:
-  # -- Enable Horizontal Pod Autoscaler
+  # -- Enable Autoscaling
+  # @default -- `false`
   enabled: false
-  # -- Minimum number of replicas
+  # -- Minimum Replicas
+  # @default -- `1`
   minReplicas: 1
-  # -- Maximum number of replicas
+  # -- Maximum Replicas
+  # @default -- `100`
   maxReplicas: 100
-  # -- Target CPU utilization percentage
+  # -- Target CPU Utilization
+  # @default -- `80`
   targetCPUUtilizationPercentage: 80
-  # -- Target memory utilization percentage
+  # -- Target Memory Utilization
+  # @default -- `80`
   targetMemoryUtilizationPercentage: 80
 
-# Pod Disruption Budget - maintains availability during cluster disruptions
+# -- Pod Disruption Budget
+# @default -- See values below
 podDisruptionBudget:
-  # -- Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1)
+  # -- Enable PDB
+  # @default -- `false`
+  enabled: false
+  # -- Minimum Available
+  # @default -- `1`
+  # Note: typically only applied when autoscaling is enabled or replicaCount > 1
   minAvailable: 1
 
-# -- Node labels for pod assignment
+# -- Node Selector
+# @default -- `{}`
+# Node labels for pod assignment
 nodeSelector: {}
 
-# -- Tolerations for pod assignment
+# -- Tolerations
+# @default -- `[]`
+# Tolerations for pod assignment
 tolerations: []
 
-# -- Affinity rules for pod assignment
+# -- Affinity
+# @default -- `{}`
+# Affinity rules for pod assignment
 affinity: {}
 
-# -- Startup probe configuration
+# -- Startup Probe
+# @default -- See values below
 startupProbe:
   httpGet:
     path: /health/v1
@@ -125,7 +200,8 @@ startupProbe:
   failureThreshold: 30
   periodSeconds: 10
 
-# -- Liveness probe configuration
+# -- Liveness Probe
+# @default -- See values below
 livenessProbe:
   httpGet:
     path: /health/v1
@@ -134,7 +210,8 @@ livenessProbe:
   periodSeconds: 10
   failureThreshold: 3
 
-# -- Readiness probe configuration
+# -- Readiness Probe
+# @default -- See values below
 readinessProbe:
   httpGet:
     path: /health/v1
@@ -146,205 +223,169 @@ readinessProbe:
 # =============================================================================
 # PERSISTENCE CONFIGURATION
 # =============================================================================
-
 persistence:
-  # -- Enable persistent volume for integrity data
+  # -- Enable Persistence
+  # @default -- `false`
+  # Enable persistent volume for integrity data
   enabled: false
-  # -- Integrity data volume configuration
+
+  # -- Integrity Data Volume
+  # @default -- See values below
   integrity:
-    # -- Container mount path for integrity data
+    # -- Mount Path
+    # @default -- `/data/integrity`
     mountPath: /data/integrity
-    # -- Host path for integrity data storage (only used when persistence.enabled is true)
+    # -- Host Path
+    # @default -- `/var/lib/integrity`
+    # Only used when persistence.enabled is true
     hostPath: /var/lib/integrity
 
 # =============================================================================
 # APPLICATION CONFIGURATION
 # =============================================================================
-
-env:
-  # -- Rust application environment (development | staging | production)
-  # @default -- Populated from global.environmentType in templates
+config:
+  # -- Rust Environment
+  # @default -- `""` (auto-configured from global.environmentType)
   rustEnv: ""
 
+  # ---------------------------------------------------------------------------
   # Database Configuration
-  # -- Database host
-  # @default -- Generated as "{Release.Name}-postgresql" in templates
+  # ---------------------------------------------------------------------------
+
+  # -- Database Host
+  # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
   integrityAppDbHost: ""
-  # -- Database name
+
+  # -- Database Name
+  # @default -- `IntegrityServiceDB`
   integrityAppDbName: "IntegrityServiceDB"
-  # -- Database user
-  # @default -- Populated from global.postgresql.username in templates
+
+  # -- Database User
+  # @default -- `""` (auto-configured from global.postgresql.username)
   integrityAppDbUser: ""
-  # -- Database password (leave empty to use secret reference)
-  # @default -- Secret reference (populated from secrets.database in templates)
+
+  # -- Database Password
+  # @default -- `""` (auto-configured from secrets.database)
+  # Leave empty to use secret reference (recommended)
   integrityAppDbPassword: ""
 
+  # ---------------------------------------------------------------------------
   # Storage Configuration
-  # -- Blob storage backend type (aws_s3 | azure_blob)
-  # @default -- `""` (must be set explicitly for this service)
+  # ---------------------------------------------------------------------------
+
+  # -- Blob Store Type
+  # @default -- `""`
+  # **REQUIRED**: Blob storage backend type
+  # Options: aws_s3, azure_blob
   integrityAppBlobStoreType: ""
 
-  # AWS S3 Configuration (only used when integrityAppBlobStoreType is "aws_s3")
-  # -- AWS region
-  # @default -- `""` (must be set when using AWS S3)
+  # -- AWS S3 Region
+  # @default -- `""`
+  # **REQUIRED for S3**: AWS region (e.g., "us-east-1")
+  # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreRegion: ""
-  # -- AWS S3 bucket name
-  # @default -- `""` (must be set when using AWS S3)
+
+  # -- AWS S3 Bucket
+  # @default -- `""`
+  # **REQUIRED for S3**: Bucket name
+  # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreBucket: ""
-  # -- AWS S3 folder/prefix
-  # @default -- `""` (optional prefix for S3 objects)
+
+  # -- AWS S3 Folder
+  # @default -- `""`
+  # Optional S3 folder/prefix
+  # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreFolder: ""
-  # -- AWS access key ID (leave empty to use secret reference)
-  # @default -- Secret reference (populated from secrets.storage.aws_s3 in templates)
+
+  # -- AWS Access Key ID
+  # @default -- `""` (auto-configured from secrets.storage.aws_s3)
+  # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreAccessKeyId: ""
-  # -- AWS secret access key (leave empty to use secret reference)
-  # @default -- Secret reference (populated from secrets.storage.aws_s3 in templates)
+
+  # -- AWS Secret Access Key
+  # @default -- `""` (auto-configured from secrets.storage.aws_s3)
+  # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreSecretAccessKey: ""
 
-  # Azure Blob Storage Configuration (only used when integrityAppBlobStoreType is "azure_blob")
-  # -- Azure storage account name (leave empty to use secret reference)
-  # @default -- Secret reference (populated from secrets.storage.azure_blob in templates)
+  # -- Azure Storage Account
+  # @default -- `""` (auto-configured from secrets.storage.azure_blob)
+  # Only used when integrityAppBlobStoreType is "azure_blob"
   integrityAppBlobStoreAccount: ""
-  # -- Azure blob container name
-  # @default -- `""` (must be set when using Azure Blob Storage)
+
+  # -- Azure Container Name
+  # @default -- `""`
+  # **REQUIRED for Azure**: Container name
+  # Only used when integrityAppBlobStoreType is "azure_blob"
   integrityAppBlobStoreContainer: ""
-  # -- Azure storage account key (leave empty to use secret reference)
+
+  # -- Azure Storage Account Key
+  # @default -- `""` (auto-configured from secrets.storage.azure_blob)
+  # Only used when integrityAppBlobStoreType is "azure_blob"
   integrityAppBlobStoreKey: ""
 
+  # ---------------------------------------------------------------------------
   # Logging Configuration
-  # -- Default log level (trace | debug | info | warn | error)
+  # ---------------------------------------------------------------------------
+
+  # -- Default Log Level
+  # @default -- `warn`
+  # Options: trace, debug, info, warn, error
   integrityAppLoggingLogLevelDefault: "warn"
-  # -- Integrity service specific log level (trace | debug | info | warn | error)
+
+  # -- Service Log Level
+  # @default -- `trace`
+  # Integrity service specific log level
+  # Options: trace, debug, info, warn, error
   integrityAppLoggingLogLevelIntegrityService: "trace"
 
+  # ---------------------------------------------------------------------------
   # Authentication Configuration
-  # -- Authentication type (auth_service)
+  # ---------------------------------------------------------------------------
+
+  # -- Auth Type
+  # @default -- `auth_service`
   integrityAppAuthType: "auth_service"
-  # -- Auth service URL for authentication
-  # @default -- Generated as "http://{Release.Name}-auth-service:8080" in templates
+
+  # -- Auth Service URL
+  # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
   integrityAppAuthUrl: ""
 
-  # Legacy Key Vault Configuration (Azure Key Vault)
-  # NOTE: Deprecated - kept for backward compatibility during auth-service migration
-  # -- Azure Key Vault tenant ID (legacy - still needed until full auth-service migration)
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppKeyVaultTenantId: ""
-  # -- Azure Key Vault client ID (legacy - still needed until full auth-service migration)
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppKeyVaultClientId: ""
-  # -- Azure Key Vault URL (legacy - still needed until full auth-service migration)
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppKeyVaultVaultUrl: ""
-  # -- Azure Key Vault client secret (leave empty to use secret reference)
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppKeyVaultClientSecret: ""
-
-  # Auth Signer Configuration (Azure Key Vault)
-  # NOTE: Active configuration for credential signing (uses same Azure Key Vault credentials)
-  # -- Auth Signer backend type (azure_key_vault)
-  # @default -- Populated from global.secrets.secretManager.provider in templates
-  integrityAppAuthSignerConfigType: ""
-  # -- Azure Key Vault tenant ID (only used when integrityAppAuthSignerConfigType is "azure_key_vault")
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppAuthSignerConfigTenantId: ""
-  # -- Azure Key Vault client ID (only used when integrityAppAuthSignerConfigType is "azure_key_vault")
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppAuthSignerConfigClientId: ""
-  # -- Azure Key Vault URL (only used when integrityAppAuthSignerConfigType is "azure_key_vault")
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppAuthSignerConfigVaultUrl: ""
-  # -- Azure Key Vault client secret (leave empty to use secret reference)
-  # @default -- Secret reference (populated from secrets.secretManager.azure_key_vault in templates)
-  integrityAppAuthSignerConfigClientSecret: ""
-
+  # ---------------------------------------------------------------------------
   # Service URL Configuration
-  # -- Public URL for this service
-  # @default -- Generated from global.domain and ingress path in templates
+  # ---------------------------------------------------------------------------
+
+  # -- Integrity Service URL
+  # @default -- `""` (auto-generated from global.domain)
+  # Public URL for this service
   integrityServiceUrl: ""
 
 # =============================================================================
-# SECRET CONFIGURATION
+# SECRETS CONFIGURATION
 # =============================================================================
-
 secrets:
-  # Database credentials
+  # -- Database Secret
+  # @default -- See values below
   database:
-    # -- Enable database credentials secret
-    # @default -- Auto-enabled when deployed via umbrella chart
-    enabled: false
-    # -- Secret name containing database credentials
-    # @default -- Populated from global.secrets.database.secretName in templates
+    # -- Secret Name
+    # @default -- `""` (auto-configured from global.secrets.database.secretName)
     name: ""
-    # Secret keys
-    keys:
-      # -- Secret key name for database username
-      # @default -- Populated from global.secrets.database.keys.username in templates
-      username: "username"
-      # -- Secret key name for database password
-      # @default -- Populated from global.secrets.database.keys.password in templates
-      password: "password"
 
-  # Storage credentials (provider-specific)
+  # -- Storage Secrets
+  # @default -- See values below
+  # Only configure the section matching your storage provider
   storage:
-    # AWS S3 credentials (only used when integrityAppBlobStoreType is "aws_s3")
-    aws_s3:
-      # -- Enable AWS credentials secret
-      # @default -- Auto-enabled when integrityAppBlobStoreType is "aws_s3"
-      enabled: false
-      # -- Secret name containing AWS credentials
-      # @default -- Populated from global.secrets.storage.aws_s3.secretName in templates
-      name: ""
-      # Secret keys
-      keys:
-        # -- Secret key name for AWS access key ID
-        # @default -- Populated from global.secrets.storage.aws_s3.keys.accessKeyId in templates
-        accessKeyId: "access-key-id"
-        # -- Secret key name for AWS secret access key
-        # @default -- Populated from global.secrets.storage.aws_s3.keys.secretAccessKey in templates
-        secretAccessKey: "secret-access-key"
-
-    # Azure Blob Storage credentials (only used when integrityAppBlobStoreType is "azure_blob")
+    # -- Azure Blob Storage Secret
+    # @default -- See values below
+    # Only used when integrityAppBlobStoreType is "azure_blob"
     azure_blob:
-      # -- Enable Azure Blob Storage credentials secret
-      # @default -- Auto-enabled when integrityAppBlobStoreType is "azure_blob"
-      enabled: false
-      # -- Secret name containing Azure Blob Storage credentials
-      # @default -- Populated from global.secrets.storage.azure_blob.secretName in templates
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
       name: ""
-      # Secret keys
-      keys:
-        # -- Secret key name for Azure storage account name
-        # @default -- Populated from global.secrets.storage.azure_blob.keys.accountName in templates
-        accountName: "account-name"
-        # -- Secret key name for Azure storage account key
-        # @default -- Populated from global.secrets.storage.azure_blob.keys.accountKey in templates
-        accountKey: "account-key"
-        # -- Secret key name for Azure storage connection string
-        # @default -- Populated from global.secrets.storage.azure_blob.keys.connectionString in templates
-        connectionString: "connection-string"
 
-  # Secret manager credentials
-  # Note: Used for both key_vault and auth_signer_config (same credentials)
-  secretManager:
-    # Azure Key Vault credentials
-    azure_key_vault:
-      # -- Enable Azure Key Vault credentials secret
-      # @default -- Auto-enabled when global.secrets.secretManager.provider is "azure_key_vault"
-      enabled: false
-      # -- Secret name containing Azure Key Vault credentials
-      # @default -- Populated from global.secrets.secretManager.azure_key_vault.secretName in templates
+    # -- AWS S3 Secret
+    # @default -- See values below
+    # Only used when integrityAppBlobStoreType is "aws_s3"
+    aws_s3:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
       name: ""
-      # Secret keys
-      keys:
-        # -- Secret key name for Azure client ID
-        # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.clientId in templates
-        clientId: "client-id"
-        # -- Secret key name for Azure client secret
-        # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.clientSecret in templates
-        clientSecret: "client-secret"
-        # -- Secret key name for Azure tenant ID
-        # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.tenantId in templates
-        tenantId: "tenant-id"
-        # -- Secret key name for Azure Key Vault URL
-        # @default -- Populated from global.secrets.secretManager.azure_key_vault.keys.vaultUrl in templates
-        vaultUrl: "vault-url"

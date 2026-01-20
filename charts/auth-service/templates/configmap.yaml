@@ -115,8 +115,6 @@ data:
   # ==========================================================================
   # Service Integration Configuration
   # ==========================================================================
-  {{- $integrityServiceUrl := .Values.config.integrations.integrityServiceUrl | default (printf "http://%s-integrity-service:3050" .Release.Name) }}
-  INTEGRITY_SERVICE_URL: "{{ $integrityServiceUrl }}"
   {{- $governanceServiceUrl := .Values.config.integrations.governanceServiceUrl | default (printf "http://%s-governance-service:10001" .Release.Name) }}
   GOVERNANCE_SERVICE_URL: "{{ $governanceServiceUrl }}"
 

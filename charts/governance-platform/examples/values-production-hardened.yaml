@@ -165,6 +165,7 @@ governance-studio:
     targetMemoryUtilizationPercentage: 70
 
   podDisruptionBudget:
+    enabled: true
     minAvailable: 3
 
   affinity:
@@ -352,6 +353,7 @@ governance-service:
     targetMemoryUtilizationPercentage: 70
 
   podDisruptionBudget:
+    enabled: true
     minAvailable: 3
 
   affinity:
@@ -469,7 +471,7 @@ integrity-service:
         hosts:
           - governance.production-domain.com
 
-  env:
+  config:
     rustEnv: "production"
     integrityAppDbHost: "prod-postgres.internal"
     integrityAppBlobStoreType: "aws_s3"
@@ -496,6 +498,7 @@ integrity-service:
     targetMemoryUtilizationPercentage: 70
 
   podDisruptionBudget:
+    enabled: true
     minAvailable: 3
 
   affinity:

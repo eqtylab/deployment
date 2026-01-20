@@ -59,7 +59,6 @@ config:
       tenantId: "your-azure-tenant-id"
 
   integrations:
-    integrityServiceUrl: "http://governance-platform-integrity-service:3050"
     governanceServiceUrl: "http://governance-platform-governance-service:10001"
 
   serviceAccounts:
@@ -108,39 +107,23 @@ migrations:
 # =============================================================================
 
 secrets:
+  # Auth0 credentials
   auth:
-    name: "prod-auth0-credentials"
-    keys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      managementClientId: "mgmt-client-id"
-      managementClientSecret: "mgmt-client-secret"
+    auth0:
+      name: "prod-auth0-credentials"
 
-  security:
+  # Auth service credentials
+  authService:
     name: "prod-auth-service-security"
-    keys:
-      apiSecret: "api-secret"
-      jwtSecret: "jwt-secret"
 
-  session:
-    name: "prod-auth-service-security"
-    keys:
-      secret: "session-secret"
+  # Secret manager credentials
+  secretManager:
+    azure_key_vault:
+      name: "prod-azure-keyvault"
 
-  keyVault:
-    name: "prod-azure-keyvault"
-    keys:
-      clientId: "client-id"
-      clientSecret: "client-secret"
-      tenantId: "tenant-id"
-      vaultUrl: "vault-url"
-
-  worker:
+  # Governance worker credentials
+  governanceWorker:
     name: "prod-governance-worker"
-    keys:
-      encryptionKey: "encryption-key"
-      clientId: "client-id"
-      clientSecret: "client-secret"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION
@@ -394,14 +377,6 @@ networkPolicy:
       ports:
         - protocol: TCP
           port: 443
-    # Internal services
-    - to:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: integrity-service
-      ports:
-        - protocol: TCP
-          port: 3050
     - to:
         - podSelector:
             matchLabels:
