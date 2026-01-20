@@ -1,0 +1,126 @@
+{{- if .Values.bootstrap.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "keycloak-bootstrap.fullname" . }}
+  labels:
+    {{- include "keycloak-bootstrap.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "10"
+spec:
+  backoffLimit: {{ .Values.bootstrap.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.bootstrap.ttlSecondsAfterFinished }}
+  activeDeadlineSeconds: {{ .Values.bootstrap.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "keycloak-bootstrap.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: bootstrap
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.bootstrap.securityContext | nindent 8 }}
+      {{- if .Values.bootstrap.wait.enabled }}
+      initContainers:
+        - name: wait-for-keycloak
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              echo "Waiting for Keycloak to be ready..."
+              attempt=0
+              max_attempts={{ .Values.bootstrap.wait.maxAttempts }}
+              while ! wget -q --spider {{ .Values.keycloak.healthUrl }}; do
+                attempt=$((attempt + 1))
+                if [ $attempt -eq $max_attempts ]; then
+                  echo "Keycloak failed to become ready after $max_attempts attempts"
+                  echo "Keycloak URL: {{ .Values.keycloak.healthUrl }}"
+                  exit 1
+                fi
+                echo "Attempt $attempt/$max_attempts: Keycloak not ready yet..."
+                sleep {{ .Values.bootstrap.wait.sleepSeconds }}
+              done
+              echo "Keycloak is ready!"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      {{- end }}
+      containers:
+        - name: bootstrap
+          image: "{{ .Values.bootstrap.image.repository }}:{{ .Values.bootstrap.image.tag }}"
+          imagePullPolicy: {{ .Values.bootstrap.image.pullPolicy }}
+          {{- if .Values.bootstrap.command }}
+          command: {{ .Values.bootstrap.command | toJson }}
+          {{- else }}
+          command: ["/bin/sh"]
+          {{- end }}
+          {{- if .Values.bootstrap.args }}
+          args: {{ .Values.bootstrap.args | toJson }}
+          {{- else }}
+          args: ["/scripts/bootstrap.sh"]
+          {{- end }}
+          env:
+            - name: KEYCLOAK_URL
+              value: "{{ .Values.keycloak.url }}"
+            - name: KEYCLOAK_ADMIN_USERNAME
+              value: "{{ .Values.keycloak.adminUsername }}"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.adminPasswordSecret.name }}
+                  key: {{ .Values.keycloak.adminPasswordSecret.key }}
+            {{- if .Values.clients.backend.secretName }}
+            - name: BACKEND_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.clients.backend.secretName }}
+                  key: {{ .Values.clients.backend.secretKey }}
+            {{- end }}
+            {{- if .Values.clients.worker.secretName }}
+            - name: WORKER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.clients.worker.secretName }}
+                  key: {{ .Values.clients.worker.secretKey }}
+            {{- end }}
+            {{- if .Values.users.admin.enabled }}
+            - name: ADMIN_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.users.admin.secretName }}
+                  key: {{ .Values.users.admin.secretKey }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.bootstrap.resources | nindent 12 }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: output
+              mountPath: /output
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "keycloak-bootstrap.fullname" . }}-scripts
+            defaultMode: 0755
+        - name: output
+          emptyDir: {}
+{{- end }}

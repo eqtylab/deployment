@@ -1,0 +1,358 @@
+{{- if .Values.bootstrap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "keycloak-bootstrap.fullname" . }}-scripts
+  labels:
+    {{- include "keycloak-bootstrap.labels" . | nindent 4 }}
+data:
+  bootstrap.sh: |
+    #!/bin/sh
+    set -e
+
+    # Colors for output
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    NC='\033[0m' # No Color
+
+    # Configuration from environment
+    KEYCLOAK_URL="${KEYCLOAK_URL}"
+    KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN_USERNAME}"
+    KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD}"
+    REALM_NAME="{{ .Values.keycloak.realm.name }}"
+
+    echo "Starting Keycloak bootstrap process..."
+    echo "Keycloak URL: ${KEYCLOAK_URL}"
+    echo "Realm: ${REALM_NAME}"
+
+    # Function to get admin token
+    get_admin_token() {
+      echo "Getting admin token..."
+      TOKEN=$(curl -s -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username=${KEYCLOAK_ADMIN}" \
+        -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+        -d "grant_type=password" \
+        -d "client_id=admin-cli" | jq -r '.access_token')
+
+      if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
+        echo "Failed to get admin token"
+        return 1
+      fi
+      echo "Successfully obtained admin token"
+      return 0
+    }
+
+    # Function to check if realm exists
+    check_realm_exists() {
+      echo "Checking if realm ${REALM_NAME} exists..."
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}")
+
+      if [ "$RESPONSE" = "200" ]; then
+        echo "Realm ${REALM_NAME} already exists"
+        return 0
+      else
+        echo "Realm ${REALM_NAME} does not exist"
+        return 1
+      fi
+    }
+
+    # Function to create realm
+    create_realm() {
+      echo "Creating realm ${REALM_NAME}..."
+      REALM_CONFIG=$(cat <<EOF
+    {
+      "realm": "${REALM_NAME}",
+      "displayName": "{{ .Values.keycloak.realm.displayName }}",
+      "enabled": true,
+      "registrationAllowed": {{ .Values.keycloak.realm.registrationAllowed }},
+      "loginWithEmailAllowed": {{ .Values.keycloak.realm.loginWithEmailAllowed }},
+      "duplicateEmailsAllowed": false,
+      "resetPasswordAllowed": {{ .Values.keycloak.realm.resetPasswordAllowed }},
+      "rememberMe": {{ .Values.keycloak.realm.rememberMe }},
+      "verifyEmail": {{ .Values.keycloak.realm.verifyEmail }},
+      "sslRequired": "{{ .Values.keycloak.realm.sslRequired }}",
+      "bruteForceProtected": {{ .Values.keycloak.realm.bruteForceProtected }},
+      "accessTokenLifespan": {{ .Values.keycloak.tokens.accessTokenLifespan }},
+      "ssoSessionIdleTimeout": {{ .Values.keycloak.tokens.ssoSessionIdleTimeout }},
+      "ssoSessionMaxLifespan": {{ .Values.keycloak.tokens.ssoSessionMaxLifespan }},
+      "internationalizationEnabled": false,
+      "defaultSignatureAlgorithm": "RS256"
+    }
+    EOF
+    )
+
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${KEYCLOAK_URL}/admin/realms" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${REALM_CONFIG}")
+
+      if [ "$RESPONSE" = "201" ]; then
+        echo "Realm created successfully"
+        return 0
+      else
+        echo "Failed to create realm. Response code: $RESPONSE"
+        return 1
+      fi
+    }
+
+    # Function to create client scope
+    create_client_scope() {
+      local SCOPE_NAME=$1
+      local SCOPE_DESC=$2
+
+      echo "Creating client scope: ${SCOPE_NAME}..."
+      SCOPE_CONFIG=$(cat <<EOF
+    {
+      "name": "${SCOPE_NAME}",
+      "description": "${SCOPE_DESC}",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      }
+    }
+    EOF
+    )
+
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/client-scopes" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${SCOPE_CONFIG}")
+
+      if [ "$RESPONSE" = "201" ]; then
+        echo "  Created scope: ${SCOPE_NAME}"
+      elif [ "$RESPONSE" = "409" ]; then
+        echo "  Scope already exists: ${SCOPE_NAME}"
+      else
+        echo "  Failed to create scope: ${SCOPE_NAME} (Response: $RESPONSE)"
+      fi
+    }
+
+    # Function to create client
+    create_client() {
+      local CLIENT_ID=$1
+      local CLIENT_NAME=$2
+      local CLIENT_DESC=$3
+      local PUBLIC_CLIENT=$4
+      local SERVICE_ACCOUNT=$5
+      local CLIENT_SECRET=$6
+      local REDIRECT_URIS=$7
+      local WEB_ORIGINS=$8
+
+      echo "Creating client: ${CLIENT_ID}..."
+
+      # Build redirect URIs array
+      REDIRECT_URIS_JSON="[]"
+      if [ -n "$REDIRECT_URIS" ]; then
+        REDIRECT_URIS_JSON=$(echo "$REDIRECT_URIS" | jq -R -s -c 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+      fi
+
+      # Build web origins array
+      WEB_ORIGINS_JSON="[]"
+      if [ -n "$WEB_ORIGINS" ]; then
+        WEB_ORIGINS_JSON=$(echo "$WEB_ORIGINS" | jq -R -s -c 'split(",") | map(gsub("^\\s+|\\s+$";""))')
+      fi
+
+      CLIENT_CONFIG=$(cat <<EOF
+    {
+      "clientId": "${CLIENT_ID}",
+      "name": "${CLIENT_NAME}",
+      "description": "${CLIENT_DESC}",
+      "enabled": true,
+      "publicClient": ${PUBLIC_CLIENT},
+      "serviceAccountsEnabled": ${SERVICE_ACCOUNT},
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "redirectUris": ${REDIRECT_URIS_JSON},
+      "webOrigins": ${WEB_ORIGINS_JSON},
+      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "optionalClientScopes": ["offline_access"]
+    }
+    EOF
+    )
+
+      # Add secret if not public client
+      if [ "$PUBLIC_CLIENT" = "false" ] && [ -n "$CLIENT_SECRET" ]; then
+        CLIENT_CONFIG=$(echo "$CLIENT_CONFIG" | jq --arg secret "$CLIENT_SECRET" '. + {secret: $secret}')
+      fi
+
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${CLIENT_CONFIG}")
+
+      if [ "$RESPONSE" = "201" ]; then
+        echo "  Client created successfully"
+        return 0
+      elif [ "$RESPONSE" = "409" ]; then
+        echo "  Client already exists"
+        return 0
+      else
+        echo "  Failed to create client. Response code: $RESPONSE"
+        return 1
+      fi
+    }
+
+    # Function to create user
+    create_user() {
+      local USERNAME=$1
+      local EMAIL=$2
+      local FIRST_NAME=$3
+      local LAST_NAME=$4
+      local PASSWORD=$5
+      local TEMP_PASSWORD=$6
+
+      echo "Creating user: ${USERNAME}..."
+
+      USER_CONFIG=$(cat <<EOF
+    {
+      "username": "${USERNAME}",
+      "email": "${EMAIL}",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "${FIRST_NAME}",
+      "lastName": "${LAST_NAME}",
+      "credentials": [{
+        "type": "password",
+        "value": "${PASSWORD}",
+        "temporary": ${TEMP_PASSWORD}
+      }]
+    }
+    EOF
+    )
+
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${USER_CONFIG}")
+
+      if [ "$RESPONSE" = "201" ]; then
+        echo "  User created successfully"
+        return 0
+      elif [ "$RESPONSE" = "409" ]; then
+        echo "  User already exists"
+        return 0
+      else
+        echo "  Failed to create user. Response code: $RESPONSE"
+        return 1
+      fi
+    }
+
+    # Main bootstrap process
+    main() {
+      # Get admin token
+      if ! get_admin_token; then
+        echo "Failed to authenticate with Keycloak"
+        exit 1
+      fi
+
+      # Create or update realm
+      if ! check_realm_exists; then
+        if ! create_realm; then
+          echo "Failed to create realm"
+          exit 1
+        fi
+      fi
+
+      # Create client scopes
+      {{- range .Values.scopes }}
+      create_client_scope "{{ .name }}" "{{ .description }}"
+      {{- end }}
+
+      # Create frontend client
+      {{- with .Values.clients.frontend }}
+      create_client \
+        "{{ .clientId }}" \
+        "{{ .name }}" \
+        "{{ .description }}" \
+        "{{ .publicClient }}" \
+        "false" \
+        "" \
+        "{{ join "," .redirectUris }}" \
+        "{{ join "," .webOrigins }}"
+      {{- end }}
+
+      # Create backend client
+      {{- with .Values.clients.backend }}
+      BACKEND_SECRET="${BACKEND_CLIENT_SECRET}"
+      create_client \
+        "{{ .clientId }}" \
+        "{{ .name }}" \
+        "{{ .description }}" \
+        "{{ .publicClient }}" \
+        "{{ .serviceAccountsEnabled }}" \
+        "${BACKEND_SECRET}" \
+        "{{ join "," .redirectUris }}" \
+        "{{ join "," .webOrigins }}"
+      {{- end }}
+
+      # Create worker client
+      {{- with .Values.clients.worker }}
+      WORKER_SECRET="${WORKER_CLIENT_SECRET}"
+      create_client \
+        "{{ .clientId }}" \
+        "{{ .name }}" \
+        "{{ .description }}" \
+        "{{ .publicClient }}" \
+        "{{ .serviceAccountsEnabled }}" \
+        "${WORKER_SECRET}" \
+        "" \
+        ""
+      {{- end }}
+
+      # Create admin user
+      {{- if .Values.users.admin.enabled }}
+      ADMIN_PASSWORD="${ADMIN_USER_PASSWORD}"
+      create_user \
+        "{{ .Values.users.admin.username }}" \
+        "{{ .Values.users.admin.email }}" \
+        "{{ .Values.users.admin.firstName }}" \
+        "{{ .Values.users.admin.lastName }}" \
+        "${ADMIN_PASSWORD}" \
+        "{{ not .Values.users.admin.temporaryPassword }}"
+      {{- end }}
+
+      # Create test users
+      {{- if .Values.users.testUsers.enabled }}
+      {{- range .Values.users.testUsers.users }}
+      create_user \
+        "{{ .username }}" \
+        "{{ .email }}" \
+        "{{ .firstName }}" \
+        "{{ .lastName }}" \
+        "{{ .password }}" \
+        "false"
+      {{- end }}
+      {{- end }}
+
+      echo "Keycloak bootstrap completed successfully!"
+
+      # Generate output files if requested
+      {{- if .Values.output.generateEnvFile }}
+      echo "Generating environment configuration..."
+      cat > /output/.env.keycloak <<EOF
+    # Keycloak Configuration
+    KEYCLOAK_URL=${KEYCLOAK_URL}
+    KEYCLOAK_REALM=${REALM_NAME}
+    KEYCLOAK_CLIENT_ID={{ .Values.clients.frontend.clientId }}
+    KEYCLOAK_ADMIN_CLIENT_ID={{ .Values.clients.backend.clientId }}
+    KEYCLOAK_ADMIN_CLIENT_SECRET=${BACKEND_SECRET}
+    KEYCLOAK_WORKER_CLIENT_ID={{ .Values.clients.worker.clientId }}
+    KEYCLOAK_WORKER_CLIENT_SECRET=${WORKER_SECRET}
+    EOF
+      echo "Environment configuration saved to /output/.env.keycloak"
+      {{- end }}
+    }
+
+    # Run main function
+    main
+{{- end }}
