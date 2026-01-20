@@ -33,6 +33,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE="governance"
 REALM_NAME="governance"
 ENVIRONMENT="dev"
+OVERRIDE_KEYCLOAK_URL=""
 
 # Function to print usage
 usage() {
@@ -40,9 +41,10 @@ usage() {
   echo ""
   echo "Options:"
   echo "  -n, --namespace <namespace>    Kubernetes namespace (default: $NAMESPACE)"
-  echo "  -r, --realm <realm>           Keycloak realm name (default: $REALM_NAME)"
-  echo "  -e, --env <environment>       Environment: dev|stag|prod (default: $ENVIRONMENT)"
-  echo "  -h, --help                   Show this help message"
+  echo "  -r, --realm <realm>            Keycloak realm name (default: $REALM_NAME)"
+  echo "  -e, --env <environment>        Environment: dev|stag|prod (default: $ENVIRONMENT)"
+  echo "  -k, --keycloak-url <url>       Keycloak URL"
+  echo "  -h, --help                     Show this help message"
   echo ""
   echo "Example:"
   echo "  $0 --namespace governance-stag --realm governance --env stag"
@@ -61,6 +63,10 @@ while [[ $# -gt 0 ]]; do
     ;;
   -e | --env)
     ENVIRONMENT="$2"
+    shift 2
+    ;;
+  -k | --keycloak-url)
+    OVERRIDE_KEYCLOAK_URL="$2"
     shift 2
     ;;
   -h | --help)
@@ -141,18 +147,14 @@ get_postgres_password() {
   # Try common secret names
   local password=""
 
-  # Try compliance-secrets first
-  password=$(kubectl get secret -n "$NAMESPACE" compliance-secrets -o jsonpath="{.data.password}" 2>/dev/null | base64 -d)
-
-  if [ -z "$password" ]; then
-    # Try generic postgresql secret
-    password=$(kubectl get secret -n "$NAMESPACE" postgresql -o jsonpath="{.data.postgres-password}" 2>/dev/null | base64 -d)
-  fi
+  # Try platform-database first (current standard)
+  password=$(kubectl get secret -n "$NAMESPACE" platform-database -o jsonpath="{.data.password}" 2>/dev/null | base64 -d)
 
   if [ -z "$password" ]; then
     # List available secrets for debugging
-    echo -e "${YELLOW}Could not find PostgreSQL password. Available secrets:${NC}"
-    kubectl get secrets -n "$NAMESPACE" | grep -E "(postgres|sql)"
+    echo -e "${RED}Error: Could not find PostgreSQL password${NC}"
+    echo "Available secrets that might contain database credentials:"
+    kubectl get secrets -n "$NAMESPACE" | grep -E "(postgres|database|platform)"
     return 1
   fi
 
@@ -202,7 +204,7 @@ ensure_database_ready() {
 
   # 2. Give the app time to run migrations on startup
   echo "Waiting for application to initialize and run migrations..."
-  sleep 30
+  sleep 5
 
   # 3. Get database pod
   local db_pod=$(kubectl get pods -n "$NAMESPACE" -l "app.kubernetes.io/name=postgresql" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
@@ -262,35 +264,37 @@ create_organization() {
 
 # Function to get platform-admin Keycloak ID
 get_platform_admin_keycloak_id() {
-  echo -e "${YELLOW}Getting platform-admin user ID from Keycloak...${NC}"
+  echo -e "${YELLOW}Getting platform-admin user ID from Keycloak...${NC}" >&2
 
   # Get external Keycloak URL
-  local keycloak_url=""
+  local keycloak_url="$OVERRIDE_KEYCLOAK_URL"
   local ingress_host=$(kubectl get ingress -n "$NAMESPACE" -o jsonpath='{.items[0].spec.rules[0].host}' 2>/dev/null)
 
-  if [ -n "$ingress_host" ]; then
-    keycloak_url="https://$ingress_host/keycloak"
-  else
-    echo -e "${YELLOW}No ingress found, trying port-forward method${NC}"
-    # Start port-forward in background
-    kubectl port-forward -n "$NAMESPACE" svc/keycloak 8080:80 &>/dev/null &
-    local pf_pid=$!
-    sleep 3
-    keycloak_url="http://localhost:8080/keycloak"
+  if [ -z "$keycloak_url" ]; then
+    if [ -n "$ingress_host" ]; then
+      keycloak_url="https://$ingress_host/keycloak"
+    else
+      echo -e "${YELLOW}No ingress found, trying port-forward method${NC}" >&2
+      # Start port-forward in background
+      kubectl port-forward -n "$NAMESPACE" svc/keycloak 8080:80 &>/dev/null &
+      local pf_pid=$!
+      sleep 3
+      keycloak_url="http://localhost:8080/keycloak"
+    fi
   fi
 
   # Get admin password
   local admin_pass=$(kubectl get secret keycloak-admin -n "$NAMESPACE" -o jsonpath='{.data.password}' | base64 -d)
 
   if [ -z "$admin_pass" ]; then
-    echo -e "${YELLOW}Could not get admin password, using placeholder ID${NC}"
+    echo -e "${YELLOW}Could not get admin password, using placeholder ID${NC}" >&2
     [ -n "$pf_pid" ] && kill $pf_pid 2>/dev/null
     echo "00000000-0000-0000-0000-000000000000"
     return
   fi
 
   # Get admin token from master realm
-  echo "Getting admin token..."
+  echo "Getting admin token..." >&2
   local token_response=$(curl -sk -X POST "$keycloak_url/realms/master/protocol/openid-connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "username=admin" \
@@ -301,14 +305,14 @@ get_platform_admin_keycloak_id() {
   local token=$(echo "$token_response" | jq -r '.access_token // empty')
 
   if [ -z "$token" ]; then
-    echo -e "${YELLOW}Could not get Keycloak token, using placeholder ID${NC}"
+    echo -e "${YELLOW}Could not get Keycloak token, using placeholder ID${NC}" >&2
     [ -n "$pf_pid" ] && kill $pf_pid 2>/dev/null
     echo "00000000-0000-0000-0000-000000000000"
     return
   fi
 
   # Get platform-admin user from realm
-  echo "Looking up platform-admin user in $REALM_NAME realm..."
+  echo "Looking up platform-admin user in $REALM_NAME realm..." >&2
   local user_data=$(curl -sk -H "Authorization: Bearer $token" \
     "$keycloak_url/admin/realms/$REALM_NAME/users?username=platform-admin&exact=true" 2>/dev/null)
 
@@ -318,10 +322,10 @@ get_platform_admin_keycloak_id() {
   [ -n "$pf_pid" ] && kill $pf_pid 2>/dev/null
 
   if [ -n "$user_id" ]; then
-    echo -e "${GREEN}Found platform-admin user ID: $user_id${NC}"
+    echo -e "${GREEN}Found platform-admin user ID: $user_id${NC}" >&2
     echo "$user_id"
   else
-    echo -e "${YELLOW}Platform-admin user not found in Keycloak, using placeholder${NC}"
+    echo -e "${YELLOW}Platform-admin user not found in Keycloak, using placeholder${NC}" >&2
     echo "00000000-0000-0000-0000-000000000000"
   fi
 }
@@ -508,7 +512,10 @@ main() {
 
   if [[ "$CREATE_ADMIN" =~ ^[Yy]$ ]]; then
     # Get Keycloak user ID from existing platform-admin in Keycloak
-    export KEYCLOAK_USER_ID=$(get_platform_admin_keycloak_id)
+
+    local user_id=$(get_platform_admin_keycloak_id)
+    echo "USER ID LINE 521 -- $user_id"
+    export KEYCLOAK_USER_ID=$user_id
 
     # Run the organization script with user creation
     "$SCRIPT_DIR/create-keycloak-organization.sh" \

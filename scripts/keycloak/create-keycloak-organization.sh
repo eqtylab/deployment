@@ -81,24 +81,14 @@ get_postgres_password() {
   # Try common secret names
   local password=""
 
-  # Try compliance-secrets first
-  password=$(kubectl get secret -n "$NAMESPACE" compliance-secrets -o jsonpath="{.data.password}" 2>/dev/null | base64 -d)
-
-  if [ -z "$password" ]; then
-    # Try generic postgresql secret
-    password=$(kubectl get secret -n "$NAMESPACE" postgresql -o jsonpath="{.data.postgres-password}" 2>/dev/null | base64 -d)
-  fi
-
-  if [ -z "$password" ]; then
-    # Try with different keys
-    password=$(kubectl get secret -n "$NAMESPACE" compliance-secrets -o jsonpath="{.data.postgres-password}" 2>/dev/null | base64 -d)
-  fi
+  # Try platform-database first (current standard)
+  password=$(kubectl get secret -n "$NAMESPACE" platform-database -o jsonpath="{.data.password}" 2>/dev/null | base64 -d)
 
   if [ -z "$password" ]; then
     # List available secrets for debugging
     echo -e "${RED}Error: Could not find PostgreSQL password${NC}"
-    echo "Available PostgreSQL secrets:"
-    kubectl get secrets -n "$NAMESPACE" | grep -E "(postgres|sql)"
+    echo "Available secrets that might contain database credentials:"
+    kubectl get secrets -n "$NAMESPACE" | grep -E "(postgres|database|platform)"
     return 1
   fi
 
@@ -156,7 +146,7 @@ create_organization() {
   echo -e "${YELLOW}Creating organization '$REALM_NAME'...${NC}"
 
   # Prepare SQL statement
-  SQL="INSERT INTO organization (name, description, display_name, idp_provider, settings, created_at, updated_at) VALUES ('$REALM_NAME', '$REALM_NAME', '${REALM_NAME^}', 'keycloak', '{}', NOW(), NOW()) RETURNING id, name, display_name, idp_provider;"
+  SQL="INSERT INTO organization (name, description, display_name, idp_provider, settings, created_at, updated_at) VALUES ('$REALM_NAME', '$REALM_NAME', '$REALM_NAME', 'keycloak', '{}', NOW(), NOW()) RETURNING id, name, display_name, idp_provider;"
 
   # Execute SQL
   RESULT=$(kubectl exec -n "$NAMESPACE" "$POD_NAME" -- env PGPASSWORD="$PG_PASSWORD" psql -U postgres -d "$DB_NAME" -c "$SQL" 2>&1)
@@ -270,8 +260,16 @@ main() {
 create_platform_admin_user() {
   echo -e "${YELLOW}Creating platform-admin user in auth service...${NC}"
 
-  # Get Keycloak admin user ID from bootstrap (we'll use a placeholder for now)
-  local KEYCLOAK_USER_ID="${KEYCLOAK_USER_ID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}"
+  # If existing KEYCLOAK_USER_ID, use it
+  if [ -n "$KEYCLOAK_USER_ID" ]; then
+    echo -e "${YELLOW}Using existing Keycloak user ID: $KEYCLOAK_USER_ID${NC}"
+  else
+    # Get Keycloak admin user ID from bootstrap (we'll use a placeholder for now)
+    local KEYCLOAK_USER_ID="${KEYCLOAK_USER_ID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}"
+  fi
+
+  # # Get Keycloak admin user ID from bootstrap (we'll use a placeholder for now)
+  # local KEYCLOAK_USER_ID="${KEYCLOAK_USER_ID:-$(uuidgen | tr '[:upper:]' '[:lower:]')}"
   local USER_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
   # Check if user already exists
