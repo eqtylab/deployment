@@ -202,6 +202,11 @@ tolerations: []
 # Affinity rules for pod assignment
 affinity: {}
 
+# -- Init Containers
+# @default -- `[]`
+# Init containers to add to the pod
+initContainers: []
+
 # -- Startup Probe
 # @default -- See values below
 startupProbe:
@@ -251,8 +256,7 @@ externalDatabase:
   # @default -- `postgres`
   user: "postgres"
   # -- Database Password
-  # @default -- `""` (use secret reference - recommended)
-  # Leave empty to use secret reference
+  # @default -- `""` (auto-configured from global.secrets.database)
   password: ""
   # -- SSL Mode
   # @default -- `disable`
@@ -342,11 +346,12 @@ secrets:
       # @default -- `""` (auto-configured from global.secrets.storage.gcs.secretName)
       name: ""
 
-  # -- Worker Secret
+  # -- Auth Service Secret
   # @default -- See values below
-  worker:
+  # Secret containing the auth service API key for worker authentication
+  authService:
     # -- Secret Name
-    # @default -- `""` (auto-configured from global.secrets.governanceWorker.secretName)
+    # @default -- `""` (auto-configured from global.secrets.authService.secretName)
     name: ""
 
 # =============================================================================
@@ -379,6 +384,10 @@ config:
   # Options: debug, info, warn, error
   logLevel: "info"
 
+  # -- Credential Encryption Key
+  # @default -- `""` (auto-configured from global.secrets.encryption)
+  credentialEncryptionKey: ""
+
   # ---------------------------------------------------------------------------
   # HTTP Server Configuration
   # ---------------------------------------------------------------------------
@@ -398,34 +407,18 @@ config:
     # @default -- `120`
     # Maximum idle time for connections (seconds)
     idleTimeout: 120
-
-  # ---------------------------------------------------------------------------
-  # Indicator Configuration
-  # ---------------------------------------------------------------------------
-
-  # -- Indicator Configuration
-  # @default -- See values below
-  indicators:
-    # -- Config Path
-    # @default -- `/app/configs/indicators`
-    # Path to indicator configuration files
-    configPath: "/app/configs/indicators"
-    # -- Reload Interval
-    # @default -- `300`
-    # How often to reload configs (seconds)
-    reloadInterval: 300
-    # -- OS Guardrails Enabled
+    # -- Swagger Enabled
     # @default -- `false`
-    # Enable OS guardrails
-    osGuardrailsEnabled: false
-    # -- OS Guardrails Batch Size
-    # @default -- `100`
-    # Batch size for OS guardrails
-    osGuardrailsBatchSize: 100
-    # -- OS Guardrails Timeout
-    # @default -- `5`
-    # Timeout for OS guardrails (seconds)
-    osGuardrailsTimeoutSeconds: 5
+    # Enable Swagger documentation
+    swaggerEnabled: true
+    # -- Swagger Host
+    # @default -- `""` (auto-generated from global.domain)
+    # Only used when swaggerEnabled is true
+    swaggerHost: ""
+    # -- Swagger Base Path
+    # @default -- `/governanceService`
+    # Only used when swaggerEnabled is true
+    swaggerBasePath: "/governanceService"
 
   # ---------------------------------------------------------------------------
   # Storage Configuration
@@ -455,34 +448,28 @@ config:
   # Only used when storageProvider is "aws_s3"
   awsS3BucketName: ""
 
-  # -- AWS S3 Folder
-  # @default -- `""`
-  # Optional S3 folder/prefix
-  # Only used when storageProvider is "aws_s3"
-  awsS3Folder: ""
-
   # -- AWS S3 Access Key ID
-  # @default -- `""` (auto-configured from secrets.storage.aws_s3)
+  # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
   # Only used when storageProvider is "aws_s3"
   awsS3AccessKeyId: ""
 
   # -- AWS S3 Secret Access Key
-  # @default -- `""` (auto-configured from secrets.storage.aws_s3)
+  # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
   # Only used when storageProvider is "aws_s3"
   awsS3SecretAccessKey: ""
 
   # -- Azure Storage Account Name
-  # @default -- `""` (auto-configured from secrets.storage.azure_blob)
+  # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
   # Only used when storageProvider is "azure_blob"
   azureStorageAccountName: ""
 
   # -- Azure Storage Account Key
-  # @default -- `""` (auto-configured from secrets.storage.azure_blob)
+  # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
   # Only used when storageProvider is "azure_blob"
   azureStorageAccountKey: ""
 
   # -- Azure Storage Connection String
-  # @default -- `""` (auto-configured from secrets.storage.azure_blob)
+  # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
   # Only used when storageProvider is "azure_blob"
   azureStorageConnectionString: ""
 
@@ -502,6 +489,11 @@ config:
   # Authentication Provider Configuration
   # ---------------------------------------------------------------------------
 
+  # -- Auth Provider
+  # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
+  # Options: auth0, keycloak
+  authProvider: ""
+
   # -- Auth0 Domain
   # @default -- `""`
   # **REQUIRED for Auth0**: Tenant domain (e.g., "yourcompany.us.auth0.com")
@@ -509,25 +501,45 @@ config:
   auth0Domain: ""
 
   # -- Auth0 Client ID
-  # @default -- `""` (auto-configured from secrets.auth.auth0)
+  # @default -- `""` (auto-configured from global.secrets.auth.auth0)
   # Only used when auth provider is "auth0"
   auth0ClientId: ""
 
   # -- Auth0 Client Secret
-  # @default -- `""` (auto-configured from secrets.auth.auth0)
+  # @default -- `""` (auto-configured from global.secrets.auth.auth0)
   # Only used when auth provider is "auth0"
   auth0ClientSecret: ""
+
+  # -- Keycloak URL
+  # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+  # Only used when auth provider is "keycloak"
+  keycloakUrl: ""
+
+  # -- Keycloak Realm
+  # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+  # Only used when auth provider is "keycloak"
+  keycloakRealm: ""
+
+  # -- Keycloak Client ID
+  # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+  # Only used when auth provider is "keycloak"
+  keycloakClientId: ""
+
+  # -- Keycloak Client Secret
+  # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+  # Only used when auth provider is "keycloak"
+  keycloakClientSecret: ""
 
   # ---------------------------------------------------------------------------
   # Service Integration URLs
   # ---------------------------------------------------------------------------
 
   # -- Integrity Service URL
-  # @default -- `""` (auto-generated: "https://{global.domain}/integrityService")
+  # @default -- `""` (auto-generated: "http://{Release.Name}-integrity-service:3050")
   integrityServiceUrl: ""
 
   # -- Auth Service URL
-  # @default -- `""` (auto-generated: "https://{global.domain}/authService")
+  # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
   authServiceUrl: ""
 
   # ---------------------------------------------------------------------------
@@ -547,15 +559,15 @@ config:
     # Auth service URL for token retrieval (falls back to config.authServiceUrl)
     authServiceUrl: ""
     # -- Auth Service API Key
-    # @default -- `""` (auto-configured from secrets.worker)
+    # @default -- `""` (auto-configured from global.secrets.authService)
     authServiceApiKey: ""
     # -- Service Name
     # @default -- `governance-worker`
     # Service account name
     serviceName: "governance-worker"
     # -- Existing Secret
-    # @default -- `""` (auto-configured from secrets.worker)
-    # Use existing secret for API key
+    # @default -- `""` (falls back to secrets.authService)
+    # Override secret name for API key
     existingSecret: ""
     # -- Existing Secret Keys
     # @default -- See values below
@@ -607,8 +619,7 @@ config:
       # @default -- `api-key`
       key: "api-key"
     # -- API Key
-    # @default -- `""`
-    # AI API key (leave empty to use secretKeyRef - recommended)
+    # @default -- `""` (auto-configured from global.secrets.governanceServiceAI)
     apiKey: ""
     # -- Use V2 API
     # @default -- `true`

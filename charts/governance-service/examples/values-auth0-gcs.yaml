@@ -41,12 +41,6 @@ config:
   integrityServiceUrl: "http://governance-platform-integrity-service:3050"
   authServiceUrl: "http://governance-platform-auth-service:8080"
 
-  # Indicator configuration
-  indicators:
-    configPath: "/app/configs/indicators"
-    reloadInterval: 300
-    osGuardrailsEnabled: false
-
   # Service account for worker authentication
   serviceAccount:
     enabled: true
@@ -133,8 +127,8 @@ secrets:
     gcs:
       name: "platform-gcs"
 
-  worker:
-    name: "platform-governance-worker"
+  authService:
+    name: "platform-auth-service"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

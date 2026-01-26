@@ -79,7 +79,6 @@ For standalone deployments outside the umbrella chart:
 enabled: true
 
 config:
-  appHostname: governance.yourcompany.com
   apiUrl: https://governance.yourcompany.com/governanceService
   authServiceUrl: https://governance.yourcompany.com/authService
   integrityServiceUrl: https://governance.yourcompany.com/integrityService
@@ -266,23 +265,22 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.authServiceUrl      | string | `""`                  | Auth service URL (auto-generated from global.domain)      |
 | config.integrityServiceUrl | string | `""`                  | Integrity service URL (auto-generated from global.domain) |
 | config.garageServiceUrl    | string | `""`                  | Garage service URL (auto-generated from global.domain)    |
-| config.environment         | string | `""`                  | Environment (auto-set from global.environmentType)        |
+| config.environment         | string | `""`                  | Environment (auto-configured from global.environmentType) |
 | config.appTitle            | string | `"Governance Studio"` | Application title displayed in browser                    |
-| config.appHostname         | string | `""`                  | App hostname (auto-set from global.domain)                |
 
 ### Authentication
 
 Authentication is automatically configured from global values in umbrella deployments.
 
-| Key                     | Type   | Default | Description                                   |
-| ----------------------- | ------ | ------- | --------------------------------------------- |
-| config.authProvider     | string | `""`    | Auth provider (auto-set from global)          |
-| config.auth0Domain      | string | `""`    | Auth0 domain (**must be set**)                |
-| config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public) |
-| config.auth0Audience    | string | `""`    | Auth0 audience (**must be set**)              |
-| config.keycloakUrl      | string | `""`    | Keycloak URL (auto-set from global)           |
-| config.keycloakRealm    | string | `""`    | Keycloak realm (auto-set from global)         |
-| config.keycloakClientId | string | `""`    | Keycloak client ID (auto-set from global)     |
+| Key                     | Type   | Default | Description                                                                                    |
+| ----------------------- | ------ | ------- | ---------------------------------------------------------------------------------------------- |
+| config.authProvider     | string | `""`    | Auth provider (auto-configured from global.secrets.auth.provider)                              |
+| config.auth0Domain      | string | `""`    | Auth0 domain (**must be set**)                                                                 |
+| config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public)                                                  |
+| config.auth0Audience    | string | `""`    | Auth0 audience (**must be set**)                                                               |
+| config.keycloakUrl      | string | `""`    | Keycloak URL (auto-configured from global.secrets.auth.keycloak.values.url)                    |
+| config.keycloakRealm    | string | `""`    | Keycloak realm (auto-configured from global.secrets.auth.keycloak.values.realm)                |
+| config.keycloakClientId | string | `""`    | Keycloak client ID (auto-configured from global.secrets.auth.keycloak.values.frontendClientId) |
 
 > ⚠️ Only one authentication provider should be configured at a time.
 > Set via `global.secrets.auth.provider` in umbrella chart.
@@ -299,14 +297,6 @@ Authentication is automatically configured from global values in umbrella deploy
 | config.features.guardianOsFunctions  | bool | `false` | Enable Guardian OS functions  |
 | config.features.guardianSdkFunctions | bool | `false` | Enable Guardian SDK functions |
 | config.features.agentManagement      | bool | `false` | Enable agent management       |
-
-### Branding
-
-| Key                          | Type   | Default       | Description               |
-| ---------------------------- | ------ | ------------- | ------------------------- |
-| config.branding.logoUrl      | string | `"/vite.svg"` | URL to company logo       |
-| config.branding.primaryColor | string | `"#0f172a"`   | Primary brand color (hex) |
-| config.branding.companyName  | string | `"EQTY Lab"`  | Company name for display  |
 
 ## Configuration Inheritance
 

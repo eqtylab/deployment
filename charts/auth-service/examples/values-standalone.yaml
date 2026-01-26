@@ -142,7 +142,6 @@ migrations:
 # kubectl create secret generic auth-service-security \
 #   --from-literal=api-secret=$(openssl rand -base64 32) \
 #   --from-literal=jwt-secret=$(openssl rand -base64 32) \
-#   --from-literal=session-secret=$(openssl rand -base64 32)
 #
 # kubectl create secret generic auth-service-database \
 #   --from-literal=password=<your-db-password>
@@ -373,5 +372,5 @@ extraEnvVars: []
 extraEnvVarsSecret: ""
 extraEnvVarsConfigMap: ""
 extraContainers: []
-extraInitContainers: []
+initContainers: []
 extraManifests: []

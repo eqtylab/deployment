@@ -11,6 +11,9 @@ data:
   SERVER_WRITE_TIMEOUT_SECONDS: "{{ .Values.config.server.writeTimeout }}"
   SERVER_IDLE_TIMEOUT_SECONDS: "{{ .Values.config.server.idleTimeout }}"
   LOG_LEVEL: "{{ .Values.config.logLevel }}"
-  INDICATORS_CONFIG_PATH: "{{ .Values.config.indicators.configPath }}"
-  INDICATORS_RELOAD_INTERVAL_SECONDS: "{{ .Values.config.indicators.reloadInterval }}"
+  SWAGGER_ENABLED: "{{ .Values.config.server.swaggerEnabled }}"
+  {{- if .Values.config.server.swaggerEnabled }}
+  SWAGGER_HOST: "{{ .Values.config.server.swaggerHost | default ((.Values.global).domain) | default "" }}"
+  SWAGGER_BASE_PATH: "{{ .Values.config.server.swaggerBasePath | default "/governanceService" }}"
+  {{- end }}
 {{- end }}

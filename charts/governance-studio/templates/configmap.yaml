@@ -19,7 +19,6 @@ data:
   # Application Settings
   ENVIRONMENT: {{ .Values.config.environment | default ((.Values.global).environmentType | default "") | quote }}
   APP_TITLE: {{ .Values.config.appTitle | quote }}
-  APP_HOSTNAME: {{ .Values.config.appHostname | default ((.Values.global).domain | default "") | quote }}
   BASE_PATH: {{ .Values.config.basePath | quote }}
 
   # Feature Flags
@@ -31,11 +30,6 @@ data:
   FEATURE_GUARDIAN_OS_FUNCTIONS: {{ .Values.config.features.guardianOsFunctions | quote }}
   FEATURE_GUARDIAN_SDK_FUNCTIONS: {{ .Values.config.features.guardianSdkFunctions | quote }}
   FEATURE_GUARDIAN_AGENT_MANAGEMENT: {{ .Values.config.features.agentManagement | quote }}
-
-  # Branding Configuration
-  BRANDING_LOGO_URL: {{ .Values.config.branding.logoUrl | quote }}
-  BRANDING_PRIMARY_COLOR: {{ .Values.config.branding.primaryColor | quote }}
-  BRANDING_COMPANY_NAME: {{ .Values.config.branding.companyName | quote }}
 
   # Auth Configuration
   AUTH_PROVIDER: {{ .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "" | quote }}

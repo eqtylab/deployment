@@ -123,10 +123,6 @@ governance-studio:
       lineage: true
       guardianEnabled: false
       agentManagement: false
-    branding:
-      logoUrl: "/vite.svg"
-      primaryColor: "#0f172a"
-      companyName: "Your Company"
 
   resources:
     requests:
@@ -181,7 +177,6 @@ governance-service:
     storageProvider: "aws_s3"
     awsS3Region: "us-east-1" # Your AWS region
     awsS3BucketName: "your-governance-attachments" # Your S3 bucket name
-    awsS3Folder: "attachments" # Optional folder prefix
 
     # AI features
     ai:
@@ -399,7 +394,6 @@ postgresql:
 # # Auth service secrets
 # kubectl create secret generic platform-auth-service \
 #   --from-literal=db-password="$(openssl rand -base64 24)" \
-#   --from-literal=session-secret="$(openssl rand -base64 32)" \
 #   --from-literal=api-secret="$(openssl rand -base64 32)" \
 #   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
 #   --namespace governance

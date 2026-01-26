@@ -52,12 +52,10 @@ global:
       auth0:
         secretName: "platform-auth0"
 
-    governanceWorker:
-      secretName: "platform-worker"
+    authService:
+      secretName: "platform-auth-service"
       values:
-        encryptionKey: "WORKER_ENCRYPTION_KEY"
-        clientId: "WORKER_CLIENT_ID"
-        clientSecret: "WORKER_CLIENT_SECRET"
+        apiSecret: "YOUR_API_SECRET"
 
     governanceServiceAI:
       secretName: "platform-ai"
@@ -92,7 +90,7 @@ governance-service:
 - ✅ Encryption keys
 - ✅ Storage credentials (GCS, Azure Blob, AWS S3)
 - ✅ Auth provider configuration (Auth0 or Keycloak)
-- ✅ Worker credentials and authentication
+- ✅ Auth service credentials for worker authentication
 - ✅ AI API credentials
 - ✅ Integration service URLs (Auth, Integrity)
 - ✅ Environment type
@@ -142,8 +140,8 @@ secrets:
   storage:
     gcs:
       name: "governance-gcs-credentials"
-  worker:
-    name: "governance-worker-credentials"
+  authService:
+    name: "governance-auth-service"
 
 service:
   enabled: true
@@ -233,7 +231,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.secrets.storage.gcs.secretName         | string | GCS credentials secret name                       |
 | global.secrets.storage.azure_blob.secretName  | string | Azure Blob credentials secret name                |
 | global.secrets.storage.aws_s3.secretName      | string | AWS S3 credentials secret name                    |
-| global.secrets.governanceWorker.secretName    | string | Worker credentials secret name                    |
+| global.secrets.authService.secretName         | string | Auth service API key secret name                  |
 | global.secrets.governanceServiceAI.secretName | string | AI API key secret name                            |
 | global.secrets.imageRegistry.secretName       | string | Image registry credentials secret name            |
 
@@ -308,11 +306,12 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Node Scheduling
 
-| Key          | Type   | Default | Description                       |
-| ------------ | ------ | ------- | --------------------------------- |
-| nodeSelector | object | `{}`    | Node labels for pod assignment    |
-| tolerations  | list   | `[]`    | Tolerations for pod assignment    |
-| affinity     | object | `{}`    | Affinity rules for pod assignment |
+| Key            | Type   | Default | Description                       |
+| -------------- | ------ | ------- | --------------------------------- |
+| nodeSelector   | object | `{}`    | Node labels for pod assignment    |
+| tolerations    | list   | `[]`    | Tolerations for pod assignment    |
+| affinity       | object | `{}`    | Affinity rules for pod assignment |
+| initContainers | list   | `[]`    | Init containers to add to the pod |
 
 ### Health Checks
 
@@ -335,18 +334,18 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Database Configuration
 
-| Key                                        | Type   | Default             | Description                                                 |
-| ------------------------------------------ | ------ | ------------------- | ----------------------------------------------------------- |
-| externalDatabase.host                      | string | `""`                | Database host (auto-generated as {Release.Name}-postgresql) |
-| externalDatabase.port                      | int    | `5432`              | Database port                                               |
-| externalDatabase.database                  | string | `"governance"`      | Database name                                               |
-| externalDatabase.user                      | string | `"postgres"`        | Database user                                               |
-| externalDatabase.password                  | string | `""`                | Database password (leave empty to use secret reference)     |
-| externalDatabase.sslmode                   | string | `"disable"`         | SSL mode (disable/require/verify-ca/verify-full)            |
-| externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name containing database password (auto-populated)   |
-| externalDatabase.passwordSecretKeyRef.key  | string | `"password"`        | Secret key name for password                                |
-| migrations.runAtStartup                    | bool   | `true`              | Run database migrations automatically at startup            |
-| migrations.path                            | string | `"/app/migrations"` | Path to migration files within the container                |
+| Key                                        | Type   | Default             | Description                                                           |
+| ------------------------------------------ | ------ | ------------------- | --------------------------------------------------------------------- |
+| externalDatabase.host                      | string | `""`                | Database host (auto-generated as {Release.Name}-postgresql)           |
+| externalDatabase.port                      | int    | `5432`              | Database port                                                         |
+| externalDatabase.database                  | string | `"governance"`      | Database name                                                         |
+| externalDatabase.user                      | string | `"postgres"`        | Database user                                                         |
+| externalDatabase.password                  | string | `""`                | Database password (auto-configured from global.secrets.database)      |
+| externalDatabase.sslmode                   | string | `"disable"`         | SSL mode (disable/require/verify-ca/verify-full)                      |
+| externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name (auto-configured from global.secrets.database.secretName) |
+| externalDatabase.passwordSecretKeyRef.key  | string | `"password"`        | Secret key name for password                                          |
+| migrations.runAtStartup                    | bool   | `true`              | Run database migrations automatically at startup                      |
+| migrations.path                            | string | `"/app/migrations"` | Path to migration files within the container                          |
 
 ### Secret Configuration
 
@@ -381,59 +380,59 @@ If your existing secrets use different key names, you can override them via `glo
 
 **Default key names by secret type:**
 
-| Secret Type | Default Key Names                                  |
-| ----------- | -------------------------------------------------- |
-| Encryption  | `encryption-key`                                   |
-| Auth0       | `client-id`, `client-secret`                       |
-| Keycloak    | `backend-client-id`, `backend-client-secret`       |
-| Azure Blob  | `account-name`, `account-key`, `connection-string` |
-| AWS S3      | `access-key-id`, `secret-access-key`               |
-| GCS         | `service-account-json`                             |
-| Worker      | `encryption-key`, `client-id`, `client-secret`     |
+| Secret Type  | Default Key Names                                  |
+| ------------ | -------------------------------------------------- |
+| Encryption   | `encryption-key`                                   |
+| Auth0        | `client-id`, `client-secret`                       |
+| Keycloak     | `backend-client-id`, `backend-client-secret`       |
+| Azure Blob   | `account-name`, `account-key`, `connection-string` |
+| AWS S3       | `access-key-id`, `secret-access-key`               |
+| GCS          | `service-account-json`                             |
+| Auth Service | `api-secret`                                       |
 
 #### Encryption Secret
 
-| Key                     | Type   | Description                              |
-| ----------------------- | ------ | ---------------------------------------- |
-| secrets.encryption.name | string | Secret name (auto-populated from global) |
+| Key                     | Type   | Description                                                             |
+| ----------------------- | ------ | ----------------------------------------------------------------------- |
+| secrets.encryption.name | string | Secret name (auto-configured from global.secrets.encryption.secretName) |
 
 #### Auth0 Secret (only used when auth provider is Auth0)
 
-| Key                     | Type   | Description                              |
-| ----------------------- | ------ | ---------------------------------------- |
-| secrets.auth.auth0.name | string | Secret name (auto-populated from global) |
+| Key                     | Type   | Description                                                             |
+| ----------------------- | ------ | ----------------------------------------------------------------------- |
+| secrets.auth.auth0.name | string | Secret name (auto-configured from global.secrets.auth.auth0.secretName) |
 
 #### Keycloak Secret (only used when auth provider is Keycloak)
 
-| Key                        | Type   | Description                              |
-| -------------------------- | ------ | ---------------------------------------- |
-| secrets.auth.keycloak.name | string | Secret name (auto-populated from global) |
+| Key                        | Type   | Description                                                                |
+| -------------------------- | ------ | -------------------------------------------------------------------------- |
+| secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
 
 #### Storage Secrets
 
 **Azure Blob Storage (only used when storage provider is azure_blob):**
 
-| Key                             | Type   | Description                              |
-| ------------------------------- | ------ | ---------------------------------------- |
-| secrets.storage.azure_blob.name | string | Secret name (auto-populated from global) |
+| Key                             | Type   | Description                                                                     |
+| ------------------------------- | ------ | ------------------------------------------------------------------------------- |
+| secrets.storage.azure_blob.name | string | Secret name (auto-configured from global.secrets.storage.azure_blob.secretName) |
 
 **AWS S3 (only used when storage provider is aws_s3):**
 
-| Key                         | Type   | Description                              |
-| --------------------------- | ------ | ---------------------------------------- |
-| secrets.storage.aws_s3.name | string | Secret name (auto-populated from global) |
+| Key                         | Type   | Description                                                                 |
+| --------------------------- | ------ | --------------------------------------------------------------------------- |
+| secrets.storage.aws_s3.name | string | Secret name (auto-configured from global.secrets.storage.aws_s3.secretName) |
 
 **Google Cloud Storage (only used when storage provider is gcs):**
 
-| Key                      | Type   | Description                              |
-| ------------------------ | ------ | ---------------------------------------- |
-| secrets.storage.gcs.name | string | Secret name (auto-populated from global) |
+| Key                      | Type   | Description                                                              |
+| ------------------------ | ------ | ------------------------------------------------------------------------ |
+| secrets.storage.gcs.name | string | Secret name (auto-configured from global.secrets.storage.gcs.secretName) |
 
-#### Worker Secret
+#### Auth Service Secret
 
-| Key                 | Type   | Description                              |
-| ------------------- | ------ | ---------------------------------------- |
-| secrets.worker.name | string | Secret name (auto-populated from global) |
+| Key                      | Type   | Description                                                              |
+| ------------------------ | ------ | ------------------------------------------------------------------------ |
+| secrets.authService.name | string | Secret name (auto-configured from global.secrets.authService.secretName) |
 
 ### Auth0 Sync Configuration
 
@@ -448,29 +447,23 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Application Settings
 
-| Key             | Type   | Default     | Description                                    |
-| --------------- | ------ | ----------- | ---------------------------------------------- |
-| config.path     | string | `"/health"` | Health check endpoint path                     |
-| config.appEnv   | string | `""`        | Application environment (auto-set from global) |
-| config.logLevel | string | `"info"`    | Logging level (debug/info/warn/error)          |
+| Key                            | Type   | Default     | Description                                                           |
+| ------------------------------ | ------ | ----------- | --------------------------------------------------------------------- |
+| config.path                    | string | `"/health"` | Health check endpoint path                                            |
+| config.appEnv                  | string | `""`        | Application environment (auto-configured from global.environmentType) |
+| config.logLevel                | string | `"info"`    | Logging level (debug/info/warn/error)                                 |
+| config.credentialEncryptionKey | string | `""`        | Encryption key (auto-configured from global.secrets.encryption)       |
 
 #### HTTP Server Configuration
 
-| Key                        | Type | Default | Description                                 |
-| -------------------------- | ---- | ------- | ------------------------------------------- |
-| config.server.readTimeout  | int  | `30`    | Maximum time to read request (seconds)      |
-| config.server.writeTimeout | int  | `30`    | Maximum time to write response (seconds)    |
-| config.server.idleTimeout  | int  | `120`   | Maximum idle time for connections (seconds) |
-
-#### Indicator Configuration
-
-| Key                                          | Type   | Default                     | Description                           |
-| -------------------------------------------- | ------ | --------------------------- | ------------------------------------- |
-| config.indicators.configPath                 | string | `"/app/configs/indicators"` | Path to indicator configuration files |
-| config.indicators.reloadInterval             | int    | `300`                       | How often to reload configs (seconds) |
-| config.indicators.osGuardrailsEnabled        | bool   | `false`                     | Enable OS guardrails                  |
-| config.indicators.osGuardrailsBatchSize      | int    | `100`                       | Batch size for OS guardrails          |
-| config.indicators.osGuardrailsTimeoutSeconds | int    | `5`                         | Timeout for OS guardrails (seconds)   |
+| Key                           | Type   | Default                | Description                                               |
+| ----------------------------- | ------ | ---------------------- | --------------------------------------------------------- |
+| config.server.readTimeout     | int    | `30`                   | Maximum time to read request (seconds)                    |
+| config.server.writeTimeout    | int    | `30`                   | Maximum time to write response (seconds)                  |
+| config.server.idleTimeout     | int    | `120`                  | Maximum idle time for connections (seconds)               |
+| config.server.swaggerEnabled  | bool   | `true`                 | Enable Swagger documentation                              |
+| config.server.swaggerHost     | string | `""`                   | Swagger host (auto-generated from global.domain)          |
+| config.server.swaggerBasePath | string | `"/governanceService"` | Swagger base path (only used when swaggerEnabled is true) |
 
 #### Storage Configuration
 
@@ -486,65 +479,79 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 **AWS S3 (only used when storageProvider is "aws_s3"):**
 
-| Key                         | Type   | Default | Description                                       |
-| --------------------------- | ------ | ------- | ------------------------------------------------- |
-| config.awsS3Region          | string | `""`    | AWS region (**REQUIRED**)                         |
-| config.awsS3BucketName      | string | `""`    | AWS S3 bucket name (**REQUIRED**)                 |
-| config.awsS3Folder          | string | `""`    | AWS S3 folder/prefix (optional)                   |
-| config.awsS3AccessKeyId     | string | `""`    | AWS access key ID (leave empty to use secret)     |
-| config.awsS3SecretAccessKey | string | `""`    | AWS secret access key (leave empty to use secret) |
+| Key                         | Type   | Default | Description                                                                |
+| --------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
+| config.awsS3Region          | string | `""`    | AWS region (**REQUIRED**)                                                  |
+| config.awsS3BucketName      | string | `""`    | AWS S3 bucket name (**REQUIRED**)                                          |
+| config.awsS3AccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)     |
+| config.awsS3SecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3) |
 
 **Azure Blob Storage (only used when storageProvider is "azure_blob"):**
 
-| Key                                 | Type   | Default | Description                                                 |
-| ----------------------------------- | ------ | ------- | ----------------------------------------------------------- |
-| config.azureStorageAccountName      | string | `""`    | Azure storage account name (leave empty to use secret)      |
-| config.azureStorageAccountKey       | string | `""`    | Azure storage account key (leave empty to use secret)       |
-| config.azureStorageConnectionString | string | `""`    | Azure storage connection string (leave empty to use secret) |
-| config.azureStorageContainerName    | string | `""`    | Azure container name (**REQUIRED**)                         |
-| config.azureUseManagedIdentity      | bool   | `false` | Use Azure managed identity for authentication               |
+| Key                                 | Type   | Default | Description                                                                              |
+| ----------------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
+| config.azureStorageAccountName      | string | `""`    | Azure storage account name (auto-configured from global.secrets.storage.azure_blob)      |
+| config.azureStorageAccountKey       | string | `""`    | Azure storage account key (auto-configured from global.secrets.storage.azure_blob)       |
+| config.azureStorageConnectionString | string | `""`    | Azure storage connection string (auto-configured from global.secrets.storage.azure_blob) |
+| config.azureStorageContainerName    | string | `""`    | Azure container name (**REQUIRED**)                                                      |
+| config.azureUseManagedIdentity      | bool   | `false` | Use Azure managed identity for authentication                                            |
+
+#### Authentication Provider Configuration
+
+| Key                 | Type   | Default | Description                                                                        |
+| ------------------- | ------ | ------- | ---------------------------------------------------------------------------------- |
+| config.authProvider | string | `""`    | Auth provider (auth0/keycloak) - auto-configured from global.secrets.auth.provider |
 
 #### Auth0 Configuration (only used when auth provider is Auth0)
 
-| Key                      | Type   | Default | Description                                     |
-| ------------------------ | ------ | ------- | ----------------------------------------------- |
-| config.auth0Domain       | string | `""`    | Auth0 tenant domain (**must be set**)           |
-| config.auth0ClientId     | string | `""`    | Auth0 client ID (leave empty to use secret)     |
-| config.auth0ClientSecret | string | `""`    | Auth0 client secret (leave empty to use secret) |
+| Key                      | Type   | Default | Description                                                          |
+| ------------------------ | ------ | ------- | -------------------------------------------------------------------- |
+| config.auth0Domain       | string | `""`    | Auth0 tenant domain (**must be set**)                                |
+| config.auth0ClientId     | string | `""`    | Auth0 client ID (auto-configured from global.secrets.auth.auth0)     |
+| config.auth0ClientSecret | string | `""`    | Auth0 client secret (auto-configured from global.secrets.auth.auth0) |
+
+#### Keycloak Configuration (only used when auth provider is Keycloak)
+
+| Key                         | Type   | Default | Description                                                                |
+| --------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
+| config.keycloakUrl          | string | `""`    | Keycloak URL (auto-configured from global.secrets.auth.keycloak)           |
+| config.keycloakRealm        | string | `""`    | Keycloak realm (auto-configured from global.secrets.auth.keycloak)         |
+| config.keycloakClientId     | string | `""`    | Keycloak client ID (auto-configured from global.secrets.auth.keycloak)     |
+| config.keycloakClientSecret | string | `""`    | Keycloak client secret (auto-configured from global.secrets.auth.keycloak) |
 
 #### Integration URLs
 
-| Key                        | Type   | Default | Description                                        |
-| -------------------------- | ------ | ------- | -------------------------------------------------- |
-| config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated from global) |
-| config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated from global)      |
+| Key                        | Type   | Default | Description                                                                            |
+| -------------------------- | ------ | ------- | -------------------------------------------------------------------------------------- |
+| config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated as http://{Release.Name}-integrity-service:3050) |
+| config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080)           |
 
 #### Service Account Configuration (for worker authentication)
 
-| Key                                             | Type   | Default               | Description                                            |
-| ----------------------------------------------- | ------ | --------------------- | ------------------------------------------------------ |
-| config.serviceAccount.enabled                   | bool   | `true`                | Enable service account authentication for worker       |
-| config.serviceAccount.authServiceUrl            | string | `""`                  | Auth service URL (falls back to config.authServiceUrl) |
-| config.serviceAccount.authServiceApiKey         | string | `""`                  | API key for auth service (auto-generated if available) |
-| config.serviceAccount.serviceName               | string | `"governance-worker"` | Service account name                                   |
-| config.serviceAccount.existingSecret            | string | `""`                  | Use existing secret for API key                        |
-| config.serviceAccount.existingSecretKeys.apiKey | string | `"api-secret"`        | Secret key name for API key                            |
+| Key                                             | Type   | Default               | Description                                               |
+| ----------------------------------------------- | ------ | --------------------- | --------------------------------------------------------- |
+| config.serviceAccount.enabled                   | bool   | `true`                | Enable service account authentication for worker          |
+| config.serviceAccount.authServiceUrl            | string | `""`                  | Auth service URL (falls back to config.authServiceUrl)    |
+| config.serviceAccount.authServiceApiKey         | string | `""`                  | API key (auto-configured from global.secrets.authService) |
+| config.serviceAccount.serviceName               | string | `"governance-worker"` | Service account name                                      |
+| config.serviceAccount.existingSecret            | string | `""`                  | Override secret name (falls back to secrets.authService)  |
+| config.serviceAccount.existingSecretKeys.apiKey | string | `"api-secret"`        | Secret key name for API key                               |
 
 #### AI Configuration
 
-| Key                         | Type   | Default                      | Description                                    |
-| --------------------------- | ------ | ---------------------------- | ---------------------------------------------- |
-| config.ai.enabled           | bool   | `true`                       | Enable AI features                             |
-| config.ai.provider          | string | `"anthropic"`                | AI provider                                    |
-| config.ai.model             | string | `"claude-3-7-sonnet-latest"` | AI model name                                  |
-| config.ai.temperature       | float  | `0.7`                        | Temperature for AI responses                   |
-| config.ai.maxTokens         | int    | `4000`                       | Maximum tokens for AI responses                |
-| config.ai.timeoutSeconds    | int    | `60`                         | Timeout for AI requests (seconds)              |
-| config.ai.retryAttempts     | int    | `3`                          | Number of retry attempts for AI requests       |
-| config.ai.secretKeyRef.name | string | `""`                         | AI API key secret (auto-populated from global) |
-| config.ai.secretKeyRef.key  | string | `"api-key"`                  | AI API key secret key                          |
-| config.ai.apiKey            | string | `""`                         | AI API key (leave empty to use secret)         |
-| config.ai.useV2             | bool   | `true`                       | Use V2 API                                     |
+| Key                         | Type   | Default                      | Description                                                                            |
+| --------------------------- | ------ | ---------------------------- | -------------------------------------------------------------------------------------- |
+| config.ai.enabled           | bool   | `true`                       | Enable AI features                                                                     |
+| config.ai.provider          | string | `"anthropic"`                | AI provider                                                                            |
+| config.ai.model             | string | `"claude-3-7-sonnet-latest"` | AI model name                                                                          |
+| config.ai.temperature       | float  | `0.7`                        | Temperature for AI responses                                                           |
+| config.ai.maxTokens         | int    | `4000`                       | Maximum tokens for AI responses                                                        |
+| config.ai.timeoutSeconds    | int    | `60`                         | Timeout for AI requests (seconds)                                                      |
+| config.ai.retryAttempts     | int    | `3`                          | Number of retry attempts for AI requests                                               |
+| config.ai.secretKeyRef.name | string | `""`                         | AI API key secret (auto-configured from global.secrets.governanceServiceAI.secretName) |
+| config.ai.secretKeyRef.key  | string | `"api-key"`                  | AI API key secret key                                                                  |
+| config.ai.apiKey            | string | `""`                         | AI API key (auto-configured from global.secrets.governanceServiceAI)                   |
+| config.ai.useV2             | bool   | `true`                       | Use V2 API                                                                             |
 
 ## Configuration Inheritance
 
@@ -570,12 +577,12 @@ governance-service:
   enabled: true
   # config.appEnv automatically becomes: production
   # Integration URLs auto-generated from global.domain
-  # Storage credentials auto-populated from global.secrets.storage.gcs
+  # Storage credentials auto-configured from global.secrets.storage.gcs
 
   # Must explicitly set storage provider:
   config:
-    storageProvider: "gcs" # Required - not auto-set
-    gcsBucketName: "governance-attachments" # Required - not auto-set
+    storageProvider: "gcs" # Required
+    gcsBucketName: "governance-attachments" # Required
 ```
 
 ## Storage Provider Configuration
@@ -624,7 +631,6 @@ governance-service:
     storageProvider: "aws_s3" # Explicitly set storage provider
     awsS3Region: "us-east-1" # Must be set
     awsS3BucketName: "governance-bucket" # Must be set
-    awsS3Folder: "attachments" # Optional prefix
 ```
 
 ## Upgrading
@@ -710,7 +716,7 @@ kubectl exec -it deployment/governance-service -n governance -- curl localhost:1
 
 **Worker authentication failures**
 
-- Check worker credentials secret exists (`secrets.worker.name`)
+- Check auth service secret exists (`secrets.authService.name`)
 - Verify service account is configured in auth service
 - Ensure auth service API key is valid
 - Check `config.serviceAccount.authServiceUrl` is accessible

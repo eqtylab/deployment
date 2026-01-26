@@ -267,11 +267,12 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Node Scheduling
 
-| Key          | Type   | Default | Description                       |
-| ------------ | ------ | ------- | --------------------------------- |
-| nodeSelector | object | `{}`    | Node labels for pod assignment    |
-| tolerations  | list   | `[]`    | Tolerations for pod assignment    |
-| affinity     | object | `{}`    | Affinity rules for pod assignment |
+| Key            | Type   | Default | Description                       |
+| -------------- | ------ | ------- | --------------------------------- |
+| nodeSelector   | object | `{}`    | Node labels for pod assignment    |
+| tolerations    | list   | `[]`    | Tolerations for pod assignment    |
+| affinity       | object | `{}`    | Affinity rules for pod assignment |
+| initContainers | list   | `[]`    | Init containers to add to the pod |
 
 ### Health Checks
 
@@ -306,33 +307,33 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Application Settings
 
-| Key                        | Type   | Default | Description                                             |
-| -------------------------- | ------ | ------- | ------------------------------------------------------- |
-| config.rustEnv             | string | `""`    | Rust environment (auto-set from global.environmentType) |
-| config.integrityServiceUrl | string | `""`    | Public URL for this service (auto-generated)            |
+| Key                        | Type   | Default | Description                                                     |
+| -------------------------- | ------ | ------- | --------------------------------------------------------------- |
+| config.rustEnv             | string | `""`    | Rust environment (auto-configured from global.environmentType)  |
+| config.integrityServiceUrl | string | `""`    | Public URL for this service (auto-generated from global.domain) |
 
 #### Database Configuration
 
-| Key                           | Type   | Default                | Description                                                 |
-| ----------------------------- | ------ | ---------------------- | ----------------------------------------------------------- |
-| config.integrityAppDbHost     | string | `""`                   | Database host (auto-generated as {Release.Name}-postgresql) |
-| config.integrityAppDbName     | string | `"IntegrityServiceDB"` | Database name                                               |
-| config.integrityAppDbUser     | string | `""`                   | Database user (auto-set from global.postgresql.username)    |
-| config.integrityAppDbPassword | string | `""`                   | Database password (leave empty to use secret reference)     |
+| Key                           | Type   | Default                | Description                                                      |
+| ----------------------------- | ------ | ---------------------- | ---------------------------------------------------------------- |
+| config.integrityAppDbHost     | string | `""`                   | Database host (auto-generated as {Release.Name}-postgresql)      |
+| config.integrityAppDbName     | string | `"IntegrityServiceDB"` | Database name                                                    |
+| config.integrityAppDbUser     | string | `""`                   | Database user (auto-configured from global.postgresql.username)  |
+| config.integrityAppDbPassword | string | `""`                   | Database password (auto-configured from global.secrets.database) |
 
 #### Blob Storage Configuration
 
-| Key                                         | Type   | Default | Description                                                     |
-| ------------------------------------------- | ------ | ------- | --------------------------------------------------------------- |
-| config.integrityAppBlobStoreType            | string | `""`    | Storage provider (aws_s3 or azure_blob, must be set explicitly) |
-| config.integrityAppBlobStoreRegion          | string | `""`    | AWS region (AWS S3 only, must be set when using S3)             |
-| config.integrityAppBlobStoreBucket          | string | `""`    | AWS S3 bucket name (AWS S3 only, must be set when using S3)     |
-| config.integrityAppBlobStoreFolder          | string | `""`    | AWS S3 folder/prefix (AWS S3 only)                              |
-| config.integrityAppBlobStoreAccessKeyId     | string | `""`    | AWS access key ID (leave empty to use secret, AWS S3 only)      |
-| config.integrityAppBlobStoreSecretAccessKey | string | `""`    | AWS secret access key (leave empty to use secret, AWS S3 only)  |
-| config.integrityAppBlobStoreAccount         | string | `""`    | Azure storage account name (Azure Blob only)                    |
-| config.integrityAppBlobStoreContainer       | string | `""`    | Azure blob container name (Azure Blob only, must be set)        |
-| config.integrityAppBlobStoreKey             | string | `""`    | Azure storage key (leave empty to use secret, Azure Blob only)  |
+| Key                                         | Type   | Default | Description                                                                         |
+| ------------------------------------------- | ------ | ------- | ----------------------------------------------------------------------------------- |
+| config.integrityAppBlobStoreType            | string | `""`    | Storage provider (aws_s3 or azure_blob, must be set explicitly)                     |
+| config.integrityAppBlobStoreRegion          | string | `""`    | AWS region (AWS S3 only, must be set when using S3)                                 |
+| config.integrityAppBlobStoreBucket          | string | `""`    | AWS S3 bucket name (AWS S3 only, must be set when using S3)                         |
+| config.integrityAppBlobStoreFolder          | string | `""`    | AWS S3 folder/prefix (AWS S3 only)                                                  |
+| config.integrityAppBlobStoreAccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)              |
+| config.integrityAppBlobStoreSecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3)          |
+| config.integrityAppBlobStoreAccount         | string | `""`    | Azure storage account name (auto-configured from global.secrets.storage.azure_blob) |
+| config.integrityAppBlobStoreContainer       | string | `""`    | Azure blob container name (Azure Blob only, must be set)                            |
+| config.integrityAppBlobStoreKey             | string | `""`    | Azure storage key (auto-configured from global.secrets.storage.azure_blob)          |
 
 #### Logging Configuration
 
@@ -343,10 +344,10 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Authentication Configuration
 
-| Key                         | Type   | Default          | Description                       |
-| --------------------------- | ------ | ---------------- | --------------------------------- |
-| config.integrityAppAuthType | string | `"auth_service"` | Authentication type               |
-| config.integrityAppAuthUrl  | string | `""`             | Auth service URL (auto-generated) |
+| Key                         | Type   | Default          | Description                                                                  |
+| --------------------------- | ------ | ---------------- | ---------------------------------------------------------------------------- |
+| config.integrityAppAuthType | string | `"auth_service"` | Authentication type                                                          |
+| config.integrityAppAuthUrl  | string | `""`             | Auth service URL (auto-generated as http://{Release.Name}-auth-service:8080) |
 
 ### Secret Configuration
 
@@ -384,23 +385,23 @@ If your existing secrets use different key names, you can override them via `glo
 
 #### Database Secrets
 
-| Key                   | Type   | Description                              |
-| --------------------- | ------ | ---------------------------------------- |
-| secrets.database.name | string | Secret name (auto-populated from global) |
+| Key                   | Type   | Description                                                           |
+| --------------------- | ------ | --------------------------------------------------------------------- |
+| secrets.database.name | string | Secret name (auto-configured from global.secrets.database.secretName) |
 
 #### Storage Secrets
 
 AWS S3 (only used when integrityAppBlobStoreType is "aws_s3"):
 
-| Key                         | Type   | Description                              |
-| --------------------------- | ------ | ---------------------------------------- |
-| secrets.storage.aws_s3.name | string | Secret name (auto-populated from global) |
+| Key                         | Type   | Description                                                                 |
+| --------------------------- | ------ | --------------------------------------------------------------------------- |
+| secrets.storage.aws_s3.name | string | Secret name (auto-configured from global.secrets.storage.aws_s3.secretName) |
 
 Azure Blob Storage (only used when integrityAppBlobStoreType is "azure_blob"):
 
-| Key                             | Type   | Description                              |
-| ------------------------------- | ------ | ---------------------------------------- |
-| secrets.storage.azure_blob.name | string | Secret name (auto-populated from global) |
+| Key                             | Type   | Description                                                                     |
+| ------------------------------- | ------ | ------------------------------------------------------------------------------- |
+| secrets.storage.azure_blob.name | string | Secret name (auto-configured from global.secrets.storage.azure_blob.secretName) |
 
 ## Configuration Inheritance
 
@@ -428,8 +429,8 @@ integrity-service:
 
   # Must explicitly set storage provider:
   config:
-    integrityAppBlobStoreType: "azure_blob" # Required - not auto-set
-    integrityAppBlobStoreContainer: "integrity-data" # Required - not auto-set
+    integrityAppBlobStoreType: "azure_blob" # Required
+    integrityAppBlobStoreContainer: "integrity-data" # Required
 ```
 
 ## Storage Provider Configuration

@@ -206,6 +206,11 @@ affinity:
                   - auth-service
           topologyKey: kubernetes.io/hostname
 
+# -- Init Containers
+# @default -- `[]`
+# Init containers to add to the pod
+initContainers: []
+
 # -- Startup Probe
 # @default -- See values below
 startupProbe:
@@ -269,22 +274,12 @@ externalDatabase:
   # @default -- `""` (defaults to "postgres")
   user: ""
   # -- Database Password
-  # @default -- `""` (use secret reference - recommended)
-  # Leave empty to use secret reference
+  # @default -- `""` (auto-configured from global.secrets.database)
   password: ""
   # -- SSL Mode
   # @default -- `disable`
   # Options: disable, require, verify-ca, verify-full
   sslMode: "disable"
-  # -- Max Open Connections
-  # @default -- `25`
-  maxOpenConns: 25
-  # -- Max Idle Connections
-  # @default -- `5`
-  maxIdleConns: 5
-  # -- Connection Max Lifetime
-  # @default -- `5m`
-  connMaxLifetime: "5m"
 
   # -- Password Secret Reference
   # @default -- See values below
@@ -380,22 +375,33 @@ config:
     # -- Host
     # @default -- `0.0.0.0`
     host: "0.0.0.0"
-    # -- Read Timeout
-    # @default -- `30s`
-    readTimeout: "30s"
-    # -- Write Timeout
-    # @default -- `30s`
-    writeTimeout: "30s"
-    # -- Idle Timeout
-    # @default -- `120s`
-    idleTimeout: "120s"
     # -- Environment
     # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
     environment: ""
     # -- Swagger Enabled
-    # @default -- `false`
+    # @default -- `true`
     # Enable Swagger documentation
-    swaggerEnabled: false
+    swaggerEnabled: true
+    # -- Swagger Host
+    # @default -- `""` (auto-generated from global.domain)
+    # Only used when swaggerEnabled is true
+    swaggerHost: ""
+    # -- Swagger Base Path
+    # @default -- `/authService`
+    # Only used when swaggerEnabled is true
+    swaggerBasePath: "/authService"
+
+  # ---------------------------------------------------------------------------
+  # Auth Service Secrets (API and JWT)
+  # ---------------------------------------------------------------------------
+
+  # -- API Secret
+  # @default -- `""` (auto-configured from global.secrets.authService)
+  apiSecret: ""
+
+  # -- JWT Secret
+  # @default -- `""` (auto-configured from global.secrets.authService)
+  jwtSecret: ""
 
   # ---------------------------------------------------------------------------
   # Logging Configuration
@@ -440,7 +446,7 @@ config:
   # @default -- See values below
   idp:
     # -- Provider
-    # @default -- `""` (auto-configured from global.secrets.auth.provider)
+    # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
     # Options: auth0, keycloak
     provider: ""
     # -- OIDC Issuer URL
@@ -459,9 +465,6 @@ config:
       # @default -- `""`
       # **REQUIRED for Auth0**: Tenant domain (e.g., "yourcompany.us.auth0.com")
       domain: ""
-      # -- Enable Management API
-      # @default -- `true`
-      enableManagementAPI: true
       # -- Management Audience
       # @default -- `""`
       # **REQUIRED for Auth0**: Management API audience (e.g., "https://yourcompany.us.auth0.com/api/v2/")
@@ -483,14 +486,22 @@ config:
       # @default -- `true`
       # Send invitation email on user creation
       sendInvitationEmail: true
-      # -- Sync at Startup
-      # @default -- `false`
-      # Sync organizations at startup
-      syncAtStartup: false
-      # -- Sync Page Size
-      # @default -- `100`
-      # Page size for Auth0 API calls
-      syncPageSize: 100
+      # -- Client ID
+      # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+      # Only used when provider is "auth0"
+      clientId: ""
+      # -- Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+      # Only used when provider is "auth0"
+      clientSecret: ""
+      # -- Management Client ID
+      # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+      # Only used when provider is "auth0"
+      managementClientId: ""
+      # -- Management Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+      # Only used when provider is "auth0"
+      managementClientSecret: ""
 
     # -- Keycloak Configuration
     # @default -- See values below
@@ -511,6 +522,14 @@ config:
       # @default -- `false`
       # Enable group sync with Keycloak
       enableGroupSync: false
+      # -- Client ID
+      # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+      # Only used when provider is "keycloak"
+      clientId: ""
+      # -- Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+      # Only used when provider is "keycloak"
+      clientSecret: ""
 
   # ---------------------------------------------------------------------------
   # Key Vault Configuration
@@ -521,7 +540,7 @@ config:
   keyVault:
     # -- Provider
     # @default -- `""` (auto-configured from global.secrets.secretManager.provider)
-    # Options: azure, hashicorp, local
+    # Options: azure, local
     provider: ""
     # -- Cache TTL Minutes
     # @default -- `15`
@@ -538,26 +557,14 @@ config:
       # -- Tenant ID
       # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault.values.tenantId)
       tenantId: ""
-
-    # -- HashiCorp Vault Configuration
-    # @default -- See values below
-    # Only used when provider is "hashicorp"
-    hashicorp:
-      # -- Address
-      # @default -- `""`
-      # **REQUIRED for HashiCorp**: Vault address (e.g., "https://vault.example.com:8200")
-      address: ""
-
-  # ---------------------------------------------------------------------------
-  # Service Integrations
-  # ---------------------------------------------------------------------------
-
-  # -- Service Integrations
-  # @default -- See values below
-  integrations:
-    # -- Governance Service URL
-    # @default -- `""` (auto-generated: "http://{Release.Name}-governance-service:10001")
-    governanceServiceUrl: ""
+      # -- Client ID
+      # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
+      # Only used when provider is "azure" or "azure_key_vault"
+      clientId: ""
+      # -- Client Secret
+      # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
+      # Only used when provider is "azure" or "azure_key_vault"
+      clientSecret: ""
 
   # ---------------------------------------------------------------------------
   # Service Accounts Configuration
@@ -566,11 +573,6 @@ config:
   # -- Service Accounts Configuration
   # @default -- See values below
   serviceAccounts:
-    # -- Auto Create
-    # @default -- `true`
-    # Auto-create default service accounts on startup
-    autoCreate: true
-
     # -- Governance Worker Configuration
     # @default -- See values below
     governanceWorker:
@@ -578,14 +580,6 @@ config:
       # @default -- `true`
       # Enable governance worker service account
       enabled: true
-      # -- Name
-      # @default -- `governance-worker`
-      # Service account name
-      name: "governance-worker"
-      # -- Description
-      # @default -- See values below
-      # Service account description
-      description: "Automated governance service worker for processing indicator evaluations"
       # -- Scopes
       # @default -- See values below
       # Scopes for service account
@@ -596,6 +590,15 @@ config:
       # @default -- `""`
       # **REQUIRED for Auth0**: API audience for worker (e.g., "https://governance.yourcompany.com")
       audience: ""
+      # -- Client ID
+      # @default -- `""` (auto-configured from global.secrets.governanceWorker)
+      clientId: ""
+      # -- Client Secret
+      # @default -- `""` (auto-configured from global.secrets.governanceWorker)
+      clientSecret: ""
+      # -- Encryption Key
+      # @default -- `""` (auto-configured from global.secrets.governanceWorker)
+      encryptionKey: ""
 
   # ---------------------------------------------------------------------------
   # Token Exchange Configuration
@@ -613,44 +616,10 @@ config:
     # @default -- `auth-service-prod-001`
     # Key identifier for signing key
     keyId: "auth-service-prod-001"
-
-  # ---------------------------------------------------------------------------
-  # RBAC Configuration
-  # ---------------------------------------------------------------------------
-
-  # -- RBAC Configuration
-  # @default -- See values below
-  rbac:
-    # -- Cache Configuration
-    # @default -- See values below
-    cache:
-      # -- Enabled
-      # @default -- `true`
-      # Enable RBAC permission cache
-      enabled: true
-      # -- TTL
-      # @default -- `300s`
-      # Cache TTL
-      ttl: "300s"
-      # -- Max Size
-      # @default -- `1000`
-      # Maximum cache entries
-      maxSize: 1000
-
-  # ---------------------------------------------------------------------------
-  # Rate Limiting Configuration
-  # ---------------------------------------------------------------------------
-
-  # -- Rate Limit Configuration
-  # @default -- See values below
-  rateLimit:
-    # -- Enabled
-    # @default -- `false`
-    # Enable rate limiting
-    enabled: false
-    # -- Requests Per Minute
-    # @default -- `60`
-    requestsPerMinute: 60
+    # -- Private Key
+    # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+    # Only used when tokenExchange is enabled
+    privateKey: ""
 
 # =============================================================================
 # METRICS CONFIGURATION
@@ -802,11 +771,6 @@ extraEnvVarsConfigMap: ""
 # @default -- `[]`
 # Extra containers to add to the pod
 extraContainers: []
-
-# -- Extra Init Containers
-# @default -- `[]`
-# Extra init containers to add to the pod
-extraInitContainers: []
 
 # -- Extra Manifests
 # @default -- `[]`

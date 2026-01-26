@@ -88,10 +88,6 @@ governance-studio:
       lineage: true
       guardianEnabled: false
       agentManagement: false
-    branding:
-      logoUrl: "/vite.svg"
-      primaryColor: "#0f172a"
-      companyName: "Development"
 
   resources:
     requests:
@@ -125,7 +121,6 @@ governance-service:
     storageProvider: "aws_s3"
     awsS3Region: "us-east-1"
     awsS3BucketName: "governance-dev"
-    awsS3Folder: ""
 
     server:
       readTimeout: 60

@@ -30,7 +30,6 @@ config:
   storageProvider: "aws_s3"
   awsS3Region: "us-east-1"
   awsS3BucketName: "prod-governance-artifacts"
-  awsS3Folder: "artifacts"
 
   # Auth0 configuration
   auth0Domain: "your-tenant.auth0.com"
@@ -38,14 +37,6 @@ config:
   # Integration URLs
   integrityServiceUrl: "http://governance-platform-integrity-service:3050"
   authServiceUrl: "http://governance-platform-auth-service:8080"
-
-  # Indicator configuration
-  indicators:
-    configPath: "/app/configs/indicators"
-    reloadInterval: 600 # Less frequent in production
-    osGuardrailsEnabled: false
-    osGuardrailsBatchSize: 50
-    osGuardrailsTimeoutSeconds: 3
 
   # Service account
   serviceAccount:
@@ -100,8 +91,8 @@ secrets:
     aws_s3:
       name: "prod-aws-s3"
 
-  worker:
-    name: "prod-governance-worker"
+  authService:
+    name: "prod-auth-service"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

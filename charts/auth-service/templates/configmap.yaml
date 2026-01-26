@@ -11,11 +11,12 @@ data:
   # ==========================================================================
   PORT: "{{ .Values.config.server.port }}"
   HOST: "{{ .Values.config.server.host }}"
-  SERVER_READ_TIMEOUT: "{{ .Values.config.server.readTimeout }}"
-  SERVER_WRITE_TIMEOUT: "{{ .Values.config.server.writeTimeout }}"
-  SERVER_IDLE_TIMEOUT: "{{ .Values.config.server.idleTimeout }}"
   ENVIRONMENT: "{{ .Values.config.server.environment | default ((.Values.global).environmentType) | default "production" }}"
   SWAGGER_ENABLED: "{{ .Values.config.server.swaggerEnabled }}"
+  {{- if .Values.config.server.swaggerEnabled }}
+  SWAGGER_HOST: "{{ .Values.config.server.swaggerHost | default ((.Values.global).domain) | default "" }}"
+  SWAGGER_BASE_PATH: "{{ .Values.config.server.swaggerBasePath | default "/authService" }}"
+  {{- end }}
 
   # ==========================================================================
   # Logging Configuration
@@ -38,9 +39,6 @@ data:
   DB_NAME: "{{ .Values.externalDatabase.name | default ((.Values.global).postgresql).database | default "governance" }}"
   DB_USER: "{{ .Values.externalDatabase.user | default ((.Values.global).postgresql).username | default "postgres" }}"
   DB_SSL_MODE: "{{ .Values.externalDatabase.sslMode }}"
-  DB_MAX_OPEN_CONNS: "{{ .Values.externalDatabase.maxOpenConns }}"
-  DB_MAX_IDLE_CONNS: "{{ .Values.externalDatabase.maxIdleConns }}"
-  DB_CONN_MAX_LIFETIME: "{{ .Values.externalDatabase.connMaxLifetime }}"
   DATABASE_AUTO_MIGRATE: "{{ .Values.migrations.runAtStartup }}"
   DATABASE_MIGRATIONS_PATH: "{{ .Values.migrations.path }}"
 
@@ -59,7 +57,6 @@ data:
   {{- if .Values.config.idp.auth0.domain }}
   IDP_AUTH0_DOMAIN: {{ .Values.config.idp.auth0.domain | quote }}
   {{- end }}
-  IDP_AUTH0_ENABLE_MANAGEMENT_API: "{{ .Values.config.idp.auth0.enableManagementAPI }}"
   {{- if .Values.config.idp.auth0.managementAudience }}
   IDP_AUTH0_MANAGEMENT_AUDIENCE: {{ .Values.config.idp.auth0.managementAudience | quote }}
   {{- end }}
@@ -69,8 +66,6 @@ data:
   IDP_AUTH0_DEFAULT_CONNECTION: "{{ .Values.config.idp.auth0.defaultConnection }}"
   IDP_AUTH0_DEFAULT_ROLES: "{{ .Values.config.idp.auth0.defaultRoles | join "," }}"
   IDP_AUTH0_SEND_INVITATION_EMAIL: "{{ .Values.config.idp.auth0.sendInvitationEmail }}"
-  IDP_AUTH0_SYNC_AT_STARTUP: "{{ .Values.config.idp.auth0.syncAtStartup }}"
-  IDP_AUTH0_SYNC_PAGE_SIZE: "{{ .Values.config.idp.auth0.syncPageSize }}"
   {{- end }}
 
   # Keycloak Configuration
@@ -90,7 +85,6 @@ data:
   # Key Vault Configuration
   # ==========================================================================
   {{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
-  KEY_VAULT_PROVIDER: "{{ $keyVaultProvider }}"
   DID_KEY_CACHE_TTL_MINUTES: "{{ .Values.config.keyVault.cacheTTLMinutes }}"
 
   # Azure Key Vault Configuration
@@ -105,26 +99,10 @@ data:
   {{- end }}
   {{- end }}
 
-  # HashiCorp Vault Configuration
-  {{- if eq $keyVaultProvider "hashicorp" }}
-  {{- if .Values.config.keyVault.hashicorp.address }}
-  VAULT_ADDR: "{{ .Values.config.keyVault.hashicorp.address }}"
-  {{- end }}
-  {{- end }}
-
-  # ==========================================================================
-  # Service Integration Configuration
-  # ==========================================================================
-  {{- $governanceServiceUrl := .Values.config.integrations.governanceServiceUrl | default (printf "http://%s-governance-service:10001" .Release.Name) }}
-  GOVERNANCE_SERVICE_URL: "{{ $governanceServiceUrl }}"
-
   # ==========================================================================
   # Service Account Configuration
   # ==========================================================================
-  SERVICE_ACCOUNT_AUTO_CREATE: "{{ .Values.config.serviceAccounts.autoCreate }}"
   {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
-  SERVICE_ACCOUNT_DEFAULT_NAME: "{{ .Values.config.serviceAccounts.governanceWorker.name }}"
-  SERVICE_ACCOUNT_DEFAULT_DESCRIPTION: "{{ .Values.config.serviceAccounts.governanceWorker.description }}"
   {{- $workerAudience := .Values.config.serviceAccounts.governanceWorker.audience | default (((((.Values.global).secrets).auth).auth0).management).audience | default "" }}
   {{- if $workerAudience }}
   AUTH0_GOVERNANCE_WORKER_AUDIENCE: "{{ $workerAudience }}"
@@ -135,23 +113,7 @@ data:
   # Token Exchange Configuration
   # ==========================================================================
   {{- if .Values.config.tokenExchange.enabled }}
-  TOKEN_EXCHANGE_ENABLED: "true"
   AUTH_SERVICE_KEY_ID: "{{ .Values.config.tokenExchange.keyId }}"
-  {{- end }}
-
-  # ==========================================================================
-  # RBAC Configuration
-  # ==========================================================================
-  RBAC_CACHE_ENABLED: "{{ .Values.config.rbac.cache.enabled }}"
-  RBAC_CACHE_TTL: "{{ .Values.config.rbac.cache.ttl }}"
-  RBAC_CACHE_MAX_SIZE: "{{ .Values.config.rbac.cache.maxSize }}"
-
-  # ==========================================================================
-  # Rate Limiting Configuration
-  # ==========================================================================
-  {{- if .Values.config.rateLimit.enabled }}
-  RATE_LIMIT_ENABLED: "true"
-  RATE_LIMIT_REQUESTS_PER_MINUTE: "{{ .Values.config.rateLimit.requestsPerMinute }}"
   {{- end }}
 
   # ==========================================================================

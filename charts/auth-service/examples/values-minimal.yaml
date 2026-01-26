@@ -67,7 +67,6 @@ externalDatabase:
 # kubectl create secret generic auth-service-secrets \
 #   --from-literal=api-secret=$(openssl rand -base64 32) \
 #   --from-literal=jwt-secret=$(openssl rand -base64 32) \
-#   --from-literal=session-secret=$(openssl rand -base64 32)
 #
 # kubectl create secret generic azure-keyvault-credentials \
 #   --from-literal=client-id=YOUR_AZURE_CLIENT_ID \

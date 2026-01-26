@@ -74,8 +74,6 @@ global:
     authService:
       secretName: "platform-auth-service"
       keys:
-        dbPassword: "db-password"
-        sessionSecret: "session-secret"
         apiSecret: "api-secret"
         jwtSecret: "jwt-secret"
 
@@ -173,11 +171,6 @@ governance-studio:
       lineage: true
       guardianEnabled: false
       agentManagement: false
-
-    branding:
-      logoUrl: "/vite.svg"
-      primaryColor: "#1e40af"
-      companyName: "Your Organization"
 
   resources:
     requests:
@@ -423,7 +416,6 @@ postgresql:
 # # Auth service secrets
 # kubectl create secret generic platform-auth-service \
 #   --from-literal=db-password="$(openssl rand -base64 24)" \
-#   --from-literal=session-secret="$(openssl rand -base64 32)" \
 #   --from-literal=api-secret="$(openssl rand -base64 32)" \
 #   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
 #   --namespace governance

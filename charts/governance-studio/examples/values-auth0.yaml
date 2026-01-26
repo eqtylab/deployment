@@ -111,7 +111,6 @@ config:
   # Environment settings
   environment: "production"
   appTitle: "Governance Studio"
-  appHostname: "governance.your-domain.com"
 
   # Feature configuration
   features:
@@ -123,12 +122,6 @@ config:
     guardianOsFunctions: false
     guardianSdkFunctions: false
     agentManagement: false
-
-  # Branding
-  branding:
-    logoUrl: /vite.svg
-    primaryColor: "#0f172a"
-    companyName: "Your Company"
 
 # =============================================================================
 # HIGH AVAILABILITY

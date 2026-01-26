@@ -94,7 +94,6 @@ config:
   # Environment settings
   environment: "development"
   appTitle: "Governance Studio (Dev)"
-  appHostname: "localhost"
 
   # Enable core features for development
   features:
@@ -106,12 +105,6 @@ config:
     guardianOsFunctions: false
     guardianSdkFunctions: false
     agentManagement: false
-
-  # Development branding
-  branding:
-    logoUrl: /vite.svg
-    primaryColor: "#0f172a"
-    companyName: "EQTY Lab (Dev)"
 
 # =============================================================================
 # SECURITY (RELAXED FOR DEVELOPMENT)

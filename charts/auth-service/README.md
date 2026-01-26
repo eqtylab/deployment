@@ -62,7 +62,6 @@ global:
       keys:
         apiSecret: "api-secret"
         jwtSecret: "jwt-secret"
-        sessionSecret: "session-secret"
 
     secretManager:
       provider: "azure_key_vault"
@@ -121,7 +120,7 @@ externalDatabase:
   host: "postgresql.default.svc.cluster.local"
   name: "governance"
   user: "postgres"
-  password: "YOUR_PASSWORD" # Or use secret reference
+  password: "YOUR_PASSWORD" # Or leave empty to use global.secrets.database
 
 config:
   server:
@@ -134,7 +133,6 @@ config:
     issuer: "https://yourcompany.us.auth0.com/"
     auth0:
       domain: "yourcompany.us.auth0.com"
-      enableManagementAPI: true
       managementAudience: "https://yourcompany.us.auth0.com/api/v2/"
       apiIdentifier: "https://governance.yourcompany.com"
 
@@ -143,9 +141,6 @@ config:
     azure:
       vaultUrl: "https://your-vault.vault.azure.net/"
       tenantId: "your-tenant-id"
-
-  integrations:
-    governanceServiceUrl: "http://governance-service:10001"
 
 secrets:
   auth:
@@ -226,7 +221,6 @@ kubectl create secret generic platform-database \
 kubectl create secret generic platform-auth-service \
   --from-literal=api-secret=$(openssl rand -base64 32) \
   --from-literal=jwt-secret=$(openssl rand -base64 32) \
-  --from-literal=session-secret=$(openssl rand -base64 32) \
   --namespace governance
 
 # Install the chart
@@ -343,11 +337,12 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Node Scheduling
 
-| Key          | Type   | Default           | Description                                   |
-| ------------ | ------ | ----------------- | --------------------------------------------- |
-| nodeSelector | object | `{}`              | Node labels for pod assignment                |
-| tolerations  | list   | `[]`              | Tolerations for pod assignment                |
-| affinity     | object | Pod anti-affinity | Affinity rules (default spreads across nodes) |
+| Key            | Type   | Default           | Description                                   |
+| -------------- | ------ | ----------------- | --------------------------------------------- |
+| nodeSelector   | object | `{}`              | Node labels for pod assignment                |
+| tolerations    | list   | `[]`              | Tolerations for pod assignment                |
+| affinity       | object | Pod anti-affinity | Affinity rules (default spreads across nodes) |
+| initContainers | list   | `[]`              | Init containers to add to the pod             |
 
 ### Health Checks
 
@@ -374,21 +369,18 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Database Configuration
 
-| Key                                        | Type   | Default                           | Description                                                               |
-| ------------------------------------------ | ------ | --------------------------------- | ------------------------------------------------------------------------- |
-| externalDatabase.host                      | string | `""`                              | Database host (auto-set from global or generated as {Release}-postgresql) |
-| externalDatabase.port                      | string | `""`                              | Database port (auto-set from global, default 5432)                        |
-| externalDatabase.name                      | string | `""`                              | Database name (auto-set from global, default "governance")                |
-| externalDatabase.user                      | string | `""`                              | Database user (auto-set from global, default "postgres")                  |
-| externalDatabase.password                  | string | `""`                              | Database password (leave empty to use secret reference)                   |
-| externalDatabase.sslMode                   | string | `"disable"`                       | SSL mode (disable/require/verify-ca/verify-full)                          |
-| externalDatabase.maxOpenConns              | int    | `25`                              | Maximum open connections                                                  |
-| externalDatabase.maxIdleConns              | int    | `5`                               | Maximum idle connections                                                  |
-| externalDatabase.connMaxLifetime           | string | `"5m"`                            | Connection maximum lifetime                                               |
-| externalDatabase.passwordSecretKeyRef.name | string | `""`                              | Secret name containing database password                                  |
-| externalDatabase.passwordSecretKeyRef.key  | string | `""`                              | Secret key name for password                                              |
-| migrations.runAtStartup                    | bool   | `true`                            | Run database migrations automatically at startup                          |
-| migrations.path                            | string | `"/internal/database/migrations"` | Path to migration files                                                   |
+| Key                                        | Type   | Default                           | Description                                                                                      |
+| ------------------------------------------ | ------ | --------------------------------- | ------------------------------------------------------------------------------------------------ |
+| externalDatabase.host                      | string | `""`                              | Database host (auto-configured from global.postgresql.host or generated as {Release}-postgresql) |
+| externalDatabase.port                      | string | `""`                              | Database port (auto-configured from global.postgresql.port, default 5432)                        |
+| externalDatabase.name                      | string | `""`                              | Database name (auto-configured from global.postgresql.database, default "governance")            |
+| externalDatabase.user                      | string | `""`                              | Database user (auto-configured from global.postgresql.username, default "postgres")              |
+| externalDatabase.password                  | string | `""`                              | Database password (auto-configured from global.secrets.database)                                 |
+| externalDatabase.sslMode                   | string | `"disable"`                       | SSL mode (disable/require/verify-ca/verify-full)                                                 |
+| externalDatabase.passwordSecretKeyRef.name | string | `""`                              | Secret name containing database password                                                         |
+| externalDatabase.passwordSecretKeyRef.key  | string | `""`                              | Secret key name for password                                                                     |
+| migrations.runAtStartup                    | bool   | `true`                            | Run database migrations automatically at startup                                                 |
+| migrations.path                            | string | `"/internal/database/migrations"` | Path to migration files                                                                          |
 
 ### Secret Configuration
 
@@ -414,8 +406,7 @@ kubectl create secret generic auth-service-auth \
 # Example: Security secrets with default key names
 kubectl create secret generic auth-service-security \
   --from-literal=api-secret=$(openssl rand -base64 32) \
-  --from-literal=jwt-secret=$(openssl rand -base64 32) \
-  --from-literal=session-secret=$(openssl rand -base64 32)
+  --from-literal=jwt-secret=$(openssl rand -base64 32)
 ```
 
 If your existing secrets use different key names, you can override them via `global.secrets.*.keys` in your values file.
@@ -426,21 +417,21 @@ If your existing secrets use different key names, you can override them via `glo
 | ------------ | -------------------------------------------------------------------- |
 | Auth0        | `client-id`, `client-secret`, `mgmt-client-id`, `mgmt-client-secret` |
 | Keycloak     | `backend-client-id`, `backend-client-secret`                         |
-| Auth Service | `api-secret`, `jwt-secret`, `session-secret`                         |
+| Auth Service | `api-secret`, `jwt-secret`                                           |
 | Key Vault    | `client-id`, `client-secret`, `tenant-id`, `vault-url`               |
 | Worker       | `encryption-key`, `client-id`, `client-secret`                       |
 
 #### Auth0 Secret (only used when auth provider is Auth0)
 
-| Key                     | Type   | Description                              |
-| ----------------------- | ------ | ---------------------------------------- |
-| secrets.auth.auth0.name | string | Secret name (auto-populated from global) |
+| Key                     | Type   | Description                                                             |
+| ----------------------- | ------ | ----------------------------------------------------------------------- |
+| secrets.auth.auth0.name | string | Secret name (auto-configured from global.secrets.auth.auth0.secretName) |
 
 #### Keycloak Secret (only used when auth provider is Keycloak)
 
-| Key                        | Type   | Description                              |
-| -------------------------- | ------ | ---------------------------------------- |
-| secrets.auth.keycloak.name | string | Secret name (auto-populated from global) |
+| Key                        | Type   | Description                                                                |
+| -------------------------- | ------ | -------------------------------------------------------------------------- |
+| secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
 
 #### Auth Service Secret
 
@@ -464,15 +455,21 @@ If your existing secrets use different key names, you can override them via `glo
 
 #### Server Settings
 
-| Key                          | Type   | Default     | Description                        |
-| ---------------------------- | ------ | ----------- | ---------------------------------- |
-| config.server.port           | int    | `8080`      | Server port                        |
-| config.server.host           | string | `"0.0.0.0"` | Server host                        |
-| config.server.readTimeout    | string | `"30s"`     | Read timeout                       |
-| config.server.writeTimeout   | string | `"30s"`     | Write timeout                      |
-| config.server.idleTimeout    | string | `"120s"`    | Idle timeout                       |
-| config.server.environment    | string | `""`        | Environment (auto-set from global) |
-| config.server.swaggerEnabled | bool   | `false`     | Enable Swagger documentation       |
+| Key                           | Type   | Default          | Description                                               |
+| ----------------------------- | ------ | ---------------- | --------------------------------------------------------- |
+| config.server.port            | int    | `8080`           | Server port                                               |
+| config.server.host            | string | `"0.0.0.0"`      | Server host                                               |
+| config.server.environment     | string | `""`             | Environment (auto-configured from global.environmentType) |
+| config.server.swaggerEnabled  | bool   | `true`           | Enable Swagger documentation                              |
+| config.server.swaggerHost     | string | `""`             | Swagger host (auto-generated from global.domain)          |
+| config.server.swaggerBasePath | string | `"/authService"` | Swagger base path (only used when swaggerEnabled is true) |
+
+#### Auth Service Secrets
+
+| Key              | Type   | Default | Description                                                          |
+| ---------------- | ------ | ------- | -------------------------------------------------------------------- |
+| config.apiSecret | string | `""`    | API secret (auto-configured from global.secrets.authService)         |
+| config.jwtSecret | string | `""`    | JWT signing secret (auto-configured from global.secrets.authService) |
 
 #### Logging Configuration
 
@@ -491,83 +488,67 @@ If your existing secrets use different key names, you can override them via `glo
 
 #### Identity Provider Configuration
 
-| Key                               | Type   | Default | Description                         |
-| --------------------------------- | ------ | ------- | ----------------------------------- |
-| config.idp.provider               | string | `""`    | IDP type (auto-set from global)     |
-| config.idp.issuer                 | string | `""`    | OIDC issuer URL                     |
-| config.idp.skipIssuerVerification | bool   | `false` | Skip issuer verification (dev only) |
+| Key                               | Type   | Default | Description                                                  |
+| --------------------------------- | ------ | ------- | ------------------------------------------------------------ |
+| config.idp.provider               | string | `""`    | IDP type (auto-configured from global.secrets.auth.provider) |
+| config.idp.issuer                 | string | `""`    | OIDC issuer URL                                              |
+| config.idp.skipIssuerVerification | bool   | `false` | Skip issuer verification (dev only)                          |
 
 **Auth0 Configuration (only used when provider is "auth0"):**
 
-| Key                                  | Type   | Default                              | Description                               |
-| ------------------------------------ | ------ | ------------------------------------ | ----------------------------------------- |
-| config.idp.auth0.domain              | string | `""`                                 | Auth0 tenant domain (**must be set**)     |
-| config.idp.auth0.enableManagementAPI | bool   | `true`                               | Enable Management API                     |
-| config.idp.auth0.managementAudience  | string | `""`                                 | Management API audience (**must be set**) |
-| config.idp.auth0.apiIdentifier       | string | `""`                                 | API identifier (**must be set**)          |
-| config.idp.auth0.defaultConnection   | string | `"Username-Password-Authentication"` | Default connection                        |
-| config.idp.auth0.defaultRoles        | list   | `["user"]`                           | Default roles for new users               |
-| config.idp.auth0.sendInvitationEmail | bool   | `true`                               | Send invitation email on user creation    |
-| config.idp.auth0.syncAtStartup       | bool   | `false`                              | Sync organizations at startup             |
-| config.idp.auth0.syncPageSize        | int    | `100`                                | Page size for Auth0 API calls             |
+| Key                                     | Type   | Default                              | Description                                                                   |
+| --------------------------------------- | ------ | ------------------------------------ | ----------------------------------------------------------------------------- |
+| config.idp.auth0.domain                 | string | `""`                                 | Auth0 tenant domain (**must be set**)                                         |
+| config.idp.auth0.managementAudience     | string | `""`                                 | Management API audience (**must be set**)                                     |
+| config.idp.auth0.apiIdentifier          | string | `""`                                 | API identifier (**must be set**)                                              |
+| config.idp.auth0.defaultConnection      | string | `"Username-Password-Authentication"` | Default connection                                                            |
+| config.idp.auth0.defaultRoles           | list   | `["user"]`                           | Default roles for new users                                                   |
+| config.idp.auth0.sendInvitationEmail    | bool   | `true`                               | Send invitation email on user creation                                        |
+| config.idp.auth0.clientId               | string | `""`                                 | Auth0 client ID (auto-configured from global.secrets.auth.auth0)              |
+| config.idp.auth0.clientSecret           | string | `""`                                 | Auth0 client secret (auto-configured from global.secrets.auth.auth0)          |
+| config.idp.auth0.managementClientId     | string | `""`                                 | Management API client ID (auto-configured from global.secrets.auth.auth0)     |
+| config.idp.auth0.managementClientSecret | string | `""`                                 | Management API client secret (auto-configured from global.secrets.auth.auth0) |
 
 **Keycloak Configuration (only used when provider is "keycloak"):**
 
-| Key                                      | Type   | Default | Description               |
-| ---------------------------------------- | ------ | ------- | ------------------------- |
-| config.idp.keycloak.realm                | string | `""`    | Keycloak realm (auto-set) |
-| config.idp.keycloak.adminUrl             | string | `""`    | Admin URL for operations  |
-| config.idp.keycloak.enableUserManagement | bool   | `false` | Enable user management    |
-| config.idp.keycloak.enableGroupSync      | bool   | `false` | Enable group sync         |
+| Key                                      | Type   | Default | Description                                                                     |
+| ---------------------------------------- | ------ | ------- | ------------------------------------------------------------------------------- |
+| config.idp.keycloak.realm                | string | `""`    | Keycloak realm (auto-configured from global.secrets.auth.keycloak.values.realm) |
+| config.idp.keycloak.adminUrl             | string | `""`    | Admin URL for operations                                                        |
+| config.idp.keycloak.enableUserManagement | bool   | `false` | Enable user management                                                          |
+| config.idp.keycloak.enableGroupSync      | bool   | `false` | Enable group sync                                                               |
+| config.idp.keycloak.clientId             | string | `""`    | Keycloak client ID (auto-configured from global.secrets.auth.keycloak)          |
+| config.idp.keycloak.clientSecret         | string | `""`    | Keycloak client secret (auto-configured from global.secrets.auth.keycloak)      |
 
 #### Key Vault Configuration
 
-| Key                               | Type   | Default | Description                                |
-| --------------------------------- | ------ | ------- | ------------------------------------------ |
-| config.keyVault.provider          | string | `""`    | Key Vault provider (auto-set from global)  |
-| config.keyVault.cacheTTLMinutes   | int    | `15`    | DID key cache TTL                          |
-| config.keyVault.azure.vaultUrl    | string | `""`    | Azure Key Vault URL (auto-set from global) |
-| config.keyVault.azure.tenantId    | string | `""`    | Azure tenant ID (auto-set from global)     |
-| config.keyVault.hashicorp.address | string | `""`    | HashiCorp Vault address                    |
-
-#### Service Integration
-
-| Key                                      | Type   | Default | Description                                               |
-| ---------------------------------------- | ------ | ------- | --------------------------------------------------------- |
-| config.integrations.governanceServiceUrl | string | `""`    | Governance Service URL (auto-generated from Release.Name) |
+| Key                                | Type   | Default | Description                                                                                             |
+| ---------------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------- |
+| config.keyVault.provider           | string | `""`    | Key Vault provider (auto-configured from global.secrets.secretManager.provider)                         |
+| config.keyVault.cacheTTLMinutes    | int    | `15`    | DID key cache TTL                                                                                       |
+| config.keyVault.azure.vaultUrl     | string | `""`    | Azure Key Vault URL (auto-configured from global.secrets.secretManager.azure_key_vault.values.vaultUrl) |
+| config.keyVault.azure.tenantId     | string | `""`    | Azure tenant ID (auto-configured from global.secrets.secretManager.azure_key_vault.values.tenantId)     |
+| config.keyVault.azure.clientId     | string | `""`    | Azure client ID (auto-configured from global.secrets.secretManager.azure_key_vault)                     |
+| config.keyVault.azure.clientSecret | string | `""`    | Azure client secret (auto-configured from global.secrets.secretManager.azure_key_vault)                 |
 
 #### Service Account Configuration
 
-| Key                                                 | Type   | Default                     | Description                      |
-| --------------------------------------------------- | ------ | --------------------------- | -------------------------------- |
-| config.serviceAccounts.autoCreate                   | bool   | `true`                      | Auto-create service accounts     |
-| config.serviceAccounts.governanceWorker.enabled     | bool   | `true`                      | Enable governance worker account |
-| config.serviceAccounts.governanceWorker.name        | string | `"governance-worker"`       | Worker account name              |
-| config.serviceAccounts.governanceWorker.description | string | `"Automated governance..."` | Worker description               |
-| config.serviceAccounts.governanceWorker.scopes      | list   | See values.yaml             | Worker scopes                    |
-| config.serviceAccounts.governanceWorker.audience    | string | `""`                        | Auth0 API audience (auto-set)    |
+| Key                                                   | Type   | Default         | Description                                                                 |
+| ----------------------------------------------------- | ------ | --------------- | --------------------------------------------------------------------------- |
+| config.serviceAccounts.governanceWorker.enabled       | bool   | `true`          | Enable governance worker account                                            |
+| config.serviceAccounts.governanceWorker.scopes        | list   | See values.yaml | Worker scopes                                                               |
+| config.serviceAccounts.governanceWorker.audience      | string | `""`            | Auth0 API audience (**must be set for Auth0**)                              |
+| config.serviceAccounts.governanceWorker.clientId      | string | `""`            | Worker client ID (auto-configured from global.secrets.governanceWorker)     |
+| config.serviceAccounts.governanceWorker.clientSecret  | string | `""`            | Worker client secret (auto-configured from global.secrets.governanceWorker) |
+| config.serviceAccounts.governanceWorker.encryptionKey | string | `""`            | Encryption key (auto-configured from global.secrets.governanceWorker)       |
 
 #### Token Exchange Configuration
 
-| Key                          | Type   | Default                   | Description                      |
-| ---------------------------- | ------ | ------------------------- | -------------------------------- |
-| config.tokenExchange.enabled | bool   | `false`                   | Enable token exchange (Keycloak) |
-| config.tokenExchange.keyId   | string | `"auth-service-prod-001"` | Key identifier for signing key   |
-
-#### RBAC Configuration
-
-| Key                       | Type   | Default  | Description           |
-| ------------------------- | ------ | -------- | --------------------- |
-| config.rbac.cache.enabled | bool   | `true`   | Enable RBAC cache     |
-| config.rbac.cache.ttl     | string | `"300s"` | Cache TTL             |
-| config.rbac.cache.maxSize | int    | `1000`   | Maximum cache entries |
-
-#### Rate Limiting Configuration
-
-| Key                                | Type | Default | Description          |
-| ---------------------------------- | ---- | ------- | -------------------- |
-| config.rateLimit.enabled           | bool | `false` | Enable rate limiting |
-| config.rateLimit.requestsPerMinute | int  | `60`    | Requests per minute  |
+| Key                             | Type   | Default                   | Description                                                                    |
+| ------------------------------- | ------ | ------------------------- | ------------------------------------------------------------------------------ |
+| config.tokenExchange.enabled    | bool   | `false`                   | Enable token exchange (Keycloak)                                               |
+| config.tokenExchange.keyId      | string | `"auth-service-prod-001"` | Key identifier for signing key                                                 |
+| config.tokenExchange.privateKey | string | `""`                      | Token exchange private key (auto-configured from global.secrets.auth.keycloak) |
 
 ### Metrics Configuration
 
@@ -612,7 +593,6 @@ If your existing secrets use different key names, you can override them via `glo
 | extraEnvVarsSecret    | string | `""`    | Secret containing extra env vars          |
 | extraEnvVarsConfigMap | string | `""`    | ConfigMap containing extra env vars       |
 | extraContainers       | list   | `[]`    | Extra containers to add to the pod        |
-| extraInitContainers   | list   | `[]`    | Extra init containers to add to the pod   |
 | extraManifests        | list   | `[]`    | Extra manifests to deploy                 |
 
 ## Configuration Inheritance
@@ -673,12 +653,10 @@ config:
     issuer: "https://your-tenant.us.auth0.com/"
     auth0:
       domain: "your-tenant.us.auth0.com"
-      enableManagementAPI: true
       managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
       apiIdentifier: "https://governance.yourcompany.com"
       defaultConnection: "Username-Password-Authentication"
       defaultRoles: ["user"]
-      syncAtStartup: true
 
 secrets:
   auth:

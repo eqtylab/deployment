@@ -42,9 +42,6 @@ config:
   # keycloakUrl: "https://keycloak.your-domain.com"
   # keycloakRealm: "governance"
   # keycloakClientId: "governance-studio"
-
-  # Application hostname
-  appHostname: "YOUR-DOMAIN"
 # =============================================================================
 # OPTIONAL: Enable ingress for external access
 # =============================================================================

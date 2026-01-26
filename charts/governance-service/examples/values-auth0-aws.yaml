@@ -35,7 +35,6 @@ config:
   storageProvider: "aws_s3"
   awsS3Region: "us-east-1"
   awsS3BucketName: "your-governance-artifacts-bucket"
-  awsS3Folder: "artifacts" # Optional prefix/folder
 
   # Auth0 configuration
   auth0Domain: "your-tenant.auth0.com"
@@ -43,12 +42,6 @@ config:
   # Integration URLs
   integrityServiceUrl: "http://governance-platform-integrity-service:3050"
   authServiceUrl: "http://governance-platform-auth-service:8080"
-
-  # Indicator configuration
-  indicators:
-    configPath: "/app/configs/indicators"
-    reloadInterval: 300
-    osGuardrailsEnabled: false
 
   # Service account for worker authentication
   serviceAccount:
@@ -131,8 +124,8 @@ secrets:
     aws_s3:
       name: "platform-aws-s3"
 
-  worker:
-    name: "platform-governance-worker"
+  authService:
+    name: "platform-auth-service"
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION

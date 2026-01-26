@@ -309,11 +309,6 @@ config:
   # Application title displayed in browser and UI
   appTitle: "Governance Studio"
 
-  # -- App Hostname
-  # @default -- `""` (auto-configured from global.domain)
-  # Public hostname
-  appHostname: ""
-
   # ---------------------------------------------------------------------------
   # Feature Flags
   # ---------------------------------------------------------------------------
@@ -360,25 +355,3 @@ config:
     # @default -- `false`
     # Enable agent management UI
     agentManagement: false
-
-  # ---------------------------------------------------------------------------
-  # Branding Configuration
-  # ---------------------------------------------------------------------------
-
-  # -- Branding Configuration
-  # @default -- See values below
-  branding:
-    # -- Logo URL
-    # @default -- `/vite.svg`
-    # URL or path to logo asset
-    logoUrl: /vite.svg
-
-    # -- Primary Color
-    # @default -- `#0f172a`
-    # Primary brand color (hex code)
-    primaryColor: "#0f172a"
-
-    # -- Company Name
-    # @default -- `EQTY Lab`
-    # Company name for branding
-    companyName: "EQTY Lab"

@@ -118,10 +118,6 @@ governance-studio:
       lineage: true
       guardianEnabled: false
       agentManagement: false
-    branding:
-      logoUrl: "/vite.svg"
-      primaryColor: "#0f172a"
-      companyName: "Your Company"
 
   resources:
     requests:
@@ -391,7 +387,6 @@ postgresql:
 # # Auth service credentials
 # kubectl create secret generic platform-auth-service \
 #   --from-literal=db-password="$(openssl rand -base64 24)" \
-#   --from-literal=session-secret="$(openssl rand -base64 32)" \
 #   --from-literal=api-secret="$(openssl rand -base64 32)" \
 #   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
 #   --namespace governance

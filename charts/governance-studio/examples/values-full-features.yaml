@@ -18,7 +18,6 @@
 #   - Agent management enabled
 #   - Compliance Garage integration
 #   - Full lineage and governance capabilities
-#   - Custom branding configuration
 
 # =============================================================================
 # DEPLOYMENT CONFIGURATION
@@ -113,7 +112,6 @@ config:
   # Environment settings
   environment: "production"
   appTitle: "Governance Studio - Full Edition"
-  appHostname: "governance.your-domain.com"
 
   # ==========================================================================
   # ALL FEATURES ENABLED
@@ -147,15 +145,6 @@ config:
     # Agent management UI
     # Enables management of AI/ML agents and their governance policies
     agentManagement: true
-
-  # Custom branding configuration
-  branding:
-    # Custom logo URL (can be relative path or absolute URL)
-    logoUrl: "https://your-cdn.com/company-logo.svg"
-    # Primary brand color (used for buttons, links, etc.)
-    primaryColor: "#2563eb"
-    # Company name displayed in UI
-    companyName: "Your Company Name"
 
 # =============================================================================
 # HIGH AVAILABILITY

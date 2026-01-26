@@ -107,7 +107,6 @@ config:
   # Environment settings
   environment: "production"
   appTitle: "Governance Studio"
-  appHostname: "governance.your-domain.local"
 
   # Feature configuration
   features:
@@ -119,12 +118,6 @@ config:
     guardianOsFunctions: false
     guardianSdkFunctions: false
     agentManagement: false
-
-  # Enterprise branding
-  branding:
-    logoUrl: "/custom-logo.svg"
-    primaryColor: "#1e40af"
-    companyName: "Enterprise Corp"
 
 # =============================================================================
 # HIGH AVAILABILITY

@@ -35,7 +35,6 @@ kubectl create secret generic platform-database \
 kubectl create secret generic platform-auth-service \
   --from-literal=api-secret="$(openssl rand -hex 32)" \
   --from-literal=jwt-secret="$(openssl rand -hex 32)" \
-  --from-literal=session-secret="$(openssl rand -hex 32)" \
   --from-literal=private-key="<your-token-exchange-private-key>" \
   -n <namespace>
 
@@ -125,13 +124,11 @@ const authConfig = {
 ### Common Issues
 
 1. **Token validation fails**
-
    - Verify the issuer URL matches exactly (including trailing slashes)
    - Check that the Keycloak realm is accessible from the auth service pod
    - Ensure the JWKS endpoint is reachable: `https://keycloak.your-domain.com/realms/governance/protocol/openid-connect/certs`
 
 2. **Service account authentication fails**
-
    - Verify the service account client has "Service Accounts Enabled" in Keycloak
    - Check that the client credentials are correct
    - Ensure the service account has the necessary roles assigned
@@ -157,20 +154,17 @@ kubectl get configmap <release-name>-auth-service -n <namespace> -o yaml
 ## Production Considerations
 
 1. **High Availability**
-
    - Deploy multiple replicas of auth service
    - Use pod anti-affinity rules
    - Configure proper resource limits
 
 2. **Security**
-
    - Use TLS for all communications
    - Rotate secrets regularly
    - Enable network policies
    - Use separate service accounts for different operations
 
 3. **Monitoring**
-
    - Enable metrics endpoint
    - Configure ServiceMonitor for Prometheus
    - Set up alerts for authentication failures

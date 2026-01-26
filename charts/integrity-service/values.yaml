@@ -191,6 +191,11 @@ tolerations: []
 # Affinity rules for pod assignment
 affinity: {}
 
+# -- Init Containers
+# @default -- `[]`
+# Init containers to add to the pod
+initContainers: []
+
 # -- Startup Probe
 # @default -- See values below
 startupProbe:
@@ -265,8 +270,7 @@ config:
   integrityAppDbUser: ""
 
   # -- Database Password
-  # @default -- `""` (auto-configured from secrets.database)
-  # Leave empty to use secret reference (recommended)
+  # @default -- `""` (auto-configured from global.secrets.database)
   integrityAppDbPassword: ""
 
   # ---------------------------------------------------------------------------
@@ -298,17 +302,17 @@ config:
   integrityAppBlobStoreFolder: ""
 
   # -- AWS Access Key ID
-  # @default -- `""` (auto-configured from secrets.storage.aws_s3)
+  # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
   # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreAccessKeyId: ""
 
   # -- AWS Secret Access Key
-  # @default -- `""` (auto-configured from secrets.storage.aws_s3)
+  # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
   # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreSecretAccessKey: ""
 
   # -- Azure Storage Account
-  # @default -- `""` (auto-configured from secrets.storage.azure_blob)
+  # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
   # Only used when integrityAppBlobStoreType is "azure_blob"
   integrityAppBlobStoreAccount: ""
 
@@ -319,7 +323,7 @@ config:
   integrityAppBlobStoreContainer: ""
 
   # -- Azure Storage Account Key
-  # @default -- `""` (auto-configured from secrets.storage.azure_blob)
+  # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
   # Only used when integrityAppBlobStoreType is "azure_blob"
   integrityAppBlobStoreKey: ""
 

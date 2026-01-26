@@ -75,7 +75,6 @@ kubectl create secret generic platform-encryption-key \
 # Auth Service secrets
 kubectl create secret generic platform-auth-service \
   --from-literal=db-password=YOUR_DB_PASSWORD \
-  --from-literal=session-secret="$(openssl rand -base64 32)" \
   --from-literal=api-secret="$(openssl rand -base64 32)" \
   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
   --namespace governance
@@ -489,25 +488,25 @@ Centralized secret configuration for all platform components:
 
 Shared PostgreSQL connection settings:
 
-| Key                        | Type   | Default        | Description                             |
-| -------------------------- | ------ | -------------- | --------------------------------------- |
-| global.postgresql.host     | string | `""`           | Database host (auto-generated if empty) |
-| global.postgresql.port     | int    | `5432`         | Database port                           |
-| global.postgresql.database | string | `"governance"` | Default database name                   |
-| global.postgresql.username | string | `"postgres"`   | Database username                       |
+| Key                        | Type   | Default        | Description                                                 |
+| -------------------------- | ------ | -------------- | ----------------------------------------------------------- |
+| global.postgresql.host     | string | `""`           | Database host (auto-generated as {Release.Name}-postgresql) |
+| global.postgresql.port     | int    | `5432`         | Database port                                               |
+| global.postgresql.database | string | `"governance"` | Default database name                                       |
+| global.postgresql.username | string | `"postgres"`   | Database username                                           |
 
 ### Governance Studio Configuration
 
 Frontend application settings. See [governance-studio/README.md](../governance-studio/README.md) for complete documentation.
 
-| Key                                   | Type   | Default               | Description                          |
-| ------------------------------------- | ------ | --------------------- | ------------------------------------ |
-| governance-studio.enabled             | bool   | `true`                | Enable Governance Studio             |
-| governance-studio.replicaCount        | int    | `1`                   | Number of replicas                   |
-| governance-studio.ingress.enabled     | bool   | `false`               | Enable ingress                       |
-| governance-studio.config.authProvider | string | `""`                  | Auth provider (auto-set from global) |
-| governance-studio.config.appTitle     | string | `"Governance Studio"` | Application title                    |
-| governance-studio.autoscaling.enabled | bool   | `false`               | Enable horizontal pod autoscaling    |
+| Key                                   | Type   | Default               | Description                                                       |
+| ------------------------------------- | ------ | --------------------- | ----------------------------------------------------------------- |
+| governance-studio.enabled             | bool   | `true`                | Enable Governance Studio                                          |
+| governance-studio.replicaCount        | int    | `1`                   | Number of replicas                                                |
+| governance-studio.ingress.enabled     | bool   | `false`               | Enable ingress                                                    |
+| governance-studio.config.authProvider | string | `""`                  | Auth provider (auto-configured from global.secrets.auth.provider) |
+| governance-studio.config.appTitle     | string | `"Governance Studio"` | Application title                                                 |
+| governance-studio.autoscaling.enabled | bool   | `false`               | Enable horizontal pod autoscaling                                 |
 
 ### Governance Service Configuration
 
@@ -519,7 +518,6 @@ Backend API service settings. See [governance-service/README.md](../governance-s
 | governance-service.replicaCount           | int    | `2`     | Number of replicas                                |
 | governance-service.ingress.enabled        | bool   | `false` | Enable ingress                                    |
 | governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: gcs/azure/aws_s3) |
-| governance-service.config.gcsBucketName   | string | `""`    | GCS bucket name (required if provider is gcs)     |
 | governance-service.config.ai.enabled      | bool   | `true`  | Enable AI features                                |
 | governance-service.autoscaling.enabled    | bool   | `false` | Enable horizontal pod autoscaling                 |
 
@@ -539,14 +537,14 @@ Credential and lineage service settings. See [integrity-service/README.md](../in
 
 Authentication and authorization service settings. See [auth-service/README.md](../auth-service/README.md) for complete documentation.
 
-| Key                                   | Type   | Default | Description                               |
-| ------------------------------------- | ------ | ------- | ----------------------------------------- |
-| auth-service.enabled                  | bool   | `true`  | Enable Auth Service                       |
-| auth-service.replicaCount             | int    | `2`     | Number of replicas                        |
-| auth-service.config.idp.provider      | string | `""`    | IDP provider (auto-set from global)       |
-| auth-service.config.keyVault.provider | string | `""`    | Key Vault provider (auto-set from global) |
-| auth-service.ingress.enabled          | bool   | `false` | Enable ingress                            |
-| auth-service.autoscaling.enabled      | bool   | `false` | Enable horizontal pod autoscaling         |
+| Key                                   | Type   | Default | Description                                                                     |
+| ------------------------------------- | ------ | ------- | ------------------------------------------------------------------------------- |
+| auth-service.enabled                  | bool   | `true`  | Enable Auth Service                                                             |
+| auth-service.replicaCount             | int    | `2`     | Number of replicas                                                              |
+| auth-service.config.idp.provider      | string | `""`    | IDP provider (auto-configured from global.secrets.auth.provider)                |
+| auth-service.config.keyVault.provider | string | `""`    | Key Vault provider (auto-configured from global.secrets.secretManager.provider) |
+| auth-service.ingress.enabled          | bool   | `false` | Enable ingress                                                                  |
+| auth-service.autoscaling.enabled      | bool   | `false` | Enable horizontal pod autoscaling                                               |
 
 ### PostgreSQL Configuration
 
@@ -624,14 +622,12 @@ governance-studio:
     auth0Audience: "https://mycompany.us.auth0.com/api/v2/"
     # Override specific settings
     appTitle: "My Company Governance"
-    branding:
-      companyName: "My Company"
 
 governance-service:
   enabled: true
   # config.appEnv automatically becomes: production
-  # Database credentials auto-populated from global secrets
-  # Storage credentials auto-populated from global secrets
+  # Database credentials auto-configured from global.secrets.database
+  # Storage credentials auto-configured from global.secrets.storage
 
   config:
     # Must explicitly set storage provider and bucket
@@ -641,8 +637,8 @@ governance-service:
 integrity-service:
   enabled: true
   # rustEnv automatically becomes: production
-  # Database credentials auto-populated from global secrets
-  # Storage credentials auto-populated from global secrets
+  # Database credentials auto-configured from global.secrets.database
+  # Storage credentials auto-configured from global.secrets.storage
 
   config:
     # Must explicitly set storage provider and container

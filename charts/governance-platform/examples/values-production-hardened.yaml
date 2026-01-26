@@ -319,10 +319,6 @@ governance-service:
     storageProvider: "aws_s3"
     awsS3Region: "us-east-1"
     awsS3BucketName: "prod-governance-artifacts"
-    awsS3Folder: "artifacts"
-
-    indicators:
-      reloadInterval: 600
 
     ai:
       enabled: true
