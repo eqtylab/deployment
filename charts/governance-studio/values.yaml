@@ -4,8 +4,7 @@
 # This values file configures the Governance Studio frontend application.
 #
 # When deployed via the umbrella chart (governance-platform), most values
-# are auto-configured from global settings. For standalone deployment,
-# you must configure auth and backend service URLs manually.
+# are auto-configured from global settings.
 # =============================================================================
 
 # -- Enable Service
@@ -278,22 +277,22 @@ config:
   auth0Audience: ""
 
   # -- Keycloak URL
-  # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.url)
-  # Keycloak server URL
+  # @default -- `""`
+  # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
   # Only used when authProvider is "keycloak"
   keycloakUrl: ""
 
-  # -- Keycloak Realm
-  # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.realm)
-  # Keycloak realm name
-  # Only used when authProvider is "keycloak"
-  keycloakRealm: ""
-
   # -- Keycloak Client ID
-  # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.frontendClientId)
-  # Keycloak client ID for frontend
+  # @default -- `""`
+  # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "governance-platform-frontend")
   # Only used when authProvider is "keycloak"
   keycloakClientId: ""
+
+  # -- Keycloak Realm
+  # @default -- `""`
+  # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
+  # Only used when authProvider is "keycloak"
+  keycloakRealm: ""
 
   # ---------------------------------------------------------------------------
   # Application Settings

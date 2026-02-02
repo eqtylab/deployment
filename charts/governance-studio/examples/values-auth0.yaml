@@ -1,200 +1,47 @@
-# Auth0 Production Configuration
-# Production deployment using Auth0 as identity provider
+# Auth0 Configuration Example
+# Minimal configuration for deploying Governance Studio with Auth0.
+# For all available values, see the chart's values.yaml and README.md.
 #
 # Usage:
-#   helm install governance-studio ./charts/governance-studio -f examples/values-auth0.yaml
-#
-# Prerequisites:
-#   - Auth0 tenant with configured application
-#   - Backend services deployed (governance-service, auth-service, integrity-service)
-#   - Ingress controller installed (nginx, traefik, etc.)
-#   - cert-manager for TLS (optional but recommended)
-#
-# This example demonstrates:
-#   - Auth0 authentication configuration
-#   - Production-ready deployment settings
-#   - Ingress with TLS
-#   - High availability configuration
-
-# =============================================================================
-# DEPLOYMENT CONFIGURATION
-# =============================================================================
-
-replicaCount: 2
+#   Set these values under the `governance-studio:` key in your umbrella values file.
 
 image:
-  repository: ghcr.io/eqtylab/governance-studio
+  tag: ""
   pullPolicy: Always
-  tag: "" # Use appVersion from Chart.yaml
-
-imagePullSecrets:
-  - name: "registry-credentials"
-
-serviceAccount:
-  create: true
-  automount: true
-  annotations: {}
-  name: ""
-
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
-
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
-
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
-
-service:
-  enabled: true
-  type: ClusterIP
-  port: 80
-
-# =============================================================================
-# INGRESS CONFIGURATION
-# =============================================================================
 
 ingress:
   enabled: true
   className: "nginx"
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-    # Security headers
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      add_header X-Content-Type-Options "nosniff" always;
-      add_header X-Frame-Options "SAMEORIGIN" always;
-      add_header X-XSS-Protection "1; mode=block" always;
-      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
   hosts:
-    - host: governance.your-domain.com
+    - host: "governance.your-domain.com"
       paths:
-        - path: /
-          pathType: Prefix
+        - path: "/"
+          pathType: "Prefix"
   tls:
-    - secretName: governance-studio-tls
+    - secretName: "governance-studio-tls"
       hosts:
-        - governance.your-domain.com
-
-# =============================================================================
-# APPLICATION CONFIGURATION
-# =============================================================================
+        - "governance.your-domain.com"
 
 config:
-  basePath: /
-
-  # Backend service URLs
-  apiUrl: "https://governance.your-domain.com/governanceService"
-  authServiceUrl: "https://governance.your-domain.com/authService"
-  integrityServiceUrl: "https://governance.your-domain.com/integrityService"
-
   # Auth0 Configuration
-  authProvider: "auth0"
-  # REQUIRED: Auth0 tenant domain
   auth0Domain: "your-tenant.us.auth0.com"
-  # REQUIRED: Auth0 SPA client ID
   auth0ClientId: "YOUR_AUTH0_SPA_CLIENT_ID"
-  # REQUIRED: Auth0 API audience
   auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
 
-  # Environment settings
-  environment: "production"
+  # Application Settings
   appTitle: "Governance Studio"
 
-  # Feature configuration
+  # Feature Flags
   features:
     governance: true
     lineage: true
-    guardianEnabled: false
-    guardianGarage: false
-    guardianRulebooks: false
-    guardianOsFunctions: false
+    guardianEnabled: true
+    guardianGarage: true
+    guardianRulebooks: true
+    guardianOsFunctions: true
     guardianSdkFunctions: false
-    agentManagement: false
-
-# =============================================================================
-# HIGH AVAILABILITY
-# =============================================================================
-
-podDisruptionBudget:
-  minAvailable: 1
-
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                  - governance-studio
-          topologyKey: kubernetes.io/hostname
-
-nodeSelector: {}
-tolerations: []
-
-# =============================================================================
-# SECURITY
-# =============================================================================
-
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 1000
-
-securityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-  runAsUser: 1000
-
-# =============================================================================
-# PROBES
-# =============================================================================
-
-startupProbe:
-  httpGet:
-    path: /
-    port: http
-  failureThreshold: 30
-  periodSeconds: 10
-
-livenessProbe:
-  httpGet:
-    path: /
-    port: http
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  failureThreshold: 3
-
-readinessProbe:
-  httpGet:
-    path: /
-    port: http
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  failureThreshold: 2
-
-# =============================================================================
-# POD LABELS
-# =============================================================================
-
-podLabels:
-  auth-provider: "auth0"
-  environment: "production"
+    agentManagement: true

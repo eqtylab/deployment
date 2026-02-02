@@ -1,201 +1,55 @@
-# Auth0 Provider Configuration for SaaS Deployment
-# This values file configures the auth-service to use Auth0 as the identity provider
+# Auth0 Configuration Example
+# Minimal configuration for deploying Auth Service with Auth0.
+# For all available values, see the chart's values.yaml and README.md.
 #
 # Usage:
-#   helm install auth-service ./charts/auth-service -f examples/values-auth0.yaml
-
-# =============================================================================
-# APPLICATION CONFIGURATION
-# =============================================================================
-
-config:
-  # Server configuration
-  server:
-    environment: "production"
-    swaggerEnabled: false
-
-  # Logging configuration
-  logging:
-    level: "info"
-    format: "json"
-
-  # CORS is disabled by default as ingress controller handles it
-  cors:
-    enabled: false
-    origins: "*"
-
-  # Identity Provider configuration
-  idp:
-    provider: "auth0"
-    issuer: "https://your-tenant.auth0.com/"
-
-    # Auth0-specific configuration
-    auth0:
-      domain: "your-tenant.auth0.com"
-      enableManagementAPI: true
-      managementAudience: "https://your-tenant.auth0.com/api/v2/"
-      apiIdentifier: "https://api.your-app.com"
-      defaultConnection: "Username-Password-Authentication"
-      defaultRoles: ["user"]
-      sendInvitationEmail: true
-      syncAtStartup: false
-      syncPageSize: 100
-
-  # Key Vault configuration for DID key signing
-  keyVault:
-    provider: "azure"
-    cacheTTLMinutes: 15
-    azure:
-      vaultUrl: "https://your-keyvault.vault.azure.net/"
-      tenantId: "your-azure-tenant-id"
-
-  # Service integration URLs (usually auto-generated in umbrella chart)
-  integrations:
-    governanceServiceUrl: "http://governance-platform-governance-service:10001"
-
-  # Service account configuration
-  serviceAccounts:
-    autoCreate: true
-    governanceWorker:
-      enabled: true
-      name: "governance-worker"
-      description: "Automated governance service worker for processing indicator evaluations"
-      audience: "https://your-tenant.auth0.com/api/v2/"
-
-  # RBAC cache configuration
-  rbac:
-    cache:
-      enabled: true
-      ttl: "300s"
-      maxSize: 1000
-
-# =============================================================================
-# DATABASE CONFIGURATION
-# =============================================================================
-
-externalDatabase:
-  # Use managed database service (RDS, Cloud SQL, etc.)
-  host: "your-rds-endpoint.amazonaws.com"
-  port: 5432
-  name: "governance"
-  user: "postgres"
-  sslMode: "require"
-  maxOpenConns: 25
-  maxIdleConns: 5
-  connMaxLifetime: "5m"
-
-  # Use existing secret for credentials
-  passwordSecretKeyRef:
-    name: "platform-database"
-    key: "password"
-
-migrations:
-  runAtStartup: true
-  path: "/internal/database/migrations"
-
-# =============================================================================
-# SECRET CONFIGURATION
-# =============================================================================
-
-secrets:
-  # Auth0 credentials
-  auth:
-    auth0:
-      name: "platform-auth0"
-
-  # Auth service credentials
-  authService:
-    name: "platform-auth-service"
-
-  # Secret manager credentials
-  secretManager:
-    azure_key_vault:
-      name: "platform-azure-key-vault"
-
-  # Governance worker credentials
-  governanceWorker:
-    name: "platform-governance-worker"
-
-# =============================================================================
-# DEPLOYMENT CONFIGURATION
-# =============================================================================
-
-# Production-ready settings for SaaS
-replicaCount: 3
+#   Set these values under the `auth-service:` key in your umbrella values file.
 
 image:
-  repository: ghcr.io/eqtylab/auth-service
+  tag: ""
   pullPolicy: Always
-  tag: "" # Uses appVersion from Chart.yaml
-
-imagePullSecrets:
-  - name: "platform-image-pull-secret"
-
-autoscaling:
-  enabled: true
-  minReplicas: 3
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
-
-resources:
-  requests:
-    cpu: 250m
-    memory: 256Mi
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-
-# =============================================================================
-# OBSERVABILITY
-# =============================================================================
-
-metrics:
-  enabled: true
-  port: 9090
-  path: "/metrics"
-  serviceMonitor:
-    enabled: true
-    interval: "30s"
-
-# =============================================================================
-# INGRESS CONFIGURATION
-# =============================================================================
 
 ingress:
   enabled: true
   className: "nginx"
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
   hosts:
-    - host: auth.your-saas-domain.com
+    - host: "governance.your-domain.com"
       paths:
         - path: "/authService(/|$)(.*)"
-          pathType: ImplementationSpecific
+          pathType: "ImplementationSpecific"
   tls:
-    - secretName: auth-service-tls
+    - secretName: "auth-service-tls"
       hosts:
-        - auth.your-saas-domain.com
+        - "governance.your-domain.com"
 
-# =============================================================================
-# HIGH AVAILABILITY
-# =============================================================================
+config:
+  # Auth0 Configuration
+  idp:
+    provider: "auth0"
+    issuer: "https://your-tenant.us.auth0.com/"
+    skipIssuerVerification: true
+    auth0:
+      domain: "your-tenant.us.auth0.com"
+      managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
+      apiIdentifier: "https://governance.your-domain.com"
 
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
+  # Key Vault Configuration (for DID keys)
+  keyVault:
+    provider: "azure_key_vault"
+    azure:
+      vaultUrl: "https://your-keyvault.vault.azure.net/"
+      tenantId: "your-azure-tenant-id"
 
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                  - auth-service
-          topologyKey: kubernetes.io/hostname
+  # Service Account Configuration
+  serviceAccounts:
+    governanceWorker:
+      audience: "https://your-tenant.us.auth0.com/api/v2/"

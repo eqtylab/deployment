@@ -4,8 +4,7 @@
 # This values file configures the Governance Service backend API.
 #
 # When deployed via the umbrella chart (governance-platform), most values
-# are auto-configured from global settings. For standalone deployment,
-# you must configure database, storage, and auth settings manually.
+# are auto-configured from global settings.
 # =============================================================================
 
 # -- Enable Service
@@ -251,7 +250,7 @@ externalDatabase:
   port: 5432
   # -- Database Name
   # @default -- `governance`
-  database: "governance"
+  name: "governance"
   # -- Database User
   # @default -- `postgres`
   user: "postgres"
@@ -261,7 +260,7 @@ externalDatabase:
   # -- SSL Mode
   # @default -- `disable`
   # Options: disable, require, verify-ca, verify-full
-  sslmode: "disable"
+  sslMode: "disable"
 
   # -- Password Secret Reference
   # @default -- See values below
@@ -358,22 +357,12 @@ secrets:
 # APPLICATION CONFIGURATION
 # =============================================================================
 
-# -- Auth0 Sync at Startup
-# @default -- `true`
-# Sync Auth0 users at application startup (only used when auth provider is auth0)
-auth0SyncAtStartup: true
-
-# -- Auth0 Sync Page Size
-# @default -- `100`
-# Number of users to sync per page from Auth0
-auth0SyncPageSize: 100
-
 # -- Application Configuration
 # @default -- See values below
 config:
   # -- Health Check Path
   # @default -- `/health`
-  path: "/health"
+  healthPath: "/health"
 
   # -- Application Environment
   # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
@@ -408,7 +397,7 @@ config:
     # Maximum idle time for connections (seconds)
     idleTimeout: 120
     # -- Swagger Enabled
-    # @default -- `false`
+    # @default -- `true`
     # Enable Swagger documentation
     swaggerEnabled: true
     # -- Swagger Host
@@ -459,7 +448,8 @@ config:
   awsS3SecretAccessKey: ""
 
   # -- Azure Storage Account Name
-  # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
+  # @default -- `""`
+  # **REQUIRED for Azure**: Storage account name
   # Only used when storageProvider is "azure_blob"
   azureStorageAccountName: ""
 
@@ -510,13 +500,27 @@ config:
   # Only used when auth provider is "auth0"
   auth0ClientSecret: ""
 
+  # -- Auth0 Sync at Startup
+  # @default -- `true`
+  # Sync Auth0 users at application startup
+  # Only used when auth provider is "auth0"
+  auth0SyncAtStartup: true
+
+  # -- Auth0 Sync Page Size
+  # @default -- `100`
+  # Number of users to sync per page from Auth0
+  # Only used when auth provider is "auth0"
+  auth0SyncPageSize: 100
+
   # -- Keycloak URL
-  # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+  # @default -- `""`
+  # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
   # Only used when auth provider is "keycloak"
   keycloakUrl: ""
 
   # -- Keycloak Realm
-  # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+  # @default -- `""`
+  # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
   # Only used when auth provider is "keycloak"
   keycloakRealm: ""
 

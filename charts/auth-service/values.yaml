@@ -5,8 +5,7 @@
 # integration and authentication management.
 #
 # When deployed via the umbrella chart (governance-platform), most values
-# are auto-configured from global settings. For standalone deployment,
-# you must configure database, identity provider, and key vault settings.
+# are auto-configured from global settings.
 # =============================================================================
 
 # -- Enable Service
@@ -122,7 +121,7 @@ ingress:
   # -- Ingress Annotations
   # @default -- `{}`
   annotations: {}
-    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # cert-manager.io/issuer: "letsencrypt-prod"
     # nginx.ingress.kubernetes.io/rewrite-target: /$2
     # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
   # -- Ingress Hosts
@@ -508,11 +507,12 @@ config:
     # Only used when provider is "keycloak"
     keycloak:
       # -- Realm
-      # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.realm)
+      # @default -- `""`
+      # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
       realm: ""
       # -- Admin URL
       # @default -- `""`
-      # Keycloak admin URL (for admin operations)
+      # **REQUIRED for Keycloak**: Admin URL for admin operations (e.g., "https://keycloak.example.com")
       adminUrl: ""
       # -- Enable User Management
       # @default -- `false`
@@ -523,13 +523,17 @@ config:
       # Enable group sync with Keycloak
       enableGroupSync: false
       # -- Client ID
-      # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
-      # Only used when provider is "keycloak"
+      # @default -- `""`
+      # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "governance-platform-frontend")
       clientId: ""
-      # -- Client Secret
+      # -- Service Account Client ID
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
       # Only used when provider is "keycloak"
-      clientSecret: ""
+      serviceAccountClientId: ""
+      # -- Service Account Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+      # Only used when provider is "keycloak"
+      serviceAccountClientSecret: ""
 
   # ---------------------------------------------------------------------------
   # Key Vault Configuration
@@ -540,7 +544,7 @@ config:
   keyVault:
     # -- Provider
     # @default -- `""` (auto-configured from global.secrets.secretManager.provider)
-    # Options: azure, local
+    # Options: azure_key_vault, local
     provider: ""
     # -- Cache TTL Minutes
     # @default -- `15`
@@ -549,7 +553,7 @@ config:
 
     # -- Azure Key Vault Configuration
     # @default -- See values below
-    # Only used when provider is "azure"
+    # Only used when provider is "azure_key_vault"
     azure:
       # -- Vault URL
       # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault.values.vaultUrl)
@@ -559,11 +563,11 @@ config:
       tenantId: ""
       # -- Client ID
       # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
-      # Only used when provider is "azure" or "azure_key_vault"
+      # Only used when provider is "azure_key_vault"
       clientId: ""
       # -- Client Secret
       # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
-      # Only used when provider is "azure" or "azure_key_vault"
+      # Only used when provider is "azure_key_vault"
       clientSecret: ""
 
   # ---------------------------------------------------------------------------

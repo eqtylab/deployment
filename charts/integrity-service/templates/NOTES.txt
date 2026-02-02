@@ -18,11 +18,14 @@ Configuration:
   Auth Type: {{ .Values.config.integrityAppAuthType }}
 
 {{- if eq .Values.config.integrityAppBlobStoreType "azure_blob" }}
-  Azure Storage Account: {{ .Values.config.integrityAppBlobStoreAccount | default "from secret" }}
+  Azure Storage Account: {{ .Values.config.integrityAppBlobStoreAccount | default "not set" }}
   Azure Container: {{ .Values.config.integrityAppBlobStoreContainer | default "not set" }}
 {{- else if eq .Values.config.integrityAppBlobStoreType "aws_s3" }}
-  AWS Region: {{ .Values.config.integrityAppBlobStoreRegion | default "not set" }}
-  AWS Bucket: {{ .Values.config.integrityAppBlobStoreBucket | default "not set" }}
+  AWS Region: {{ .Values.config.integrityAppBlobStoreAwsRegion | default "not set" }}
+  AWS Bucket: {{ .Values.config.integrityAppBlobStoreAwsBucket | default "not set" }}
+{{- else if eq .Values.config.integrityAppBlobStoreType "gcs" }}
+  GCS Bucket: {{ .Values.config.integrityAppBlobStoreGcsBucket | default "not set" }}
+  GCS Folder: {{ .Values.config.integrityAppBlobStoreGcsFolder | default "not set" }}
 {{- end }}
 
 To check the status:
@@ -37,10 +40,15 @@ To check environment configuration:
 {{- if not .Values.config.integrityAppBlobStoreType }}
 
 ⚠️  WARNING: Blob storage type is not configured!
-Please set: integrity-service.config.integrityAppBlobStoreType to "azure_blob" or "aws_s3"
+Please set: integrity-service.config.integrityAppBlobStoreType to "azure_blob", "aws_s3", or "gcs"
 {{- end }}
 
 {{- if eq .Values.config.integrityAppBlobStoreType "azure_blob" }}
+{{- if not .Values.config.integrityAppBlobStoreAccount }}
+
+⚠️  WARNING: Azure storage account is not configured!
+Please set: integrity-service.config.integrityAppBlobStoreAccount
+{{- end }}
 {{- if not .Values.config.integrityAppBlobStoreContainer }}
 
 ⚠️  WARNING: Azure blob container is not configured!
@@ -49,10 +57,18 @@ Please set: integrity-service.config.integrityAppBlobStoreContainer
 {{- end }}
 
 {{- if eq .Values.config.integrityAppBlobStoreType "aws_s3" }}
-{{- if or (not .Values.config.integrityAppBlobStoreRegion) (not .Values.config.integrityAppBlobStoreBucket) }}
+{{- if or (not .Values.config.integrityAppBlobStoreAwsRegion) (not .Values.config.integrityAppBlobStoreAwsBucket) }}
 
 ⚠️  WARNING: AWS S3 configuration incomplete!
-Please set: integrity-service.config.integrityAppBlobStoreRegion and integrity-service.config.integrityAppBlobStoreBucket
+Please set: integrity-service.config.integrityAppBlobStoreAwsRegion and integrity-service.config.integrityAppBlobStoreAwsBucket
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.config.integrityAppBlobStoreType "gcs" }}
+{{- if not .Values.config.integrityAppBlobStoreGcsBucket }}
+
+⚠️  WARNING: GCS configuration incomplete!
+Please set: integrity-service.config.integrityAppBlobStoreGcsBucket
 {{- end }}
 {{- end }}
 {{- end }}

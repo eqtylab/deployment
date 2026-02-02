@@ -74,7 +74,6 @@ kubectl create secret generic platform-encryption-key \
 
 # Auth Service secrets
 kubectl create secret generic platform-auth-service \
-  --from-literal=db-password=YOUR_DB_PASSWORD \
   --from-literal=api-secret="$(openssl rand -base64 32)" \
   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
   --namespace governance
@@ -148,7 +147,7 @@ governance-service:
   enabled: true
   config:
     storageProvider: "gcs"
-    gcsBucketName: "governance-attachments"
+    gcsBucketName: "your-governance-artifacts-bucket"
   ingress:
     enabled: true
     className: nginx
@@ -157,8 +156,8 @@ integrity-service:
   enabled: true
   config:
     integrityAppBlobStoreType: "azure_blob"
-    integrityAppBlobStoreAccount: "yourstorageacct"
-    integrityAppBlobStoreContainer: "integrity-data"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
   ingress:
     enabled: true
     className: nginx
@@ -591,7 +590,7 @@ When services are deployed via the umbrella chart, they automatically inherit:
 Services require explicit configuration for:
 
 - ⚠️ Storage provider type (`storageProvider`, `integrityAppBlobStoreType`)
-- ⚠️ Storage bucket/container names (`gcsBucketName`, `azureStorageContainerName`, etc.)
+- ⚠️ Storage account/bucket/container names (`azureStorageAccountName`, `gcsBucketName`, `azureStorageContainerName`, etc.)
 - ⚠️ Feature flags (governance-studio)
 - ⚠️ Service-specific settings (AI config, indicator settings, etc.)
 
@@ -632,7 +631,7 @@ governance-service:
   config:
     # Must explicitly set storage provider and bucket
     storageProvider: "gcs"
-    gcsBucketName: "my-company-governance"
+    gcsBucketName: "your-governance-artifacts-bucket"
 
 integrity-service:
   enabled: true
@@ -643,8 +642,8 @@ integrity-service:
   config:
     # Must explicitly set storage provider and container
     integrityAppBlobStoreType: "azure_blob"
-    integrityAppBlobStoreAccount: "mystorageacct"
-    integrityAppBlobStoreContainer: "integrity-data"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
 ```
 
 ## Storage Provider Configuration
@@ -663,7 +662,7 @@ global:
 governance-service:
   config:
     storageProvider: "gcs"
-    gcsBucketName: "governance-attachments"
+    gcsBucketName: "your-governance-artifacts-bucket"
 ```
 
 ### Azure Blob Storage
@@ -678,13 +677,14 @@ global:
 governance-service:
   config:
     storageProvider: "azure_blob"
-    azureStorageContainerName: "governance-data"
+    azureStorageAccountName: "your-storage-account"
+    azureStorageContainerName: "your-governance-artifacts-container"
 
 integrity-service:
   config:
     integrityAppBlobStoreType: "azure_blob"
-    integrityAppBlobStoreAccount: "mystorageacct"
-    integrityAppBlobStoreContainer: "integrity-data"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
 ```
 
 ### AWS S3
@@ -700,13 +700,14 @@ governance-service:
   config:
     storageProvider: "aws_s3"
     awsS3Region: "us-east-1"
-    awsS3BucketName: "governance-bucket"
+    awsS3BucketName: "your-governance-artifacts-bucket"
 
 integrity-service:
   config:
     integrityAppBlobStoreType: "aws_s3"
-    integrityAppBlobStoreRegion: "us-east-1"
-    integrityAppBlobStoreBucket: "integrity-bucket"
+    integrityAppBlobStoreAwsRegion: "us-east-1"
+    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
 ```
 
 ## Authentication Provider Configuration
@@ -749,6 +750,11 @@ auth-service:
 
 ### Keycloak Configuration
 
+Keycloak requires a service account (confidential) client and a SPA (public) client:
+
+1. **Service Account** (Confidential) - For backend API calls (`keycloak.values.serviceAccountClientId/serviceAccountClientSecret`)
+2. **Governance Studio** (SPA/Public) - For frontend authentication (configured via `governance-studio.config` and `auth-service.config`)
+
 ```yaml
 global:
   secrets:
@@ -756,9 +762,25 @@ global:
       provider: "keycloak"
       keycloak:
         secretName: "platform-keycloak"
+        # Service account credentials are stored in the secret (see Quick Start for creation)
 
     governanceWorker:
       secretName: "platform-governance-worker"
+
+governance-studio:
+  config:
+    # SPA settings must be explicitly set (public, not secrets)
+    keycloakUrl: "https://keycloak.your-domain.com"
+    keycloakClientId: "governance-platform-frontend"
+    keycloakRealm: "governance"
+
+auth-service:
+  config:
+    idp:
+      keycloak:
+        realm: "governance"
+        adminUrl: "https://keycloak.your-domain.com"
+        clientId: "governance-platform-frontend"
 
 keycloak:
   createOrganization: true
@@ -813,7 +835,7 @@ governance-studio:
     enabled: true
     className: nginx
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+      cert-manager.io/issuer: letsencrypt-prod
   autoscaling:
     enabled: true
     minReplicas: 3

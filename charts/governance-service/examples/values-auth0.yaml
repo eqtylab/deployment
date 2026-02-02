@@ -1,5 +1,5 @@
-# Keycloak Configuration Example
-# Minimal configuration for deploying Governance Service with Keycloak.
+# Auth0 Configuration Example
+# Minimal configuration for deploying Governance Service with Auth0.
 # For all available values, see the chart's values.yaml and README.md.
 #
 # Usage:
@@ -65,9 +65,8 @@ config:
   # awsS3Region: "us-east-1"
   # awsS3BucketName: "your-governance-artifacts-bucket"
 
-  # Keycloak Configuration
-  keycloakUrl: "https://keycloak.your-domain.com"
-  keycloakRealm: "governance"
+  # Auth0 Configuration
+  auth0Domain: "your-tenant.auth0.com"
 
   # AI Configuration
   ai:

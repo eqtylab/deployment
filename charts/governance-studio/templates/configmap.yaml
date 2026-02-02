@@ -43,8 +43,8 @@ data:
 
   # Keycloak Settings (only included when Keycloak is the provider)
   {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "keycloak" }}
-  KEYCLOAK_URL: {{ .Values.config.keycloakUrl | default ((((.Values.global).secrets).auth).keycloak).values.url | default "" | quote }}
-  KEYCLOAK_REALM: {{ .Values.config.keycloakRealm | default ((((.Values.global).secrets).auth).keycloak).values.realm | default "" | quote }}
-  KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | default ((((.Values.global).secrets).auth).keycloak).values.frontendClientId | default "" | quote }}
+  KEYCLOAK_URL: {{ .Values.config.keycloakUrl | default "" | quote }}
+  KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | default "" | quote }}
+  KEYCLOAK_REALM: {{ .Values.config.keycloakRealm | default "" | quote }}
   {{- end }}
 {{- end }}

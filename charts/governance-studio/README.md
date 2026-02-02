@@ -4,11 +4,19 @@ A Helm chart for deploying the EQTY Lab Governance Studio frontend application o
 
 ## Description
 
-Governance Studio provides a web-based interface for managing governance, compliance, and data lineage workflows. This chart can be deployed standalone or as part of the Governance Platform umbrella chart.
+Governance Studio provides a web-based interface for managing governance, compliance, and data lineage workflows.
+
+Key capabilities:
+
+- **Governance Management**: Create, review, and manage governance policies and workflows
+- **Data Lineage**: Visualize provenance and transformation history of data assets
+- **Multi-Provider Auth**: Native support for Auth0 and Keycloak authentication
+- **Feature Flags**: Configurable feature toggles for Guardian, Agent Management, and more
+- **Runtime Configuration**: Single immutable image with environment-driven configuration
 
 ## Configuration Model
 
-Governance Studio uses runtime configuration injection. Application configuration is provided via environment variables generated from Helm values and injected into the container at startup.
+Governance Studio uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
 This allows:
 
@@ -17,135 +25,109 @@ This allows:
 - Clear separation of infrastructure and application settings
 - Automatic configuration inheritance from umbrella chart globals
 
-## Deployment Options
-
-### Option 1: As Part of Governance Platform (Recommended)
-
-When deployed via the `governance-platform` umbrella chart, Governance Studio automatically inherits configuration from global values with zero additional configuration required.
-
-**Example umbrella chart configuration:**
-
-```yaml
-global:
-  domain: "governance.yourcompany.com"
-  environmentType: "production"
-
-  secrets:
-    auth:
-      provider: "auth0"
-      auth0:
-        secretName: "platform-auth0"
-
-governance-studio:
-  enabled: true
-  replicaCount: 3
-
-  config:
-    auth0Domain: "yourcompany.us.auth0.com"
-    auth0ClientId: "your-spa-client-id" # SPA client ID (public, not a secret)
-    auth0Audience: "https://yourcompany.us.auth0.com/api/v2/"
-
-  autoscaling:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 10
-
-  ingress:
-    enabled: true
-    className: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-```
-
-**What gets auto-configured:**
-
-- ✅ All service URLs (API, Auth, Integrity) from `global.domain`
-- ✅ Environment type from `global.environmentType`
-- ✅ App hostname from `global.domain`
-- ✅ Auth provider from `global.secrets.auth.provider`
-- ✅ Image pull secrets from `global.secrets.imageRegistry`
-
-**Must be explicitly set:**
-
-- ⚠️ `config.auth0Domain` - Auth0 tenant domain
-- ⚠️ `config.auth0ClientId` - Auth0 SPA client ID (public, not a secret)
-- ⚠️ `config.auth0Audience` - Auth0 API audience
-
-### Option 2: Standalone Deployment
-
-For standalone deployments outside the umbrella chart:
-
-```yaml
-enabled: true
-
-config:
-  apiUrl: https://governance.yourcompany.com/governanceService
-  authServiceUrl: https://governance.yourcompany.com/authService
-  integrityServiceUrl: https://governance.yourcompany.com/integrityService
-  environment: production
-
-  authProvider: auth0
-  auth0Domain: yourcompany.auth0.com
-  auth0ClientId: YOUR_CLIENT_ID
-  auth0Audience: https://api.governance.yourcompany.com
-
-  features:
-    governance: true
-    lineage: true
-
-service:
-  enabled: true
-  type: ClusterIP
-  port: 80
-
-ingress:
-  enabled: true
-  className: nginx
-  hosts:
-    - host: governance.yourcompany.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: governance-tls
-      hosts:
-        - governance.yourcompany.com
-```
-
 ## Prerequisites
 
 - Kubernetes 1.21+
 - Helm 3.8+
-- Ingress controller (nginx, traefik, etc.)
+- Authentication provider (Auth0 or Keycloak)
+- Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
-## Installing the Chart
+## Deployment
 
-### Via Umbrella Chart (Recommended)
+When deployed via the `governance-platform` umbrella chart, Governance Studio automatically inherits configuration from global values with no additional configuration required.
 
-```bash
-helm install governance-platform eqtylab/governance-platform \
-  -f values.yaml \
-  --namespace governance \
-  --create-namespace
+### Quick Start
+
+Minimum configuration required in your umbrella chart values:
+
+**Auth0:**
+
+```yaml
+governance-studio:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: "governance-studio-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    authProvider: "auth0"
+    auth0Domain: "your-tenant.us.auth0.com"
+    auth0ClientId: "your-spa-client-id"
+    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
 ```
 
-### Standalone Installation
+**Keycloak:**
 
-```bash
-helm install governance-studio eqtylab/governance-studio \
-  -f values.yaml \
-  --namespace governance \
-  --create-namespace
+```yaml
+governance-studio:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: "governance-studio-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    authProvider: "keycloak"
+    keycloakUrl: "https://keycloak.yourcompany.com"
+    keycloakRealm: "governance"
+    keycloakClientId: "governance-platform-frontend"
 ```
 
-## Uninstalling the Chart
+### Required Configuration
 
-```bash
-helm uninstall governance-studio --namespace governance
-```
+Beyond what is auto-configured, these values **must** be explicitly set:
 
-This removes all Kubernetes components associated with the chart and deletes the release.
+**Auth0:**
+
+- `config.auth0Domain` - Auth0 tenant domain (e.g., `your-tenant.us.auth0.com`)
+- `config.auth0ClientId` - Auth0 SPA client ID (public, not a secret)
+- `config.auth0Audience` - Auth0 API audience (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
+
+**Keycloak:**
+
+- `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
+- `config.keycloakClientId` - Keycloak SPA client ID (public, e.g., `governance-platform-frontend`)
+- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
+
+**What gets auto-configured:**
+
+From global values:
+
+- All service URLs (API, Auth, Integrity) from `global.domain`
+- Environment type from `global.environmentType`
+- App hostname from `global.domain`
+- Auth provider from `global.secrets.auth.provider`
+- Image pull secrets from `global.secrets.imageRegistry`
+
+Generated defaults:
+
+- `config.apiUrl` defaults to `https://{global.domain}/governanceService`
+- `config.authServiceUrl` defaults to `https://{global.domain}/authService`
+- `config.integrityServiceUrl` defaults to `https://{global.domain}/integrityService`
 
 ## Values
 
@@ -159,8 +141,8 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.environmentType                  | string | Environment type (development/staging/production) |
 | global.secrets.imageRegistry.secretName | string | Name of image pull secret                         |
 | global.secrets.auth.provider            | string | Auth provider (auth0 or keycloak)                 |
-| global.secrets.auth.auth0.values.\*     | object | Auth0 configuration values                        |
-| global.secrets.auth.keycloak.values.\*  | object | Keycloak configuration values                     |
+| global.secrets.auth.auth0.secretName    | string | Auth0 credentials secret name                     |
+| global.secrets.auth.keycloak.secretName | string | Keycloak credentials secret name                  |
 
 ### Chart-Specific Parameters
 
@@ -220,6 +202,8 @@ When deployed via the umbrella chart, these global values are automatically used
 | autoscaling.targetCPUUtilizationPercentage    | int    | `80`    | Target CPU utilization percentage    |
 | autoscaling.targetMemoryUtilizationPercentage | int    | `80`    | Target memory utilization percentage |
 
+> **Note:** Resources are empty by default. For production, set appropriate requests and limits (recommended: cpu 100m-500m, memory 128Mi-256Mi).
+
 ### High Availability
 
 | Key                              | Type | Default | Description                                                                                              |
@@ -270,20 +254,33 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 ### Authentication
 
-Authentication is automatically configured from global values in umbrella deployments.
+Authentication is automatically configured from global values in umbrella deployments. Only one authentication provider should be configured at a time, set via `global.secrets.auth.provider` in the umbrella chart.
 
-| Key                     | Type   | Default | Description                                                                                    |
-| ----------------------- | ------ | ------- | ---------------------------------------------------------------------------------------------- |
-| config.authProvider     | string | `""`    | Auth provider (auto-configured from global.secrets.auth.provider)                              |
-| config.auth0Domain      | string | `""`    | Auth0 domain (**must be set**)                                                                 |
-| config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public)                                                  |
-| config.auth0Audience    | string | `""`    | Auth0 audience (**must be set**)                                                               |
-| config.keycloakUrl      | string | `""`    | Keycloak URL (auto-configured from global.secrets.auth.keycloak.values.url)                    |
-| config.keycloakRealm    | string | `""`    | Keycloak realm (auto-configured from global.secrets.auth.keycloak.values.realm)                |
-| config.keycloakClientId | string | `""`    | Keycloak client ID (auto-configured from global.secrets.auth.keycloak.values.frontendClientId) |
+#### Required Configuration
 
-> ⚠️ Only one authentication provider should be configured at a time.
-> Set via `global.secrets.auth.provider` in umbrella chart.
+**Auth0:**
+
+- `config.auth0Domain` - Auth0 tenant domain (e.g., `your-tenant.us.auth0.com`)
+- `config.auth0ClientId` - Auth0 SPA client ID (public, not a secret)
+- `config.auth0Audience` - Auth0 API audience (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
+
+**Keycloak:**
+
+- `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
+- `config.keycloakClientId` - Keycloak SPA client ID (public, e.g., `governance-platform-frontend`)
+- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
+
+#### All Authentication Values
+
+| Key                     | Type   | Default | Description                                                                            |
+| ----------------------- | ------ | ------- | -------------------------------------------------------------------------------------- |
+| config.authProvider     | string | `""`    | Auth provider (auto-configured from global.secrets.auth.provider)                      |
+| config.auth0Domain      | string | `""`    | Auth0 tenant domain (**must be set**)                                                  |
+| config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public)                                          |
+| config.auth0Audience    | string | `""`    | Auth0 API audience (**must be set**)                                                   |
+| config.keycloakUrl      | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")            |
+| config.keycloakClientId | string | `""`    | Keycloak SPA client ID (**must be set**, public, e.g., "governance-platform-frontend") |
+| config.keycloakRealm    | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                              |
 
 ### Feature Flags
 
@@ -306,47 +303,6 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 2. **Global values** - Set in `global.*` (umbrella chart)
 3. **Chart defaults** - Default values from `values.yaml`
 
-### Example Configuration Flow
-
-```yaml
-# Umbrella chart values.yaml
-global:
-  domain: "governance.prod.company.com"
-  secrets:
-    auth:
-      provider: "auth0"
-      auth0:
-        secretName: "platform-auth0"
-
-governance-studio:
-  enabled: true
-  # config.apiUrl automatically becomes: https://governance.prod.company.com/governanceService
-  # config.authProvider automatically becomes: auth0
-
-  # Must explicitly set:
-  config:
-    auth0Domain: "company.us.auth0.com"
-    auth0Audience: "https://company.us.auth0.com/api/v2/"
-```
-
-## Upgrading
-
-### Upgrading via Umbrella Chart
-
-```bash
-helm upgrade governance-platform eqtylab/governance-platform \
-  -f values.yaml \
-  --namespace governance
-```
-
-### Upgrading Standalone
-
-```bash
-helm upgrade governance-studio eqtylab/governance-studio \
-  -f values.yaml \
-  --namespace governance
-```
-
 ## Troubleshooting
 
 ### Viewing Logs
@@ -367,20 +323,19 @@ kubectl describe pod <pod-name> -n governance
 View the generated ConfigMap to see actual runtime configuration:
 
 ```bash
-kubectl get configmap -n governance -l app.kubernetes.io/name=governance-studio
-kubectl describe configmap governance-studio-config -n governance
+kubectl get configmap governance-studio-config -n governance -o yaml
 ```
 
-### Testing Configuration Inheritance
-
-When deployed via umbrella chart, verify global values are being used:
+View all environment variables:
 
 ```bash
-# Get the ConfigMap
-kubectl get configmap governance-studio-config -n governance -o yaml
+kubectl exec -it deployment/governance-studio -n governance -- env | sort
+```
 
-# Check environment variables in running pod
-kubectl exec -it deployment/governance-studio -n governance -- env | grep -E 'API_URL|AUTH|ENVIRONMENT'
+Test health endpoint:
+
+```bash
+kubectl exec -it deployment/governance-studio -n governance -- curl -s localhost:80/
 ```
 
 ### Common Issues

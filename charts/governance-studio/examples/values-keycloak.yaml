@@ -1,199 +1,47 @@
-# Keycloak Configuration for Enterprise/On-Premises Deployment
-# Configuration using Keycloak as identity provider for enterprise environments
+# Keycloak Configuration Example
+# Minimal configuration for deploying Governance Studio with Keycloak.
+# For all available values, see the chart's values.yaml and README.md.
 #
 # Usage:
-#   helm install governance-studio ./charts/governance-studio -f examples/values-keycloak.yaml
-#
-# Prerequisites:
-#   - Keycloak instance configured with realm and clients
-#   - Backend services deployed (governance-service, auth-service, integrity-service)
-#   - Internal certificate authority (for self-signed TLS)
-#
-# This example demonstrates:
-#   - Keycloak as identity provider (instead of Auth0)
-#   - On-premises/enterprise deployment patterns
-#   - Internal TLS with custom CA
-#   - Corporate proxy-friendly configuration
-
-# =============================================================================
-# DEPLOYMENT CONFIGURATION
-# =============================================================================
-
-replicaCount: 2
+#   Set these values under the `governance-studio:` key in your umbrella values file.
 
 image:
-  repository: ghcr.io/eqtylab/governance-studio
-  pullPolicy: IfNotPresent
   tag: ""
-
-imagePullSecrets:
-  - name: "enterprise-registry-credentials"
-
-serviceAccount:
-  create: true
-  automount: true
-  annotations: {}
-  name: ""
-
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
-
-# Conservative scaling for on-premises
-autoscaling:
-  enabled: false
-
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
-
-service:
-  enabled: true
-  type: ClusterIP
-  port: 80
-
-# =============================================================================
-# INGRESS CONFIGURATION
-# =============================================================================
+  pullPolicy: Always
 
 ingress:
   enabled: true
   className: "nginx"
   annotations:
-    # Internal CA issuer
-    cert-manager.io/cluster-issuer: "internal-ca"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-    # Security headers
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      add_header X-Content-Type-Options "nosniff" always;
-      add_header X-Frame-Options "SAMEORIGIN" always;
-      add_header X-XSS-Protection "1; mode=block" always;
   hosts:
-    - host: governance.your-domain.local
+    - host: "governance.your-domain.com"
       paths:
-        - path: /
-          pathType: Prefix
+        - path: "/"
+          pathType: "Prefix"
   tls:
-    - secretName: governance-studio-tls
+    - secretName: "governance-studio-tls"
       hosts:
-        - governance.your-domain.local
-
-# =============================================================================
-# APPLICATION CONFIGURATION
-# =============================================================================
+        - "governance.your-domain.com"
 
 config:
-  basePath: /
-
-  # Backend service URLs (internal hostnames)
-  apiUrl: "https://governance.your-domain.local/governanceService"
-  authServiceUrl: "https://governance.your-domain.local/authService"
-  integrityServiceUrl: "https://governance.your-domain.local/integrityService"
-
   # Keycloak Configuration
-  authProvider: "keycloak"
-  # REQUIRED: Keycloak server URL
-  keycloakUrl: "https://keycloak.your-domain.local"
-  # REQUIRED: Keycloak realm name
+  keycloakUrl: "https://keycloak.your-domain.com"
+  keycloakClientId: "governance-platform-frontend"
   keycloakRealm: "governance"
-  # REQUIRED: Keycloak client ID for frontend (public client)
-  keycloakClientId: "governance-studio"
 
-  # Environment settings
-  environment: "production"
+  # Application Settings
   appTitle: "Governance Studio"
 
-  # Feature configuration
+  # Feature Flags
   features:
     governance: true
     lineage: true
-    guardianEnabled: false
-    guardianGarage: false
-    guardianRulebooks: false
-    guardianOsFunctions: false
+    guardianEnabled: true
+    guardianGarage: true
+    guardianRulebooks: true
+    guardianOsFunctions: true
     guardianSdkFunctions: false
-    agentManagement: false
-
-# =============================================================================
-# HIGH AVAILABILITY
-# =============================================================================
-
-podDisruptionBudget:
-  minAvailable: 1
-
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                  - governance-studio
-          topologyKey: kubernetes.io/hostname
-
-# On-premises node selection
-nodeSelector:
-  node-role.kubernetes.io/worker: "true"
-
-tolerations: []
-
-# =============================================================================
-# SECURITY
-# =============================================================================
-
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 1000
-
-securityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-  runAsUser: 1000
-
-# =============================================================================
-# PROBES
-# =============================================================================
-
-startupProbe:
-  httpGet:
-    path: /
-    port: http
-  failureThreshold: 30
-  periodSeconds: 10
-
-livenessProbe:
-  httpGet:
-    path: /
-    port: http
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  failureThreshold: 3
-
-readinessProbe:
-  httpGet:
-    path: /
-    port: http
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  failureThreshold: 2
-
-# =============================================================================
-# POD LABELS
-# =============================================================================
-
-podLabels:
-  auth-provider: "keycloak"
-  deployment-type: "on-premises"
+    agentManagement: true

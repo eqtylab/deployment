@@ -1,5 +1,5 @@
-# Keycloak Configuration Example
-# Complete example for deploying the Governance Platform with Keycloak.
+# Auth0 Configuration Example
+# Complete example for deploying the Governance Platform with Auth0.
 # For all available values, see the chart's values.yaml and README.md.
 #
 # Secrets:
@@ -12,11 +12,11 @@
 #   helm install governance-platform ./charts/governance-platform \
 #     --namespace governance \
 #     --create-namespace \
-#     --values values-keycloak.yaml
+#     --values values-auth0.yaml
 
 global:
-  domain: "governance.your-domain.com"
   environmentType: "production"
+  domain: "governance.your-domain.com"
 
 # =============================================================================
 # Auth Service
@@ -53,29 +53,23 @@ auth-service:
   config:
     # Identity Provider Configuration
     idp:
-      provider: "keycloak"
-      issuer: "https://keycloak.your-domain.com/realms/governance"
-      skipIssuerVerification: false
-      keycloak:
-        realm: "governance"
-        adminUrl: "https://keycloak.your-domain.com"
-        clientId: "governance-platform-frontend"
-        enableUserManagement: true
-        enableGroupSync: false
-    # Token Exchange Configuration (for Keycloak)
-    tokenExchange:
-      enabled: true
-      keyId: "auth-service-prod-001"
+      provider: "auth0"
+      issuer: "https://your-tenant.us.auth0.com/"
+      skipIssuerVerification: true
+      auth0:
+        domain: "your-tenant.us.auth0.com"
+        managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
+        apiIdentifier: "https://governance.your-domain.com"
     # Key Vault Configuration (for DID keys)
     keyVault:
       provider: "azure_key_vault"
       azure:
         vaultUrl: "https://your-keyvault.vault.azure.net/"
         tenantId: "your-azure-tenant-id"
-    # Extra environment variables for auth-service
-    extraEnvVars:
-      - name: AUTH_SERVICE_URL
-        value: "http://governance-platform-auth-service:8080/api/v1/auth"
+    # Service Account Configuration
+    serviceAccounts:
+      governanceWorker:
+        audience: "https://governance.your-domain.com"
 
 # =============================================================================
 # Governance Service
@@ -131,10 +125,6 @@ governance-service:
     # awsS3Region: "us-east-1"
     # awsS3BucketName: "your-governance-artifacts-bucket"
 
-    # Keycloak Configuration
-    keycloakUrl: "https://keycloak.your-domain.com"
-    keycloakRealm: "governance"
-
   resources:
     requests:
       cpu: 250m
@@ -171,10 +161,10 @@ governance-studio:
           - governance.your-domain.com
 
   config:
-    # Keycloak Configuration
-    keycloakUrl: "https://keycloak.your-domain.com"
-    keycloakRealm: "governance"
-    keycloakClientId: "governance-platform-frontend"
+    # Auth0 Configuration
+    auth0Domain: "your-tenant.us.auth0.com"
+    auth0ClientId: "your-spa-client-id"
+    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
     # Feature Flags
     features:
       governance: true
@@ -272,10 +262,12 @@ postgresql:
 #   --from-literal=password="$(openssl rand -base64 24)" \
 #   --namespace governance
 #
-# # Keycloak Credentials
-# kubectl create secret generic platform-keycloak \
-#   --from-literal=service-account-client-id=YOUR_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID \
-#   --from-literal=service-account-client-secret=YOUR_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET \
+# # Auth0 Credentials
+# kubectl create secret generic platform-auth0 \
+#   --from-literal=client-id=YOUR_AUTH0_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AUTH0_CLIENT_SECRET \
+#   --from-literal=mgmt-client-id=YOUR_AUTH0_MGMT_CLIENT_ID \
+#   --from-literal=mgmt-client-secret=YOUR_AUTH0_MGMT_CLIENT_SECRET \
 #   --namespace governance
 #
 # # Auth Service Credentials

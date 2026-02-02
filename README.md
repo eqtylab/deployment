@@ -54,57 +54,25 @@ charts/
 # 1. Create namespace
 kubectl create namespace governance
 
-# 2. Create required secrets (see charts/governance-platform/README.md for full list)
+# 2. Create required secrets (see governance-platform/README.md for full list)
+#    Alternatively, use the secrets-sample.yaml template:
+#    cp charts/governance-platform/examples/secrets-sample.yaml secrets.yaml
+#    Then pass --values secrets.yaml alongside your values file during deploy.
 kubectl create secret generic platform-database \
   --from-literal=username=postgres \
   --from-literal=password="$(openssl rand -base64 24)" \
   --namespace governance
 
-kubectl create secret generic platform-auth0 \
-  --from-literal=domain=your-tenant.us.auth0.com \
-  --from-literal=client-id=YOUR_CLIENT_ID \
-  --from-literal=client-secret=YOUR_CLIENT_SECRET \
-  --namespace governance
+# ... additional secrets as documented in governance-platform/README.md
 
-# ... additional secrets as documented in charts/governance-platform/README.md
-
-# 3. Create values file
-cat > values.yaml <<EOF
-global:
-  domain: "governance.yourcompany.com"
-  environmentType: "production"
-  secrets:
-    create: false
-
-governance-studio:
-  enabled: true
-  ingress:
-    enabled: true
-    className: nginx
-
-governance-service:
-  enabled: true
-  config:
-    storageProvider: "gcs"
-    gcsBucketName: "your-bucket"
-
-integrity-service:
-  enabled: true
-  env:
-    integrityAppBlobStoreType: "azure_blob"
-    integrityAppBlobStoreAccount: "youraccount"
-    integrityAppBlobStoreContainer: "integrity-data"
-
-auth-service:
-  enabled: true
-
-postgresql:
-  enabled: true
-EOF
+# 3. Create values file (use the appropriate example as a starting point)
+#    For Auth0:    cp charts/governance-platform/examples/values-auth0.yaml values.yaml
+#    For Keycloak: cp charts/governance-platform/examples/values-keycloak.yaml values.yaml
+#    Then edit values.yaml with your environment-specific settings.
 
 # 4. Deploy
 helm dependency update ./charts/governance-platform
-helm install governance-platform ./charts/governance-platform \
+helm upgrade --install governance-platform ./charts/governance-platform \
   --namespace governance \
   --values values.yaml
 
@@ -123,7 +91,7 @@ For complete documentation, see [governance-platform/README.md](charts/governanc
 helm dependency update ./charts/governance-platform
 
 # Install
-helm install governance-platform ./charts/governance-platform \
+helm upgrade --install governance-platform ./charts/governance-platform \
   --namespace governance \
   --create-namespace \
   --values values.yaml
@@ -136,23 +104,22 @@ helm install governance-platform ./charts/governance-platform \
 echo $GITHUB_PAT | helm registry login ghcr.io -u USERNAME --password-stdin
 
 # Install from registry
-helm install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
+helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
   --version 0.1.0 \
   --namespace governance \
   --create-namespace \
   --values values.yaml
 ```
 
-## Cloud-Specific Examples
+## Deployment Examples
 
 The `charts/governance-platform/examples/` directory contains complete deployment examples:
 
-| Example                                                                                    | Description                             |
-| ------------------------------------------------------------------------------------------ | --------------------------------------- |
-| [values-aws-example.yaml](charts/governance-platform/examples/values-aws-example.yaml)     | AWS EKS with S3 storage                 |
-| [values-azure-example.yaml](charts/governance-platform/examples/values-azure-example.yaml) | Azure AKS with Blob storage             |
-| [values-gcp-example.yaml](charts/governance-platform/examples/values-gcp-example.yaml)     | GCP GKE with GCS storage                |
-| [secrets-sample.yaml](charts/governance-platform/examples/secrets-sample.yaml)             | Complete secrets configuration template |
+| Example                                                                          | Description                                                 |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [values-auth0.yaml](charts/governance-platform/examples/values-auth0.yaml)       | Platform deployment using Auth0 as the identity provider    |
+| [values-keycloak.yaml](charts/governance-platform/examples/values-keycloak.yaml) | Platform deployment using Keycloak as the identity provider |
+| [secrets-sample.yaml](charts/governance-platform/examples/secrets-sample.yaml)   | Complete secrets configuration template                     |
 
 ## Development
 
@@ -168,10 +135,10 @@ helm template governance-platform ./charts/governance-platform \
   --debug
 
 # Dry-run installation
-helm install governance-platform ./charts/governance-platform \
+helm upgrade --install governance-platform ./charts/governance-platform \
   --namespace governance \
   --values values.yaml \
-  --dry-run
+  --dry-run --debug
 
 # Diff against existing release (requires helm-diff plugin)
 helm diff upgrade governance-platform ./charts/governance-platform \
@@ -196,7 +163,7 @@ helm dependency list ./charts/governance-platform
 helm unittest ./charts/governance-platform
 
 # Validate against Kubernetes API
-helm install governance-platform ./charts/governance-platform \
+helm upgrade --install governance-platform ./charts/governance-platform \
   --namespace governance \
   --values values.yaml \
   --dry-run \

@@ -107,7 +107,7 @@ spec:
           - name: DB_PORT
             value: {{ .Values.externalDatabase.port | default (((.Values.global).postgresql).port) | default 5432 | quote }}
           - name: DB_NAME
-            value: {{ .Values.externalDatabase.database | default (((.Values.global).postgresql).database) | default "governance" | quote }}
+            value: {{ .Values.externalDatabase.name | default (((.Values.global).postgresql).database) | default "governance" | quote }}
           - name: DB_USER
             value: {{ .Values.externalDatabase.user | default (((.Values.global).postgresql).username) | default "postgres" | quote }}
           - name: DB_PASSWORD
@@ -120,7 +120,7 @@ spec:
                 key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | quote }}
             {{- end }}
           - name: DB_SSLMODE
-            value: {{ .Values.externalDatabase.sslmode | quote }}
+            value: {{ .Values.externalDatabase.sslMode | quote }}
 
           # ========================================================================
           # Storage Configuration
@@ -144,14 +144,7 @@ spec:
           # Azure Blob Storage Configuration
           {{- $azureSecretName := .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | default "" }}
           - name: AZURE_STORAGE_ACCOUNT_NAME
-            {{- if .Values.config.azureStorageAccountName }}
             value: {{ .Values.config.azureStorageAccountName | quote }}
-            {{- else }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ $azureSecretName | quote }}
-                key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountName | default "account-name" | quote }}
-            {{- end }}
           - name: AZURE_STORAGE_ACCOUNT_KEY
             {{- if .Values.config.azureStorageAccountKey }}
             value: {{ .Values.config.azureStorageAccountKey | quote }}
@@ -237,32 +230,18 @@ spec:
                 key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientSecret | default "client-secret" | quote }}
             {{- end }}
           - name: AUTH0_SYNC_AT_STARTUP
-            value: {{ .Values.auth0SyncAtStartup | quote }}
+            value: {{ .Values.config.auth0SyncAtStartup | quote }}
           - name: AUTH0_SYNC_PAGE_SIZE
-            value: {{ .Values.auth0SyncPageSize | quote }}
+            value: {{ .Values.config.auth0SyncPageSize | quote }}
           {{- end }}
 
           {{- if eq $authProvider "keycloak" }}
           # Keycloak Configuration
           {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
           - name: KEYCLOAK_URL
-            {{- if .Values.config.keycloakUrl }}
-            value: {{ .Values.config.keycloakUrl | quote }}
-            {{- else }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ $keycloakSecretName | quote }}
-                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).url | default "url" | quote }}
-            {{- end }}
+            value: {{ .Values.config.keycloakUrl | default "" | quote }}
           - name: KEYCLOAK_REALM
-            {{- if .Values.config.keycloakRealm }}
-            value: {{ .Values.config.keycloakRealm | quote }}
-            {{- else }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ $keycloakSecretName | quote }}
-                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).realm | default "realm" | quote }}
-            {{- end }}
+            value: {{ .Values.config.keycloakRealm | default "" | quote }}
           - name: KEYCLOAK_CLIENT_ID
             {{- if .Values.config.keycloakClientId }}
             value: {{ .Values.config.keycloakClientId | quote }}
@@ -270,7 +249,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: {{ $keycloakSecretName | quote }}
-                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientId | default "backend-client-id" | quote }}
+                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).serviceAccountClientId | default "service-account-client-id" | quote }}
             {{- end }}
           - name: KEYCLOAK_CLIENT_SECRET
             {{- if .Values.config.keycloakClientSecret }}
@@ -279,7 +258,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: {{ $keycloakSecretName | quote }}
-                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientSecret | default "backend-client-secret" | quote }}
+                key: {{ (((((.Values.global).secrets).auth).keycloak).keys).serviceAccountClientSecret | default "service-account-client-secret" | quote }}
             {{- end }}
           {{- end }}
 

@@ -105,6 +105,8 @@ spec:
             
             - name: INTEGRITY_APP__db__host
               value: {{ .Values.config.integrityAppDbHost | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
+            - name: INTEGRITY_APP__db__port
+              value: {{ .Values.config.integrityAppDbPort | default (((.Values.global).postgresql).port) | default "5432" | quote }}
             - name: INTEGRITY_APP__db__db_name
               value: {{ .Values.config.integrityAppDbName | quote }}
             - name: INTEGRITY_APP__db__user
@@ -134,14 +136,14 @@ spec:
             # AWS S3 Configuration
             {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
             - name: INTEGRITY_APP__blob_store__region
-              value: {{ .Values.config.integrityAppBlobStoreRegion | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreAwsRegion | quote }}
             - name: INTEGRITY_APP__blob_store__bucket
-              value: {{ .Values.config.integrityAppBlobStoreBucket | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreAwsBucket | quote }}
             - name: INTEGRITY_APP__blob_store__folder
-              value: {{ .Values.config.integrityAppBlobStoreFolder | quote }}
+              value: {{ .Values.config.integrityAppBlobStoreAwsFolder | quote }}
             - name: AWS_ACCESS_KEY_ID
-              {{- if .Values.config.integrityAppBlobStoreAccessKeyId }}
-              value: {{ .Values.config.integrityAppBlobStoreAccessKeyId | quote }}
+              {{- if .Values.config.integrityAppBlobStoreAwsAccessKeyId }}
+              value: {{ .Values.config.integrityAppBlobStoreAwsAccessKeyId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
@@ -149,8 +151,8 @@ spec:
                   key: {{ (((((.Values.global).secrets).storage).aws_s3).keys).accessKeyId | default "access-key-id" | quote }}
               {{- end }}
             - name: AWS_SECRET_ACCESS_KEY
-              {{- if .Values.config.integrityAppBlobStoreSecretAccessKey }}
-              value: {{ .Values.config.integrityAppBlobStoreSecretAccessKey | quote }}
+              {{- if .Values.config.integrityAppBlobStoreAwsSecretAccessKey }}
+              value: {{ .Values.config.integrityAppBlobStoreAwsSecretAccessKey | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
@@ -174,6 +176,16 @@ spec:
                   name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
                   key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | default "account-key" | quote }}
               {{- end }}
+            {{- end }}
+
+            {{- if eq $storageProvider "gcs" }}
+            # GCS Configuration
+            - name: INTEGRITY_APP__blob_store__bucket
+              value: {{ .Values.config.integrityAppBlobStoreGcsBucket | quote }}
+            - name: INTEGRITY_APP__blob_store__folder
+              value: {{ .Values.config.integrityAppBlobStoreGcsFolder | quote }}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/var/secrets/google/service-account.json"
             {{- end }}
 
             # ========================================================================
@@ -214,17 +226,34 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.persistence.enabled }}
+          {{- if or .Values.persistence.enabled (eq $storageProvider "gcs") }}
           volumeMounts:
+            {{- if .Values.persistence.enabled }}
             - name: "{{template "integrity-service.name" . }}"
               mountPath: {{ .Values.persistence.integrity.mountPath }}
               readOnly: false
+            {{- end }}
+            {{- if eq $storageProvider "gcs" }}
+            - name: gcs-sa-volume
+              mountPath: /var/secrets/google
+              readOnly: true
+            {{- end }}
           {{- end }}
-      {{- if .Values.persistence.enabled }}
+      {{- if or .Values.persistence.enabled (eq $storageProvider "gcs") }}
       volumes:
+        {{- if .Values.persistence.enabled }}
         - name: "{{template "integrity-service.name" . }}"
           hostPath:
             path: {{ .Values.persistence.integrity.hostPath | quote }}
             type: DirectoryOrCreate
+        {{- end }}
+        {{- if eq $storageProvider "gcs" }}
+        - name: gcs-sa-volume
+          secret:
+            secretName: {{ .Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName | default "" | quote }}
+            items:
+              - key: {{ (((((.Values.global).secrets).storage).gcs).keys).serviceAccountJson | default "service-account-json" | quote }}
+                path: "service-account.json"
+        {{- end }}
       {{- end }}
 {{- end }}

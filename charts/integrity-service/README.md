@@ -4,11 +4,18 @@ A Helm chart for deploying the EQTY Lab Integrity Service on Kubernetes.
 
 ## Description
 
-The Integrity Service provides verifiable credentials, data lineage tracking, and statement registry capabilities for the Governance Platform. This chart can be deployed standalone or as part of the Governance Platform umbrella chart.
+The Integrity Service provides verifiable credentials, data lineage tracking, and statement registry capabilities for the Governance Platform.
+
+Key capabilities:
+
+- **Verifiable Credentials**: Issue and verify W3C-compliant credentials
+- **Data Lineage**: Track provenance and transformation history of data assets
+- **Statement Registry**: Store and retrieve signed integrity statements
+- **Blob Storage Integration**: Azure Blob Storage, AWS S3, and Google Cloud Storage support for artifact persistence
 
 ## Configuration Model
 
-Integrity Service uses runtime configuration injection via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
+Integrity Service uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
 This allows:
 
@@ -17,170 +24,149 @@ This allows:
 - Clear separation of infrastructure and application settings
 - Automatic configuration inheritance from umbrella chart globals
 
-## Deployment Options
-
-### Option 1: As Part of Governance Platform (Recommended)
-
-When deployed via the `governance-platform` umbrella chart, Integrity Service automatically inherits configuration from global values with zero additional configuration required.
-
-**Example umbrella chart configuration:**
-
-```yaml
-global:
-  domain: "governance.yourcompany.com"
-  environmentType: "production"
-
-  secrets:
-    database:
-      secretName: "platform-database"
-      values:
-        username: "postgres"
-        password: "YOUR_DB_PASSWORD"
-
-    storage:
-      azure_blob:
-        secretName: "platform-azure-blob"
-        values:
-          accountName: "yourstorageaccount"
-          accountKey: "YOUR_STORAGE_KEY"
-          connectionString: "YOUR_CONNECTION_STRING"
-
-integrity-service:
-  enabled: true
-  replicaCount: 2
-
-  config:
-    integrityAppBlobStoreType: "azure_blob" # Explicitly set storage provider
-    integrityAppBlobStoreAccount: "yourstorageaccount"
-    integrityAppBlobStoreContainer: "integrity-data"
-
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-
-  ingress:
-    enabled: true
-    className: nginx
-    annotations:
-      cert-manager.io/issuer: letsencrypt-prod
-      nginx.ingress.kubernetes.io/rewrite-target: /$2
-```
-
-**What gets auto-configured:**
-
-- ✅ Database connection (host, port, credentials)
-- ✅ Storage credentials (Azure Blob, AWS S3)
-- ✅ Auth service URL
-- ✅ Environment type
-- ✅ Image pull secrets
-- ✅ Public service URL
-
-**Note:** Storage provider type must be explicitly set via `config.integrityAppBlobStoreType`. This allows different services to use different storage providers.
-
-### Option 2: Standalone Deployment
-
-For standalone deployments outside the umbrella chart:
-
-```yaml
-enabled: true
-
-config:
-  rustEnv: "production"
-
-  # Database configuration
-  integrityAppDbHost: "postgresql.default.svc.cluster.local"
-  integrityAppDbName: "IntegrityServiceDB"
-  integrityAppDbUser: "postgres"
-  integrityAppDbPassword: "YOUR_PASSWORD" # Or use secret reference
-
-  # Blob storage (Azure example)
-  integrityAppBlobStoreType: "azure_blob"
-  integrityAppBlobStoreAccount: "yourstorageaccount"
-  integrityAppBlobStoreContainer: "integrity-data"
-  integrityAppBlobStoreKey: "YOUR_STORAGE_KEY" # Or use secret reference
-
-  # Auth configuration
-  integrityAppAuthType: "auth_service"
-  integrityAppAuthUrl: "http://auth-service:8080"
-
-  # Service URL
-  integrityServiceUrl: "https://governance.yourcompany.com/integrityService"
-
-secrets:
-  database:
-    name: "integrity-db-credentials"
-
-  storage:
-    azure_blob:
-      name: "integrity-storage-credentials"
-
-service:
-  enabled: true
-  type: ClusterIP
-  port: 3050
-
-ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-  hosts:
-    - host: governance.yourcompany.com
-      paths:
-        - path: "/integrityService(/|$)(.*)"
-          pathType: ImplementationSpecific
-  tls:
-    - secretName: integrity-tls
-      hosts:
-        - governance.yourcompany.com
-
-resources:
-  requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
-```
-
 ## Prerequisites
 
 - Kubernetes 1.21+
 - Helm 3.8+
-- PostgreSQL database (can be deployed via umbrella chart)
-- Azure Blob Storage or AWS S3 account
-- Ingress controller (nginx, traefik, etc.)
+- PostgreSQL database (provided by umbrella chart or external)
+- Azure Blob Storage, AWS S3, or Google Cloud Storage account (with container/bucket created)
+- Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
-## Installing the Chart
+## Deployment
 
-### Via Umbrella Chart (Recommended)
+When deployed via the `governance-platform` umbrella chart, Integrity Service automatically inherits configuration from global values with no additional configuration required.
 
-```bash
-helm install governance-platform eqtylab/governance-platform \
-  -f values.yaml \
-  --namespace governance \
-  --create-namespace
+### Quick Start
+
+Minimum configuration required in your umbrella chart values:
+
+**Azure Blob Storage:**
+
+```yaml
+integrity-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "integrity-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    integrityAppBlobStoreType: "azure_blob"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
 ```
 
-### Standalone Installation
+**AWS S3:**
 
-```bash
-helm install integrity-service eqtylab/integrity-service \
-  -f values.yaml \
-  --namespace governance \
-  --create-namespace
+```yaml
+integrity-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "integrity-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreAwsRegion: "us-east-1"
+    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
 ```
 
-## Uninstalling the Chart
+**Google Cloud Storage:**
 
-```bash
-helm uninstall integrity-service --namespace governance
+```yaml
+integrity-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "integrity-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    integrityAppBlobStoreType: "gcs"
+    integrityAppBlobStoreGcsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreGcsFolder: "your-integrity-store-folder"
 ```
 
-This removes all Kubernetes components associated with the chart and deletes the release.
+### Required Configuration
+
+Beyond what is auto-configured, these values **must** be explicitly set:
+
+**Azure Blob Storage:**
+
+- `config.integrityAppBlobStoreType` - Set to `"azure_blob"`
+- `config.integrityAppBlobStoreAccount` - Azure storage account name (e.g., `your-storage-account`)
+- `config.integrityAppBlobStoreContainer` - Azure blob container name (e.g., `your-integrity-store-container`)
+
+**AWS S3:**
+
+- `config.integrityAppBlobStoreType` - Set to `"aws_s3"`
+- `config.integrityAppBlobStoreAwsRegion` - AWS region (e.g., `us-east-1`)
+- `config.integrityAppBlobStoreAwsBucket` - S3 bucket name (e.g., `your-integrity-store-bucket`)
+- `config.integrityAppBlobStoreAwsFolder` - S3 folder/prefix (e.g., `your-integrity-store-folder`)
+
+**Google Cloud Storage:**
+
+- `config.integrityAppBlobStoreType` - Set to `"gcs"`
+- `config.integrityAppBlobStoreGcsBucket` - GCS bucket name (e.g., `your-integrity-store-bucket`)
+- `config.integrityAppBlobStoreGcsFolder` - GCS folder/prefix (e.g., `your-integrity-store-folder`)
+
+**What gets auto-configured:**
+
+From global values:
+
+- Database connection (host, port, credentials from `global.postgresql.*` and `global.secrets.database`)
+- Storage credentials (from `global.secrets.storage.azure_blob`, `global.secrets.storage.aws_s3`, or `global.secrets.storage.gcs`)
+- Auth service URL (generated as `http://{Release.Name}-auth-service:8080`)
+- Environment type (from `global.environmentType`)
+- Image pull secrets (from `global.secrets.imageRegistry`)
+- Public service URL (from `global.domain`)
+
+Generated defaults:
+
+- Database host defaults to `{Release.Name}-postgresql` (co-deployed PostgreSQL)
+- Integrity service URL defaults to `https://{global.domain}/integrityService`
 
 ## Values
 
@@ -188,15 +174,19 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                          | Type   | Description                                       |
-| -------------------------------------------- | ------ | ------------------------------------------------- |
-| global.domain                                | string | Base domain for all services                      |
-| global.environmentType                       | string | Environment type (development/staging/production) |
-| global.postgresql.username                   | string | PostgreSQL username                               |
-| global.secrets.database.secretName           | string | Name of database credentials secret               |
-| global.secrets.imageRegistry.secretName      | string | Name of image pull secret                         |
-| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                |
-| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                    |
+| Key                                          | Type   | Description                                             |
+| -------------------------------------------- | ------ | ------------------------------------------------------- |
+| global.domain                                | string | Base domain for all services                            |
+| global.environmentType                       | string | Environment type (development/staging/production)       |
+| global.postgresql.host                       | string | PostgreSQL host (defaults to {Release.Name}-postgresql) |
+| global.postgresql.port                       | int    | PostgreSQL port (defaults to 5432)                      |
+| global.postgresql.database                   | string | PostgreSQL database name                                |
+| global.postgresql.username                   | string | PostgreSQL username                                     |
+| global.secrets.database.secretName           | string | Name of database credentials secret                     |
+| global.secrets.imageRegistry.secretName      | string | Name of image pull secret                               |
+| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                      |
+| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                          |
+| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                             |
 
 ### Chart-Specific Parameters
 
@@ -256,7 +246,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | autoscaling.targetCPUUtilizationPercentage    | int    | `80`    | Target CPU utilization percentage    |
 | autoscaling.targetMemoryUtilizationPercentage | int    | `80`    | Target memory utilization percentage |
 
-> 💡 **Note:** Resources are empty by default. For production, set appropriate requests and limits (recommended: cpu 100m-500m, memory 256Mi-512Mi).
+> **Note:** Resources are empty by default. For production, set appropriate requests and limits (recommended: cpu 100m-500m, memory 256Mi-512Mi).
 
 ### High Availability
 
@@ -301,87 +291,19 @@ When deployed via the umbrella chart, these global values are automatically used
 | persistence.integrity.mountPath | string | `"/data/integrity"`    | Container mount path for integrity data                                 |
 | persistence.integrity.hostPath  | string | `"/var/lib/integrity"` | Host path for data storage (only used when persistence.enabled is true) |
 
-### Application Configuration
-
-All config values support global fallbacks when deployed via umbrella chart.
-
-#### Application Settings
-
-| Key                        | Type   | Default | Description                                                     |
-| -------------------------- | ------ | ------- | --------------------------------------------------------------- |
-| config.rustEnv             | string | `""`    | Rust environment (auto-configured from global.environmentType)  |
-| config.integrityServiceUrl | string | `""`    | Public URL for this service (auto-generated from global.domain) |
-
-#### Database Configuration
+### Database Configuration
 
 | Key                           | Type   | Default                | Description                                                      |
 | ----------------------------- | ------ | ---------------------- | ---------------------------------------------------------------- |
 | config.integrityAppDbHost     | string | `""`                   | Database host (auto-generated as {Release.Name}-postgresql)      |
+| config.integrityAppDbPort     | string | `""`                   | Database port (auto-configured from global.postgresql.port)      |
 | config.integrityAppDbName     | string | `"IntegrityServiceDB"` | Database name                                                    |
 | config.integrityAppDbUser     | string | `""`                   | Database user (auto-configured from global.postgresql.username)  |
 | config.integrityAppDbPassword | string | `""`                   | Database password (auto-configured from global.secrets.database) |
 
-#### Blob Storage Configuration
-
-| Key                                         | Type   | Default | Description                                                                         |
-| ------------------------------------------- | ------ | ------- | ----------------------------------------------------------------------------------- |
-| config.integrityAppBlobStoreType            | string | `""`    | Storage provider (aws_s3 or azure_blob, must be set explicitly)                     |
-| config.integrityAppBlobStoreRegion          | string | `""`    | AWS region (AWS S3 only, must be set when using S3)                                 |
-| config.integrityAppBlobStoreBucket          | string | `""`    | AWS S3 bucket name (AWS S3 only, must be set when using S3)                         |
-| config.integrityAppBlobStoreFolder          | string | `""`    | AWS S3 folder/prefix (AWS S3 only)                                                  |
-| config.integrityAppBlobStoreAccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)              |
-| config.integrityAppBlobStoreSecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3)          |
-| config.integrityAppBlobStoreAccount         | string | `""`    | Azure storage account name (auto-configured from global.secrets.storage.azure_blob) |
-| config.integrityAppBlobStoreContainer       | string | `""`    | Azure blob container name (Azure Blob only, must be set)                            |
-| config.integrityAppBlobStoreKey             | string | `""`    | Azure storage key (auto-configured from global.secrets.storage.azure_blob)          |
-
-#### Logging Configuration
-
-| Key                                                | Type   | Default   | Description                                               |
-| -------------------------------------------------- | ------ | --------- | --------------------------------------------------------- |
-| config.integrityAppLoggingLogLevelDefault          | string | `"warn"`  | Default log level (trace/debug/info/warn/error)           |
-| config.integrityAppLoggingLogLevelIntegrityService | string | `"trace"` | Integrity service log level (trace/debug/info/warn/error) |
-
-#### Authentication Configuration
-
-| Key                         | Type   | Default          | Description                                                                  |
-| --------------------------- | ------ | ---------------- | ---------------------------------------------------------------------------- |
-| config.integrityAppAuthType | string | `"auth_service"` | Authentication type                                                          |
-| config.integrityAppAuthUrl  | string | `""`             | Auth service URL (auto-generated as http://{Release.Name}-auth-service:8080) |
-
 ### Secret Configuration
 
-Secrets reference Kubernetes Secret resources created by the umbrella chart or manually.
-
-#### Secret Key Names
-
-Secret key names (the keys within each Kubernetes Secret) follow this pattern:
-
-- **Umbrella chart deployment**: Key names are defined in `global.secrets.*.keys` - this is the single source of truth
-- **Standalone deployment**: Templates use hardcoded defaults (e.g., `access-key-id`, `client-id`, `password`)
-
-When deploying standalone, create your secrets using the default key names:
-
-```bash
-# Example: Database credentials
-kubectl create secret generic integrity-database \
-  --from-literal=password=YOUR_PASSWORD
-
-# Example: AWS S3 storage
-kubectl create secret generic integrity-aws-s3 \
-  --from-literal=access-key-id=YOUR_ACCESS_KEY \
-  --from-literal=secret-access-key=YOUR_SECRET_KEY
-```
-
-If your existing secrets use different key names, you can override them via `global.secrets.*.keys` in your values file.
-
-**Default key names by secret type:**
-
-| Secret Type | Default Key Names                    |
-| ----------- | ------------------------------------ |
-| Database    | `password`                           |
-| AWS S3      | `access-key-id`, `secret-access-key` |
-| Azure Blob  | `account-key`                        |
+All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Database Secrets
 
@@ -403,6 +325,53 @@ Azure Blob Storage (only used when integrityAppBlobStoreType is "azure_blob"):
 | ------------------------------- | ------ | ------------------------------------------------------------------------------- |
 | secrets.storage.azure_blob.name | string | Secret name (auto-configured from global.secrets.storage.azure_blob.secretName) |
 
+Google Cloud Storage (only used when integrityAppBlobStoreType is "gcs"):
+
+| Key                      | Type   | Description                                                              |
+| ------------------------ | ------ | ------------------------------------------------------------------------ |
+| secrets.storage.gcs.name | string | Secret name (auto-configured from global.secrets.storage.gcs.secretName) |
+
+### Application Configuration
+
+All config values support global fallbacks when deployed via umbrella chart.
+
+#### Application Settings
+
+| Key                        | Type   | Default | Description                                                                                |
+| -------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------ |
+| config.rustEnv             | string | `""`    | Rust environment (auto-configured from global.environmentType)                             |
+| config.integrityServiceUrl | string | `""`    | Public URL for this service (auto-generated as `https://{global.domain}/integrityService`) |
+
+#### Blob Storage Configuration
+
+| Key                                            | Type   | Default | Description                                                                |
+| ---------------------------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
+| config.integrityAppBlobStoreType               | string | `""`    | Storage provider (**must be set**; `aws_s3`, `azure_blob`, or `gcs`)       |
+| config.integrityAppBlobStoreAwsRegion          | string | `""`    | AWS region (**must be set** when using S3)                                 |
+| config.integrityAppBlobStoreAwsBucket          | string | `""`    | AWS S3 bucket name (**must be set** when using S3)                         |
+| config.integrityAppBlobStoreAwsFolder          | string | `""`    | AWS S3 folder/prefix (**must be set** when using S3)                       |
+| config.integrityAppBlobStoreAwsAccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)     |
+| config.integrityAppBlobStoreAwsSecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3) |
+| config.integrityAppBlobStoreAccount            | string | `""`    | Azure storage account name (**must be set** when using Azure Blob)         |
+| config.integrityAppBlobStoreContainer          | string | `""`    | Azure blob container name (**must be set** when using Azure Blob)          |
+| config.integrityAppBlobStoreKey                | string | `""`    | Azure storage key (auto-configured from global.secrets.storage.azure_blob) |
+| config.integrityAppBlobStoreGcsBucket          | string | `""`    | GCS bucket name (**must be set** when using GCS)                           |
+| config.integrityAppBlobStoreGcsFolder          | string | `""`    | GCS folder/prefix (**must be set** when using GCS)                         |
+
+#### Logging Configuration
+
+| Key                                                | Type   | Default   | Description                                               |
+| -------------------------------------------------- | ------ | --------- | --------------------------------------------------------- |
+| config.integrityAppLoggingLogLevelDefault          | string | `"warn"`  | Default log level (trace/debug/info/warn/error)           |
+| config.integrityAppLoggingLogLevelIntegrityService | string | `"trace"` | Integrity service log level (trace/debug/info/warn/error) |
+
+#### Authentication Configuration
+
+| Key                         | Type   | Default          | Description                                                                  |
+| --------------------------- | ------ | ---------------- | ---------------------------------------------------------------------------- |
+| config.integrityAppAuthType | string | `"auth_service"` | Authentication type                                                          |
+| config.integrityAppAuthUrl  | string | `""`             | Auth service URL (auto-generated as http://{Release.Name}-auth-service:8080) |
+
 ## Configuration Inheritance
 
 When deployed via the umbrella chart, configuration follows this precedence (highest to lowest):
@@ -411,77 +380,99 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 2. **Global values** - Set in `global.*` (umbrella chart)
 3. **Chart defaults** - Default values from `values.yaml`
 
-### Example Configuration Flow
+## Azure Blob Storage Configuration
+
+### Required Azure Setup
+
+1. **Create an Azure Storage Account**
+2. **Create a Blob Container** for integrity artifacts (e.g., `integrity-data`)
+3. **Obtain account credentials** (account name, account key, connection string)
+
+### Example Configuration
 
 ```yaml
-# Umbrella chart values.yaml
-global:
-  domain: "governance.prod.company.com"
-  environmentType: "production"
-  postgresql:
-    username: "postgres"
-
-integrity-service:
-  enabled: true
-  # config.rustEnv automatically becomes: production
-  # config.integrityAppDbUser automatically becomes: postgres
-  # config.integrityAppDbHost automatically becomes: {Release.Name}-postgresql
-
-  # Must explicitly set storage provider:
-  config:
-    integrityAppBlobStoreType: "azure_blob" # Required
-    integrityAppBlobStoreContainer: "integrity-data" # Required
-```
-
-## Storage Provider Configuration
-
-### Azure Blob Storage
-
-```yaml
-global:
-  secrets:
-    storage:
-      azure_blob:
-        secretName: "platform-azure-blob"
-
 integrity-service:
   config:
-    integrityAppBlobStoreType: "azure_blob" # Explicitly set storage provider
-    integrityAppBlobStoreContainer: "integrity-data" # Must be set
+    integrityAppBlobStoreType: "azure_blob"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
+
+secrets:
+  storage:
+    azure_blob:
+      name: "platform-azure-blob"
 ```
 
-### AWS S3
-
-```yaml
-global:
-  secrets:
-    storage:
-      aws_s3:
-        secretName: "platform-aws-s3"
-
-integrity-service:
-  config:
-    integrityAppBlobStoreType: "aws_s3" # Explicitly set storage provider
-    integrityAppBlobStoreRegion: "us-east-1" # Must be set
-    integrityAppBlobStoreBucket: "integrity-data" # Must be set
-    integrityAppBlobStoreFolder: "statements"
-```
-
-## Upgrading
-
-### Upgrading via Umbrella Chart
+### Secret Creation
 
 ```bash
-helm upgrade governance-platform eqtylab/governance-platform \
-  -f values.yaml \
+kubectl create secret generic platform-azure-blob \
+  --from-literal=account-key=YOUR_AZURE_STORAGE_ACCOUNT_KEY \
+  --from-literal=connection-string="DefaultEndpointsProtocol=https;..." \
   --namespace governance
 ```
 
-### Upgrading Standalone
+## AWS S3 Configuration
+
+### Required AWS Setup
+
+1. **Create an S3 Bucket** for integrity artifacts (e.g., `integrity-data`)
+2. **Create an IAM User or Role** with S3 access to the bucket
+3. **Obtain credentials** (access key ID, secret access key)
+
+### Example Configuration
+
+```yaml
+integrity-service:
+  config:
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreAwsRegion: "us-east-1"
+    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+
+secrets:
+  storage:
+    aws_s3:
+      name: "platform-aws-s3"
+```
+
+### Secret Creation
 
 ```bash
-helm upgrade integrity-service eqtylab/integrity-service \
-  -f values.yaml \
+kubectl create secret generic platform-aws-s3 \
+  --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY \
+  --from-literal=secret-access-key=YOUR_AWS_SECRET_KEY \
+  --namespace governance
+```
+
+## Google Cloud Storage Configuration
+
+### Required GCS Setup
+
+1. **Create a GCS Bucket** for integrity artifacts (e.g., `integrity-data`)
+2. **Create a Service Account** with Storage Object Admin access to the bucket
+3. **Export a JSON key** for the service account
+
+### Example Configuration
+
+```yaml
+integrity-service:
+  config:
+    integrityAppBlobStoreType: "gcs"
+    integrityAppBlobStoreGcsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreGcsFolder: "your-integrity-store-folder"
+
+secrets:
+  storage:
+    gcs:
+      name: "platform-gcs"
+```
+
+### Secret Creation
+
+```bash
+kubectl create secret generic platform-gcs \
+  --from-file=service-account-json=YOUR_SERVICE_ACCOUNT_KEY.json \
   --namespace governance
 ```
 
@@ -500,12 +491,24 @@ kubectl get pods -n governance -l app.kubernetes.io/name=integrity-service
 kubectl describe pod <pod-name> -n governance
 ```
 
-### Testing Configuration
+### Verifying Configuration
 
-View environment variables in running pod:
+View key environment variables in the running pod:
 
 ```bash
 kubectl exec -it deployment/integrity-service -n governance -- env | grep INTEGRITY_APP
+```
+
+View all environment variables:
+
+```bash
+kubectl exec -it deployment/integrity-service -n governance -- env | sort
+```
+
+Test health endpoint:
+
+```bash
+kubectl exec -it deployment/integrity-service -n governance -- curl -s localhost:3050/health/v1
 ```
 
 ### Common Issues
@@ -530,6 +533,7 @@ kubectl exec -it deployment/integrity-service -n governance -- env | grep INTEGR
 - Check storage credentials in secret
 - For Azure: verify account name and container exist, container name must be set explicitly
 - For AWS: verify bucket exists, region and bucket name must be set explicitly
+- For GCS: verify bucket exists, service account JSON key is mounted correctly
 - Ensure service has network access to storage
 
 **Authentication fails**
@@ -543,6 +547,20 @@ kubectl exec -it deployment/integrity-service -n governance -- env | grep INTEGR
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
 - Restart pods if configuration was updated: `kubectl rollout restart deployment/integrity-service -n governance`
+
+## Health Endpoints
+
+| Endpoint         | Description          |
+| ---------------- | -------------------- |
+| `GET /health/v1` | Overall health check |
+
+### API Documentation
+
+Swagger UI is available at:
+
+```
+https://{domain}/integrityService/swagger/index.html
+```
 
 ## Support
 

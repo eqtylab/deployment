@@ -15,8 +15,8 @@ This guide shows how to deploy the auth service with Keycloak as the identity pr
 kubectl create secret generic platform-keycloak \
   --from-literal=client-id="governance-platform-frontend" \
   --from-literal=client-secret="<your-frontend-secret>" \
-  --from-literal=backend-client-id="governance-platform-backend" \
-  --from-literal=backend-client-secret="<your-backend-secret>" \
+  --from-literal=service-account-client-id="governance-platform-backend" \
+  --from-literal=service-account-client-secret="<your-backend-secret>" \
   -n <namespace>
 
 # Create governance worker credentials
@@ -35,13 +35,6 @@ kubectl create secret generic platform-database \
 kubectl create secret generic platform-auth-service \
   --from-literal=api-secret="$(openssl rand -hex 32)" \
   --from-literal=jwt-secret="$(openssl rand -hex 32)" \
-  --from-literal=private-key="<your-token-exchange-private-key>" \
-  -n <namespace>
-
-# Create vault credentials (if using HashiCorp Vault)
-kubectl create secret generic platform-hashicorp-vault \
-  --from-literal=client-id="<your-vault-client-id>" \
-  --from-literal=client-secret="<your-vault-client-secret>" \
   -n <namespace>
 ```
 
@@ -67,6 +60,7 @@ helm upgrade --install auth-service ./charts/auth-service \
   --set config.idp.issuer="https://keycloak.your-domain.com/realms/governance" \
   --set config.idp.keycloak.realm="governance" \
   --set config.idp.keycloak.adminUrl="https://keycloak.your-domain.com" \
+  --set config.idp.keycloak.clientId="governance-platform-frontend" \
   --set config.idp.keycloak.enableUserManagement=true \
   --set config.serviceAccounts.governanceWorker.enabled=true \
   --set config.tokenExchange.enabled=true \

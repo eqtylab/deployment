@@ -330,28 +330,27 @@ After successful bootstrap, the platform services reference the Keycloak secret 
 ```yaml
 # Example auth-service deployment referencing Keycloak credentials
 config:
-  - name: IDP_CLIENT_ID
+  - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID
     valueFrom:
       secretKeyRef:
         name: platform-keycloak
-        key: backend-client-id
-  - name: IDP_CLIENT_SECRET
+        key: service-account-client-id
+  - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET
     valueFrom:
       secretKeyRef:
         name: platform-keycloak
-        key: backend-client-secret
+        key: service-account-client-secret
 ```
 
 The Keycloak secret should contain these keys:
 
-| Key                          | Description                               |
-| ---------------------------- | ----------------------------------------- |
-| `url`                        | Keycloak server URL                       |
-| `realm`                      | Realm name                                |
-| `frontend-client-id`         | Public client ID for frontend SPA         |
-| `backend-client-id`          | Confidential client ID for backend        |
-| `backend-client-secret`      | Client secret for backend authentication  |
-| `token-exchange-private-key` | (Optional) Private key for token exchange |
+| Key                             | Description                                      |
+| ------------------------------- | ------------------------------------------------ |
+| `service-account-client-id`     | Confidential client ID for service account       |
+| `service-account-client-secret` | Client secret for service account authentication |
+| `token-exchange-private-key`    | (Optional) Private key for token exchange        |
+
+> **Note:** `url`, `realm`, and the frontend/SPA client ID are configured as required chart values (not stored in secrets). See the auth-service and governance-platform chart documentation for details.
 
 ## Troubleshooting
 

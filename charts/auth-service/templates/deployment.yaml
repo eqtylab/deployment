@@ -52,7 +52,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        - name: wait-db
+        - name: wait-deps
           image: busybox:1.36
           imagePullPolicy: IfNotPresent
           command:
@@ -67,11 +67,22 @@ spec:
                 sleep 2
               done
               echo "Postgres is ready!"
+
+              echo "Checking for Governance Service at $GOV_SERVICE_HOST:$GOV_SERVICE_PORT..."
+              until nc -z -w 2 "$GOV_SERVICE_HOST" "$GOV_SERVICE_PORT"; do
+                echo "Governance Service not ready yet..."
+                sleep 2
+              done
+              echo "Governance Service is ready!"
           env:
             - name: DB_HOST
               value: {{ .Values.externalDatabase.host | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
             - name: DB_PORT
               value: {{ .Values.externalDatabase.port | default ((.Values.global).postgresql).port | default "5432" | quote }}
+            - name: GOV_SERVICE_HOST
+              value: {{ printf "%s-governance-service" .Release.Name | quote }}
+            - name: GOV_SERVICE_PORT
+              value: "10001"
         {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -126,23 +137,23 @@ spec:
             {{- if eq $idpProvider "keycloak" }}
             {{- /* Keycloak credentials */}}
             {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
-            - name: IDP_CLIENT_ID
-              {{- if .Values.config.idp.keycloak.clientId }}
-              value: {{ .Values.config.idp.keycloak.clientId | quote }}
+            - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID
+              {{- if .Values.config.idp.keycloak.serviceAccountClientId }}
+              value: {{ .Values.config.idp.keycloak.serviceAccountClientId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ $keycloakSecretName | quote }}
-                  key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientId | default "backend-client-id" | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).keycloak).keys).serviceAccountClientId | default "service-account-client-id" | quote }}
               {{- end }}
-            - name: IDP_CLIENT_SECRET
-              {{- if .Values.config.idp.keycloak.clientSecret }}
-              value: {{ .Values.config.idp.keycloak.clientSecret | quote }}
+            - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET
+              {{- if .Values.config.idp.keycloak.serviceAccountClientSecret }}
+              value: {{ .Values.config.idp.keycloak.serviceAccountClientSecret | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ $keycloakSecretName | quote }}
-                  key: {{ (((((.Values.global).secrets).auth).keycloak).keys).backendClientSecret | default "backend-client-secret" | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).keycloak).keys).serviceAccountClientSecret | default "service-account-client-secret" | quote }}
               {{- end }}
 
             {{- else }}

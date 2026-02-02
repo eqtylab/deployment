@@ -4,11 +4,19 @@ A Helm chart for deploying the EQTY Lab Governance Service on Kubernetes.
 
 ## Description
 
-The Governance Service provides governance validation, analysis capabilities, and workflow processing for the Governance Platform. It includes REST API endpoints for governance operations and a background worker service for processing governance workflows. This chart can be deployed standalone or as part of the Governance Platform umbrella chart.
+The Governance Service provides governance validation, analysis capabilities, and workflow processing for the Governance Platform. It includes REST API endpoints for governance operations and a background worker service for processing governance workflows.
+
+Key capabilities:
+
+- **Governance Workflows**: Validation, analysis, and processing of governance policies
+- **Storage Integration**: Multi-provider support for GCS, Azure Blob, and AWS S3
+- **AI-Powered Analysis**: Anthropic Claude integration for governance analysis
+- **Worker Service**: Background processing with service account authentication
+- **Multi-Provider Auth**: Backend support for Auth0 and Keycloak identity providers
 
 ## Configuration Model
 
-Governance Service uses runtime configuration injection. Application configuration is provided through Helm values and injected into the container at startup.
+Governance Service uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
 This allows:
 
@@ -17,162 +25,6 @@ This allows:
 - Clear separation of infrastructure and application settings
 - Automatic configuration inheritance from umbrella chart globals
 
-## Deployment Options
-
-### Option 1: As Part of Governance Platform (Recommended)
-
-When deployed via the `governance-platform` umbrella chart, Governance Service automatically inherits configuration from global values with zero additional configuration required.
-
-**Example umbrella chart configuration:**
-
-```yaml
-global:
-  domain: "governance.yourcompany.com"
-  environmentType: "production"
-
-  secrets:
-    database:
-      secretName: "platform-database"
-      values:
-        password: "YOUR_DB_PASSWORD"
-
-    encryption:
-      secretName: "platform-encryption"
-      values:
-        key: "YOUR_ENCRYPTION_KEY"
-
-    storage:
-      gcs:
-        secretName: "platform-gcs"
-        values:
-          serviceAccountJson: "YOUR_GCS_SA_JSON"
-
-    auth:
-      provider: "auth0"
-      auth0:
-        secretName: "platform-auth0"
-
-    authService:
-      secretName: "platform-auth-service"
-      values:
-        apiSecret: "YOUR_API_SECRET"
-
-    governanceServiceAI:
-      secretName: "platform-ai"
-      values:
-        apiKey: "YOUR_ANTHROPIC_API_KEY"
-
-governance-service:
-  enabled: true
-  replicaCount: 2
-
-  config:
-    storageProvider: "gcs" # Explicitly set storage provider
-    gcsBucketName: "governance-attachments"
-    auth0Domain: "yourcompany.auth0.com" # Must be set when using Auth0
-
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-
-  ingress:
-    enabled: true
-    className: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-      nginx.ingress.kubernetes.io/rewrite-target: /$2
-```
-
-**What gets auto-configured:**
-
-- ✅ Database connection (host, port, credentials)
-- ✅ Encryption keys
-- ✅ Storage credentials (GCS, Azure Blob, AWS S3)
-- ✅ Auth provider configuration (Auth0 or Keycloak)
-- ✅ Auth service credentials for worker authentication
-- ✅ AI API credentials
-- ✅ Integration service URLs (Auth, Integrity)
-- ✅ Environment type
-- ✅ Image pull secrets
-
-**Note:** Storage provider type must be explicitly set via `config.storageProvider`. This allows different services to use different storage providers.
-
-### Option 2: Standalone Deployment
-
-For standalone deployments outside the umbrella chart:
-
-```yaml
-enabled: true
-
-externalDatabase:
-  host: "postgresql.default.svc.cluster.local"
-  database: "governance"
-  user: "postgres"
-  password: "YOUR_PASSWORD" # Or use secret reference
-
-config:
-  appEnv: "production"
-  logLevel: "info"
-
-  storageProvider: "gcs"
-  gcsBucketName: "governance-attachments"
-
-  auth0Domain: "yourcompany.auth0.com"
-  auth0ClientId: "YOUR_CLIENT_ID"
-  auth0ClientSecret: "YOUR_CLIENT_SECRET"
-
-  integrityServiceUrl: "https://governance.yourcompany.com/integrityService"
-  authServiceUrl: "https://governance.yourcompany.com/authService"
-
-  serviceAccount:
-    enabled: true
-    serviceName: "governance-worker"
-    authServiceApiKey: "YOUR_API_KEY"
-
-  ai:
-    enabled: true
-    apiKey: "YOUR_ANTHROPIC_API_KEY"
-
-secrets:
-  encryption:
-    name: "governance-encryption"
-  storage:
-    gcs:
-      name: "governance-gcs-credentials"
-  authService:
-    name: "governance-auth-service"
-
-service:
-  enabled: true
-  type: ClusterIP
-  port: 10001
-
-ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-  hosts:
-    - host: governance.yourcompany.com
-      paths:
-        - path: "/governanceService(/|$)(.*)"
-          pathType: ImplementationSpecific
-  tls:
-    - secretName: governance-service-tls
-      hosts:
-        - governance.yourcompany.com
-
-resources:
-  requests:
-    cpu: 250m
-    memory: 256Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
-```
-
 ## Prerequisites
 
 - Kubernetes 1.21+
@@ -180,37 +32,154 @@ resources:
 - PostgreSQL database (provided by umbrella chart or external)
 - Storage provider (GCS, Azure Blob Storage, or AWS S3)
 - Authentication provider (Auth0 or Keycloak)
-- Anthropic API key (for AI features, optional)
-- Ingress controller (nginx, traefik, etc.)
+- Anthropic API key (required when `config.ai.enabled` is `true`, which is the default)
+- Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
-## Installing the Chart
+## Deployment
 
-### Via Umbrella Chart (Recommended)
+When deployed via the `governance-platform` umbrella chart, Governance Service automatically inherits configuration from global values with no additional configuration required.
 
-```bash
-helm install governance-platform eqtylab/governance-platform \
-  -f values.yaml \
-  --namespace governance \
-  --create-namespace
+### Quick Start
+
+Minimum configuration required in your umbrella chart values:
+
+**Auth0:**
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "auth0"
+
+governance-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "governance-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    auth0Domain: "your-tenant.us.auth0.com"
+
+    # Storage Configuration - GCS
+    storageProvider: "gcs"
+    gcsBucketName: "your-governance-artifacts-bucket"
+
+    # Storage Configuration - Azure Blob (uncomment to use instead)
+    # storageProvider: "azure_blob"
+    # azureStorageAccountName: "your-storage-account"
+    # azureStorageContainerName: "your-governance-artifacts-container"
+
+    # Storage Configuration - AWS S3 (uncomment to use instead)
+    # storageProvider: "aws_s3"
+    # awsS3Region: "us-east-1"
+    # awsS3BucketName: "your-governance-artifacts-bucket"
 ```
 
-### Standalone Installation
+**Keycloak:**
 
-```bash
-helm install governance-service eqtylab/governance-service \
-  -f values.yaml \
-  --namespace governance \
-  --create-namespace
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "keycloak"
+
+governance-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "governance-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    keycloakUrl: "https://keycloak.yourcompany.com"
+    keycloakRealm: "governance"
+
+    # Storage Configuration - GCS
+    storageProvider: "gcs"
+    gcsBucketName: "your-governance-artifacts-bucket"
+
+    # Storage Configuration - Azure Blob (uncomment to use instead)
+    # storageProvider: "azure_blob"
+    # azureStorageAccountName: "your-storage-account"
+    # azureStorageContainerName: "your-governance-artifacts-container"
+
+    # Storage Configuration - AWS S3 (uncomment to use instead)
+    # storageProvider: "aws_s3"
+    # awsS3Region: "us-east-1"
+    # awsS3BucketName: "your-governance-artifacts-bucket"
 ```
 
-## Uninstalling the Chart
+### Required Configuration
 
-```bash
-helm uninstall governance-service --namespace governance
-```
+Beyond what is auto-configured, these values **must** be explicitly set:
 
-This removes all Kubernetes components associated with the chart and deletes the release.
+**Storage (exactly one provider must be configured):**
+
+- `config.storageProvider` - Storage provider type (`gcs`, `azure_blob`, or `aws_s3`)
+- GCS: `config.gcsBucketName` - GCS bucket name
+- Azure Blob: `config.azureStorageAccountName` - Storage account name, `config.azureStorageContainerName` - Azure container name
+- AWS S3: `config.awsS3Region` - AWS region, `config.awsS3BucketName` - S3 bucket name
+
+**Auth0:**
+
+- `config.auth0Domain` - Auth0 tenant domain (e.g., `yourcompany.auth0.com`)
+- Client ID and secret are auto-configured from the `global.secrets.auth.auth0` secret
+
+**Keycloak:**
+
+- `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
+- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
+- Service account client ID and secret are auto-configured from the `global.secrets.auth.keycloak` secret
+
+Only one authentication provider should be configured at a time, set via `global.secrets.auth.provider` in the umbrella chart.
+
+**What gets auto-configured:**
+
+From global values:
+
+- Database connection (host, port, credentials from `global.postgresql.*` and `global.secrets.database`)
+- Auth provider configuration (from `global.secrets.auth.provider`)
+- Encryption keys (from `global.secrets.encryption`)
+- Storage credentials (from `global.secrets.storage.*`)
+- Auth service credentials for worker authentication (from `global.secrets.authService`)
+- AI API credentials (from `global.secrets.governanceServiceAI`)
+- Environment type (from `global.environmentType`)
+- Image pull secrets (from `global.secrets.imageRegistry`)
+
+Generated defaults:
+
+- Database host defaults to `{Release.Name}-postgresql` (co-deployed PostgreSQL)
+- Swagger host defaults to `global.domain`
+- Integration service URLs use internal cluster DNS (e.g., `http://{Release.Name}-integrity-service:3050`)
+- Public API base path defaults to `https://{global.domain}/governanceService` (when ingress is enabled)
 
 ## Values
 
@@ -223,6 +192,9 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.domain                                 | string | Base domain for all services                      |
 | global.environmentType                        | string | Environment type (development/staging/production) |
 | global.postgresql.host                        | string | PostgreSQL host                                   |
+| global.postgresql.port                        | int    | PostgreSQL port                                   |
+| global.postgresql.database                    | string | PostgreSQL database name                          |
+| global.postgresql.username                    | string | PostgreSQL username                               |
 | global.secrets.database.secretName            | string | Name of database credentials secret               |
 | global.secrets.encryption.secretName          | string | Name of encryption key secret                     |
 | global.secrets.auth.provider                  | string | Auth provider (auth0 or keycloak)                 |
@@ -295,7 +267,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | autoscaling.targetCPUUtilizationPercentage    | int    | `80`    | Target CPU utilization percentage    |
 | autoscaling.targetMemoryUtilizationPercentage | int    | `80`    | Target memory utilization percentage |
 
-> 💡 **Note:** Resources are empty by default. For production, set appropriate requests and limits (recommended: cpu 250m-500m, memory 256Mi-512Mi).
+> **Note:** Resources are empty by default. For production, set appropriate requests and limits (recommended: cpu 250m-500m, memory 256Mi-512Mi).
 
 ### High Availability
 
@@ -338,10 +310,10 @@ When deployed via the umbrella chart, these global values are automatically used
 | ------------------------------------------ | ------ | ------------------- | --------------------------------------------------------------------- |
 | externalDatabase.host                      | string | `""`                | Database host (auto-generated as {Release.Name}-postgresql)           |
 | externalDatabase.port                      | int    | `5432`              | Database port                                                         |
-| externalDatabase.database                  | string | `"governance"`      | Database name                                                         |
+| externalDatabase.name                      | string | `"governance"`      | Database name                                                         |
 | externalDatabase.user                      | string | `"postgres"`        | Database user                                                         |
 | externalDatabase.password                  | string | `""`                | Database password (auto-configured from global.secrets.database)      |
-| externalDatabase.sslmode                   | string | `"disable"`         | SSL mode (disable/require/verify-ca/verify-full)                      |
+| externalDatabase.sslMode                   | string | `"disable"`         | SSL mode (disable/require/verify-ca/verify-full)                      |
 | externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name (auto-configured from global.secrets.database.secretName) |
 | externalDatabase.passwordSecretKeyRef.key  | string | `"password"`        | Secret key name for password                                          |
 | migrations.runAtStartup                    | bool   | `true`              | Run database migrations automatically at startup                      |
@@ -350,45 +322,6 @@ When deployed via the umbrella chart, these global values are automatically used
 ### Secret Configuration
 
 All secret references support global fallbacks when deployed via umbrella chart.
-
-#### Secret Key Names
-
-Secret key names (the keys within each Kubernetes Secret) follow this pattern:
-
-- **Umbrella chart deployment**: Key names are defined in `global.secrets.*.keys` - this is the single source of truth
-- **Standalone deployment**: Templates use hardcoded defaults (e.g., `client-id`, `access-key-id`, `encryption-key`)
-
-When deploying standalone, create your secrets using the default key names:
-
-```bash
-# Example: Encryption key
-kubectl create secret generic governance-encryption \
-  --from-literal=encryption-key=$(openssl rand -base64 32)
-
-# Example: Auth0 credentials
-kubectl create secret generic governance-auth0 \
-  --from-literal=client-id=YOUR_CLIENT_ID \
-  --from-literal=client-secret=YOUR_CLIENT_SECRET
-
-# Example: AWS S3 storage
-kubectl create secret generic governance-aws-s3 \
-  --from-literal=access-key-id=YOUR_ACCESS_KEY \
-  --from-literal=secret-access-key=YOUR_SECRET_KEY
-```
-
-If your existing secrets use different key names, you can override them via `global.secrets.*.keys` in your values file.
-
-**Default key names by secret type:**
-
-| Secret Type  | Default Key Names                                  |
-| ------------ | -------------------------------------------------- |
-| Encryption   | `encryption-key`                                   |
-| Auth0        | `client-id`, `client-secret`                       |
-| Keycloak     | `backend-client-id`, `backend-client-secret`       |
-| Azure Blob   | `account-name`, `account-key`, `connection-string` |
-| AWS S3       | `access-key-id`, `secret-access-key`               |
-| GCS          | `service-account-json`                             |
-| Auth Service | `api-secret`                                       |
 
 #### Encryption Secret
 
@@ -434,13 +367,6 @@ If your existing secrets use different key names, you can override them via `glo
 | ------------------------ | ------ | ------------------------------------------------------------------------ |
 | secrets.authService.name | string | Secret name (auto-configured from global.secrets.authService.secretName) |
 
-### Auth0 Sync Configuration
-
-| Key                | Type | Default | Description                             |
-| ------------------ | ---- | ------- | --------------------------------------- |
-| auth0SyncAtStartup | bool | `true`  | Sync Auth0 users at application startup |
-| auth0SyncPageSize  | int  | `100`   | Number of users to sync per page        |
-
 ### Application Configuration
 
 All config values support global fallbacks when deployed via umbrella chart.
@@ -449,7 +375,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 | Key                            | Type   | Default     | Description                                                           |
 | ------------------------------ | ------ | ----------- | --------------------------------------------------------------------- |
-| config.path                    | string | `"/health"` | Health check endpoint path                                            |
+| config.healthPath              | string | `"/health"` | Health check endpoint path                                            |
 | config.appEnv                  | string | `""`        | Application environment (auto-configured from global.environmentType) |
 | config.logLevel                | string | `"info"`    | Logging level (debug/info/warn/error)                                 |
 | config.credentialEncryptionKey | string | `""`        | Encryption key (auto-configured from global.secrets.encryption)       |
@@ -490,7 +416,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 | Key                                 | Type   | Default | Description                                                                              |
 | ----------------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
-| config.azureStorageAccountName      | string | `""`    | Azure storage account name (auto-configured from global.secrets.storage.azure_blob)      |
+| config.azureStorageAccountName      | string | `""`    | Azure storage account name (**must be set** when using Azure Blob)                       |
 | config.azureStorageAccountKey       | string | `""`    | Azure storage account key (auto-configured from global.secrets.storage.azure_blob)       |
 | config.azureStorageConnectionString | string | `""`    | Azure storage connection string (auto-configured from global.secrets.storage.azure_blob) |
 | config.azureStorageContainerName    | string | `""`    | Azure container name (**REQUIRED**)                                                      |
@@ -504,20 +430,22 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Auth0 Configuration (only used when auth provider is Auth0)
 
-| Key                      | Type   | Default | Description                                                          |
-| ------------------------ | ------ | ------- | -------------------------------------------------------------------- |
-| config.auth0Domain       | string | `""`    | Auth0 tenant domain (**must be set**)                                |
-| config.auth0ClientId     | string | `""`    | Auth0 client ID (auto-configured from global.secrets.auth.auth0)     |
-| config.auth0ClientSecret | string | `""`    | Auth0 client secret (auto-configured from global.secrets.auth.auth0) |
+| Key                       | Type   | Default | Description                                                          |
+| ------------------------- | ------ | ------- | -------------------------------------------------------------------- |
+| config.auth0Domain        | string | `""`    | Auth0 tenant domain (**must be set**)                                |
+| config.auth0ClientId      | string | `""`    | Auth0 client ID (auto-configured from global.secrets.auth.auth0)     |
+| config.auth0ClientSecret  | string | `""`    | Auth0 client secret (auto-configured from global.secrets.auth.auth0) |
+| config.auth0SyncAtStartup | bool   | `true`  | Sync Auth0 users at application startup                              |
+| config.auth0SyncPageSize  | int    | `100`   | Number of users to sync per page                                     |
 
 #### Keycloak Configuration (only used when auth provider is Keycloak)
 
-| Key                         | Type   | Default | Description                                                                |
-| --------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
-| config.keycloakUrl          | string | `""`    | Keycloak URL (auto-configured from global.secrets.auth.keycloak)           |
-| config.keycloakRealm        | string | `""`    | Keycloak realm (auto-configured from global.secrets.auth.keycloak)         |
-| config.keycloakClientId     | string | `""`    | Keycloak client ID (auto-configured from global.secrets.auth.keycloak)     |
-| config.keycloakClientSecret | string | `""`    | Keycloak client secret (auto-configured from global.secrets.auth.keycloak) |
+| Key                         | Type   | Default | Description                                                                                |
+| --------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------ |
+| config.keycloakUrl          | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                |
+| config.keycloakRealm        | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                                  |
+| config.keycloakClientId     | string | `""`    | Keycloak service account client ID (auto-configured from global.secrets.auth.keycloak)     |
+| config.keycloakClientSecret | string | `""`    | Keycloak service account client secret (auto-configured from global.secrets.auth.keycloak) |
 
 #### Integration URLs
 
@@ -526,16 +454,18 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated as http://{Release.Name}-integrity-service:3050) |
 | config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080)           |
 
-#### Service Account Configuration (for worker authentication)
+#### Worker Service Account Configuration
 
-| Key                                             | Type   | Default               | Description                                               |
-| ----------------------------------------------- | ------ | --------------------- | --------------------------------------------------------- |
-| config.serviceAccount.enabled                   | bool   | `true`                | Enable service account authentication for worker          |
-| config.serviceAccount.authServiceUrl            | string | `""`                  | Auth service URL (falls back to config.authServiceUrl)    |
-| config.serviceAccount.authServiceApiKey         | string | `""`                  | API key (auto-configured from global.secrets.authService) |
-| config.serviceAccount.serviceName               | string | `"governance-worker"` | Service account name                                      |
-| config.serviceAccount.existingSecret            | string | `""`                  | Override secret name (falls back to secrets.authService)  |
-| config.serviceAccount.existingSecretKeys.apiKey | string | `"api-secret"`        | Secret key name for API key                               |
+The governance-service background worker authenticates against the auth-service using an API key. This configuration controls how the worker identifies itself and connects to the auth-service.
+
+| Key                                             | Type   | Default               | Description                                                            |
+| ----------------------------------------------- | ------ | --------------------- | ---------------------------------------------------------------------- |
+| config.serviceAccount.enabled                   | bool   | `true`                | Enable service account authentication for the background worker        |
+| config.serviceAccount.authServiceUrl            | string | `""`                  | Auth-service URL for worker auth (falls back to config.authServiceUrl) |
+| config.serviceAccount.authServiceApiKey         | string | `""`                  | Auth-service API key (auto-configured from global.secrets.authService) |
+| config.serviceAccount.serviceName               | string | `"governance-worker"` | Worker identity name used when authenticating with the auth-service    |
+| config.serviceAccount.existingSecret            | string | `""`                  | Override secret name (falls back to secrets.authService)               |
+| config.serviceAccount.existingSecretKeys.apiKey | string | `"api-secret"`        | Key within the secret containing the auth-service API key              |
 
 #### AI Configuration
 
@@ -561,30 +491,6 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 2. **Global values** - Set in `global.*` (umbrella chart)
 3. **Chart defaults** - Default values from `values.yaml`
 
-### Example Configuration Flow
-
-```yaml
-# Umbrella chart values.yaml
-global:
-  domain: "governance.prod.company.com"
-  environmentType: "production"
-  secrets:
-    storage:
-      gcs:
-        secretName: "platform-gcs"
-
-governance-service:
-  enabled: true
-  # config.appEnv automatically becomes: production
-  # Integration URLs auto-generated from global.domain
-  # Storage credentials auto-configured from global.secrets.storage.gcs
-
-  # Must explicitly set storage provider:
-  config:
-    storageProvider: "gcs" # Required
-    gcsBucketName: "governance-attachments" # Required
-```
-
 ## Storage Provider Configuration
 
 ### Google Cloud Storage
@@ -599,7 +505,7 @@ global:
 governance-service:
   config:
     storageProvider: "gcs" # Explicitly set storage provider
-    gcsBucketName: "governance-attachments" # Must be set
+    gcsBucketName: "your-governance-artifacts-bucket" # Must be set
 ```
 
 ### Azure Blob Storage
@@ -614,7 +520,8 @@ global:
 governance-service:
   config:
     storageProvider: "azure_blob" # Explicitly set storage provider
-    azureStorageContainerName: "governance-data" # Must be set
+    azureStorageAccountName: "your-storage-account" # Must be set
+    azureStorageContainerName: "your-governance-artifacts-container" # Must be set
 ```
 
 ### AWS S3
@@ -630,25 +537,7 @@ governance-service:
   config:
     storageProvider: "aws_s3" # Explicitly set storage provider
     awsS3Region: "us-east-1" # Must be set
-    awsS3BucketName: "governance-bucket" # Must be set
-```
-
-## Upgrading
-
-### Upgrading via Umbrella Chart
-
-```bash
-helm upgrade governance-platform eqtylab/governance-platform \
-  -f values.yaml \
-  --namespace governance
-```
-
-### Upgrading Standalone
-
-```bash
-helm upgrade governance-service eqtylab/governance-service \
-  -f values.yaml \
-  --namespace governance
+    awsS3BucketName: "your-governance-artifacts-bucket" # Must be set
 ```
 
 ## Troubleshooting
@@ -666,9 +555,15 @@ kubectl get pods -n governance -l app.kubernetes.io/name=governance-service
 kubectl describe pod <pod-name> -n governance
 ```
 
-### Testing Configuration
+### Verifying Configuration
 
-View environment variables in running pod:
+View key environment variables in the running pod:
+
+```bash
+kubectl exec -it deployment/governance-service -n governance -- env | grep -E 'STORAGE|AUTH|DATABASE|DB_|AI_'
+```
+
+View all environment variables:
 
 ```bash
 kubectl exec -it deployment/governance-service -n governance -- env | sort
@@ -735,6 +630,20 @@ kubectl exec -it deployment/governance-service -n governance -- curl localhost:1
 - Check for typos in global value paths
 - Restart pods if configuration was updated: `kubectl rollout restart deployment/governance-service -n governance`
 - Use `-debug-config` or `-debug-config-only` args to see loaded configuration
+
+## Health Endpoints
+
+| Endpoint      | Description          |
+| ------------- | -------------------- |
+| `GET /health` | Overall health check |
+
+### API Documentation
+
+When `config.server.swaggerEnabled` is `true` (default), Swagger UI is available at:
+
+```
+https://{domain}/governanceService/swagger/index.html
+```
 
 ## Support
 

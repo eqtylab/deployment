@@ -70,12 +70,14 @@ data:
 
   # Keycloak Configuration
   {{- if eq $idpProvider "keycloak" }}
-  {{- $keycloakRealm := .Values.config.idp.keycloak.realm | default ((((.Values.global).secrets).auth).keycloak).values.realm | default "" }}
-  {{- if $keycloakRealm }}
-  IDP_KEYCLOAK_REALM: "{{ $keycloakRealm }}"
+  {{- if .Values.config.idp.keycloak.realm }}
+  IDP_KEYCLOAK_REALM: "{{ .Values.config.idp.keycloak.realm }}"
   {{- end }}
   {{- if .Values.config.idp.keycloak.adminUrl }}
   IDP_KEYCLOAK_ADMIN_URL: "{{ .Values.config.idp.keycloak.adminUrl }}"
+  {{- end }}
+  {{- if .Values.config.idp.keycloak.clientId }}
+  IDP_CLIENT_ID: "{{ .Values.config.idp.keycloak.clientId }}"
   {{- end }}
   IDP_KEYCLOAK_ENABLE_USER_MANAGEMENT: "{{ .Values.config.idp.keycloak.enableUserManagement }}"
   IDP_KEYCLOAK_ENABLE_GROUP_SYNC: "{{ .Values.config.idp.keycloak.enableGroupSync }}"

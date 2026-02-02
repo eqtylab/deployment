@@ -30,7 +30,7 @@ Configuration:
 
 Database:
   Host: {{ .Values.externalDatabase.host | default (printf "%s-postgresql" .Release.Name) }}
-  Database: {{ .Values.externalDatabase.database }}
+  Database: {{ .Values.externalDatabase.name }}
   Migrations: {{ if .Values.migrations.runAtStartup }}enabled{{ else }}disabled{{ end }}
 
 To check the status:
@@ -40,7 +40,7 @@ To view logs:
   kubectl logs -f deployment/{{ include "governance-service.fullname" . }} -n {{ .Release.Namespace }}
 
 To check health:
-  kubectl exec -it deployment/{{ include "governance-service.fullname" . }} -n {{ .Release.Namespace }} -- curl localhost:{{ .Values.service.port }}{{ .Values.config.path }}
+  kubectl exec -it deployment/{{ include "governance-service.fullname" . }} -n {{ .Release.Namespace }} -- curl localhost:{{ .Values.service.port }}{{ .Values.config.healthPath }}
 
 {{- if not .Values.config.storageProvider }}
 

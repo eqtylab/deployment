@@ -111,30 +111,17 @@ global:
       keycloak:
         secretName: "platform-keycloak"
         keys:
-          url: "url"
-          realm: "realm"
-          frontendClientId: "frontend-client-id"
-          backendClientId: "backend-client-id"
-          backendClientSecret: "backend-client-secret"
+          serviceAccountClientId: "service-account-client-id"
+          serviceAccountClientSecret: "service-account-client-secret"
           tokenExchangePrivateKey: "token-exchange-private-key"
         # Only used if create=true and provider=keycloak
         values:
-          # -- Keycloak URL
-          # @default -- `""` (REQUIRED if create=true)
-          # Example: https://keycloak.example.com
-          url: ""
-          # -- Keycloak Realm
-          # @default -- `governance`
-          realm: "governance"
-          # -- Frontend Client ID
-          # @default -- `governance-platform-frontend`
-          frontendClientId: "governance-platform-frontend"
-          # -- Backend Client ID
+          # -- Service Account Client ID
           # @default -- `governance-platform-backend`
-          backendClientId: "governance-platform-backend"
-          # -- Backend Client Secret
+          serviceAccountClientId: "governance-platform-backend"
+          # -- Service Account Client Secret
           # @default -- `""` (REQUIRED if create=true, generate with: openssl rand -hex 32)
-          backendClientSecret: ""
+          serviceAccountClientSecret: ""
           # -- Token Exchange Private Key
           # @default -- `""` (REQUIRED if create=true, for token exchange signing)
           tokenExchangePrivateKey: ""
@@ -283,14 +270,10 @@ global:
       azure_blob:
         secretName: "platform-azure-blob"
         keys:
-          accountName: "account-name"
           accountKey: "account-key"
           connectionString: "connection-string"
         # Only used if create=true
         values:
-          # -- Azure Account Name
-          # @default -- `""` (REQUIRED if create=true)
-          accountName: ""
           # -- Azure Account Key
           # @default -- `""` (REQUIRED if create=true)
           accountKey: ""
@@ -445,7 +428,7 @@ auth-service:
     # -- Ingress Annotations
     # @default -- `{}`
     annotations: {}
-      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      # cert-manager.io/issuer: "letsencrypt-prod"
       # nginx.ingress.kubernetes.io/rewrite-target: /$2
       # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     # -- Ingress Hosts
@@ -831,11 +814,12 @@ auth-service:
       # Only used when provider is "keycloak"
       keycloak:
         # -- Realm
-        # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.realm)
+        # @default -- `""`
+        # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
         realm: ""
         # -- Admin URL
         # @default -- `""`
-        # Keycloak admin URL (for admin operations)
+        # **REQUIRED for Keycloak**: Admin URL for admin operations (e.g., "https://keycloak.example.com")
         adminUrl: ""
         # -- Enable User Management
         # @default -- `false`
@@ -846,13 +830,17 @@ auth-service:
         # Enable group sync with Keycloak
         enableGroupSync: false
         # -- Client ID
-        # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
-        # Only used when provider is "keycloak"
+        # @default -- `""`
+        # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "governance-platform-frontend")
         clientId: ""
-        # -- Client Secret
+        # -- Service Account Client ID
         # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
         # Only used when provider is "keycloak"
-        clientSecret: ""
+        serviceAccountClientId: ""
+        # -- Service Account Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+        # Only used when provider is "keycloak"
+        serviceAccountClientSecret: ""
 
     # ---------------------------------------------------------------------------
     # Key Vault Configuration
@@ -863,7 +851,7 @@ auth-service:
     keyVault:
       # -- Provider
       # @default -- `""` (auto-configured from global.secrets.secretManager.provider)
-      # Options: azure, local
+      # Options: azure_key_vault, local
       provider: ""
       # -- Cache TTL Minutes
       # @default -- `15`
@@ -872,7 +860,7 @@ auth-service:
 
       # -- Azure Key Vault Configuration
       # @default -- See values below
-      # Only used when provider is "azure"
+      # Only used when provider is "azure_key_vault"
       azure:
         # -- Vault URL
         # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault.values.vaultUrl)
@@ -882,11 +870,11 @@ auth-service:
         tenantId: ""
         # -- Client ID
         # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
-        # Only used when provider is "azure" or "azure_key_vault"
+        # Only used when provider is "azure_key_vault"
         clientId: ""
         # -- Client Secret
         # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
-        # Only used when provider is "azure" or "azure_key_vault"
+        # Only used when provider is "azure_key_vault"
         clientSecret: ""
 
     # ---------------------------------------------------------------------------
@@ -1349,7 +1337,7 @@ governance-service:
     port: 5432
     # -- Database Name
     # @default -- `governance`
-    database: "governance"
+    name: "governance"
     # -- Database User
     # @default -- `postgres`
     user: "postgres"
@@ -1359,7 +1347,7 @@ governance-service:
     # -- SSL Mode
     # @default -- `disable`
     # Options: disable, require, verify-ca, verify-full
-    sslmode: "disable"
+    sslMode: "disable"
 
     # -- Password Secret Reference
     # @default -- See values below
@@ -1456,22 +1444,12 @@ governance-service:
   # APPLICATION CONFIGURATION
   # =============================================================================
 
-  # -- Auth0 Sync at Startup
-  # @default -- `true`
-  # Sync Auth0 users at application startup (only used when auth provider is auth0)
-  auth0SyncAtStartup: true
-
-  # -- Auth0 Sync Page Size
-  # @default -- `100`
-  # Number of users to sync per page from Auth0
-  auth0SyncPageSize: 100
-
   # -- Application Configuration
   # @default -- See values below
   config:
     # -- Health Check Path
     # @default -- `/health`
-    path: "/health"
+    healthPath: "/health"
 
     # -- Application Environment
     # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
@@ -1506,7 +1484,7 @@ governance-service:
       # Maximum idle time for connections (seconds)
       idleTimeout: 120
       # -- Swagger Enabled
-      # @default -- `false`
+      # @default -- `true`
       # Enable Swagger documentation
       swaggerEnabled: true
       # -- Swagger Host
@@ -1557,7 +1535,8 @@ governance-service:
     awsS3SecretAccessKey: ""
 
     # -- Azure Storage Account Name
-    # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
+    # @default -- `""`
+    # **REQUIRED for Azure**: Storage account name
     # Only used when storageProvider is "azure_blob"
     azureStorageAccountName: ""
 
@@ -1608,13 +1587,27 @@ governance-service:
     # Only used when auth provider is "auth0"
     auth0ClientSecret: ""
 
+    # -- Auth0 Sync at Startup
+    # @default -- `true`
+    # Sync Auth0 users at application startup
+    # Only used when auth provider is "auth0"
+    auth0SyncAtStartup: true
+
+    # -- Auth0 Sync Page Size
+    # @default -- `100`
+    # Number of users to sync per page from Auth0
+    # Only used when auth provider is "auth0"
+    auth0SyncPageSize: 100
+
     # -- Keycloak URL
-    # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
     # Only used when auth provider is "keycloak"
     keycloakUrl: ""
 
     # -- Keycloak Realm
-    # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
     # Only used when auth provider is "keycloak"
     keycloakRealm: ""
 
@@ -1999,22 +1992,22 @@ governance-studio:
     auth0Audience: ""
 
     # -- Keycloak URL
-    # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.url)
-    # Keycloak server URL
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
     # Only used when authProvider is "keycloak"
     keycloakUrl: ""
 
-    # -- Keycloak Realm
-    # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.realm)
-    # Keycloak realm name
-    # Only used when authProvider is "keycloak"
-    keycloakRealm: ""
-
     # -- Keycloak Client ID
-    # @default -- `""` (auto-configured from global.secrets.auth.keycloak.values.frontendClientId)
-    # Keycloak client ID for frontend
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "governance-platform-frontend")
     # Only used when authProvider is "keycloak"
     keycloakClientId: ""
+
+    # -- Keycloak Realm
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
+    # Only used when authProvider is "keycloak"
+    keycloakRealm: ""
 
     # ---------------------------------------------------------------------------
     # Application Settings
@@ -2335,6 +2328,10 @@ integrity-service:
     # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
     integrityAppDbHost: ""
 
+    # -- Database Port
+    # @default -- `""` (auto-configured from global.postgresql.port)
+    integrityAppDbPort: ""
+
     # -- Database Name
     # @default -- `IntegrityServiceDB`
     integrityAppDbName: "IntegrityServiceDB"
@@ -2354,39 +2351,40 @@ integrity-service:
     # -- Blob Store Type
     # @default -- `""`
     # **REQUIRED**: Blob storage backend type
-    # Options: aws_s3, azure_blob
+    # Options: aws_s3, azure_blob, gcs
     integrityAppBlobStoreType: ""
 
     # -- AWS S3 Region
     # @default -- `""`
     # **REQUIRED for S3**: AWS region (e.g., "us-east-1")
     # Only used when integrityAppBlobStoreType is "aws_s3"
-    integrityAppBlobStoreRegion: ""
+    integrityAppBlobStoreAwsRegion: ""
 
     # -- AWS S3 Bucket
     # @default -- `""`
     # **REQUIRED for S3**: Bucket name
     # Only used when integrityAppBlobStoreType is "aws_s3"
-    integrityAppBlobStoreBucket: ""
+    integrityAppBlobStoreAwsBucket: ""
 
     # -- AWS S3 Folder
     # @default -- `""`
     # Optional S3 folder/prefix
     # Only used when integrityAppBlobStoreType is "aws_s3"
-    integrityAppBlobStoreFolder: ""
+    integrityAppBlobStoreAwsFolder: ""
 
     # -- AWS Access Key ID
     # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
     # Only used when integrityAppBlobStoreType is "aws_s3"
-    integrityAppBlobStoreAccessKeyId: ""
+    integrityAppBlobStoreAwsAccessKeyId: ""
 
     # -- AWS Secret Access Key
     # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
     # Only used when integrityAppBlobStoreType is "aws_s3"
-    integrityAppBlobStoreSecretAccessKey: ""
+    integrityAppBlobStoreAwsSecretAccessKey: ""
 
     # -- Azure Storage Account
-    # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
+    # @default -- `""`
+    # **REQUIRED for Azure**: Storage account name
     # Only used when integrityAppBlobStoreType is "azure_blob"
     integrityAppBlobStoreAccount: ""
 
@@ -2400,6 +2398,18 @@ integrity-service:
     # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
     # Only used when integrityAppBlobStoreType is "azure_blob"
     integrityAppBlobStoreKey: ""
+
+    # -- GCS Bucket Name
+    # @default -- `""`
+    # **REQUIRED for GCS**: Bucket name
+    # Only used when integrityAppBlobStoreType is "gcs"
+    integrityAppBlobStoreGcsBucket: ""
+
+    # -- GCS Folder
+    # @default -- `""`
+    # **REQUIRED for GCS**: Folder/Prefix
+    # Only used when integrityAppBlobStoreType is "gcs"
+    integrityAppBlobStoreGcsFolder: ""
 
     # ---------------------------------------------------------------------------
     # Logging Configuration
@@ -2466,6 +2476,14 @@ integrity-service:
       aws_s3:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
+        name: ""
+
+      # -- GCS Secret
+      # @default -- See values below
+      # Only used when integrityAppBlobStoreType is "gcs"
+      gcs:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.gcs.secretName)
         name: ""
 
 # =============================================================================
@@ -2618,7 +2636,7 @@ keycloak:
   # -- Realm Name
   # @default -- `governance`
   # Keycloak realm name for the platform
-  # Must match global.secrets.auth.keycloak.values.realm
+  # Must match auth-service config.idp.keycloak.realm and governance-studio config.keycloakRealm
   # This name is used as the organization identifier in the database
   realmName: "governance"
 

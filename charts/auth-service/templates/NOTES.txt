@@ -28,17 +28,15 @@ Auth0 Configuration:
   Sync at Startup: {{ if .Values.config.idp.auth0.syncAtStartup }}enabled{{ else }}disabled{{ end }}
 {{- else if eq $idpProvider "keycloak" }}
 Keycloak Configuration:
-  Realm: {{ .Values.config.idp.keycloak.realm | default ((((.Values.global).secrets).auth).keycloak).values.realm | default "not set" }}
+  URL: {{ .Values.config.idp.keycloak.adminUrl | default "not set" }}
+  Realm: {{ .Values.config.idp.keycloak.realm | default "not set" }}
   User Management: {{ if .Values.config.idp.keycloak.enableUserManagement }}enabled{{ else }}disabled{{ end }}
 {{- end }}
 
 {{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
-{{- if eq $keyVaultProvider "azure" }}
+{{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
 Azure Key Vault:
   Vault URL: {{ .Values.config.keyVault.azure.vaultUrl | default (((((.Values.global).secrets).secretManager).azure_key_vault).values).vaultUrl | default "not set" }}
-{{- else if eq $keyVaultProvider "hashicorp" }}
-HashiCorp Vault:
-  Address: {{ .Values.config.keyVault.hashicorp.address | default "not set" }}
 {{- end }}
 
 Database:
@@ -76,10 +74,10 @@ Please set: auth-service.config.idp.auth0.domain
 {{- if not $keyVaultProvider }}
 
 WARNING: Key Vault provider is not configured!
-Please set: auth-service.config.keyVault.provider to "azure" or "hashicorp"
+Please set: auth-service.config.keyVault.provider to "azure_key_vault"
 {{- end }}
 
-{{- if eq $keyVaultProvider "azure" }}
+{{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
 {{- if not (or .Values.config.keyVault.azure.vaultUrl (((((.Values.global).secrets).secretManager).azure_key_vault).values).vaultUrl) }}
 
 WARNING: Azure Key Vault URL is not configured!
