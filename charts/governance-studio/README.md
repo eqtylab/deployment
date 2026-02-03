@@ -206,10 +206,11 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### High Availability
 
-| Key                              | Type | Default | Description                                                                                              |
-| -------------------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------- |
-| podDisruptionBudget.enabled      | bool | `false` | Enable Pod Disruption Budget                                                                             |
-| podDisruptionBudget.minAvailable | int  | `1`     | Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1) |
+| Key                                | Type | Default | Description                                                                        |
+| ---------------------------------- | ---- | ------- | ---------------------------------------------------------------------------------- |
+| podDisruptionBudget.enabled        | bool | `false` | Enable Pod Disruption Budget                                                       |
+| podDisruptionBudget.minAvailable   | int  | `1`     | Minimum available pods during disruptions (only rendered when replicaCount > 1)    |
+| podDisruptionBudget.maxUnavailable | int  | `1`     | Maximum unavailable pods during disruptions (only rendered when replicaCount <= 1) |
 
 ### Node Scheduling
 

@@ -171,8 +171,13 @@ podDisruptionBudget:
   enabled: false
   # -- Minimum Available
   # @default -- `1`
-  # Note: typically only applied when autoscaling is enabled or replicaCount > 1
+  # Only rendered when replicaCount > 1
   minAvailable: 1
+  # -- Maximum Unavailable
+  # @default -- `1`
+  # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+  # Setting this to `0` may block node drains and cluster upgrades
+  maxUnavailable: 1
 
 # -- Node Selector
 # @default -- `{}`

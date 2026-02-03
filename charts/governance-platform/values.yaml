@@ -483,8 +483,13 @@ auth-service:
     enabled: true
     # -- Minimum Available
     # @default -- `1`
-    # Note: typically only applied when autoscaling is enabled or replicaCount > 1
+    # Only rendered when replicaCount > 1
     minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
 
   # -- Node Selector
   # @default -- `{}`
@@ -1270,8 +1275,13 @@ governance-service:
     enabled: true
     # -- Minimum Available
     # @default -- `1`
-    # Note: typically only applied when autoscaling is enabled or replicaCount > 1
+    # Only rendered when replicaCount > 1
     minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
 
   # -- Node Selector
   # @default -- `{}`
@@ -1886,8 +1896,13 @@ governance-studio:
     enabled: false
     # -- Minimum Available
     # @default -- `1`
-    # Note: typically only applied when autoscaling is enabled or replicaCount > 1
+    # Only rendered when replicaCount > 1
     minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
 
   # -- Node Selector
   # @default -- `{}`
@@ -2082,9 +2097,9 @@ integrity-service:
   enabled: true
 
   # -- Replica Count
-  # @default -- `1`
+  # @default -- `2`
   # Number of pod replicas to run (ignored if autoscaling.enabled is true)
-  replicaCount: 1
+  replicaCount: 2
 
   # -- Image Configuration
   # @default -- See values below
@@ -2236,12 +2251,17 @@ integrity-service:
   # @default -- See values below
   podDisruptionBudget:
     # -- Enable PDB
-    # @default -- `false`
-    enabled: false
+    # @default -- `true`
+    enabled: true
     # -- Minimum Available
     # @default -- `1`
-    # Note: typically only applied when autoscaling is enabled or replicaCount > 1
+    # Only rendered when replicaCount > 1
     minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
 
   # -- Node Selector
   # @default -- `{}`

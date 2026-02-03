@@ -193,7 +193,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | Key              | Type   | Default                               | Description                                           |
 | ---------------- | ------ | ------------------------------------- | ----------------------------------------------------- |
 | enabled          | bool   | `true`                                | Enable this subchart (umbrella chart only)            |
-| replicaCount     | int    | `1`                                   | Number of replicas to deploy                          |
+| replicaCount     | int    | `2`                                   | Number of replicas to deploy                          |
 | image.repository | string | `"ghcr.io/eqtylab/integrity-service"` | Container image repository                            |
 | image.pullPolicy | string | `"IfNotPresent"`                      | Image pull policy                                     |
 | image.tag        | string | `""`                                  | Overrides the image tag (default is chart appVersion) |
@@ -250,10 +250,11 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### High Availability
 
-| Key                              | Type | Default | Description                                                                                              |
-| -------------------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------- |
-| podDisruptionBudget.enabled      | bool | `false` | Enable Pod Disruption Budget                                                                             |
-| podDisruptionBudget.minAvailable | int  | `1`     | Minimum available pods during disruptions (only applied when autoscaling is enabled or replicaCount > 1) |
+| Key                                | Type | Default | Description                                                                        |
+| ---------------------------------- | ---- | ------- | ---------------------------------------------------------------------------------- |
+| podDisruptionBudget.enabled        | bool | `true`  | Enable Pod Disruption Budget                                                       |
+| podDisruptionBudget.minAvailable   | int  | `1`     | Minimum available pods during disruptions (only rendered when replicaCount > 1)    |
+| podDisruptionBudget.maxUnavailable | int  | `1`     | Maximum unavailable pods during disruptions (only rendered when replicaCount <= 1) |
 
 ### Node Scheduling
 

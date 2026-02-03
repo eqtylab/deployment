@@ -9,7 +9,7 @@ spec:
   {{- if gt (int .Values.replicaCount) 1 }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   {{- else }}
-  maxUnavailable: 1
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable | default 1 }}
   {{- end }}
   selector:
     matchLabels:

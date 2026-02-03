@@ -527,7 +527,7 @@ Credential and lineage service settings. See [integrity-service/README.md](../in
 | Key                                                | Type   | Default | Description                                        |
 | -------------------------------------------------- | ------ | ------- | -------------------------------------------------- |
 | integrity-service.enabled                          | bool   | `true`  | Enable Integrity Service                           |
-| integrity-service.replicaCount                     | int    | `1`     | Number of replicas                                 |
+| integrity-service.replicaCount                     | int    | `2`     | Number of replicas                                 |
 | integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                     |
 | integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob) |
 | integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                  |
