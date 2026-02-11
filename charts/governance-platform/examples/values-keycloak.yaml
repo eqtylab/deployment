@@ -292,7 +292,7 @@ postgresql:
 #
 # # GCS Credentials (if using GCS instead)
 # kubectl create secret generic platform-gcs \
-#   --from-literal=service-account-json="$(cat service-account.json | base64 -w 0)" \
+#   --from-literal=service-account-json="$(cat service-account.json)" \
 #   --namespace governance
 #
 # # AWS S3 Credentials (if using S3 instead)
