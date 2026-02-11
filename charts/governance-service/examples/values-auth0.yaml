@@ -67,7 +67,3 @@ config:
 
   # Auth0 Configuration
   auth0Domain: "your-tenant.auth0.com"
-
-  # AI Configuration
-  ai:
-    enabled: true

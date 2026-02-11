@@ -517,7 +517,7 @@ Backend API service settings. See [governance-service/README.md](../governance-s
 | governance-service.replicaCount           | int    | `2`     | Number of replicas                                |
 | governance-service.ingress.enabled        | bool   | `false` | Enable ingress                                    |
 | governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: gcs/azure/aws_s3) |
-| governance-service.config.ai.enabled      | bool   | `true`  | Enable AI features                                |
+| governance-service.config.ai.enabled      | bool   | `false` | Enable AI features                                |
 | governance-service.autoscaling.enabled    | bool   | `false` | Enable horizontal pod autoscaling                 |
 
 ### Integrity Service Configuration

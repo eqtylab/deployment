@@ -593,9 +593,9 @@ config:
   # @default -- See values below
   ai:
     # -- Enable AI
-    # @default -- `true`
+    # @default -- `false`
     # Enable AI features
-    enabled: true
+    enabled: false
     # -- AI Provider
     # @default -- `anthropic`
     provider: "anthropic"

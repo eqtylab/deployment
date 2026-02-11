@@ -32,7 +32,7 @@ This allows:
 - PostgreSQL database (provided by umbrella chart or external)
 - Storage provider (GCS, Azure Blob Storage, or AWS S3)
 - Authentication provider (Auth0 or Keycloak)
-- Anthropic API key (required when `config.ai.enabled` is `true`, which is the default)
+- Anthropic API key (required when `config.ai.enabled` is `true`, disabled by default)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
@@ -472,7 +472,7 @@ The governance-service background worker authenticates against the auth-service 
 
 | Key                         | Type   | Default                      | Description                                                                            |
 | --------------------------- | ------ | ---------------------------- | -------------------------------------------------------------------------------------- |
-| config.ai.enabled           | bool   | `true`                       | Enable AI features                                                                     |
+| config.ai.enabled           | bool   | `false`                      | Enable AI features                                                                     |
 | config.ai.provider          | string | `"anthropic"`                | AI provider                                                                            |
 | config.ai.model             | string | `"claude-3-7-sonnet-latest"` | AI model name                                                                          |
 | config.ai.temperature       | float  | `0.7`                        | Temperature for AI responses                                                           |

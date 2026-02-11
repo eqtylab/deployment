@@ -68,7 +68,3 @@ config:
   # Keycloak Configuration
   keycloakUrl: "https://keycloak.your-domain.com"
   keycloakRealm: "governance"
-
-  # AI Configuration
-  ai:
-    enabled: true
