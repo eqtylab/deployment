@@ -90,7 +90,11 @@ spec:
             # ========================================================================
             # Application Configuration
             # ========================================================================
-            
+
+            # Server Port
+            - name: INTEGRITY_APP__server__port
+              value: {{ .Values.service.port | default 3050 | quote }}
+
             # Rust Environment
             - name: RUST_ENVIRONMENT
               value: {{ .Values.config.rustEnv | default ((.Values.global).environmentType | default "") | quote }}
@@ -98,6 +102,10 @@ spec:
             # Service URLs
             - name: INTEGRITY_SERVICE_URL
               value: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "")) | quote }}
+
+            # Swagger Configuration
+            - name: SWAGGER_BASE_PATH
+              value: {{ .Values.config.swaggerBasePath | default "/integrityService" | quote }}
 
             # ========================================================================
             # Database Configuration

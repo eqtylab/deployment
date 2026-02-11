@@ -40,42 +40,38 @@ bootstrap:
 
   # -- Image Configuration
   # @default -- See values below
+  # Uses an image with curl and jq pre-installed (required by bootstrap script)
   image:
     # -- Repository
-    # @default -- `alpine`
-    repository: alpine
-    # -- Tag
-    # @default -- `3.19`
-    tag: "3.19"
+    # @default -- `dwdraju/alpine-curl-jq`
+    repository: dwdraju/alpine-curl-jq
     # -- Pull Policy
     # @default -- `IfNotPresent`
     # Options: IfNotPresent, Always, Never
     pullPolicy: IfNotPresent
-
-  # -- Command
-  # @default -- `["/bin/sh", "-c"]`
-  # Command override to install required tools
-  command: ["/bin/sh", "-c"]
+    # -- Tag
+    # @default -- `latest`
+    tag: "latest"
 
   # -- Args
   # @default -- See values below
   # Arguments for the bootstrap command
-  args: ["apk add --no-cache curl jq && /scripts/bootstrap.sh"]
+  args: ["/scripts/bootstrap.sh"]
 
   # -- Backoff Limit
   # @default -- `3`
   # Job backoff limit
   backoffLimit: 3
 
-  # -- TTL Seconds After Finished
-  # @default -- `300`
-  # TTL for completed jobs
-  ttlSecondsAfterFinished: 300
-
   # -- Active Deadline Seconds
   # @default -- `600`
   # Job active deadline in seconds
   activeDeadlineSeconds: 600
+
+  # -- TTL Seconds After Finished
+  # @default -- `300`
+  # TTL for completed jobs
+  ttlSecondsAfterFinished: 300
 
   # -- Resources
   # @default -- See values below
@@ -91,13 +87,11 @@ bootstrap:
   # -- Security Context
   # @default -- See values below
   # Security context applied at the pod level
+  # Note: capabilities must be set at container level, not pod level
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
     fsGroup: 1000
-    capabilities:
-      drop:
-        - ALL
 
   # -- Wait Configuration
   # @default -- See values below
@@ -124,9 +118,9 @@ bootstrap:
 # @default -- See values below
 keycloak:
   # -- URL
-  # @default -- `http://keycloak:8080`
-  # Keycloak server URL (internal cluster URL)
-  url: "http://keycloak:8080"
+  # @default -- `http://keycloak:8080/keycloak`
+  # Keycloak server URL (internal cluster URL, includes relative path)
+  url: "http://keycloak:8080/keycloak"
 
   # -- Health URL
   # @default -- `http://keycloak:9000/keycloak/health/ready`
@@ -166,13 +160,13 @@ keycloak:
     # Allow login with email
     loginWithEmailAllowed: true
     # -- Registration Allowed
-    # @default -- `true`
-    # Allow user registration
-    registrationAllowed: true
+    # @default -- `false`
+    # Allow user self-registration
+    registrationAllowed: false
     # -- Reset Password Allowed
-    # @default -- `true`
-    # Allow password reset
-    resetPasswordAllowed: true
+    # @default -- `false`
+    # Allow password reset (requires SMTP to be configured in Keycloak)
+    resetPasswordAllowed: false
     # -- Remember Me
     # @default -- `true`
     # Enable remember me option
@@ -254,10 +248,24 @@ clients:
       - "profile"
       - "email"
       - "roles"
+      - "sub"
     # -- Optional Scopes
     # @default -- `[offline_access]`
     optionalScopes:
       - "offline_access"
+
+    # -- Custom Scopes
+    # @default -- See values below
+    # Custom scopes with protocol mappers to create and assign to this client
+    customScopes:
+      - name: "sub"
+        description: "Subject identifier"
+        mappers:
+          - name: "Subject"
+            protocolMapper: "oidc-sub-mapper"
+            config:
+              access.token.claim: "true"
+              introspection.token.claim: "true"
 
   # ---------------------------------------------------------------------------
   # Backend Client
@@ -285,26 +293,18 @@ clients:
     # @default -- `true`
     # Enable service account for client credentials flow
     serviceAccountsEnabled: true
-    # -- Secret Name
-    # @default -- `keycloak-backend-client`
-    # Secret name for client credentials
-    secretName: "keycloak-backend-client"
-    # -- Secret Key
-    # @default -- `client-secret`
-    # Secret key for client secret
-    secretKey: "client-secret"
     # -- Redirect URIs
     # @default -- See values below
     # Valid redirect URIs
     redirectUris:
+      - "https://governance.example.com/authService/*"
       - "http://localhost:8000/*"
-      - "https://api.governance.example.com/*"
     # -- Web Origins
     # @default -- See values below
     # Allowed web origins for CORS
     webOrigins:
+      - "https://governance.example.com"
       - "http://localhost:8000"
-      - "https://api.governance.example.com"
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
     defaultScopes:
@@ -312,6 +312,15 @@ clients:
       - "profile"
       - "email"
       - "roles"
+    # -- Service Account Roles
+    # @default -- See values below
+    # Realm-management roles to assign to the service account
+    # Required for user management via Keycloak Admin API
+    serviceAccountRoles:
+      - clientId: "realm-management"
+        roles:
+          - "query-users"
+          - "view-users"
 
   # ---------------------------------------------------------------------------
   # Worker Client
@@ -339,14 +348,6 @@ clients:
     # @default -- `true`
     # Enable service account for client credentials flow
     serviceAccountsEnabled: true
-    # -- Secret Name
-    # @default -- `keycloak-worker-client`
-    # Secret name for client credentials
-    secretName: "keycloak-worker-client"
-    # -- Secret Key
-    # @default -- `client-secret`
-    # Secret key for client secret
-    secretKey: "client-secret"
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
     defaultScopes:
@@ -363,6 +364,10 @@ clients:
 # @default -- See values below
 # Custom OAuth scopes to create in the realm
 scopes:
+  - name: "governance:declarations:create"
+    description: "Create governance declarations"
+  - name: "integrity:statements:create"
+    description: "Create integrity statements"
   - name: "read:organizations"
     description: "Read access to organizations"
   - name: "write:organizations"
@@ -384,15 +389,17 @@ scopes:
 # @default -- See values below
 users:
   # ---------------------------------------------------------------------------
-  # Platform Admin User
+  # Governance Studio Admin User
   # ---------------------------------------------------------------------------
 
   # -- Admin User
   # @default -- See values below
+  # This user is the initial admin account for logging into Governance Studio.
+  # It is created in the Keycloak governance realm (not the Keycloak server admin).
   admin:
     # -- Enabled
     # @default -- `true`
-    # Enable creation of admin user
+    # Enable creation of the Governance Studio admin user
     enabled: true
     # -- Username
     # @default -- `platform-admin`
@@ -415,12 +422,12 @@ users:
     # Use temporary password (require change on first login)
     temporaryPassword: false
     # -- Secret Name
-    # @default -- `keycloak-admin-user`
-    # Secret name containing admin password
-    secretName: "keycloak-admin-user"
+    # @default -- `platform-admin`
+    # Secret containing the Governance Studio admin user password
+    secretName: "platform-admin"
     # -- Secret Key
     # @default -- `password`
-    # Secret key for admin password
+    # Key within the secret for the Governance Studio admin user password
     secretKey: "password"
 
   # ---------------------------------------------------------------------------
@@ -449,37 +456,3 @@ users:
         firstName: "Test"
         lastName: "User 2"
         password: "test123"
-
-# =============================================================================
-# OUTPUT CONFIGURATION
-# =============================================================================
-
-# -- Output Configuration
-# @default -- See values below
-output:
-  # -- Generate Env File
-  # @default -- `true`
-  # Generate .env file with configuration
-  generateEnvFile: true
-
-  # -- Create Secrets
-  # @default -- `true`
-  # Create Kubernetes secrets with credentials
-  createSecrets: true
-
-  # -- Secrets Configuration
-  # @default -- See values below
-  # Secret names for generated configuration
-  secrets:
-    # -- Frontend Secret
-    # @default -- `keycloak-frontend-config`
-    # Secret name for frontend configuration
-    frontend: "keycloak-frontend-config"
-    # -- Backend Secret
-    # @default -- `keycloak-backend-config`
-    # Secret name for backend configuration
-    backend: "keycloak-backend-config"
-    # -- Worker Secret
-    # @default -- `keycloak-worker-config`
-    # Secret name for worker configuration
-    worker: "keycloak-worker-config"

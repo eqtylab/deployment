@@ -133,6 +133,110 @@ data:
       fi
     }
 
+    # Function to get a client scope ID by name
+    get_client_scope_id() {
+      local SCOPE_NAME=$1
+      curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/client-scopes" | jq -r --arg name "$SCOPE_NAME" '.[] | select(.name == $name) | .id'
+    }
+
+    # Function to add a protocol mapper to a client scope
+    add_protocol_mapper_to_scope() {
+      local SCOPE_NAME=$1
+      local MAPPER_NAME=$2
+      local MAPPER_TYPE=$3
+      local MAPPER_CONFIG=$4
+
+      SCOPE_ID=$(get_client_scope_id "$SCOPE_NAME")
+      if [ -z "$SCOPE_ID" ] || [ "$SCOPE_ID" = "null" ]; then
+        echo "  Scope ${SCOPE_NAME} not found, skipping mapper"
+        return 1
+      fi
+
+      echo "  Adding mapper '${MAPPER_NAME}' to scope '${SCOPE_NAME}'..."
+      MAPPER_JSON=$(cat <<EOF
+    {
+      "name": "${MAPPER_NAME}",
+      "protocol": "openid-connect",
+      "protocolMapper": "${MAPPER_TYPE}",
+      "config": ${MAPPER_CONFIG}
+    }
+    EOF
+    )
+
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/client-scopes/${SCOPE_ID}/protocol-mappers/models" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${MAPPER_JSON}")
+
+      if [ "$RESPONSE" = "201" ]; then
+        echo "  Mapper '${MAPPER_NAME}' added successfully"
+      elif [ "$RESPONSE" = "409" ]; then
+        echo "  Mapper '${MAPPER_NAME}' already exists"
+      else
+        echo "  Failed to add mapper '${MAPPER_NAME}' (Response: $RESPONSE)"
+      fi
+    }
+
+    # Function to set a scope as a realm-level default scope
+    # This sets the "Assigned type" to "Default" so it's added to all new clients
+    set_realm_default_scope() {
+      local SCOPE_NAME=$1
+
+      SCOPE_ID=$(get_client_scope_id "$SCOPE_NAME")
+      if [ -z "$SCOPE_ID" ] || [ "$SCOPE_ID" = "null" ]; then
+        echo "  Scope ${SCOPE_NAME} not found"
+        return 1
+      fi
+
+      echo "  Setting scope '${SCOPE_NAME}' as realm default..."
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/default-default-client-scopes/${SCOPE_ID}" \
+        -H "Authorization: Bearer ${TOKEN}")
+
+      if [ "$RESPONSE" = "204" ]; then
+        echo "  Scope '${SCOPE_NAME}' set as realm default"
+      else
+        echo "  Failed to set realm default scope (Response: $RESPONSE)"
+      fi
+    }
+
+    # Function to assign a default scope to a specific client
+    assign_default_scope_to_client() {
+      local CLIENT_ID=$1
+      local SCOPE_NAME=$2
+
+      echo "  Assigning scope '${SCOPE_NAME}' to client '${CLIENT_ID}'..."
+
+      # Get client internal UUID
+      CLIENT_UUID=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients?clientId=${CLIENT_ID}" | jq -r '.[0].id')
+
+      if [ -z "$CLIENT_UUID" ] || [ "$CLIENT_UUID" = "null" ]; then
+        echo "  Client ${CLIENT_ID} not found"
+        return 1
+      fi
+
+      SCOPE_ID=$(get_client_scope_id "$SCOPE_NAME")
+      if [ -z "$SCOPE_ID" ] || [ "$SCOPE_ID" = "null" ]; then
+        echo "  Scope ${SCOPE_NAME} not found"
+        return 1
+      fi
+
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/${CLIENT_UUID}/default-client-scopes/${SCOPE_ID}" \
+        -H "Authorization: Bearer ${TOKEN}")
+
+      if [ "$RESPONSE" = "204" ]; then
+        echo "  Scope '${SCOPE_NAME}' assigned to '${CLIENT_ID}'"
+      else
+        echo "  Failed to assign scope (Response: $RESPONSE)"
+      fi
+    }
+
     # Function to create client
     create_client() {
       local CLIENT_ID=$1
@@ -197,6 +301,88 @@ data:
         return 0
       else
         echo "  Failed to create client. Response code: $RESPONSE"
+        return 1
+      fi
+    }
+
+    # Function to assign service account roles
+    assign_service_account_roles() {
+      local CLIENT_ID=$1
+      local TARGET_CLIENT_ID=$2
+      local ROLES=$3
+
+      echo "Assigning service account roles for ${CLIENT_ID}..."
+
+      # Get the client's internal ID
+      CLIENT_UUID=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients?clientId=${CLIENT_ID}" | jq -r '.[0].id')
+
+      if [ "$CLIENT_UUID" = "null" ] || [ -z "$CLIENT_UUID" ]; then
+        echo "  Failed to get client UUID for ${CLIENT_ID}"
+        return 1
+      fi
+
+      # Get the service account user ID
+      SERVICE_ACCOUNT_USER=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/${CLIENT_UUID}/service-account-user")
+
+      SERVICE_ACCOUNT_USER_ID=$(echo "$SERVICE_ACCOUNT_USER" | jq -r '.id')
+
+      if [ "$SERVICE_ACCOUNT_USER_ID" = "null" ] || [ -z "$SERVICE_ACCOUNT_USER_ID" ]; then
+        echo "  Failed to get service account user for ${CLIENT_ID}"
+        return 1
+      fi
+
+      # Get the target client's internal ID (e.g., realm-management)
+      TARGET_CLIENT_UUID=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients?clientId=${TARGET_CLIENT_ID}" | jq -r '.[0].id')
+
+      if [ "$TARGET_CLIENT_UUID" = "null" ] || [ -z "$TARGET_CLIENT_UUID" ]; then
+        echo "  Failed to get client UUID for ${TARGET_CLIENT_ID}"
+        return 1
+      fi
+
+      # Get available roles from the target client
+      AVAILABLE_ROLES=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/${TARGET_CLIENT_UUID}/roles")
+
+      # Build the roles array to assign
+      ROLES_TO_ASSIGN="["
+      FIRST=true
+      for ROLE_NAME in $(echo "$ROLES" | tr ',' ' '); do
+        ROLE_ID=$(echo "$AVAILABLE_ROLES" | jq -r --arg name "$ROLE_NAME" '.[] | select(.name == $name) | .id')
+        ROLE_OBJ=$(echo "$AVAILABLE_ROLES" | jq -c --arg name "$ROLE_NAME" '.[] | select(.name == $name)')
+
+        if [ -n "$ROLE_OBJ" ] && [ "$ROLE_OBJ" != "null" ]; then
+          if [ "$FIRST" = "true" ]; then
+            FIRST=false
+          else
+            ROLES_TO_ASSIGN="${ROLES_TO_ASSIGN},"
+          fi
+          ROLES_TO_ASSIGN="${ROLES_TO_ASSIGN}${ROLE_OBJ}"
+          echo "  Found role: ${ROLE_NAME}"
+        else
+          echo "  Warning: Role ${ROLE_NAME} not found in ${TARGET_CLIENT_ID}"
+        fi
+      done
+      ROLES_TO_ASSIGN="${ROLES_TO_ASSIGN}]"
+
+      # Assign the roles to the service account
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users/${SERVICE_ACCOUNT_USER_ID}/role-mappings/clients/${TARGET_CLIENT_UUID}" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${ROLES_TO_ASSIGN}")
+
+      if [ "$RESPONSE" = "204" ]; then
+        echo "  Service account roles assigned successfully"
+        return 0
+      else
+        echo "  Failed to assign roles. Response code: $RESPONSE"
         return 1
       fi
     }
@@ -279,32 +465,51 @@ data:
         "" \
         "{{ join "," .redirectUris }}" \
         "{{ join "," .webOrigins }}"
+
+      # Create custom scopes with mappers and assign to frontend client
+      {{- range .customScopes }}
+      {{- $scopeName := .name }}
+      create_client_scope "{{ .name }}" "{{ .description }}"
+      {{- range .mappers }}
+      add_protocol_mapper_to_scope "{{ $scopeName }}" "{{ .name }}" "{{ .protocolMapper }}" '{{ .config | toJson }}'
+      {{- end }}
+      set_realm_default_scope "{{ .name }}"
+      assign_default_scope_to_client "{{ $.Values.clients.frontend.clientId }}" "{{ .name }}"
+      {{- end }}
       {{- end }}
 
-      # Create backend client
+      # Create backend client (secret auto-generated by Keycloak)
       {{- with .Values.clients.backend }}
-      BACKEND_SECRET="${BACKEND_CLIENT_SECRET}"
       create_client \
         "{{ .clientId }}" \
         "{{ .name }}" \
         "{{ .description }}" \
         "{{ .publicClient }}" \
         "{{ .serviceAccountsEnabled }}" \
-        "${BACKEND_SECRET}" \
+        "" \
         "{{ join "," .redirectUris }}" \
         "{{ join "," .webOrigins }}"
+
+      # Assign service account roles for backend client
+      {{- if and .serviceAccountsEnabled .serviceAccountRoles }}
+      {{- range .serviceAccountRoles }}
+      assign_service_account_roles \
+        "{{ $.Values.clients.backend.clientId }}" \
+        "{{ .clientId }}" \
+        "{{ join "," .roles }}"
+      {{- end }}
+      {{- end }}
       {{- end }}
 
-      # Create worker client
+      # Create worker client (secret auto-generated by Keycloak)
       {{- with .Values.clients.worker }}
-      WORKER_SECRET="${WORKER_CLIENT_SECRET}"
       create_client \
         "{{ .clientId }}" \
         "{{ .name }}" \
         "{{ .description }}" \
         "{{ .publicClient }}" \
         "{{ .serviceAccountsEnabled }}" \
-        "${WORKER_SECRET}" \
+        "" \
         "" \
         ""
       {{- end }}
@@ -336,21 +541,6 @@ data:
 
       echo "Keycloak bootstrap completed successfully!"
 
-      # Generate output files if requested
-      {{- if .Values.output.generateEnvFile }}
-      echo "Generating environment configuration..."
-      cat > /output/.env.keycloak <<EOF
-    # Keycloak Configuration
-    KEYCLOAK_URL=${KEYCLOAK_URL}
-    KEYCLOAK_REALM=${REALM_NAME}
-    KEYCLOAK_CLIENT_ID={{ .Values.clients.frontend.clientId }}
-    KEYCLOAK_ADMIN_CLIENT_ID={{ .Values.clients.backend.clientId }}
-    KEYCLOAK_ADMIN_CLIENT_SECRET=${BACKEND_SECRET}
-    KEYCLOAK_WORKER_CLIENT_ID={{ .Values.clients.worker.clientId }}
-    KEYCLOAK_WORKER_CLIENT_SECRET=${WORKER_SECRET}
-    EOF
-      echo "Environment configuration saved to /output/.env.keycloak"
-      {{- end }}
     }
 
     # Run main function

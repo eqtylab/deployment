@@ -81,20 +81,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.keycloak.adminPasswordSecret.name }}
                   key: {{ .Values.keycloak.adminPasswordSecret.key }}
-            {{- if .Values.clients.backend.secretName }}
-            - name: BACKEND_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.clients.backend.secretName }}
-                  key: {{ .Values.clients.backend.secretKey }}
-            {{- end }}
-            {{- if .Values.clients.worker.secretName }}
-            - name: WORKER_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.clients.worker.secretName }}
-                  key: {{ .Values.clients.worker.secretKey }}
-            {{- end }}
             {{- if .Values.users.admin.enabled }}
             - name: ADMIN_USER_PASSWORD
               valueFrom:
@@ -108,8 +94,6 @@ spec:
             - name: scripts
               mountPath: /scripts
               readOnly: true
-            - name: output
-              mountPath: /output
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -121,6 +105,4 @@ spec:
           configMap:
             name: {{ include "keycloak-bootstrap.fullname" . }}-scripts
             defaultMode: 0755
-        - name: output
-          emptyDir: {}
 {{- end }}

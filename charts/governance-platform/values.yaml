@@ -2467,6 +2467,15 @@ integrity-service:
     # Public URL for this service
     integrityServiceUrl: ""
 
+    # ---------------------------------------------------------------------------
+    # Swagger Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Swagger Base Path
+    # @default -- `/integrityService`
+    # Base path for Swagger UI
+    swaggerBasePath: "/integrityService"
+
   # =============================================================================
   # SECRETS CONFIGURATION
   # =============================================================================

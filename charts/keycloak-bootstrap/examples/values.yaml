@@ -1,4 +1,4 @@
-# Simplified Keycloak Bootstrap values for staging environment
+# Keycloak Bootstrap values example
 # This configures the bootstrap job without SPI mappers or group management
 # Groups/projects are now managed in the governance service
 
@@ -11,6 +11,9 @@ bootstrap:
     repository: dwdraju/alpine-curl-jq
     tag: "latest"
     pullPolicy: IfNotPresent
+
+  # Skip apk install since this image already has curl and jq
+  args: ["/scripts/bootstrap.sh"]
 
   # Job settings
   backoffLimit: 3
@@ -32,7 +35,7 @@ bootstrap:
 
 # Keycloak connection
 keycloak:
-  # Internal service URL
+  # Internal service URL (includes /keycloak path)
   url: "http://keycloak:8080/keycloak"
   adminUsername: "admin"
   adminPasswordSecret:
@@ -45,7 +48,7 @@ keycloak:
     displayName: "Governance Platform"
     loginWithEmailAllowed: true
     registrationAllowed: false
-    resetPasswordAllowed: true
+    resetPasswordAllowed: false
     rememberMe: true
     verifyEmail: false
     sslRequired: "external"
@@ -76,8 +79,19 @@ clients:
       - "profile"
       - "email"
       - "roles"
+      - "sub"
     optionalScopes:
       - "offline_access"
+    # Custom scopes with protocol mappers assigned to this client
+    customScopes:
+      - name: "sub"
+        description: "Subject identifier"
+        mappers:
+          - name: "Subject"
+            protocolMapper: "oidc-sub-mapper"
+            config:
+              access.token.claim: "true"
+              introspection.token.claim: "true"
 
   # Backend client (confidential with service account)
   backend:
@@ -86,10 +100,8 @@ clients:
     description: "Backend service for Governance Platform"
     publicClient: false
     serviceAccountsEnabled: true
-    secretName: "keycloak-backend-client"
-    secretKey: "client-secret"
     redirectUris:
-      - "https://CHANGE_ME_DOMAIN_HERE/auth/*"
+      - "https://CHANGE_ME_DOMAIN_HERE/authService/*"
     webOrigins:
       - "https://CHANGE_ME_DOMAIN_HERE"
     defaultScopes:
@@ -105,8 +117,6 @@ clients:
     description: "Worker service for Governance Platform"
     publicClient: false
     serviceAccountsEnabled: true
-    secretName: "keycloak-worker-client"
-    secretKey: "client-secret"
     defaultScopes:
       - "openid"
       - "profile"
@@ -134,28 +144,19 @@ scopes:
 
 # Initial users
 users:
-  # Platform admin user
+  # Governance Studio admin user (for logging into Governance Studio)
   admin:
     enabled: true
     username: "platform-admin"
-    email: "admin@governance.eqtylab.io"
+    email: "admin@CHANGE_ME_DOMAIN_HERE"
     firstName: "Platform"
     lastName: "Admin"
     emailVerified: true
     temporaryPassword: false
-    secretName: "keycloak-admin-user"
+    secretName: "platform-admin"
     secretKey: "password"
 
   # Test users - disabled by default
   testUsers:
     enabled: false
     users: []
-
-# Output configuration
-output:
-  generateEnvFile: true
-  createSecrets: true
-  secrets:
-    frontend: "keycloak-frontend-config"
-    backend: "keycloak-backend-config"
-    worker: "keycloak-worker-config"

@@ -338,10 +338,11 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Application Settings
 
-| Key                        | Type   | Default | Description                                                                                |
-| -------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------ |
-| config.rustEnv             | string | `""`    | Rust environment (auto-configured from global.environmentType)                             |
-| config.integrityServiceUrl | string | `""`    | Public URL for this service (auto-generated as `https://{global.domain}/integrityService`) |
+| Key                        | Type   | Default               | Description                                                                                |
+| -------------------------- | ------ | --------------------- | ------------------------------------------------------------------------------------------ |
+| config.rustEnv             | string | `""`                  | Rust environment (auto-configured from global.environmentType)                             |
+| config.integrityServiceUrl | string | `""`                  | Public URL for this service (auto-generated as `https://{global.domain}/integrityService`) |
+| config.swaggerBasePath     | string | `"/integrityService"` | Base path for Swagger UI                                                                   |
 
 #### Blob Storage Configuration
 
