@@ -153,17 +153,18 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Realm Configuration
 
-| Key                                  | Type   | Default                 | Description                          |
-| ------------------------------------ | ------ | ----------------------- | ------------------------------------ |
-| keycloak.realm.name                  | string | `"governance"`          | Realm name                           |
-| keycloak.realm.displayName           | string | `"Governance Platform"` | Realm display name                   |
-| keycloak.realm.loginWithEmailAllowed | bool   | `true`                  | Allow login with email               |
-| keycloak.realm.registrationAllowed   | bool   | `false`                 | Allow user self-registration         |
-| keycloak.realm.resetPasswordAllowed  | bool   | `false`                 | Allow password reset (requires SMTP) |
-| keycloak.realm.rememberMe            | bool   | `true`                  | Enable remember me option            |
-| keycloak.realm.verifyEmail           | bool   | `false`                 | Require email verification           |
-| keycloak.realm.sslRequired           | string | `"external"`            | SSL requirement (external/all/none)  |
-| keycloak.realm.bruteForceProtected   | bool   | `true`                  | Enable brute force protection        |
+| Key                                  | Type   | Default                                                   | Description                          |
+| ------------------------------------ | ------ | --------------------------------------------------------- | ------------------------------------ |
+| keycloak.realm.name                  | string | `"governance"`                                            | Realm name                           |
+| keycloak.realm.displayName           | string | `"Governance Platform"`                                   | Realm display name                   |
+| keycloak.realm.displayNameHtml       | string | `'<div class="kc-logo-text"><span>Keycloak</span></div>'` | HTML display name for login page     |
+| keycloak.realm.loginWithEmailAllowed | bool   | `true`                                                    | Allow login with email               |
+| keycloak.realm.registrationAllowed   | bool   | `false`                                                   | Allow user self-registration         |
+| keycloak.realm.resetPasswordAllowed  | bool   | `false`                                                   | Allow password reset (requires SMTP) |
+| keycloak.realm.rememberMe            | bool   | `true`                                                    | Enable remember me option            |
+| keycloak.realm.verifyEmail           | bool   | `false`                                                   | Require email verification           |
+| keycloak.realm.sslRequired           | string | `"external"`                                              | SSL requirement (external/all/none)  |
+| keycloak.realm.bruteForceProtected   | bool   | `true`                                                    | Enable brute force protection        |
 
 ### Token Configuration
 
