@@ -16,10 +16,12 @@ usage() {
 Install an NGINX ingress controller via Helm
 
 Usage: $0 [options]
+  -n, --namespace <namespace>     Namespace for ingress-nginx (default: $NAMESPACE)
   -h, --help                      Show this help message
 
 Examples:
   $0
+  $0 --namespace somewhere-else
 "
 }
 
@@ -27,9 +29,13 @@ Examples:
 install() {
   print_info "Installing ingress-nginx to $NAMESPACE namespace"
 
+  # Add the ingress-nginx Helm repository
   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+  
+  # Update your local Helm chart repository cache
   helm repo update
 
+  # Install the ingress-nginx Helm chart
   helm install ingress-nginx ingress-nginx/ingress-nginx \
     --create-namespace \
     --namespace "$NAMESPACE" \
@@ -44,6 +50,10 @@ NAMESPACE="ingress-nginx"
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
+  -n | --namespace)
+    NAMESPACE="$2"
+    shift 2
+    ;;
   -h | --help)
     usage
     exit 0

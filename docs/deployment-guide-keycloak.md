@@ -405,15 +405,49 @@ This installs the `ingress-nginx` Helm chart into the `ingress-nginx` namespace.
 
 ### TLS with cert-manager
 
-The platform uses cert-manager to automatically provision TLS certificates from Let's Encrypt. If not already installed, use the provided helper script:
+The platform uses cert-manager to automatically provision TLS certificates from Let's Encrypt.
+
+#### Install cert-manager
+
+If not already installed, use the provided helper script:
 
 ```bash
-./scripts/cert-issuer.sh -e admin@your-domain.com -n governance
+./scripts/cert-issuer.sh
 ```
 
-This installs cert-manager and creates a `letsencrypt-prod` Issuer in your governance namespace.
+This installs cert-manager into the `ingress-nginx` namespace. To install into a different namespace:
 
-> **Note:** The Issuer name must match the `cert-manager.io/issuer` annotation in your ingress configuration. The example values files use `letsencrypt-prod`.
+```bash
+./scripts/cert-issuer.sh --namespace cert-manager
+```
+
+#### Create a Let's Encrypt Issuer
+
+After cert-manager is running, create an Issuer in your governance namespace:
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt-prod
+  namespace: governance
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@your-domain.com
+    privateKeySecretRef:
+      name: letsencrypt-production
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+EOF
+```
+
+Replace `admin@your-domain.com` with your actual email address. This email is used by Let's Encrypt for certificate expiration notifications.
+
+> **Note:** The Issuer name (`letsencrypt-prod`) must match the `cert-manager.io/issuer` annotation in your ingress configuration. The example values files use `letsencrypt-prod`.
 
 ### How TLS Works in the Platform
 
