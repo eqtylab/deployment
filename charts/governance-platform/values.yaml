@@ -162,7 +162,7 @@ global:
 
     # -- Platform Encryption
     # @default -- See values below
-    # Used for encrypting sensitive data in the database
+    # Used by: governance-service for encrypting credential data in the database
     encryption:
       secretName: "platform-encryption-key"
       keys:
@@ -188,7 +188,7 @@ global:
 
     # -- Governance Worker Credentials
     # @default -- See values below
-    # Used by: governance-service worker for authentication
+    # Used by: auth-service for managing the governance worker's service account credentials
     governanceWorker:
       secretName: "platform-governance-worker"
       keys:

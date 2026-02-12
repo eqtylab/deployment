@@ -67,6 +67,7 @@ data:
     {
       "realm": "${REALM_NAME}",
       "displayName": "{{ .Values.keycloak.realm.displayName }}",
+      "displayNameHtml": "{{ .Values.keycloak.realm.displayNameHtml }}",
       "enabled": true,
       "registrationAllowed": {{ .Values.keycloak.realm.registrationAllowed }},
       "loginWithEmailAllowed": {{ .Values.keycloak.realm.loginWithEmailAllowed }},

@@ -155,6 +155,10 @@ keycloak:
     # @default -- `Governance Platform`
     # Realm display name
     displayName: "Governance Platform"
+    # -- Display Name HTML
+    # @default -- `'<div class="kc-logo-text"><span>Keycloak</span></div>'`
+    # HTML display name shown on Keycloak login page
+    displayNameHtml: '<div class="kc-logo-text"><span>Keycloak</span></div>'
     # -- Login With Email Allowed
     # @default -- `true`
     # Allow login with email
