@@ -1,40 +1,76 @@
 #!/usr/bin/env bash
-
-## This script installs the cert-manager
 set -e
 
-echo "Installing cert-manager"
 
-# Label the ingress-basic namespace to disable resource validation
-kubectl label namespace ingress-basic cert-manager.io/disable-validation=true
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do SOURCE="$(readlink "$SOURCE")"; done
+ROOTDIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 
-# Add the Jetstack Helm repository
-helm repo add jetstack https://charts.jetstack.io
+# shellcheck source=./helpers/output.sh
+source "$ROOTDIR/scripts/helpers/output.sh"
+# shellcheck source=./helpers/assert.sh
+source "$ROOTDIR/scripts/helpers/assert.sh"
 
-# Update your local Helm chart repository cache
-helm repo update
+# Function to display usage
+usage() {
+  echo -e "\
+Install cert-manager via Helm
 
-# Install the cert-manager Helm chart
-helm install \
-  cert-manager jetstack/cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  # --set installCRDs=true
+Usage: $0 [options]
+  -n, --namespace <namespace>     Namespace for cert-manager (default: $NAMESPACE)
+  -h, --help                      Show this help message
 
-kubectl apply -f - <<EOF
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt
-  namespace: cert-manager
-spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: tyler@eqtylab.io
-    privateKeySecretRef:
-      name: letsencrypt
-    solvers:
-      - http01:
-          ingress:
-            class: nginx
-EOF
+Examples:
+  $0
+  $0 --namespace cert-manager
+"
+}
+
+# Install cert-manager
+install() {
+  print_info "Installing cert-manager"
+
+  # Add the Jetstack Helm repository
+  helm repo add jetstack https://charts.jetstack.io
+
+  # Update your local Helm chart repository cache
+  helm repo update
+
+  # Install the cert-manager Helm chart
+  helm install \
+    cert-manager jetstack/cert-manager \
+    --namespace "$NAMESPACE" \
+    --create-namespace \
+    --set crds.enabled=true
+
+  print_info "cert-manager installed"
+}
+
+# Default values
+NAMESPACE="ingress-nginx"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  -n | --namespace)
+    NAMESPACE="$2"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    print_error "Unknown option: $1"
+    usage
+    exit 1
+    ;;
+  esac
+done
+
+# Validate prerequisites
+assert_is_installed "helm"
+assert_is_installed "kubectl"
+
+# Install cert-manager
+install
