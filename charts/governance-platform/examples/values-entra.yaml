@@ -236,7 +236,9 @@ postgresql:
     persistence:
       enabled: true
       size: 10Gi
-      storageClass: "standard"
+      # Uses cluster default StorageClass when set to "".
+      # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3"
+      storageClass: ""
     resources:
       requests:
         cpu: 500m

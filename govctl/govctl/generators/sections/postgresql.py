@@ -13,7 +13,9 @@ def generate_postgresql_section(config: PlatformConfig) -> dict[str, Any]:
             "persistence": {
                 "enabled": True,
                 "size": "10Gi",
-                "storageClass": "standard",
+                # Uses cluster default StorageClass when set to "".
+                # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3"
+                "storageClass": "",
             },
             "resources": {
                 "requests": {

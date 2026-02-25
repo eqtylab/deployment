@@ -2542,6 +2542,8 @@ postgresql:
   global:
     # -- Storage Class
     # @default -- `""` (uses cluster default)
+    # Uses cluster default StorageClass when set to "".
+    # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3", etc.
     defaultStorageClass: ""
 
     postgresql:

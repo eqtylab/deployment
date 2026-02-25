@@ -773,6 +773,8 @@ postgresql:
   primary:
     persistence:
       size: 100Gi
+      # Uses cluster default StorageClass when set to "".
+      # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3"
       storageClass: "fast-ssd"
     resources:
       requests:
