@@ -12,5 +12,5 @@ def generate_keycloak_section(config: PlatformConfig) -> dict[str, Any]:
         "realmName": config.keycloak_realm,
         "displayName": "Governance Platform",
         "createPlatformAdmin": True,
-        "platformAdminKeycloakId": "",
+        "platformAdminKeycloakId": "YOUR_KEYCLOAK_USER_ID",
     }

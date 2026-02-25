@@ -53,7 +53,9 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
 
     if config.cloud_provider == CloudProvider.AWS:
         section["config"]["integrityAppBlobStoreType"] = "aws_s3"
-        section["config"]["integrityAppBlobStoreAwsRegion"] = config.cloud_region or "us-east-1"
+        section["config"]["integrityAppBlobStoreAwsRegion"] = (
+            config.cloud_region or "us-east-1"
+        )
         section["config"]["integrityAppBlobStoreAwsBucket"] = "YOUR_S3_BUCKET"
         section["config"]["integrityAppBlobStoreAwsFolder"] = "rootstore"
     elif config.cloud_provider == CloudProvider.AZURE:
@@ -63,9 +65,7 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
     elif config.cloud_provider == CloudProvider.GCP:
         # GCP deployments use Azure blob storage for integrity-service
         section["config"]["integrityAppBlobStoreType"] = "azure_blob"
-        section["config"]["integrityAppBlobStoreAccount"] = (
-            "YOUR_AZURE_STORAGE_ACCOUNT"
-        )
+        section["config"]["integrityAppBlobStoreAccount"] = "YOUR_AZURE_STORAGE_ACCOUNT"
         section["config"]["integrityAppBlobStoreContainer"] = "rootstore"
 
     return section
