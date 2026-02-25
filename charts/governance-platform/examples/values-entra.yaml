@@ -1,5 +1,5 @@
-# Auth0 Configuration Example
-# Complete example for deploying the Governance Platform with Auth0.
+# Microsoft Entra ID Configuration Example
+# Complete example for deploying the Governance Platform with Microsoft Entra ID.
 # For all available values, see the chart's values.yaml and README.md.
 #
 # Secrets:
@@ -12,7 +12,7 @@
 #   helm install governance-platform ./charts/governance-platform \
 #     --namespace governance \
 #     --create-namespace \
-#     --values values-auth0.yaml
+#     --values values-entra.yaml
 
 global:
   environmentType: "production"
@@ -53,23 +53,18 @@ auth-service:
   config:
     # Identity Provider Configuration
     idp:
-      provider: "auth0"
-      issuer: "https://your-tenant.us.auth0.com/"
-      skipIssuerVerification: true
-      auth0:
-        domain: "your-tenant.us.auth0.com"
-        managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
-        apiIdentifier: "https://governance.your-domain.com"
+      provider: "entra"
+      issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+      skipIssuerVerification: false
+      entra:
+        tenantId: "your-tenant-id"
+        defaultRoles: "user"
     # Key Vault Configuration (for DID keys)
     keyVault:
       provider: "azure_key_vault"
       azure:
         vaultUrl: "https://your-keyvault.vault.azure.net/"
         tenantId: "your-azure-tenant-id"
-    # Service Account Configuration
-    serviceAccounts:
-      governanceWorker:
-        audience: "https://governance.your-domain.com"
 
 # =============================================================================
 # Governance Service
@@ -125,6 +120,9 @@ governance-service:
     # awsS3Region: "us-east-1"
     # awsS3BucketName: "your-governance-artifacts-bucket"
 
+    # Microsoft Entra ID Configuration
+    entraTenantId: "your-tenant-id"
+
   resources:
     requests:
       cpu: 250m
@@ -161,10 +159,9 @@ governance-studio:
           - governance.your-domain.com
 
   config:
-    # Auth0 Configuration
-    auth0Domain: "your-tenant.us.auth0.com"
-    auth0ClientId: "your-spa-client-id"
-    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+    # Microsoft Entra ID Configuration
+    entraTenantId: "your-tenant-id"
+    entraClientId: "your-entra-client-id"
     # Feature Flags
     features:
       governance: true
@@ -262,12 +259,13 @@ postgresql:
 #   --from-literal=password="$(openssl rand -base64 24)" \
 #   --namespace governance
 #
-# # Auth0 Credentials
-# kubectl create secret generic platform-auth0 \
-#   --from-literal=client-id=YOUR_AUTH0_CLIENT_ID \
-#   --from-literal=client-secret=YOUR_AUTH0_CLIENT_SECRET \
-#   --from-literal=mgmt-client-id=YOUR_AUTH0_MGMT_CLIENT_ID \
-#   --from-literal=mgmt-client-secret=YOUR_AUTH0_MGMT_CLIENT_SECRET \
+# # Microsoft Entra ID Credentials
+# kubectl create secret generic platform-entra \
+#   --from-literal=client-id=YOUR_ENTRA_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_ENTRA_CLIENT_SECRET \
+#   --from-literal=tenant-id=YOUR_ENTRA_TENANT_ID \
+#   --from-literal=graph-client-id=YOUR_GRAPH_CLIENT_ID \
+#   --from-literal=graph-client-secret=YOUR_GRAPH_CLIENT_SECRET \
 #   --namespace governance
 #
 # # Auth Service Credentials

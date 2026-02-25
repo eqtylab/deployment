@@ -10,9 +10,8 @@ Key capabilities:
 
 - **Governance Workflows**: Validation, analysis, and processing of governance policies
 - **Storage Integration**: Multi-provider support for GCS, Azure Blob, and AWS S3
-- **AI-Powered Analysis**: Anthropic Claude integration for governance analysis
 - **Worker Service**: Background processing with service account authentication
-- **Multi-Provider Auth**: Backend support for Auth0 and Keycloak identity providers
+- **Multi-Provider Auth**: Backend support for Auth0, Keycloak, and Microsoft Entra ID identity providers
 
 ## Configuration Model
 
@@ -31,8 +30,7 @@ This allows:
 - Helm 3.8+
 - PostgreSQL database (provided by umbrella chart or external)
 - Storage provider (GCS, Azure Blob Storage, or AWS S3)
-- Authentication provider (Auth0 or Keycloak)
-- Anthropic API key (required when `config.ai.enabled` is `true`, disabled by default)
+- Authentication provider (Auth0, Keycloak, or Entra ID)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
@@ -137,6 +135,52 @@ governance-service:
     # awsS3BucketName: "your-governance-artifacts-bucket"
 ```
 
+**Microsoft Entra ID:**
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "entra"
+
+governance-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "governance-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    entraTenantId: "your-tenant-id"
+
+    # Storage Configuration - GCS
+    storageProvider: "gcs"
+    gcsBucketName: "your-governance-artifacts-bucket"
+
+    # Storage Configuration - Azure Blob (uncomment to use instead)
+    # storageProvider: "azure_blob"
+    # azureStorageAccountName: "your-storage-account"
+    # azureStorageContainerName: "your-governance-artifacts-container"
+
+    # Storage Configuration - AWS S3 (uncomment to use instead)
+    # storageProvider: "aws_s3"
+    # awsS3Region: "us-east-1"
+    # awsS3BucketName: "your-governance-artifacts-bucket"
+```
+
 ### Required Configuration
 
 Beyond what is auto-configured, these values **must** be explicitly set:
@@ -159,6 +203,11 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 - `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
 - Service account client ID and secret are auto-configured from the `global.secrets.auth.keycloak` secret
 
+**Microsoft Entra ID:**
+
+- `config.entraTenantId` - Microsoft Entra ID tenant ID (can also be auto-configured from `global.secrets.auth.entra` secret)
+- Client ID and secret are auto-configured from the `global.secrets.auth.entra` secret
+
 Only one authentication provider should be configured at a time, set via `global.secrets.auth.provider` in the umbrella chart.
 
 **What gets auto-configured:**
@@ -170,7 +219,6 @@ From global values:
 - Encryption keys (from `global.secrets.encryption`)
 - Storage credentials (from `global.secrets.storage.*`)
 - Auth service credentials for worker authentication (from `global.secrets.authService`)
-- AI API credentials (from `global.secrets.governanceServiceAI`)
 - Environment type (from `global.environmentType`)
 - Image pull secrets (from `global.secrets.imageRegistry`)
 
@@ -187,25 +235,25 @@ Generated defaults:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                           | Type   | Description                                       |
-| --------------------------------------------- | ------ | ------------------------------------------------- |
-| global.domain                                 | string | Base domain for all services                      |
-| global.environmentType                        | string | Environment type (development/staging/production) |
-| global.postgresql.host                        | string | PostgreSQL host                                   |
-| global.postgresql.port                        | int    | PostgreSQL port                                   |
-| global.postgresql.database                    | string | PostgreSQL database name                          |
-| global.postgresql.username                    | string | PostgreSQL username                               |
-| global.secrets.database.secretName            | string | Name of database credentials secret               |
-| global.secrets.encryption.secretName          | string | Name of encryption key secret                     |
-| global.secrets.auth.provider                  | string | Auth provider (auth0 or keycloak)                 |
-| global.secrets.auth.auth0.secretName          | string | Auth0 credentials secret name                     |
-| global.secrets.auth.keycloak.secretName       | string | Keycloak credentials secret name                  |
-| global.secrets.storage.gcs.secretName         | string | GCS credentials secret name                       |
-| global.secrets.storage.azure_blob.secretName  | string | Azure Blob credentials secret name                |
-| global.secrets.storage.aws_s3.secretName      | string | AWS S3 credentials secret name                    |
-| global.secrets.authService.secretName         | string | Auth service API key secret name                  |
-| global.secrets.governanceServiceAI.secretName | string | AI API key secret name                            |
-| global.secrets.imageRegistry.secretName       | string | Image registry credentials secret name            |
+| Key                                          | Type   | Description                                       |
+| -------------------------------------------- | ------ | ------------------------------------------------- |
+| global.domain                                | string | Base domain for all services                      |
+| global.environmentType                       | string | Environment type (development/staging/production) |
+| global.postgresql.host                       | string | PostgreSQL host                                   |
+| global.postgresql.port                       | int    | PostgreSQL port                                   |
+| global.postgresql.database                   | string | PostgreSQL database name                          |
+| global.postgresql.username                   | string | PostgreSQL username                               |
+| global.secrets.database.secretName           | string | Name of database credentials secret               |
+| global.secrets.encryption.secretName         | string | Name of encryption key secret                     |
+| global.secrets.auth.provider                 | string | Auth provider (auth0, keycloak, or entra)         |
+| global.secrets.auth.auth0.secretName         | string | Auth0 credentials secret name                     |
+| global.secrets.auth.keycloak.secretName      | string | Keycloak credentials secret name                  |
+| global.secrets.auth.entra.secretName         | string | Entra ID credentials secret name                  |
+| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                       |
+| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                |
+| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                    |
+| global.secrets.authService.secretName        | string | Auth service API key secret name                  |
+| global.secrets.imageRegistry.secretName      | string | Image registry credentials secret name            |
 
 ### Chart-Specific Parameters
 
@@ -342,6 +390,12 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | -------------------------- | ------ | -------------------------------------------------------------------------- |
 | secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
 
+#### Entra ID Secret (only used when auth provider is Entra ID)
+
+| Key                     | Type   | Description                                                             |
+| ----------------------- | ------ | ----------------------------------------------------------------------- |
+| secrets.auth.entra.name | string | Secret name (auto-configured from global.secrets.auth.entra.secretName) |
+
 #### Storage Secrets
 
 **Azure Blob Storage (only used when storage provider is azure_blob):**
@@ -425,9 +479,9 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Authentication Provider Configuration
 
-| Key                 | Type   | Default | Description                                                                        |
-| ------------------- | ------ | ------- | ---------------------------------------------------------------------------------- |
-| config.authProvider | string | `""`    | Auth provider (auth0/keycloak) - auto-configured from global.secrets.auth.provider |
+| Key                 | Type   | Default | Description                                                                              |
+| ------------------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
+| config.authProvider | string | `""`    | Auth provider (auth0/keycloak/entra) - auto-configured from global.secrets.auth.provider |
 
 #### Auth0 Configuration (only used when auth provider is Auth0)
 
@@ -448,6 +502,14 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.keycloakClientId     | string | `""`    | Keycloak service account client ID (auto-configured from global.secrets.auth.keycloak)     |
 | config.keycloakClientSecret | string | `""`    | Keycloak service account client secret (auto-configured from global.secrets.auth.keycloak) |
 
+#### Microsoft Entra ID Configuration (only used when auth provider is Entra ID)
+
+| Key                      | Type   | Default | Description                                                                   |
+| ------------------------ | ------ | ------- | ----------------------------------------------------------------------------- |
+| config.entraTenantId     | string | `""`    | Microsoft Entra ID tenant ID (auto-configured from global.secrets.auth.entra) |
+| config.entraClientId     | string | `""`    | Entra client ID (auto-configured from global.secrets.auth.entra)              |
+| config.entraClientSecret | string | `""`    | Entra client secret (auto-configured from global.secrets.auth.entra)          |
+
 #### Integration URLs
 
 | Key                        | Type   | Default | Description                                                                            |
@@ -467,22 +529,6 @@ The governance-service background worker authenticates against the auth-service 
 | config.serviceAccount.serviceName               | string | `"governance-worker"` | Worker identity name used when authenticating with the auth-service    |
 | config.serviceAccount.existingSecret            | string | `""`                  | Override secret name (falls back to secrets.authService)               |
 | config.serviceAccount.existingSecretKeys.apiKey | string | `"api-secret"`        | Key within the secret containing the auth-service API key              |
-
-#### AI Configuration
-
-| Key                         | Type   | Default                      | Description                                                                            |
-| --------------------------- | ------ | ---------------------------- | -------------------------------------------------------------------------------------- |
-| config.ai.enabled           | bool   | `false`                      | Enable AI features                                                                     |
-| config.ai.provider          | string | `"anthropic"`                | AI provider                                                                            |
-| config.ai.model             | string | `"claude-3-7-sonnet-latest"` | AI model name                                                                          |
-| config.ai.temperature       | float  | `0.7`                        | Temperature for AI responses                                                           |
-| config.ai.maxTokens         | int    | `4000`                       | Maximum tokens for AI responses                                                        |
-| config.ai.timeoutSeconds    | int    | `60`                         | Timeout for AI requests (seconds)                                                      |
-| config.ai.retryAttempts     | int    | `3`                          | Number of retry attempts for AI requests                                               |
-| config.ai.secretKeyRef.name | string | `""`                         | AI API key secret (auto-configured from global.secrets.governanceServiceAI.secretName) |
-| config.ai.secretKeyRef.key  | string | `"api-key"`                  | AI API key secret key                                                                  |
-| config.ai.apiKey            | string | `""`                         | AI API key (auto-configured from global.secrets.governanceServiceAI)                   |
-| config.ai.useV2             | bool   | `true`                       | Use V2 API                                                                             |
 
 ## Configuration Inheritance
 
@@ -561,7 +607,7 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/governance-service -n governance -- env | grep -E 'STORAGE|AUTH|DATABASE|DB_|AI_'
+kubectl exec -it deployment/governance-service -n governance -- env | grep -E 'STORAGE|AUTH|ENTRA|KEYCLOAK|DATABASE|DB_'
 ```
 
 View all environment variables:
@@ -607,6 +653,7 @@ kubectl exec -it deployment/governance-service -n governance -- curl localhost:1
 - Verify auth provider matches `global.secrets.auth.provider`
 - For Auth0: check domain, client ID, and client secret are correct
 - For Keycloak: check URL, realm, client ID, and client secret are correct
+- For Entra: check tenant ID, client ID, and client secret are correct
 - Ensure auth service is running and accessible
 - Check worker credentials are properly configured
 
@@ -616,14 +663,6 @@ kubectl exec -it deployment/governance-service -n governance -- curl localhost:1
 - Verify service account is configured in auth service
 - Ensure auth service API key is valid
 - Check `config.serviceAccount.authServiceUrl` is accessible
-
-**AI feature errors**
-
-- Verify AI is enabled via `config.ai.enabled`
-- Check Anthropic API key is configured in secret
-- Ensure API key secret exists and is accessible
-- Verify network access to Anthropic API
-- Check timeout and retry settings if requests are failing
 
 **Configuration not applying**
 

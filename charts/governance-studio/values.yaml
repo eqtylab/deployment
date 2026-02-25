@@ -249,10 +249,6 @@ config:
   # @default -- `""` (auto-generated: "https://{global.domain}/integrityService")
   integrityServiceUrl: ""
 
-  # -- Garage Service URL
-  # @default -- `""` (auto-generated: "https://{global.domain}/garage" when enabled)
-  garageServiceUrl: ""
-
   # ---------------------------------------------------------------------------
   # Authentication Provider Configuration
   # ---------------------------------------------------------------------------
@@ -260,7 +256,7 @@ config:
   # -- Auth Provider
   # @default -- `""` (auto-configured from global.secrets.auth.provider)
   # Authentication provider type
-  # Options: auth0, keycloak
+  # Options: auth0, keycloak, entra
   authProvider: ""
 
   # -- Auth0 Domain
@@ -299,6 +295,24 @@ config:
   # Only used when authProvider is "keycloak"
   keycloakRealm: ""
 
+  # -- Entra Client ID
+  # @default -- `""`
+  # **REQUIRED for Entra**: Application (client) ID from Azure app registration (public, not a secret)
+  # Only used when authProvider is "entra"
+  entraClientId: ""
+
+  # -- Entra Tenant ID
+  # @default -- `""`
+  # **REQUIRED for Entra**: Directory (tenant) ID from Azure
+  # Only used when authProvider is "entra"
+  entraTenantId: ""
+
+  # -- Entra Authority
+  # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
+  # Optional override for the Entra authority URL
+  # Only used when authProvider is "entra"
+  entraAuthority: ""
+
   # ---------------------------------------------------------------------------
   # Application Settings
   # ---------------------------------------------------------------------------
@@ -330,32 +344,3 @@ config:
     # Enable lineage and integrity features (requires integrity-service)
     lineage: true
 
-    # -- Guardian Enabled
-    # @default -- `false`
-    # Enable Guardian feature family (parent toggle)
-    guardianEnabled: false
-
-    # -- Guardian Garage
-    # @default -- `false`
-    # Enable Compliance Garage integration (requires garageServiceUrl)
-    guardianGarage: false
-
-    # -- Guardian Rulebooks
-    # @default -- `false`
-    # Enable Guardian rulebook experiences
-    guardianRulebooks: false
-
-    # -- Guardian OS Functions
-    # @default -- `false`
-    # Enable OS-oriented Guardian functions
-    guardianOsFunctions: false
-
-    # -- Guardian SDK Functions
-    # @default -- `false`
-    # Enable SDK-oriented Guardian functions
-    guardianSdkFunctions: false
-
-    # -- Agent Management
-    # @default -- `false`
-    # Enable agent management UI
-    agentManagement: false

@@ -1,0 +1,69 @@
+# Microsoft Entra ID Configuration Example
+# Minimal configuration for deploying Governance Service with Microsoft Entra ID.
+# For all available values, see the chart's values.yaml and README.md.
+#
+# Usage:
+#   Set these values under the `governance-service:` key in your umbrella values file.
+
+image:
+  tag: ""
+  pullPolicy: Always
+
+args: ["-debug-config"]
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+  hosts:
+    - host: "governance.your-domain.com"
+      paths:
+        - path: "/governanceService(/|$)(.*)"
+          pathType: "ImplementationSpecific"
+  tls:
+    - secretName: "governance-service-tls"
+      hosts:
+        - "governance.your-domain.com"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+config:
+  # Application Settings
+  appEnv: "production"
+  logLevel: "info"
+
+  # Storage Configuration - Azure Blob
+  storageProvider: "azure_blob"
+  azureStorageAccountName: "your-storage-account"
+  azureStorageContainerName: "your-governance-artifacts-container"
+
+  # Storage Configuration - GCS (uncomment to use instead)
+  # storageProvider: "gcs"
+  # gcsBucketName: "your-governance-artifacts-bucket"
+
+  # Storage Configuration - AWS S3 (uncomment to use instead)
+  # storageProvider: "aws_s3"
+  # awsS3Region: "us-east-1"
+  # awsS3BucketName: "your-governance-artifacts-bucket"
+
+  # Microsoft Entra ID Configuration
+  entraTenantId: "your-tenant-id"

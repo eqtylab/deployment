@@ -262,6 +262,38 @@ spec:
             {{- end }}
           {{- end }}
 
+          {{- if eq $authProvider "entra" }}
+          # Microsoft Entra ID Configuration
+          {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
+          - name: ENTRA_TENANT_ID
+            {{- if .Values.config.entraTenantId }}
+            value: {{ .Values.config.entraTenantId | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $entraSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).entra).keys).tenantId | default "tenant-id" | quote }}
+            {{- end }}
+          - name: ENTRA_CLIENT_ID
+            {{- if .Values.config.entraClientId }}
+            value: {{ .Values.config.entraClientId | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $entraSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).entra).keys).clientId | default "client-id" | quote }}
+            {{- end }}
+          - name: ENTRA_CLIENT_SECRET
+            {{- if .Values.config.entraClientSecret }}
+            value: {{ .Values.config.entraClientSecret | quote }}
+            {{- else }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $entraSecretName | quote }}
+                key: {{ (((((.Values.global).secrets).auth).entra).keys).clientSecret | default "client-secret" | quote }}
+            {{- end }}
+          {{- end }}
+
           # ========================================================================
           # Encryption Configuration
           # ========================================================================
@@ -315,38 +347,6 @@ spec:
             value: {{ .Values.migrations.runAtStartup | quote }}
           - name: MIGRATIONS_PATH
             value: {{ .Values.migrations.path | quote }}
-          {{- end }}
-
-          # ========================================================================
-          # AI Configuration
-          # ========================================================================
-
-          {{- if .Values.config.ai.enabled }}
-          - name: AI_ENABLED
-            value: {{ .Values.config.ai.enabled | quote }}
-          - name: AI_API_KEY
-            {{- if .Values.config.ai.apiKey }}
-            value: {{ .Values.config.ai.apiKey | quote }}
-            {{- else }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.config.ai.secretKeyRef.name | default (((.Values.global).secrets).governanceServiceAI).secretName | default "" | quote }}
-                key: {{ ((((.Values.global).secrets).governanceServiceAI).keys).apiKey | default "api-key" | quote }}
-            {{- end }}
-          - name: AI_PROVIDER
-            value: {{ .Values.config.ai.provider | quote }}
-          - name: AI_MODEL
-            value: {{ .Values.config.ai.model | quote }}
-          - name: AI_TEMPERATURE
-            value: {{ .Values.config.ai.temperature | quote }}
-          - name: AI_MAX_TOKENS
-            value: {{ .Values.config.ai.maxTokens | quote }}
-          - name: AI_TIMEOUT_SECONDS
-            value: {{ .Values.config.ai.timeoutSeconds | quote }}
-          - name: AI_RETRY_ATTEMPTS
-            value: {{ .Values.config.ai.retryAttempts | quote }}
-          - name: AI_USE_V2
-            value: {{ .Values.config.ai.useV2 | quote }}
           {{- end }}
 
           volumeMounts:

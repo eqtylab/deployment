@@ -54,21 +54,25 @@ charts/
 # 1. Create namespace
 kubectl create namespace governance
 
-# 2. Create required secrets (see governance-platform/README.md for full list)
-#    Alternatively, use the secrets-sample.yaml template:
-#    cp charts/governance-platform/examples/secrets-sample.yaml secrets.yaml
-#    Then pass --values secrets.yaml alongside your values file during deploy.
+# 2. Generate values and secrets files
+#    Option A: Use govctl (see ../govctl/) to generate both interactively
+#    govctl init
+#
+#    Option B: Copy an example and customize manually
+#    For Auth0:    cp charts/governance-platform/examples/values-auth0.yaml values.yaml
+#    For Keycloak: cp charts/governance-platform/examples/values-keycloak.yaml values.yaml
+#    For Entra:    cp charts/governance-platform/examples/values-entra.yaml values.yaml
+#    Then edit values.yaml with your environment-specific settings.
+#
+# 3. Create required secrets (see governance-platform/README.md for full list)
+#    If you used govctl, deploy the generated secrets file with --values secrets-{env}.yaml.
+#    Alternatively, create secrets manually:
 kubectl create secret generic platform-database \
   --from-literal=username=postgres \
   --from-literal=password="$(openssl rand -base64 24)" \
   --namespace governance
 
 # ... additional secrets as documented in governance-platform/README.md
-
-# 3. Create values file (use the appropriate example as a starting point)
-#    For Auth0:    cp charts/governance-platform/examples/values-auth0.yaml values.yaml
-#    For Keycloak: cp charts/governance-platform/examples/values-keycloak.yaml values.yaml
-#    Then edit values.yaml with your environment-specific settings.
 
 # 4. Deploy
 helm dependency update ./charts/governance-platform
@@ -80,7 +84,7 @@ helm upgrade --install governance-platform ./charts/governance-platform \
 kubectl get pods -n governance
 ```
 
-For complete documentation, see [governance-platform/README.md](charts/governance-platform/README.md).
+For complete documentation, see [governance-platform/README.md](governance-platform/README.md).
 
 ## Installation Methods
 
@@ -119,7 +123,16 @@ The `charts/governance-platform/examples/` directory contains complete deploymen
 | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | [values-auth0.yaml](charts/governance-platform/examples/values-auth0.yaml)       | Platform deployment using Auth0 as the identity provider    |
 | [values-keycloak.yaml](charts/governance-platform/examples/values-keycloak.yaml) | Platform deployment using Keycloak as the identity provider |
+| [values-entra.yaml](charts/governance-platform/examples/values-entra.yaml)       | Platform deployment using Entra ID as the identity provider |
 | [secrets-sample.yaml](charts/governance-platform/examples/secrets-sample.yaml)   | Complete secrets configuration template                     |
+
+## Deployment Guides
+
+The `docs/` directory contains step-by-step deployment guides:
+
+| Guide                                                             | Description                                               |
+| ----------------------------------------------------------------- | --------------------------------------------------------- |
+| [deployment-guide-keycloak.md](docs/deployment-guide-keycloak.md) | End-to-end deployment using Keycloak as identity provider |
 
 ## Development
 

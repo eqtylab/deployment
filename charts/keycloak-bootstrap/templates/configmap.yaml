@@ -66,8 +66,8 @@ data:
       REALM_CONFIG=$(cat <<EOF
     {
       "realm": "${REALM_NAME}",
-      "displayName": "{{ .Values.keycloak.realm.displayName }}",
-      "displayNameHtml": "{{ .Values.keycloak.realm.displayNameHtml }}",
+      "displayName": {{ .Values.keycloak.realm.displayName | toJson }},
+      "displayNameHtml": {{ .Values.keycloak.realm.displayNameHtml | toJson }},
       "enabled": true,
       "registrationAllowed": {{ .Values.keycloak.realm.registrationAllowed }},
       "loginWithEmailAllowed": {{ .Values.keycloak.realm.loginWithEmailAllowed }},

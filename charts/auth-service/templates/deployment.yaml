@@ -156,6 +156,48 @@ spec:
                   key: {{ (((((.Values.global).secrets).auth).keycloak).keys).serviceAccountClientSecret | default "service-account-client-secret" | quote }}
               {{- end }}
 
+            {{- else if eq $idpProvider "entra" }}
+            {{- /* Microsoft Entra ID credentials */}}
+            {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
+            - name: IDP_CLIENT_ID
+              {{- if .Values.config.idp.entra.clientId }}
+              value: {{ .Values.config.idp.entra.clientId | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $entraSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).entra).keys).clientId | default "client-id" | quote }}
+              {{- end }}
+            - name: IDP_CLIENT_SECRET
+              {{- if .Values.config.idp.entra.clientSecret }}
+              value: {{ .Values.config.idp.entra.clientSecret | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $entraSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).entra).keys).clientSecret | default "client-secret" | quote }}
+              {{- end }}
+            {{- if or .Values.config.idp.entra.graphClientId $entraSecretName }}
+            - name: IDP_ENTRA_GRAPH_CLIENT_ID
+              {{- if .Values.config.idp.entra.graphClientId }}
+              value: {{ .Values.config.idp.entra.graphClientId | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $entraSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).entra).keys).graphClientId | default "graph-client-id" | quote }}
+              {{- end }}
+            - name: IDP_ENTRA_GRAPH_CLIENT_SECRET
+              {{- if .Values.config.idp.entra.graphClientSecret }}
+              value: {{ .Values.config.idp.entra.graphClientSecret | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $entraSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).entra).keys).graphClientSecret | default "graph-client-secret" | quote }}
+              {{- end }}
+            {{- end }}
+
             {{- else }}
             {{- /* Auth0 credentials (default) */}}
             {{- $authSecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}

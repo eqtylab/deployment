@@ -11,7 +11,7 @@ The platform provides:
 - **Governance Management**: Policy management, compliance tracking, and governance workflows
 - **Integrity & Lineage**: Verifiable credentials, data lineage, and audit trails
 - **Multi-Tenancy**: Organization-based access control and isolation
-- **Flexible Authentication**: Support for Auth0, Keycloak, and other identity providers
+- **Flexible Authentication**: Support for Auth0, Keycloak, and Microsoft Entra ID
 - **Cloud-Native**: Kubernetes-native with horizontal scaling and high availability
 
 ## Architecture
@@ -40,221 +40,159 @@ This allows:
 
 **Key principle**: Define infrastructure concerns (domains, secrets, databases) globally, and service-specific settings (storage providers, feature flags) at the service level.
 
-## Quick Start
+## Prerequisites
 
-### 1. Create Required Secrets
+- Kubernetes 1.21+
+- Helm 3.8+
+- Persistent Volume Provisioner for database storage
+- Container Registry Access (GitHub Container Registry credentials)
+- Ingress controller (NGINX, Traefik, etc.)
+- TLS certificate management (cert-manager or manual)
 
-```bash
-# Create namespace
-kubectl create namespace governance
+### Infrastructure Dependencies
 
-# Database credentials
-kubectl create secret generic platform-database \
-  --from-literal=username=postgres \
-  --from-literal=password=YOUR_DB_PASSWORD \
-  --namespace governance
-
-# Auth0 M2M credentials (two applications required)
-kubectl create secret generic platform-auth0 \
-  --from-literal=client-id=YOUR_M2M_CLIENT_ID \
-  --from-literal=client-secret=YOUR_M2M_CLIENT_SECRET \
-  --from-literal=mgmt-client-id=YOUR_MGMT_API_CLIENT_ID \
-  --from-literal=mgmt-client-secret=YOUR_MGMT_API_CLIENT_SECRET \
-  --namespace governance
-
-# GCS credentials
-kubectl create secret generic platform-gcs \
-  --from-literal=service-account-json="$(cat service-account.json | base64)" \
-  --namespace governance
-
-# Encryption key
-kubectl create secret generic platform-encryption-key \
-  --from-literal=encryption-key="$(openssl rand -base64 32)" \
-  --namespace governance
-
-# Auth Service secrets
-kubectl create secret generic platform-auth-service \
-  --from-literal=api-secret="$(openssl rand -base64 32)" \
-  --from-literal=jwt-secret="$(openssl rand -base64 32)" \
-  --namespace governance
-
-# Azure Key Vault credentials (for credential signing)
-kubectl create secret generic platform-azure-key-vault \
-  --from-literal=client-id=YOUR_AZURE_CLIENT_ID \
-  --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
-  --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
-  --from-literal=vault-url=https://your-vault.vault.azure.net/ \
-  --namespace governance
-
-# Governance Worker credentials (for M2M authentication)
-kubectl create secret generic platform-governance-worker \
-  --from-literal=encryption-key="$(openssl rand -base64 32)" \
-  --from-literal=client-id=YOUR_AUTH0_M2M_CLIENT_ID \
-  --from-literal=client-secret=YOUR_AUTH0_M2M_CLIENT_SECRET \
-  --namespace governance
-
-# Image pull secret
-kubectl create secret docker-registry platform-image-pull-secret \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USERNAME \
-  --docker-password=YOUR_GITHUB_PAT \
-  --namespace governance
-```
-
-### 2. Create Values File
-
-```yaml
-# values.yaml
-global:
-  domain: "governance.yourcompany.com"
-  environmentType: "production"
-
-  secrets:
-    create: false
-    database:
-      secretName: "platform-database"
-    auth:
-      provider: "auth0"
-      auth0:
-        secretName: "platform-auth0"
-    storage:
-      gcs:
-        secretName: "platform-gcs"
-    secretManager:
-      provider: "azure_key_vault"
-      azure_key_vault:
-        secretName: "platform-azure-key-vault"
-    encryption:
-      secretName: "platform-encryption-key"
-    authService:
-      secretName: "platform-auth-service"
-    governanceWorker:
-      secretName: "platform-governance-worker"
-    imageRegistry:
-      secretName: "platform-image-pull-secret"
-
-governance-studio:
-  enabled: true
-  config:
-    auth0Domain: "your-tenant.us.auth0.com"
-    auth0ClientId: "your-spa-client-id" # SPA client ID (public, not a secret)
-    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
-  ingress:
-    enabled: true
-    className: nginx
-
-governance-service:
-  enabled: true
-  config:
-    storageProvider: "gcs"
-    gcsBucketName: "your-governance-artifacts-bucket"
-  ingress:
-    enabled: true
-    className: nginx
-
-integrity-service:
-  enabled: true
-  config:
-    integrityAppBlobStoreType: "azure_blob"
-    integrityAppBlobStoreAccount: "your-storage-account"
-    integrityAppBlobStoreContainer: "your-integrity-store-container"
-  ingress:
-    enabled: true
-    className: nginx
-
-auth-service:
-  enabled: true
-  config:
-    idp:
-      auth0:
-        domain: "your-tenant.us.auth0.com" # Must be set when using Auth0
-        managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
-        apiIdentifier: "https://your-tenant.us.auth0.com/api/v2/"
-  ingress:
-    enabled: true
-    className: nginx
-
-postgresql:
-  enabled: true
-```
-
-### 3. Install
+#### Ingress Controller (Required)
 
 ```bash
-# Update dependencies
-helm dependency update ./charts/governance-platform
-
-# Install
-helm install governance-platform ./charts/governance-platform \
-  --namespace governance \
-  --values values.yaml
+helm upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace
 ```
 
-### 4. Verify
+#### TLS Certificate Management (Required for Production)
+
+**Option A: cert-manager (Recommended)**
+
+```bash
+helm install cert-manager cert-manager \
+  --repo https://charts.jetstack.io \
+  --namespace cert-manager \
+  --create-namespace \
+  --set installCRDs=true
+
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: your-email@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+EOF
+```
+
+**Option B: Manual TLS Secrets**
+
+```bash
+kubectl create secret tls platform-tls \
+  --cert=path/to/tls.crt \
+  --key=path/to/tls.key \
+  --namespace governance
+```
+
+## Deployment
+
+### Quick Start
+
+The recommended way to generate configuration is with [`govctl`](../../govctl/README.md), the Governance Platform CLI:
+
+```bash
+# Install govctl (from the govctl/ directory)
+uv pip install -e .
+
+# Generate values and secrets files
+govctl init
+
+# Fill in any remaining secrets
+# Review generated files for correctness
+
+# Deploy
+helm upgrade --install governance-platform ./charts/governance-platform \
+  -f output/values-staging.yaml \
+  -f output/secrets-staging.yaml \
+  -n governance --create-namespace
+```
+
+See the [govctl README](../../govctl/README.md) for full usage and options.
+
+### Required Configuration
+
+Whether using `govctl` or manual configuration, these values **must** be set:
+
+- **`global.domain`** - Base domain for all services
+- **`global.secrets.auth.provider`** - Auth provider (`auth0`, `keycloak`, or `entra`)
+- **Storage provider** per service (`governance-service.config.storageProvider`, `integrity-service.config.integrityAppBlobStoreType`)
+- **Storage bucket/container names** per service
+- **Auth provider public settings** - SPA client IDs, domains, tenant IDs (varies by provider)
+- **All secret values** in the secrets file (database, auth, storage, encryption, registry)
+
+See the [examples/](examples/) directory for complete configuration examples:
+
+- [values-auth0.yaml](examples/values-auth0.yaml) - Auth0 deployment
+- [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
+- [values-entra.yaml](examples/values-entra.yaml) - Entra ID deployment
+- [secrets-sample.yaml](examples/secrets-sample.yaml) - Complete secrets template
+
+### Verify
 
 ```bash
 kubectl get pods -n governance
 kubectl get ingress -n governance
 ```
 
+### Installing from OCI Registry
+
+```bash
+helm install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
+  --version 0.1.0 \
+  --create-namespace \
+  --namespace governance \
+  --values values.yaml
+```
+
+### Uninstalling
+
+```bash
+helm uninstall governance-platform --namespace governance
+```
+
+> **Warning**: This deletes all resources including persistent volumes. Backup your database before uninstalling.
+
 ## Secrets Management
 
 The platform supports two approaches for managing secrets:
 
-### Option 1: Pre-Created Kubernetes Secrets (Recommended for Production)
+### Option 1: Secrets Values File (Recommended)
 
-Create secrets manually in Kubernetes before deploying. This is the most secure approach as secrets never touch your filesystem or version control.
+Use `govctl init` to generate a secrets file, or create one manually. Secrets are passed to Helm as a separate values file.
+
+```bash
+helm upgrade --install governance-platform ./charts/governance-platform \
+  --namespace governance \
+  --values values.yaml \
+  --values secrets.yaml
+```
+
+See [examples/secrets-sample.yaml](examples/secrets-sample.yaml) for a complete template.
+
+### Option 2: Pre-Created Kubernetes Secrets
+
+Create secrets manually in Kubernetes before deploying. This approach avoids secrets touching your filesystem.
 
 ```yaml
 # values.yaml
 global:
   secrets:
     create: false # Use pre-created secrets
-    database:
-      secretName: "platform-database"
 ```
-
-See the [Quick Start](#1-create-required-secrets) section for all required secret creation commands.
-
-### Option 2: Secrets Values File (Development & CI/CD)
-
-For development environments or automated deployments, you can provide secrets via a separate values file that gets passed to Helm.
-
-**Create a secrets.yaml file:**
-
-```yaml
-# secrets.yaml - DO NOT commit unencrypted!
-global:
-  secrets:
-    create: true # Auto-create secrets from values below
-
-    database:
-      values:
-        username: "postgres"
-        password: "your-secure-password"
-
-    auth:
-      provider: "auth0"
-      auth0:
-        values:
-          clientId: "your-client-id"
-          clientSecret: "your-client-secret"
-          mgmtClientId: "your-mgmt-client-id"
-          mgmtClientSecret: "your-mgmt-client-secret"
-
-    # ... additional secrets
-```
-
-**Deploy with separate values files:**
-
-```bash
-helm upgrade --install governance-platform ./charts/governance-platform \
-  --namespace governance \
-  --values ./configs/values.yaml \
-  --values ./secrets/secrets.yaml
-```
-
-See [examples/secrets-sample.yaml](examples/secrets-sample.yaml) for a complete template.
 
 ### Encrypting Secrets for Version Control
 
@@ -360,95 +298,6 @@ helm upgrade governance-platform ./charts/governance-platform \
   --set global.secrets.database.values.password=$PASSWORD
 ```
 
-## Prerequisites
-
-- Kubernetes 1.21+
-- Helm 3.8+
-- Persistent Volume Provisioner for database storage
-- Container Registry Access (GitHub Container Registry credentials)
-- Ingress controller (NGINX, Traefik, etc.)
-- TLS certificate management (cert-manager or manual)
-
-### Infrastructure Dependencies
-
-#### Ingress Controller (Required)
-
-```bash
-helm upgrade --install ingress-nginx ingress-nginx \
-  --repo https://kubernetes.github.io/ingress-nginx \
-  --namespace ingress-nginx \
-  --create-namespace
-```
-
-#### TLS Certificate Management (Required for Production)
-
-**Option A: cert-manager (Recommended)**
-
-```bash
-helm install cert-manager cert-manager \
-  --repo https://charts.jetstack.io \
-  --namespace cert-manager \
-  --create-namespace \
-  --set installCRDs=true
-
-kubectl apply -f - <<EOF
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt-prod
-spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: your-email@example.com
-    privateKeySecretRef:
-      name: letsencrypt-prod
-    solvers:
-    - http01:
-        ingress:
-          class: nginx
-EOF
-```
-
-**Option B: Manual TLS Secrets**
-
-```bash
-kubectl create secret tls platform-tls \
-  --cert=path/to/tls.crt \
-  --key=path/to/tls.key \
-  --namespace governance
-```
-
-## Installing the Chart
-
-### From Local Directory
-
-```bash
-helm dependency update ./charts/governance-platform
-
-helm install governance-platform ./charts/governance-platform \
-  --create-namespace \
-  --namespace governance \
-  --values values.yaml
-```
-
-### From OCI Registry
-
-```bash
-helm install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
-  --version 0.1.0 \
-  --create-namespace \
-  --namespace governance \
-  --values values.yaml
-```
-
-## Uninstalling the Chart
-
-```bash
-helm uninstall governance-platform --namespace governance
-```
-
-> ⚠️ **Warning**: This deletes all resources including persistent volumes. Backup your database before uninstalling.
-
 ## Values
 
 ### Global Parameters
@@ -465,23 +314,23 @@ These global values are automatically inherited by all subcharts:
 
 Centralized secret configuration for all platform components:
 
-| Key                                                     | Type   | Default                            | Description                                    |
-| ------------------------------------------------------- | ------ | ---------------------------------- | ---------------------------------------------- |
-| global.secrets.create                                   | bool   | `false`                            | Auto-create secrets from values (dev only)     |
-| global.secrets.database.secretName                      | string | `"platform-database"`              | Database credentials secret name               |
-| global.secrets.auth.provider                            | string | `"auth0"`                          | Auth provider (auth0 or keycloak)              |
-| global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`                 | Auth0 credentials secret name                  |
-| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`              | Keycloak credentials secret name               |
-| global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`                   | GCS credentials secret name                    |
-| global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`            | Azure Blob credentials secret name             |
-| global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`                | AWS S3 credentials secret name                 |
-| global.secrets.secretManager.provider                   | string | `"azure_key_vault"`                | Secret manager provider for credential signing |
-| global.secrets.secretManager.azure_key_vault.secretName | string | `"platform-azure-key-vault"`       | Azure Key Vault credentials secret name        |
-| global.secrets.encryption.secretName                    | string | `"platform-encryption-key"`        | Platform encryption key secret name            |
-| global.secrets.authService.secretName                   | string | `"platform-auth-service"`          | Auth service secrets (session, JWT, API keys)  |
-| global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"`     | Governance worker credentials secret name      |
-| global.secrets.governanceServiceAI.secretName           | string | `"platform-governance-service-ai"` | AI API key secret name                         |
-| global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"`     | Container registry credentials secret name     |
+| Key                                                     | Type   | Default                        | Description                                    |
+| ------------------------------------------------------- | ------ | ------------------------------ | ---------------------------------------------- |
+| global.secrets.create                                   | bool   | `false`                        | Auto-create secrets from values (dev only)     |
+| global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name               |
+| global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, keycloak, or entra)      |
+| global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`             | Auth0 credentials secret name                  |
+| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`          | Keycloak credentials secret name               |
+| global.secrets.auth.entra.secretName                    | string | `"platform-entra"`             | Microsoft Entra ID credentials secret name     |
+| global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`               | GCS credentials secret name                    |
+| global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`        | Azure Blob credentials secret name             |
+| global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`            | AWS S3 credentials secret name                 |
+| global.secrets.secretManager.provider                   | string | `"azure_key_vault"`            | Secret manager provider for credential signing |
+| global.secrets.secretManager.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name        |
+| global.secrets.encryption.secretName                    | string | `"platform-encryption-key"`    | Platform encryption key secret name            |
+| global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth service secrets (session, JWT, API keys)  |
+| global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"` | Governance worker credentials secret name      |
+| global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"` | Container registry credentials secret name     |
 
 ### Global Database Configuration
 
@@ -517,20 +366,19 @@ Backend API service settings. See [governance-service/README.md](../governance-s
 | governance-service.replicaCount           | int    | `2`     | Number of replicas                                |
 | governance-service.ingress.enabled        | bool   | `false` | Enable ingress                                    |
 | governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: gcs/azure/aws_s3) |
-| governance-service.config.ai.enabled      | bool   | `false` | Enable AI features                                |
 | governance-service.autoscaling.enabled    | bool   | `false` | Enable horizontal pod autoscaling                 |
 
 ### Integrity Service Configuration
 
 Credential and lineage service settings. See [integrity-service/README.md](../integrity-service/README.md) for complete documentation.
 
-| Key                                                | Type   | Default | Description                                        |
-| -------------------------------------------------- | ------ | ------- | -------------------------------------------------- |
-| integrity-service.enabled                          | bool   | `true`  | Enable Integrity Service                           |
-| integrity-service.replicaCount                     | int    | `2`     | Number of replicas                                 |
-| integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                     |
-| integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob) |
-| integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                  |
+| Key                                                | Type   | Default | Description                                            |
+| -------------------------------------------------- | ------ | ------- | ------------------------------------------------------ |
+| integrity-service.enabled                          | bool   | `true`  | Enable Integrity Service                               |
+| integrity-service.replicaCount                     | int    | `2`     | Number of replicas                                     |
+| integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                         |
+| integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs) |
+| integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                      |
 
 ### Auth Service Configuration
 
@@ -575,24 +423,24 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 
 When services are deployed via the umbrella chart, they automatically inherit:
 
-- ✅ Domain and environment type
-- ✅ Database connection details and credentials
-- ✅ Authentication provider configuration
-- ✅ Storage credentials (credentials only, not provider/bucket selection)
-- ✅ Encryption keys and secret manager credentials
-- ✅ Service-to-service URLs
-- ✅ Image pull secrets
-- ✅ Worker authentication credentials
-- ✅ AI API credentials
+- Domain and environment type
+- Database connection details and credentials
+- Authentication provider configuration
+- Storage credentials (credentials only, not provider/bucket selection)
+- Encryption keys and secret manager credentials
+- Service-to-service URLs
+- Image pull secrets
+- Worker authentication credentials
+- AI API credentials
 
 ### What Must Be Explicitly Configured
 
 Services require explicit configuration for:
 
-- ⚠️ Storage provider type (`storageProvider`, `integrityAppBlobStoreType`)
-- ⚠️ Storage account/bucket/container names (`azureStorageAccountName`, `gcsBucketName`, `azureStorageContainerName`, etc.)
-- ⚠️ Feature flags (governance-studio)
-- ⚠️ Service-specific settings (AI config, indicator settings, etc.)
+- Storage provider type (`storageProvider`, `integrityAppBlobStoreType`)
+- Storage account/bucket/container names (`azureStorageAccountName`, `gcsBucketName`, `azureStorageContainerName`, etc.)
+- Feature flags (governance-studio)
+- Service-specific settings (AI config, indicator settings, etc.)
 
 ### Example Configuration Flow
 
@@ -727,7 +575,6 @@ global:
       provider: "auth0"
       auth0:
         secretName: "platform-auth0"
-        # M2M credentials are stored in the secret (see Quick Start for creation)
 
     governanceWorker:
       secretName: "platform-governance-worker"
@@ -762,7 +609,6 @@ global:
       provider: "keycloak"
       keycloak:
         secretName: "platform-keycloak"
-        # Service account credentials are stored in the secret (see Quick Start for creation)
 
     governanceWorker:
       secretName: "platform-governance-worker"
@@ -781,11 +627,54 @@ auth-service:
         realm: "governance"
         adminUrl: "https://keycloak.your-domain.com"
         clientId: "governance-platform-frontend"
+```
 
-keycloak:
-  createOrganization: true
-  realmName: "governance"
-  displayName: "Governance Platform"
+### Microsoft Entra ID Configuration
+
+Microsoft Entra ID requires an app registration with OIDC credentials and optional Microsoft Graph API access:
+
+1. **OIDC App Registration** - For token validation (`entra.values.clientId/clientSecret/tenantId`)
+2. **Graph API App Registration** (Optional) - For user management via Microsoft Graph (`entra.values.graphClientId/graphClientSecret`)
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "entra"
+      entra:
+        secretName: "platform-entra"
+        # Credentials are stored in the secret (see below for creation)
+
+governance-studio:
+  config:
+    authProvider: "entra"
+    entraClientId: "your-entra-client-id"
+    entraTenantId: "your-tenant-id"
+    # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional
+
+auth-service:
+  config:
+    idp:
+      issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+      entra:
+        tenantId: "your-tenant-id"
+        defaultRoles: "user"
+
+governance-service:
+  config:
+    # entraTenantId auto-configured from secret
+```
+
+**Create the Entra secret:**
+
+```bash
+kubectl create secret generic platform-entra \
+  --from-literal=client-id=YOUR_ENTRA_CLIENT_ID \
+  --from-literal=client-secret=YOUR_ENTRA_CLIENT_SECRET \
+  --from-literal=tenant-id=YOUR_ENTRA_TENANT_ID \
+  --from-literal=graph-client-id=YOUR_GRAPH_CLIENT_ID \
+  --from-literal=graph-client-secret=YOUR_GRAPH_CLIENT_SECRET \
+  --namespace governance
 ```
 
 ## Environment-Specific Configurations
@@ -884,6 +773,8 @@ postgresql:
   primary:
     persistence:
       size: 100Gi
+      # Uses cluster default StorageClass when set to "".
+      # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3"
       storageClass: "fast-ssd"
     resources:
       requests:
@@ -967,7 +858,7 @@ kubectl get pods -n governance
 kubectl describe pod <pod-name> -n governance
 ```
 
-### Testing Configuration
+### Verifying Configuration
 
 View environment variables in running pod:
 
@@ -1005,6 +896,7 @@ kubectl exec -it deployment/governance-platform-governance-service -n governance
 - Verify auth provider matches `global.secrets.auth.provider`
 - For Auth0: check domain, client ID, and client secret
 - For Keycloak: check URL, realm, and client credentials
+- For Entra: check tenant ID, client ID, client secret, and issuer URL
 - Ensure auth service is running and accessible
 
 **Configuration not applying**
@@ -1032,7 +924,7 @@ auth-service:
       level: "debug"
 ```
 
-## Health Check Endpoints
+## Health Endpoints
 
 | Service            | Endpoint                          |
 | ------------------ | --------------------------------- |
@@ -1041,7 +933,7 @@ auth-service:
 | Integrity Service  | `GET /integrityService/health/v1` |
 | Auth Service       | `GET /authService/health`         |
 
-## API Documentation
+### API Documentation
 
 Each backend service exposes Swagger/OpenAPI documentation:
 

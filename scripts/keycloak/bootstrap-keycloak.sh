@@ -17,13 +17,13 @@ Bootstrap Keycloak realm, clients, scopes, and users for the Governance Platform
 
 Usage: $0 -f <values-file> [options]
   -f, --values <file>             Helm values file for keycloak-bootstrap chart (required)
-  -n, --namespace <namespace>     Kubernetes namespace (default: $NAMESPACE)
+  -n, --namespace <namespace>     Kubernetes namespace (required)
   -r, --release <name>            Helm release name (default: $BOOTSTRAP_RELEASE)
   -c, --chart-dir <dir>           Chart directory (default: $CHART_DIR)
   -h, --help                      Show this help message
 
 Examples:
-  $0 -f $CHART_DIR/examples/values.yaml
+  $0 -f $CHART_DIR/examples/values.yaml -n governance
   $0 -f my-values.yaml --namespace governance-stag
 "
 }
@@ -174,7 +174,7 @@ show_summary() {
 }
 
 # Default values
-NAMESPACE="governance"
+NAMESPACE=""
 BOOTSTRAP_RELEASE="keycloak-bootstrap"
 CHART_DIR="$ROOTDIR/charts/keycloak-bootstrap"
 VALUES_FILE=""
@@ -215,6 +215,7 @@ assert_is_installed "helm"
 assert_is_installed "kubectl"
 
 # Validate required arguments
+assert_not_empty "namespace" "$NAMESPACE" "Use -n or --namespace to provide a namespace."
 assert_not_empty "values-file" "$VALUES_FILE" "Use -f or --values to provide a Helm values file."
 
 # Validate path to file exists

@@ -144,7 +144,6 @@ Revision:         {{ .Release.Revision }}
       - platform-image-pull-secret (Container registry credentials)
       - platform-auth-service (Auth service application secrets)
       - platform-governance-worker (Governance worker credentials)
-      - platform-governance-service-ai (AI API credentials)
     {{- else }}
     
     ⚠ Secret creation disabled - ensure all required secrets exist manually!

@@ -332,6 +332,13 @@ secrets:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
       name: ""
+    # -- Entra Secret
+    # @default -- See values below
+    # Only used when provider is "entra"
+    entra:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+      name: ""
 
   # -- Auth Service Secrets
   # @default -- See values below
@@ -382,6 +389,10 @@ config:
     # -- Environment
     # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
     environment: ""
+    # -- Auth Service URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}")
+    # Internal URL used by auth-service to reference itself (e.g., for JWKS endpoint)
+    authServiceUrl: ""
     # -- Swagger Enabled
     # @default -- `true`
     # Enable Swagger documentation
@@ -451,7 +462,7 @@ config:
   idp:
     # -- Provider
     # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-    # Options: auth0, keycloak
+    # Options: auth0, keycloak, entra
     provider: ""
     # -- OIDC Issuer URL
     # @default -- `""`
@@ -539,6 +550,35 @@ config:
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
       # Only used when provider is "keycloak"
       serviceAccountClientSecret: ""
+
+    # -- Microsoft Entra ID Configuration
+    # @default -- See values below
+    # Only used when provider is "entra"
+    entra:
+      # -- Tenant ID
+      # @default -- `""`
+      # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+      tenantId: ""
+      # -- Client ID
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # OIDC client ID for token validation
+      clientId: ""
+      # -- Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # OIDC client secret
+      clientSecret: ""
+      # -- Graph API Client ID
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # App registration client ID with Graph API permissions
+      graphClientId: ""
+      # -- Graph API Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # Corresponding client secret for Graph API
+      graphClientSecret: ""
+      # -- Default Roles
+      # @default -- `""`
+      # Comma-separated default roles for new users (optional)
+      defaultRoles: ""
 
   # ---------------------------------------------------------------------------
   # Key Vault Configuration

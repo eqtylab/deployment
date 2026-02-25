@@ -321,6 +321,13 @@ secrets:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
       name: ""
+    # -- Entra Secret
+    # @default -- See values below
+    # Only used when auth provider is "entra"
+    entra:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+      name: ""
 
   # -- Storage Secrets
   # @default -- See values below
@@ -486,7 +493,7 @@ config:
 
   # -- Auth Provider
   # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-  # Options: auth0, keycloak
+  # Options: auth0, keycloak, entra
   authProvider: ""
 
   # -- Auth0 Domain
@@ -539,6 +546,22 @@ config:
   # Only used when auth provider is "keycloak"
   keycloakClientSecret: ""
 
+  # -- Entra Tenant ID
+  # @default -- `""` (auto-configured from global.secrets.auth.entra)
+  # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+  # Only used when auth provider is "entra"
+  entraTenantId: ""
+
+  # -- Entra Client ID
+  # @default -- `""` (auto-configured from global.secrets.auth.entra)
+  # Only used when auth provider is "entra"
+  entraClientId: ""
+
+  # -- Entra Client Secret
+  # @default -- `""` (auto-configured from global.secrets.auth.entra)
+  # Only used when auth provider is "entra"
+  entraClientSecret: ""
+
   # ---------------------------------------------------------------------------
   # Service Integration URLs
   # ---------------------------------------------------------------------------
@@ -584,52 +607,3 @@ config:
       # -- API Key
       # @default -- `api-secret`
       apiKey: "api-secret"
-
-  # ---------------------------------------------------------------------------
-  # AI Configuration
-  # ---------------------------------------------------------------------------
-
-  # -- AI Configuration
-  # @default -- See values below
-  ai:
-    # -- Enable AI
-    # @default -- `false`
-    # Enable AI features
-    enabled: false
-    # -- AI Provider
-    # @default -- `anthropic`
-    provider: "anthropic"
-    # -- AI Model
-    # @default -- `claude-3-7-sonnet-latest`
-    model: "claude-3-7-sonnet-latest"
-    # -- Temperature
-    # @default -- `0.7`
-    # Temperature for AI responses
-    temperature: 0.7
-    # -- Max Tokens
-    # @default -- `4000`
-    # Maximum tokens for AI responses
-    maxTokens: 4000
-    # -- Timeout
-    # @default -- `60`
-    # Timeout for AI requests (seconds)
-    timeoutSeconds: 60
-    # -- Retry Attempts
-    # @default -- `3`
-    # Number of retry attempts for AI requests
-    retryAttempts: 3
-    # -- Secret Key Ref
-    # @default -- See values below
-    secretKeyRef:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.governanceServiceAI.secretName)
-      name: ""
-      # -- Secret Key
-      # @default -- `api-key`
-      key: "api-key"
-    # -- API Key
-    # @default -- `""` (auto-configured from global.secrets.governanceServiceAI)
-    apiKey: ""
-    # -- Use V2 API
-    # @default -- `true`
-    useV2: true
