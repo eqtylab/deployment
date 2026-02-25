@@ -133,13 +133,12 @@ The end-to-end deployment follows this order:
          ├── PostgreSQL starts, initializes databases
          ├── governance-service starts, runs migrations
          ├── auth-service, integrity-service, governance-studio start
+         ├── Post-install hook creates organization + admin user in DB
          │
-8. Run post-install setup script (creates organization + admin user in DB)
-         │
-9. Post-install verification
+8. Post-install verification
 ```
 
-> **Key ordering note:** The `keycloak-bootstrap` chart must be run **before** deploying the governance-platform, because the platform services need valid OAuth client credentials at startup. After the platform is deployed, run `scripts/keycloak/post-install-keycloak-setup.sh` to create the organization and platform-admin user in the database.
+> **Key ordering note:** The `keycloak-bootstrap` chart must be run **before** deploying the governance-platform, because the platform services need valid OAuth client credentials at startup. The governance-platform chart includes a Helm post-install hook that automatically creates the organization and platform-admin user in the database after deployment.
 
 ---
 
@@ -884,9 +883,9 @@ If Keycloak is accessible via an external URL, you can skip the port-forward and
 
 > **Save these secrets** — you'll need them in [Section 8](#8-creating-kubernetes-secrets) to create the `platform-keycloak` and `platform-governance-worker` Kubernetes secrets.
 
-### Retrieve the Platform Admin Keycloak ID (Optional)
+### Retrieve the Platform Admin Keycloak ID
 
-The bootstrap also creates the `platform-admin` user in Keycloak. The post-install script (`scripts/keycloak/post-install-keycloak-setup.sh`) retrieves this ID automatically, but you can look it up manually for verification:
+The bootstrap creates the `platform-admin` user in Keycloak. You need to retrieve this user's Keycloak ID and set it in your values file (`keycloak.platformAdminKeycloakId`) so the post-install hook can create the platform-admin user in the governance database.
 
 ```bash
 # Using the same port-forward and admin token from above
@@ -896,6 +895,8 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 ```
 
 Or from the **Keycloak Admin Console**: go to **governance** realm > **Users** > **platform-admin** and copy the user ID from the URL.
+
+> **Save this ID** — you'll need it when [configuring values.yaml](#keycloak-post-install-hook) in Section 9.
 
 ### Verify the Bootstrap
 
@@ -1246,6 +1247,29 @@ postgresql:
 
 The database password is pulled from the `platform-database` secret created in [Section 8](#database).
 
+### Keycloak Post-Install Hook
+
+The governance-platform chart includes a Helm post-install/post-upgrade hook that automatically creates the organization and platform-admin user in the database after deployment. Enable it in your values file:
+
+```yaml
+keycloak:
+  createOrganization: true
+  realmName: "governance" # Must match your Keycloak realm name
+  displayName: "Governance Studio" # Human-readable organization name
+  createPlatformAdmin: true
+  platformAdminKeycloakId: "" # Set to the ID retrieved in Section 7
+```
+
+| Field                     | Description                                         | Where to Get It                                                    |
+| ------------------------- | --------------------------------------------------- | ------------------------------------------------------------------ |
+| `createOrganization`      | Enable organization creation in the database        | Set to `true`                                                      |
+| `realmName`               | Keycloak realm name (used as the organization name) | Must match `auth-service.config.idp.keycloak.realm`                |
+| `displayName`             | Human-readable organization display name            | Your choice                                                        |
+| `createPlatformAdmin`     | Enable platform-admin user creation in the database | Set to `true`                                                      |
+| `platformAdminKeycloakId` | Keycloak user ID for the platform administrator     | Retrieved in [Section 7](#retrieve-the-platform-admin-keycloak-id) |
+
+The hook runs as a Kubernetes Job after Helm install/upgrade. It waits for database migrations to complete, then creates (or updates) the organization and admin user records. The hook is idempotent — it's safe to run on every upgrade.
+
 ### Configuration Checklist
 
 Before deploying, verify your values file has:
@@ -1259,6 +1283,8 @@ Before deploying, verify your values file has:
 - [ ] `integrity-service.config.integrityAppBlobStoreType` and storage fields set
 - [ ] All ingress `host` fields set to your domain
 - [ ] All ingress `tls` blocks using the same `secretName`
+- [ ] `keycloak.createOrganization` set to `true`
+- [ ] `keycloak.platformAdminKeycloakId` set (if `createPlatformAdmin` is `true`)
 
 ---
 
@@ -1299,10 +1325,9 @@ The Helm install proceeds in this order:
 2. **governance-service** starts, runs database migrations on startup
 3. **auth-service** and **integrity-service** start (depend on database being ready)
 4. **governance-studio** starts (static frontend, no database dependency)
+5. **Post-install hook** runs — waits for migrations to complete, then creates the organization and platform-admin user in the database (if `keycloak.createOrganization` is enabled)
 
 The `--wait` flag ensures Helm waits for all pods to reach `Ready` state before returning.
-
-> **Important:** After the platform is running, you must run the post-install setup script ([Section 11](#11-post-install-setup--verification)) to create the organization and platform-admin user in the database.
 
 ### Monitor the Deployment
 
@@ -1370,27 +1395,26 @@ kubectl describe certificate -n governance
 
 ## 11. Post-Install Setup & Verification
 
-### Run the Post-Install Setup Script
+### Verify the Post-Install Hook
 
-After the platform is deployed and all pods are running, run the post-install script to create the organization and platform-admin user in the database:
+If you enabled `keycloak.createOrganization` in your values file (see [Section 9](#keycloak-post-install-hook)), the Helm post-install hook automatically creates the organization and platform-admin user in the database. Verify the hook job completed successfully:
 
 ```bash
-./scripts/keycloak/post-install-keycloak-setup.sh \
-  --keycloak-url https://governance.your-domain.com/keycloak \
-  --namespace governance \
-  --admin-email admin@your-domain.com
+# Check the hook job status
+kubectl get jobs -n governance -l "app.kubernetes.io/component=keycloak-setup"
+
+# View hook job logs if needed
+kubectl logs -n governance -l "app.kubernetes.io/component=keycloak-setup" --tail=50
 ```
 
-The script will:
+The hook:
 
-1. Wait for the database and governance-service to be ready
-2. Create (or update) the organization in the database
-3. Look up the `platform-admin` user ID from Keycloak
-4. Create (or update) the platform-admin user in the database with the correct Keycloak ID
-5. Set up the organization membership with `organization_owner` role
-6. Run verification checks
+1. Waits for database migrations to complete (checks for required tables)
+2. Creates (or updates) the organization in the database using the configured `realmName`
+3. Creates (or updates) the platform-admin user with the configured `platformAdminKeycloakId`
+4. Sets up the organization membership with `organization_owner` role
 
-This script is idempotent — it's safe to run multiple times.
+The hook is idempotent — it runs on every `helm upgrade` and safely skips records that already exist.
 
 ### Verify Service Health
 

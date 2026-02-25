@@ -259,6 +259,20 @@ postgresql:
       limits:
         cpu: 2000m
         memory: 2Gi
+
+# =============================================================================
+# Keycloak Post-Install Hook
+# =============================================================================
+# Seeds the governance database with the organization and platform-admin user.
+# Runs as a Helm post-install/post-upgrade hook after migrations complete.
+# ------------------------------------------------------------------------------
+keycloak:
+  createOrganization: true
+  realmName: "governance"
+  displayName: "Governance Platform"
+  createPlatformAdmin: true
+  platformAdminKeycloakId: "" # Set after Keycloak bootstrap (obtain from Keycloak admin console)
+
 # =============================================================================
 # SECRET CREATION COMMANDS
 # =============================================================================

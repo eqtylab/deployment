@@ -2658,3 +2658,45 @@ postgresql:
 
           CREATE DATABASE "IntegrityServiceDB";
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
+
+# =============================================================================
+# Keycloak Integration
+# =============================================================================
+# Configuration for Keycloak identity provider integration
+# Creates the necessary organization and admin user in the governance database
+# Only used when global.secrets.auth.provider is set to "keycloak"
+# ------------------------------------------------------------------------------
+keycloak:
+  # -- Create Organization
+  # @default -- `false`
+  # Enable automatic organization creation for Keycloak realm
+  # Set to true to create organization in database on install/upgrade
+  # Organization name will match the Keycloak realm name
+  createOrganization: false
+
+  # -- Realm Name
+  # @default -- `governance`
+  # Keycloak realm name for the platform
+  # Must match auth-service config.idp.keycloak.realm and governance-studio config.keycloakRealm
+  # This name is used as the organization identifier in the database
+  realmName: "governance"
+
+  # -- Display Name
+  # @default -- `Governance Studio`
+  # Human-readable display name for the organization
+  # Shown in UI and organization management interfaces
+  displayName: "Governance Studio"
+
+  # -- Create Platform Admin
+  # @default -- `false`
+  # Create platform-admin user in auth service tables
+  # Set to true to create an initial platform administrator
+  # Requires platformAdminKeycloakId to be set
+  createPlatformAdmin: false
+
+  # -- Platform Admin Keycloak ID
+  # @default -- `""` (must be set if createPlatformAdmin is true)
+  # Keycloak user ID for the platform administrator
+  # Obtain this ID from Keycloak after creating the admin user
+  # Example: Set after Keycloak bootstrap via Keycloak admin console
+  platformAdminKeycloakId: ""

@@ -411,6 +411,18 @@ Bitnami PostgreSQL chart configuration:
 
 > **Note:** The `postgresPassword` is a placeholder that satisfies Bitnami chart validation during upgrades. The actual password is read from `existingSecret` at runtime. The secret is created via `global.secrets.database` when `global.secrets.create: true`.
 
+### Keycloak Post-Install Hook
+
+Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user:
+
+| Key                              | Type   | Default               | Description                                        |
+| -------------------------------- | ------ | --------------------- | -------------------------------------------------- |
+| keycloak.createOrganization      | bool   | `false`               | Enable the post-install hook to create the org     |
+| keycloak.realmName               | string | `"governance"`        | Keycloak realm name (used as org name in database) |
+| keycloak.displayName             | string | `"Governance Studio"` | Display name for the organization                  |
+| keycloak.createPlatformAdmin     | bool   | `false`               | Also create the platform-admin user and membership |
+| keycloak.platformAdminKeycloakId | string | `""`                  | Keycloak user ID for the platform admin            |
+
 ## Configuration Inheritance
 
 When deployed via the umbrella chart, configuration follows this precedence (highest to lowest):
@@ -628,6 +640,22 @@ auth-service:
         adminUrl: "https://keycloak.your-domain.com"
         clientId: "governance-platform-frontend"
 ```
+
+#### Post-Install Database Seed
+
+When using Keycloak, the chart includes an optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user. Enable it by setting:
+
+```yaml
+keycloak:
+  createOrganization: true # Creates the organization record in the database
+  realmName: "governance" # Must match your Keycloak realm name
+  displayName: "Governance Studio"
+
+  createPlatformAdmin: true # Also create the platform-admin user
+  platformAdminKeycloakId: "" # Keycloak user ID (obtain from Keycloak after bootstrap)
+```
+
+The hook waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
 
 ### Microsoft Entra ID Configuration
 

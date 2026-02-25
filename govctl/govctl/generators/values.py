@@ -2,13 +2,20 @@
 
 from typing import Any
 
-from govctl.core.models import PlatformConfig
+from govctl.core.models import AuthProvider, PlatformConfig
 from govctl.utils.yaml import dump_yaml_with_header
 from govctl.generators.sections.auth_service import generate_auth_service_section
-from govctl.generators.sections.governance_service import generate_governance_service_section
-from govctl.generators.sections.governance_studio import generate_governance_studio_section
-from govctl.generators.sections.integrity_service import generate_integrity_service_section
+from govctl.generators.sections.governance_service import (
+    generate_governance_service_section,
+)
+from govctl.generators.sections.governance_studio import (
+    generate_governance_studio_section,
+)
+from govctl.generators.sections.integrity_service import (
+    generate_integrity_service_section,
+)
 from govctl.generators.sections.postgresql import generate_postgresql_section
+from govctl.generators.sections.keycloak import generate_keycloak_section
 
 
 def generate_values(config: PlatformConfig) -> str:
@@ -21,6 +28,9 @@ def generate_values(config: PlatformConfig) -> str:
         "integrity-service": generate_integrity_service_section(config),
         "postgresql": generate_postgresql_section(config),
     }
+
+    if config.auth_provider == AuthProvider.KEYCLOAK:
+        values["keycloak"] = generate_keycloak_section(config)
 
     return dump_yaml_with_header(values, "values", config)
 
