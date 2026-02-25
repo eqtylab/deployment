@@ -2,8 +2,8 @@ apiVersion: v2
 name: governance-service
 description: A Helm chart for deploying the EQTY Lab Governance Service - core backend API for governance workflows and policy management
 type: application
-version: 1.9.0
-appVersion: "1.9.0"
+version: 2.0.1
+appVersion: "2.0.1"
 home: https://github.com/eqtylab/governance-studio-infrastructure
 sources:
   - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/governance-service

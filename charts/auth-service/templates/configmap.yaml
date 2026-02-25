@@ -12,6 +12,7 @@ data:
   PORT: "{{ .Values.config.server.port }}"
   HOST: "{{ .Values.config.server.host }}"
   ENVIRONMENT: "{{ .Values.config.server.environment | default ((.Values.global).environmentType) | default "production" }}"
+  AUTH_SERVICE_URL: {{ .Values.config.server.authServiceUrl | default (printf "http://%s-auth-service:%s" .Release.Name (toString .Values.config.server.port)) | quote }}
   SWAGGER_ENABLED: "{{ .Values.config.server.swaggerEnabled }}"
   {{- if .Values.config.server.swaggerEnabled }}
   SWAGGER_HOST: "{{ .Values.config.server.swaggerHost | default ((.Values.global).domain) | default "" }}"
@@ -81,6 +82,16 @@ data:
   {{- end }}
   IDP_KEYCLOAK_ENABLE_USER_MANAGEMENT: "{{ .Values.config.idp.keycloak.enableUserManagement }}"
   IDP_KEYCLOAK_ENABLE_GROUP_SYNC: "{{ .Values.config.idp.keycloak.enableGroupSync }}"
+  {{- end }}
+
+  # Microsoft Entra ID Configuration
+  {{- if eq $idpProvider "entra" }}
+  {{- if .Values.config.idp.entra.tenantId }}
+  IDP_ENTRA_TENANT_ID: {{ .Values.config.idp.entra.tenantId | quote }}
+  {{- end }}
+  {{- if .Values.config.idp.entra.defaultRoles }}
+  IDP_ENTRA_DEFAULT_ROLES: {{ .Values.config.idp.entra.defaultRoles | quote }}
+  {{- end }}
   {{- end }}
 
   # ==========================================================================

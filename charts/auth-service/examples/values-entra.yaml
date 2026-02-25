@@ -1,0 +1,49 @@
+# Microsoft Entra ID Configuration Example
+# Minimal configuration for deploying Auth Service with Microsoft Entra ID.
+# For all available values, see the chart's values.yaml and README.md.
+#
+# Usage:
+#   Set these values under the `auth-service:` key in your umbrella values file.
+
+image:
+  tag: ""
+  pullPolicy: Always
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
+  hosts:
+    - host: "governance.your-domain.com"
+      paths:
+        - path: "/authService(/|$)(.*)"
+          pathType: "ImplementationSpecific"
+  tls:
+    - secretName: "auth-service-tls"
+      hosts:
+        - "governance.your-domain.com"
+
+config:
+  # Microsoft Entra ID Configuration
+  idp:
+    provider: "entra"
+    issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+    skipIssuerVerification: false
+    entra:
+      tenantId: "your-tenant-id"
+      defaultRoles: "user"
+
+  # Key Vault Configuration (for DID keys)
+  keyVault:
+    provider: "azure_key_vault"
+    azure:
+      vaultUrl: "https://your-keyvault.vault.azure.net/"
+      tenantId: "your-azure-tenant-id"

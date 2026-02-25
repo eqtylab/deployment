@@ -8,7 +8,7 @@ The Auth Service provides centralized authentication, authorization, and identit
 
 Key capabilities:
 
-- **Identity Provider Integration**: Native support for Auth0 and Keycloak
+- **Identity Provider Integration**: Native support for Auth0, Keycloak, and Microsoft Entra ID
 - **RBAC Authorization**: Fine-grained permission management with caching
 - **Service Accounts**: Machine-to-machine authentication for platform workers
 - **DID Key Management**: Integration with Azure Key Vault for credential signing
@@ -30,7 +30,7 @@ This allows:
 - Kubernetes 1.21+
 - Helm 3.8+
 - PostgreSQL database (provided by umbrella chart or external)
-- Authentication provider (Auth0 or Keycloak)
+- Authentication provider (Auth0, Keycloak, or Entra ID)
 - Azure Key Vault (for DID key signing)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
@@ -142,6 +142,48 @@ auth-service:
       keyId: "auth-service-prod-001"
 ```
 
+**Microsoft Entra ID:**
+
+```yaml
+auth-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+      nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+      nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
+      nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "auth-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    idp:
+      provider: "entra"
+      issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+      entra:
+        tenantId: "your-tenant-id"
+        defaultRoles: "user"
+    # Key Vault Configuration (for DID keys)
+    keyVault:
+      provider: "azure_key_vault"
+      azure:
+        vaultUrl: "https://your-vault.vault.azure.net/"
+        tenantId: "your-azure-tenant-id"
+```
+
 ### Required Configuration
 
 Beyond what is auto-configured, these values **must** be explicitly set:
@@ -159,6 +201,13 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 - `config.idp.keycloak.clientId` - Frontend SPA client ID (public, e.g., `governance-platform-frontend`)
 - `config.idp.issuer` - Recommended: OIDC issuer URL (e.g., `https://keycloak.example.com/realms/governance`)
 
+**Microsoft Entra ID:**
+
+- `config.idp.entra.tenantId` - Microsoft Entra ID tenant ID
+- `config.idp.issuer` - OIDC issuer URL (e.g., `https://login.microsoftonline.com/{tenant-id}/v2.0`)
+- Client ID, client secret, Graph API client ID, and Graph API client secret are auto-configured from the `global.secrets.auth.entra` secret
+- `config.idp.entra.defaultRoles` - Optional: comma-separated default roles for new users
+
 **Azure Key Vault:**
 
 - `config.keyVault.azure.vaultUrl` - Vault URL (e.g., `https://your-vault.vault.azure.net/`)
@@ -170,7 +219,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 From global values:
 
 - Database connection (host, port, credentials from `global.postgresql.*` and `global.secrets.database`)
-- Identity provider type (from `global.secrets.auth.provider`)
+- Identity provider type and credentials (from `global.secrets.auth.provider` and provider-specific secrets)
 - Security secrets - API and JWT keys (from `global.secrets.authService`)
 - Key Vault credentials for DID signing (from `global.secrets.secretManager`)
 - Worker credentials (from `global.secrets.governanceWorker`)
@@ -198,9 +247,10 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.postgresql.database                              | string | PostgreSQL database name                          |
 | global.postgresql.username                              | string | PostgreSQL username                               |
 | global.secrets.database.secretName                      | string | Name of database credentials secret               |
-| global.secrets.auth.provider                            | string | Auth provider (auth0 or keycloak)                 |
+| global.secrets.auth.provider                            | string | Auth provider (auth0, keycloak, or entra)         |
 | global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                     |
 | global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                  |
+| global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                  |
 | global.secrets.authService.secretName                   | string | Auth service security secrets name                |
 | global.secrets.secretManager.provider                   | string | Secret manager provider (azure_key_vault)         |
 | global.secrets.secretManager.azure_key_vault.secretName | string | Azure Key Vault credentials secret name           |
@@ -345,6 +395,12 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | -------------------------- | ------ | -------------------------------------------------------------------------- |
 | secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
 
+#### Entra ID Secret (only used when auth provider is Entra ID)
+
+| Key                     | Type   | Description                                                             |
+| ----------------------- | ------ | ----------------------------------------------------------------------- |
+| secrets.auth.entra.name | string | Secret name (auto-configured from global.secrets.auth.entra.secretName) |
+
 #### Auth Service Secret
 
 | Key                      | Type   | Description                                                              |
@@ -367,14 +423,15 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Server Settings
 
-| Key                           | Type   | Default          | Description                                               |
-| ----------------------------- | ------ | ---------------- | --------------------------------------------------------- |
-| config.server.port            | int    | `8080`           | Server port                                               |
-| config.server.host            | string | `"0.0.0.0"`      | Server host                                               |
-| config.server.environment     | string | `""`             | Environment (auto-configured from global.environmentType) |
-| config.server.swaggerEnabled  | bool   | `true`           | Enable Swagger documentation                              |
-| config.server.swaggerHost     | string | `""`             | Swagger host (auto-configured from global.domain)         |
-| config.server.swaggerBasePath | string | `"/authService"` | Swagger base path (only used when swaggerEnabled is true) |
+| Key                           | Type   | Default          | Description                                                                                   |
+| ----------------------------- | ------ | ---------------- | --------------------------------------------------------------------------------------------- |
+| config.server.port            | int    | `8080`           | Server port                                                                                   |
+| config.server.host            | string | `"0.0.0.0"`      | Server host                                                                                   |
+| config.server.authServiceUrl  | string | `""`             | Internal URL for self-reference (auto-generated: `http://{Release.Name}-auth-service:{port}`) |
+| config.server.environment     | string | `""`             | Environment (auto-configured from global.environmentType)                                     |
+| config.server.swaggerEnabled  | bool   | `true`           | Enable Swagger documentation                                                                  |
+| config.server.swaggerHost     | string | `""`             | Swagger host (auto-configured from global.domain)                                             |
+| config.server.swaggerBasePath | string | `"/authService"` | Swagger base path (only used when swaggerEnabled is true)                                     |
 
 #### Auth Service Secrets
 
@@ -432,6 +489,17 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.idp.keycloak.enableGroupSync            | bool   | `false` | Enable group sync                                                                                                       |
 | config.idp.keycloak.serviceAccountClientId     | string | `""`    | Service account client ID (auto-configured from global.secrets.auth.keycloak)                                           |
 | config.idp.keycloak.serviceAccountClientSecret | string | `""`    | Service account client secret (auto-configured from global.secrets.auth.keycloak)                                       |
+
+**Entra ID Configuration (only used when provider is "entra"):**
+
+| Key                                | Type   | Default | Description                                                              |
+| ---------------------------------- | ------ | ------- | ------------------------------------------------------------------------ |
+| config.idp.entra.tenantId          | string | `""`    | Microsoft Entra ID tenant ID (**must be set**)                           |
+| config.idp.entra.clientId          | string | `""`    | OIDC client ID (auto-configured from global.secrets.auth.entra)          |
+| config.idp.entra.clientSecret      | string | `""`    | OIDC client secret (auto-configured from global.secrets.auth.entra)      |
+| config.idp.entra.graphClientId     | string | `""`    | Graph API client ID (auto-configured from global.secrets.auth.entra)     |
+| config.idp.entra.graphClientSecret | string | `""`    | Graph API client secret (auto-configured from global.secrets.auth.entra) |
+| config.idp.entra.defaultRoles      | string | `""`    | Comma-separated default roles for new users (optional)                   |
 
 #### Key Vault Configuration
 
@@ -588,6 +656,45 @@ secrets:
       name: "platform-keycloak"
 ```
 
+## Microsoft Entra ID Configuration
+
+### Required Entra ID Setup
+
+1. **Create an App Registration** for OIDC authentication (user-facing login)
+2. **Create a second App Registration** (or reuse the first) with Microsoft Graph API permissions for user management
+3. **Grant Graph API permissions**: `User.Read.All`, `User.ReadWrite.All`, or scopes required by your deployment
+4. **Note your Tenant ID** from Azure Active Directory overview
+
+### Example Configuration
+
+```yaml
+config:
+  idp:
+    provider: "entra"
+    issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+    entra:
+      tenantId: "your-tenant-id"
+      defaultRoles: "user"
+
+secrets:
+  auth:
+    entra:
+      name: "platform-entra"
+```
+
+### Secret Creation
+
+The Entra secret should contain the OIDC client credentials and Graph API credentials:
+
+```bash
+kubectl create secret generic platform-entra \
+  --from-literal=client-id=YOUR_OIDC_CLIENT_ID \
+  --from-literal=client-secret=YOUR_OIDC_CLIENT_SECRET \
+  --from-literal=graph-client-id=YOUR_GRAPH_API_CLIENT_ID \
+  --from-literal=graph-client-secret=YOUR_GRAPH_API_CLIENT_SECRET \
+  --namespace governance
+```
+
 ## Azure Key Vault Configuration
 
 ### Required Azure Setup
@@ -644,7 +751,7 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/auth-service -n governance -- env | grep -E 'IDP|AUTH0|KEYCLOAK|VAULT|DATABASE|DB_'
+kubectl exec -it deployment/auth-service -n governance -- env | grep -E 'IDP|AUTH0|KEYCLOAK|ENTRA|VAULT|DATABASE|DB_'
 ```
 
 View all environment variables:
@@ -664,8 +771,9 @@ kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/he
 **Authentication failures**
 
 - Verify `config.idp.provider` matches your identity provider
-- Check the Auth0/Keycloak domain and client credentials
+- Check the Auth0/Keycloak/Entra domain and client credentials
 - Ensure `config.idp.issuer` is correct
+- For Entra, verify `config.idp.entra.tenantId` is set and the Graph API credentials are correct
 - For development, try `config.idp.skipIssuerVerification: true`
 
 **Database connection errors**

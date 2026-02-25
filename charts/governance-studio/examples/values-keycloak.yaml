@@ -39,9 +39,3 @@ config:
   features:
     governance: true
     lineage: true
-    guardianEnabled: true
-    guardianGarage: true
-    guardianRulebooks: true
-    guardianOsFunctions: true
-    guardianSdkFunctions: false
-    agentManagement: true

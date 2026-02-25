@@ -21,7 +21,6 @@ Configuration:
 Feature Flags:
   Governance: {{ .Values.config.features.governance }}
   Lineage: {{ .Values.config.features.lineage }}
-  Guardian: {{ .Values.config.features.guardianEnabled }}
 
 To check the status:
   kubectl get pods -l app.kubernetes.io/name={{ include "governance-studio.name" . }} -n {{ .Release.Namespace }}

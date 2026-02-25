@@ -76,7 +76,7 @@ global:
     auth:
       # -- Auth Provider
       # @default -- `auth0`
-      # Options: auth0, keycloak
+      # Options: auth0, keycloak, entra
       provider: "auth0"
 
       # -- Auth0 Configuration (M2M credentials only)
@@ -126,6 +126,35 @@ global:
           # @default -- `""` (REQUIRED if create=true, for token exchange signing)
           tokenExchangePrivateKey: ""
 
+      # -- Microsoft Entra ID Configuration
+      # @default -- See values below
+      # Only used if provider=entra
+      entra:
+        secretName: "platform-entra"
+        keys:
+          clientId: "client-id"
+          clientSecret: "client-secret"
+          tenantId: "tenant-id"
+          graphClientId: "graph-client-id"
+          graphClientSecret: "graph-client-secret"
+        # Only used if create=true and provider=entra
+        values:
+          # -- Entra Client ID (Application (client) ID from Azure app registration)
+          # @default -- `""` (REQUIRED if create=true)
+          clientId: ""
+          # -- Entra Client Secret (Client secret from Azure app registration)
+          # @default -- `""` (REQUIRED if create=true)
+          clientSecret: ""
+          # -- Entra Tenant ID (Directory (tenant) ID from Azure)
+          # @default -- `""` (REQUIRED if create=true)
+          tenantId: ""
+          # -- Graph API Client ID (Application (client) ID for Microsoft Graph access)
+          # @default -- `""` (REQUIRED if create=true)
+          graphClientId: ""
+          # -- Graph API Client Secret (Client secret for Microsoft Graph access)
+          # @default -- `""` (REQUIRED if create=true)
+          graphClientSecret: ""
+
     # -- Auth Service Credentials
     # @default -- See values below
     # Used by: auth-service for application secrets
@@ -172,19 +201,6 @@ global:
         # -- Encryption Key
         # @default -- `""` (REQUIRED if create=true, generate with: openssl rand -base64 32)
         key: ""
-
-    # -- Governance Service AI Credentials
-    # @default -- See values below
-    # Used by: governance-service for AI-based governance decisions
-    governanceServiceAI:
-      secretName: "platform-governance-service-ai"
-      keys:
-        apiKey: "api-key"
-      # Only used if create=true
-      values:
-        # -- AI API Key
-        # @default -- `""` (Anthropic API key)
-        apiKey: ""
 
     # -- Governance Worker Credentials
     # @default -- See values below
@@ -639,6 +655,13 @@ auth-service:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
         name: ""
+      # -- Entra Secret
+      # @default -- See values below
+      # Only used when provider is "entra"
+      entra:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+        name: ""
 
     # -- Auth Service Secrets
     # @default -- See values below
@@ -758,7 +781,7 @@ auth-service:
     idp:
       # -- Provider
       # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-      # Options: auth0, keycloak
+      # Options: auth0, keycloak, entra
       provider: ""
       # -- OIDC Issuer URL
       # @default -- `""`
@@ -846,6 +869,35 @@ auth-service:
         # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
         # Only used when provider is "keycloak"
         serviceAccountClientSecret: ""
+
+      # -- Microsoft Entra ID Configuration
+      # @default -- See values below
+      # Only used when provider is "entra"
+      entra:
+        # -- Tenant ID
+        # @default -- `""`
+        # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+        tenantId: ""
+        # -- Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # OIDC client ID for token validation
+        clientId: ""
+        # -- Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # OIDC client secret
+        clientSecret: ""
+        # -- Graph API Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # App registration client ID with Graph API permissions
+        graphClientId: ""
+        # -- Graph API Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # Corresponding client secret for Graph API
+        graphClientSecret: ""
+        # -- Default Roles
+        # @default -- `""`
+        # Comma-separated default roles for new users (optional)
+        defaultRoles: ""
 
     # ---------------------------------------------------------------------------
     # Key Vault Configuration
@@ -1413,6 +1465,13 @@ governance-service:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
         name: ""
+      # -- Entra Secret
+      # @default -- See values below
+      # Only used when auth provider is "entra"
+      entra:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+        name: ""
 
     # -- Storage Secrets
     # @default -- See values below
@@ -1578,7 +1637,7 @@ governance-service:
 
     # -- Auth Provider
     # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-    # Options: auth0, keycloak
+    # Options: auth0, keycloak, entra
     authProvider: ""
 
     # -- Auth0 Domain
@@ -1631,6 +1690,22 @@ governance-service:
     # Only used when auth provider is "keycloak"
     keycloakClientSecret: ""
 
+    # -- Entra Tenant ID
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+    # Only used when auth provider is "entra"
+    entraTenantId: ""
+
+    # -- Entra Client ID
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # Only used when auth provider is "entra"
+    entraClientId: ""
+
+    # -- Entra Client Secret
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # Only used when auth provider is "entra"
+    entraClientSecret: ""
+
     # ---------------------------------------------------------------------------
     # Service Integration URLs
     # ---------------------------------------------------------------------------
@@ -1676,55 +1751,6 @@ governance-service:
         # -- API Key
         # @default -- `api-secret`
         apiKey: "api-secret"
-
-    # ---------------------------------------------------------------------------
-    # AI Configuration
-    # ---------------------------------------------------------------------------
-
-    # -- AI Configuration
-    # @default -- See values below
-    ai:
-      # -- Enable AI
-      # @default -- `false`
-      # Enable AI features
-      enabled: false
-      # -- AI Provider
-      # @default -- `anthropic`
-      provider: "anthropic"
-      # -- AI Model
-      # @default -- `claude-3-7-sonnet-latest`
-      model: "claude-3-7-sonnet-latest"
-      # -- Temperature
-      # @default -- `0.7`
-      # Temperature for AI responses
-      temperature: 0.7
-      # -- Max Tokens
-      # @default -- `4000`
-      # Maximum tokens for AI responses
-      maxTokens: 4000
-      # -- Timeout
-      # @default -- `60`
-      # Timeout for AI requests (seconds)
-      timeoutSeconds: 60
-      # -- Retry Attempts
-      # @default -- `3`
-      # Number of retry attempts for AI requests
-      retryAttempts: 3
-      # -- Secret Key Ref
-      # @default -- See values below
-      secretKeyRef:
-        # -- Secret Name
-        # @default -- `""` (auto-configured from global.secrets.governanceServiceAI.secretName)
-        name: ""
-        # -- Secret Key
-        # @default -- `api-key`
-        key: "api-key"
-      # -- API Key
-      # @default -- `""` (auto-configured from global.secrets.governanceServiceAI)
-      apiKey: ""
-      # -- Use V2 API
-      # @default -- `true`
-      useV2: true
 
 # =============================================================================
 # Governance Studio
@@ -1974,10 +2000,6 @@ governance-studio:
     # @default -- `""` (auto-generated: "https://{global.domain}/integrityService")
     integrityServiceUrl: ""
 
-    # -- Garage Service URL
-    # @default -- `""` (auto-generated: "https://{global.domain}/garage" when enabled)
-    garageServiceUrl: ""
-
     # ---------------------------------------------------------------------------
     # Authentication Provider Configuration
     # ---------------------------------------------------------------------------
@@ -1985,7 +2007,7 @@ governance-studio:
     # -- Auth Provider
     # @default -- `""` (auto-configured from global.secrets.auth.provider)
     # Authentication provider type
-    # Options: auth0, keycloak
+    # Options: auth0, keycloak, entra
     authProvider: ""
 
     # -- Auth0 Domain
@@ -2024,6 +2046,24 @@ governance-studio:
     # Only used when authProvider is "keycloak"
     keycloakRealm: ""
 
+    # -- Entra Client ID
+    # @default -- `""`
+    # **REQUIRED for Entra**: Application (client) ID from Azure app registration (public, not a secret)
+    # Only used when authProvider is "entra"
+    entraClientId: ""
+
+    # -- Entra Tenant ID
+    # @default -- `""`
+    # **REQUIRED for Entra**: Directory (tenant) ID from Azure
+    # Only used when authProvider is "entra"
+    entraTenantId: ""
+
+    # -- Entra Authority
+    # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
+    # Optional override for the Entra authority URL
+    # Only used when authProvider is "entra"
+    entraAuthority: ""
+
     # ---------------------------------------------------------------------------
     # Application Settings
     # ---------------------------------------------------------------------------
@@ -2054,36 +2094,6 @@ governance-studio:
       # @default -- `true`
       # Enable lineage and integrity features (requires integrity-service)
       lineage: true
-
-      # -- Guardian Enabled
-      # @default -- `false`
-      # Enable Guardian feature family (parent toggle)
-      guardianEnabled: false
-
-      # -- Guardian Garage
-      # @default -- `false`
-      # Enable Compliance Garage integration (requires garageServiceUrl)
-      guardianGarage: false
-
-      # -- Guardian Rulebooks
-      # @default -- `false`
-      # Enable Guardian rulebook experiences
-      guardianRulebooks: false
-
-      # -- Guardian OS Functions
-      # @default -- `false`
-      # Enable OS-oriented Guardian functions
-      guardianOsFunctions: false
-
-      # -- Guardian SDK Functions
-      # @default -- `false`
-      # Enable SDK-oriented Guardian functions
-      guardianSdkFunctions: false
-
-      # -- Agent Management
-      # @default -- `false`
-      # Enable agent management UI
-      agentManagement: false
 
 # =============================================================================
 # Integrity Service
@@ -2646,60 +2656,3 @@ postgresql:
 
           CREATE DATABASE "IntegrityServiceDB";
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
-
-# =============================================================================
-# Keycloak Integration
-# =============================================================================
-# Configuration for Keycloak identity provider integration
-# Creates the necessary organization and admin user in the governance database
-# Only used when global.secrets.auth.provider is set to "keycloak"
-# ------------------------------------------------------------------------------
-keycloak:
-  # -- Create Organization
-  # @default -- `false`
-  # Enable automatic organization creation for Keycloak realm
-  # Set to true to create organization in database on install/upgrade
-  # Organization name will match the Keycloak realm name
-  createOrganization: false
-
-  # -- Realm Name
-  # @default -- `governance`
-  # Keycloak realm name for the platform
-  # Must match auth-service config.idp.keycloak.realm and governance-studio config.keycloakRealm
-  # This name is used as the organization identifier in the database
-  realmName: "governance"
-
-  # -- Display Name
-  # @default -- `Governance Platform`
-  # Human-readable display name for the organization
-  # Shown in UI and organization management interfaces
-  displayName: "Governance Platform"
-
-  # -- Create Platform Admin
-  # @default -- `false`
-  # Create platform-admin user in auth service tables
-  # Set to true to create an initial platform administrator
-  # Requires platformAdminKeycloakId to be set
-  createPlatformAdmin: false
-
-  # -- Platform Admin Keycloak ID
-  # @default -- `""` (must be set if createPlatformAdmin is true)
-  # Keycloak user ID for the platform administrator
-  # Obtain this ID from Keycloak after creating the admin user
-  # Example: Set after Keycloak bootstrap via Keycloak admin console
-  platformAdminKeycloakId: ""
-
-  # -- Organization Settings
-  # @default -- See values below
-  # Additional configuration for the organization
-  organizationSettings:
-    # -- Organization Description
-    # @default -- `Main governance organization`
-    # Detailed description of the organization's purpose
-    description: "Main governance organization"
-
-    # -- Additional Settings
-    # @default -- `{}`
-    # JSON string containing custom organization settings
-    # Example: '{"theme": "dark", "features": ["advanced-governance"]}'
-    settings: "{}"

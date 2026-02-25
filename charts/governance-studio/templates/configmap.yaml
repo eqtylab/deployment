@@ -12,9 +12,6 @@ data:
   {{- if .Values.config.features.lineage }}
   INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" (((.Values.global).domain) | default "")) | quote }}
   {{- end }}
-  {{- if .Values.config.features.guardianGarage }}
-  GARAGE_SERVICE_URL: {{ .Values.config.garageServiceUrl | default (printf "https://%s/garage" (((.Values.global).domain) | default "")) | quote }}
-  {{- end }}
 
   # Application Settings
   ENVIRONMENT: {{ .Values.config.environment | default ((.Values.global).environmentType | default "") | quote }}
@@ -24,12 +21,6 @@ data:
   # Feature Flags
   FEATURE_GOVERNANCE: {{ .Values.config.features.governance | quote }}
   FEATURE_LINEAGE: {{ .Values.config.features.lineage | quote }}
-  FEATURE_GUARDIAN_ENABLED: {{ .Values.config.features.guardianEnabled | quote }}
-  FEATURE_GUARDIAN_GARAGE: {{ .Values.config.features.guardianGarage | quote }}
-  FEATURE_GUARDIAN_RULEBOOKS: {{ .Values.config.features.guardianRulebooks | quote }}
-  FEATURE_GUARDIAN_OS_FUNCTIONS: {{ .Values.config.features.guardianOsFunctions | quote }}
-  FEATURE_GUARDIAN_SDK_FUNCTIONS: {{ .Values.config.features.guardianSdkFunctions | quote }}
-  FEATURE_GUARDIAN_AGENT_MANAGEMENT: {{ .Values.config.features.agentManagement | quote }}
 
   # Auth Configuration
   AUTH_PROVIDER: {{ .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "" | quote }}
@@ -46,5 +37,15 @@ data:
   KEYCLOAK_URL: {{ .Values.config.keycloakUrl | default "" | quote }}
   KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | default "" | quote }}
   KEYCLOAK_REALM: {{ .Values.config.keycloakRealm | default "" | quote }}
+  {{- end }}
+
+  # Entra ID Settings (only included when Entra is the provider)
+  {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "entra" }}
+  VITE_AUTH_PROVIDER: "entra"
+  VITE_ENTRA_CLIENT_ID: {{ .Values.config.entraClientId | default "" | quote }}
+  VITE_ENTRA_TENANT_ID: {{ .Values.config.entraTenantId | default "" | quote }}
+  {{- if .Values.config.entraAuthority }}
+  VITE_ENTRA_AUTHORITY: {{ .Values.config.entraAuthority | quote }}
+  {{- end }}
   {{- end }}
 {{- end }}

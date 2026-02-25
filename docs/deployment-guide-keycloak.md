@@ -89,6 +89,7 @@ charts/
 │   └── examples/            # Ready-to-use values files
 │       ├── values-keycloak.yaml    # Keycloak deployment example
 │       ├── values-auth0.yaml       # Auth0 deployment example
+        ├── values-entra.yaml       # Microsoft Entra ID deployment example
 │       └── secrets-sample.yaml     # Secrets template
 ├── governance-studio/       # Frontend subchart
 ├── governance-service/      # Backend API subchart

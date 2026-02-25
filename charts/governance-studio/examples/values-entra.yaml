@@ -1,5 +1,5 @@
-# Auth0 Configuration Example
-# Minimal configuration for deploying Governance Studio with Auth0.
+# Microsoft Entra ID Configuration Example
+# Minimal configuration for deploying Governance Studio with Microsoft Entra ID.
 # For all available values, see the chart's values.yaml and README.md.
 #
 # Usage:
@@ -27,10 +27,10 @@ ingress:
         - "governance.your-domain.com"
 
 config:
-  # Auth0 Configuration
-  auth0Domain: "your-tenant.us.auth0.com"
-  auth0ClientId: "YOUR_AUTH0_SPA_CLIENT_ID"
-  auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+  # Microsoft Entra ID Configuration
+  entraClientId: "your-entra-client-id"
+  entraTenantId: "your-tenant-id"
+  # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional, defaults to https://login.microsoftonline.com/<tenantId>
 
   # Application Settings
   appTitle: "Governance Studio"

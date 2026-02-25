@@ -179,8 +179,6 @@ governance-studio:
     features:
       governance: true
       lineage: true
-      guardianEnabled: false
-      agentManagement: false
 
 # =============================================================================
 # Integrity Service
@@ -319,11 +317,6 @@ postgresql:
 #   --from-literal=encryption-key="$(openssl rand -base64 32)" \
 #   --from-literal=client-id=YOUR_M2M_CLIENT_ID \
 #   --from-literal=client-secret=YOUR_M2M_CLIENT_SECRET \
-#   --namespace governance
-#
-# # AI Credentials
-# kubectl create secret generic platform-governance-service-ai \
-#   --from-literal=api-key=YOUR_ANTHROPIC_API_KEY \
 #   --namespace governance
 #
 # # Image Pull Secret Credentials
