@@ -883,21 +883,6 @@ If Keycloak is accessible via an external URL, you can skip the port-forward and
 
 > **Save these secrets** — you'll need them in [Section 8](#8-creating-kubernetes-secrets) to create the `platform-keycloak` and `platform-governance-worker` Kubernetes secrets.
 
-### Retrieve the Platform Admin Keycloak ID
-
-The bootstrap creates the `platform-admin` user in Keycloak. You need to retrieve this user's Keycloak ID and set it in your values file (`keycloak.platformAdminKeycloakId`) so the post-install hook can create the platform-admin user in the governance database.
-
-```bash
-# Using the same port-forward and admin token from above
-curl -s -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8080/keycloak/admin/realms/governance/users?username=platform-admin&exact=true" \
-  | jq -r '.[0].id'
-```
-
-Or from the **Keycloak Admin Console**: go to **governance** realm > **Users** > **platform-admin** and copy the user ID from the URL.
-
-> **Save this ID** — you'll need it when [configuring values.yaml](#keycloak-post-install-hook) in Section 9.
-
 ### Verify the Bootstrap
 
 ```bash
@@ -1257,18 +1242,18 @@ keycloak:
   realmName: "governance" # Must match your Keycloak realm name
   displayName: "Governance Studio" # Human-readable organization name
   createPlatformAdmin: true
-  platformAdminKeycloakId: "" # Set to the ID retrieved in Section 7
+  platformAdminEmail: "" # Defaults to admin@<global.domain>
 ```
 
-| Field                     | Description                                         | Where to Get It                                                    |
-| ------------------------- | --------------------------------------------------- | ------------------------------------------------------------------ |
-| `createOrganization`      | Enable organization creation in the database        | Set to `true`                                                      |
-| `realmName`               | Keycloak realm name (used as the organization name) | Must match `auth-service.config.idp.keycloak.realm`                |
-| `displayName`             | Human-readable organization display name            | Your choice                                                        |
-| `createPlatformAdmin`     | Enable platform-admin user creation in the database | Set to `true`                                                      |
-| `platformAdminKeycloakId` | Keycloak user ID for the platform administrator     | Retrieved in [Section 7](#retrieve-the-platform-admin-keycloak-id) |
+| Field                 | Description                                         | Where to Get It                                     |
+| --------------------- | --------------------------------------------------- | --------------------------------------------------- |
+| `createOrganization`  | Enable organization creation in the database        | Set to `true`                                       |
+| `realmName`           | Keycloak realm name (used as the organization name) | Must match `auth-service.config.idp.keycloak.realm` |
+| `displayName`         | Human-readable organization display name            | Your choice                                         |
+| `createPlatformAdmin` | Enable platform-admin user creation in the database | Set to `true`                                       |
+| `platformAdminEmail`  | Email of the platform admin user in Keycloak        | Defaults to `admin@<global.domain>` if left empty   |
 
-The hook runs as a Kubernetes Job after Helm install/upgrade. It waits for database migrations to complete, then creates (or updates) the organization and admin user records. The hook is idempotent — it's safe to run on every upgrade.
+The hook runs as a Kubernetes Job after Helm install/upgrade. It waits for database migrations to complete, looks up the platform admin's Keycloak user ID by email, then creates (or updates) the organization and admin user records. The hook is idempotent — it's safe to run on every upgrade.
 
 ### Configuration Checklist
 
@@ -1284,7 +1269,7 @@ Before deploying, verify your values file has:
 - [ ] All ingress `host` fields set to your domain
 - [ ] All ingress `tls` blocks using the same `secretName`
 - [ ] `keycloak.createOrganization` set to `true`
-- [ ] `keycloak.platformAdminKeycloakId` set (if `createPlatformAdmin` is `true`)
+- [ ] `keycloak.platformAdminEmail` set (if `createPlatformAdmin` is `true`, or leave empty to default to `admin@<global.domain>`)
 
 ---
 
@@ -1411,8 +1396,9 @@ The hook:
 
 1. Waits for database migrations to complete (checks for required tables)
 2. Creates (or updates) the organization in the database using the configured `realmName`
-3. Creates (or updates) the platform-admin user with the configured `platformAdminKeycloakId`
-4. Sets up the organization membership with `organization_owner` role
+3. Looks up the platform admin's Keycloak user ID by email (using `platformAdminEmail` or defaulting to `admin@<global.domain>`)
+4. Creates (or updates) the platform-admin user in the database with the resolved Keycloak ID
+5. Sets up the organization membership with `organization_owner` role
 
 The hook is idempotent — it runs on every `helm upgrade` and safely skips records that already exist.
 

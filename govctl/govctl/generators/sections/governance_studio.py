@@ -10,7 +10,7 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
     section: dict[str, Any] = {
         "replicaCount": 1,
         "image": {
-            "tag": "",
+            "tag": "latest",
             "pullPolicy": "Always",
         },
     }

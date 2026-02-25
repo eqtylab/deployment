@@ -2691,12 +2691,16 @@ keycloak:
   # @default -- `false`
   # Create platform-admin user in auth service tables
   # Set to true to create an initial platform administrator
-  # Requires platformAdminKeycloakId to be set
+  # The Keycloak user ID is automatically resolved by looking up the user by email
   createPlatformAdmin: false
 
-  # -- Platform Admin Keycloak ID
-  # @default -- `""` (must be set if createPlatformAdmin is true)
-  # Keycloak user ID for the platform administrator
-  # Obtain this ID from Keycloak after creating the admin user
-  # Example: Set after Keycloak bootstrap via Keycloak admin console
-  platformAdminKeycloakId: ""
+  # -- Platform Admin Email
+  # @default -- `""` (defaults to admin@<global.domain>)
+  # Email address of the platform administrator in Keycloak created during bootstrap
+  # Used to look up the Keycloak user ID automatically
+  platformAdminEmail: ""
+
+  # -- Keycloak Internal URL
+  # @default -- `http://keycloak:8080/keycloak`
+  # Internal cluster URL for the Keycloak Admin REST API
+  url: "http://keycloak:8080/keycloak"

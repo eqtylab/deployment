@@ -10,7 +10,7 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
     section: dict[str, Any] = {
         "replicaCount": 2,
         "image": {
-            "tag": "",
+            "tag": "latest",
             "pullPolicy": "Always",
         },
     }

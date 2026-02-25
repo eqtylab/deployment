@@ -61,23 +61,55 @@ spec:
                 -c "SELECT id, name, display_name, idp_provider FROM organization WHERE name = '{{ .Values.keycloak.realmName }}';"
 
               {{- if .Values.keycloak.createPlatformAdmin }}
+              {{- $adminEmail := .Values.keycloak.platformAdminEmail | default (printf "admin@%s" .Values.global.domain) }}
               echo "Creating platform-admin user..."
+
+              # Install curl and jq for Keycloak API calls
+              apk add --no-cache curl jq > /dev/null 2>&1
+
+              ADMIN_EMAIL="{{ $adminEmail }}"
+              echo "Looking up Keycloak user by email: $ADMIN_EMAIL"
+
+              # Get Keycloak admin token
+              KC_TOKEN=$(curl -sf -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d "username=${KEYCLOAK_ADMIN_USERNAME}" \
+                -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+                -d "grant_type=password" \
+                -d "client_id=admin-cli" | jq -r '.access_token')
+
+              if [ -z "$KC_TOKEN" ] || [ "$KC_TOKEN" = "null" ]; then
+                echo "ERROR: Failed to get Keycloak admin token"
+                exit 1
+              fi
+
+              # Look up user by email in Keycloak
+              KEYCLOAK_USER_ID=$(curl -sf \
+                -H "Authorization: Bearer $KC_TOKEN" \
+                "${KEYCLOAK_URL}/admin/realms/{{ .Values.keycloak.realmName }}/users?email=${ADMIN_EMAIL}&exact=true" | jq -r '.[0].id')
+
+              if [ -z "$KEYCLOAK_USER_ID" ] || [ "$KEYCLOAK_USER_ID" = "null" ]; then
+                echo "ERROR: Could not find user with email $ADMIN_EMAIL in Keycloak realm '{{ .Values.keycloak.realmName }}'"
+                echo "Make sure the user has been created in Keycloak (e.g., via keycloak-bootstrap) before running this job"
+                exit 1
+              fi
+
+              echo "Found Keycloak user ID: $KEYCLOAK_USER_ID"
 
               # Generate UUIDs using PostgreSQL
               USER_ID=$(psql -t -c "SELECT gen_random_uuid();" | tr -d ' ')
-              KEYCLOAK_USER_ID="{{ .Values.keycloak.platformAdminKeycloakId | default "00000000-0000-0000-0000-000000000000" }}"
 
               # Check if user exists (by email or by idp composite key)
               USER_EXISTS=$(psql \
-                -t -c "SELECT COUNT(*) FROM users WHERE email = 'admin@{{ .Values.global.domain }}' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID');" | tr -d ' ')
+                -t -c "SELECT COUNT(*) FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID');" | tr -d ' ')
 
               if [ "$USER_EXISTS" != "0" ]; then
                 echo "Platform admin user already exists"
-                USER_ID=$(psql -t -c "SELECT id FROM users WHERE email = 'admin@{{ .Values.global.domain }}' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID') LIMIT 1;" | tr -d ' ')
+                USER_ID=$(psql -t -c "SELECT id FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID') LIMIT 1;" | tr -d ' ')
               else
                 # Create user
                 psql -c "INSERT INTO users (id, idp_provider, idp_user_id, email, email_verified, display_name, given_name, family_name, active, app_metadata, created_at, updated_at, is_service_account, service_config) \
-                      VALUES ('$USER_ID', 'keycloak', '$KEYCLOAK_USER_ID', 'admin@{{ .Values.global.domain }}', true, 'Platform Admin', 'Platform', 'Admin', true, '{}', NOW(), NOW(), false, '{}');"
+                      VALUES ('$USER_ID', 'keycloak', '$KEYCLOAK_USER_ID', '$ADMIN_EMAIL', true, 'Platform Admin', 'Platform', 'Admin', true, '{}', NOW(), NOW(), false, '{}');"
                 echo "Created platform admin user"
               fi
 
@@ -103,7 +135,7 @@ spec:
               # Show created user and membership
               echo "Platform admin user:"
               psql \
-                -c "SELECT id, email, display_name, idp_provider FROM users WHERE email = 'admin@{{ .Values.global.domain }}';"
+                -c "SELECT id, email, display_name, idp_provider FROM users WHERE email = '$ADMIN_EMAIL';"
               {{- end }}
 
               echo "Setup complete!"
@@ -122,6 +154,17 @@ spec:
                   key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey | default "password" }}
             - name: PGDATABASE
               value: {{ .Values.postgresql.auth.database | default "governance" | quote }}
+            {{- if .Values.keycloak.createPlatformAdmin }}
+            - name: KEYCLOAK_URL
+              value: {{ .Values.keycloak.url | default "http://keycloak:8080/keycloak" | quote }}
+            - name: KEYCLOAK_ADMIN_USERNAME
+              value: "admin"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: password
+            {{- end }}
           resources:
             requests:
               cpu: 100m

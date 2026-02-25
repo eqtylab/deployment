@@ -271,7 +271,7 @@ keycloak:
   realmName: "governance"
   displayName: "Governance Platform"
   createPlatformAdmin: true
-  platformAdminKeycloakId: "" # Set after Keycloak bootstrap (obtain from Keycloak admin console)
+  platformAdminEmail: "" # Defaults to admin@<global.domain>, looked up in Keycloak automatically
 
 # =============================================================================
 # SECRET CREATION COMMANDS

@@ -415,13 +415,14 @@ Bitnami PostgreSQL chart configuration:
 
 Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user:
 
-| Key                              | Type   | Default               | Description                                        |
-| -------------------------------- | ------ | --------------------- | -------------------------------------------------- |
-| keycloak.createOrganization      | bool   | `false`               | Enable the post-install hook to create the org     |
-| keycloak.realmName               | string | `"governance"`        | Keycloak realm name (used as org name in database) |
-| keycloak.displayName             | string | `"Governance Studio"` | Display name for the organization                  |
-| keycloak.createPlatformAdmin     | bool   | `false`               | Also create the platform-admin user and membership |
-| keycloak.platformAdminKeycloakId | string | `""`                  | Keycloak user ID for the platform admin            |
+| Key                          | Type   | Default                           | Description                                        |
+| ---------------------------- | ------ | --------------------------------- | -------------------------------------------------- |
+| keycloak.createOrganization  | bool   | `false`                           | Enable the post-install hook to create the org     |
+| keycloak.realmName           | string | `"governance"`                    | Keycloak realm name (used as org name in database) |
+| keycloak.displayName         | string | `"Governance Studio"`             | Display name for the organization                  |
+| keycloak.createPlatformAdmin | bool   | `false`                           | Also create the platform-admin user and membership |
+| keycloak.platformAdminEmail  | string | `""`                              | Admin email (defaults to admin@<global.domain>)    |
+| keycloak.url                 | string | `"http://keycloak:8080/keycloak"` | Internal Keycloak URL for API lookups              |
 
 ## Configuration Inheritance
 
@@ -652,7 +653,7 @@ keycloak:
   displayName: "Governance Studio"
 
   createPlatformAdmin: true # Also create the platform-admin user
-  platformAdminKeycloakId: "" # Keycloak user ID (obtain from Keycloak after bootstrap)
+  platformAdminEmail: "" # Defaults to admin@<global.domain>, looked up in Keycloak automatically
 ```
 
 The hook waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
