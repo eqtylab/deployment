@@ -23,7 +23,7 @@ Usage: $0 -f <values-file> [options]
   -h, --help                      Show this help message
 
 Examples:
-  $0 -f $CHART_DIR/examples/values.yaml
+  $0 -f $CHART_DIR/examples/values.yaml -n governance
   $0 -f my-values.yaml --namespace governance-stag
 "
 }
@@ -174,7 +174,7 @@ show_summary() {
 }
 
 # Default values
-NAMESPACE="governance"
+NAMESPACE=""
 BOOTSTRAP_RELEASE="keycloak-bootstrap"
 CHART_DIR="$ROOTDIR/charts/keycloak-bootstrap"
 VALUES_FILE=""
@@ -215,6 +215,7 @@ assert_is_installed "helm"
 assert_is_installed "kubectl"
 
 # Validate required arguments
+assert_not_empty "namespace" "$NAMESPACE" "Use -n or --namespace to provide a namespace."
 assert_not_empty "values-file" "$VALUES_FILE" "Use -f or --values to provide a Helm values file."
 
 # Validate path to file exists

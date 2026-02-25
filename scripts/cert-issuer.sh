@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do SOURCE="$(readlink "$SOURCE")"; done
 ROOTDIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
@@ -37,7 +36,7 @@ install() {
   helm repo update
 
   # Install the cert-manager Helm chart
-  helm install \
+  helm upgrade --install \
     cert-manager jetstack/cert-manager \
     --namespace "$NAMESPACE" \
     --create-namespace \

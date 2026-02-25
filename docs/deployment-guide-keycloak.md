@@ -235,7 +235,9 @@ Before proceeding, confirm:
 
 ## 3. Infrastructure Setup
 
-Provision the following cloud resources before deploying. Both **governance-service** and **integrity-service** require object storage; **auth-service** requires a key vault for DID signing.
+Provision the following cloud resources before deploying. The platform requires object storage and Azure Key Vault for DID signing. A running Kubernetes cluster with `kubectl` configured is assumed.
+
+> **Terraform alternative:** These resources can also be provisioned using Terraform instead of the CLI commands below.
 
 ### Object Storage
 
@@ -331,7 +333,7 @@ You'll need these values for your `values.yaml`:
 
 ### Azure Key Vault
 
-The auth-service uses Azure Key Vault for DID signing key management. Create a vault and a service principal with appropriate permissions:
+The auth-service uses Azure Key Vault for DID signing key management. It dynamically creates per-user signing keys, so the service principal needs key create/delete permissions in addition to sign/verify.
 
 ```bash
 # Create Key Vault
@@ -343,30 +345,45 @@ az keyvault create \
 # Create service principal
 az ad sp create-for-rbac --name governance-keyvault-sp
 
-# Grant key permissions to the service principal
+# Grant key and secret permissions to the service principal
 az keyvault set-policy \
   --name your-keyvault \
   --spn <service-principal-app-id> \
-  --key-permissions get list sign verify create
+  --key-permissions create delete get list encrypt decrypt unwrapKey wrapKey sign verify \
+  --secret-permissions get list set delete
 ```
 
-You'll need these values for your `values.yaml`:
+> **Note:** The service principal requires `create` and `delete` key permissions because the auth-service creates individual DID signing keys per user in the Key Vault at login time.
 
-| Value                           | Field                                                |
-| ------------------------------- | ---------------------------------------------------- |
-| Vault URL                       | `auth-service.config.keyVault.azure.vaultUrl`        |
-| Tenant ID                       | `auth-service.config.keyVault.azure.tenantId`        |
-| Service principal client ID     | Secret: `platform-azure-key-vault` → `client-id`     |
-| Service principal client secret | Secret: `platform-azure-key-vault` → `client-secret` |
+You'll need these values for your `values.yaml` and `secrets.yaml`:
+
+| Value                           | Field                                               |
+| ------------------------------- | --------------------------------------------------- |
+| Vault URL                       | `auth-service.config.keyVault.azure.vaultUrl`       |
+| Tenant ID                       | `auth-service.config.keyVault.azure.tenantId`       |
+| Service principal client ID     | Secret: `platform-azure-key-vault` → `clientId`     |
+| Service principal client secret | Secret: `platform-azure-key-vault` → `clientSecret` |
+
+To retrieve the service principal credentials:
+
+```bash
+# The client ID (appId) is returned by az ad sp create-for-rbac
+# To find it later:
+az ad sp list --display-name governance-keyvault-sp --query '[0].appId' -o tsv
+
+# The client secret (password) is returned at creation time only
+# To generate a new one:
+az ad sp credential reset --id <service-principal-app-id> --query password -o tsv
+```
 
 ### Summary of Provisioned Resources
 
 After completing this section, you should have:
 
-| Resource                    | What You Need for Later                             |
-| --------------------------- | --------------------------------------------------- |
-| Object storage (1 provider) | Account name/keys, 2 container/bucket names         |
-| Azure Key Vault             | Vault URL, tenant ID, service principal credentials |
+| Resource        | What You Need for Later                                      |
+| --------------- | ------------------------------------------------------------ |
+| Object storage  | Account name/keys, 2 container/bucket names                  |
+| Azure Key Vault | Vault URL, tenant ID, service principal client ID and secret |
 
 These values will be used in [Section 7 (Creating Secrets)](#7-creating-kubernetes-secrets) and [Section 8 (Configuring values.yaml)](#8-configuring-valuesyaml).
 
@@ -792,26 +809,26 @@ The governance-platform chart expects secrets to be pre-created in the namespace
 
 - **Option A (Recommended for production):** Create secrets manually with `kubectl` (documented below)
 - **Option B:** Use the [`secrets-sample.yaml`](../charts/governance-platform/examples/secrets-sample.yaml) template with `global.secrets.create: true` to have Helm create them
+- **Option C:** Use [`govctl init`](../govctl/) to generate a `secrets-{env}.yaml` file with auto-generated values for random secrets (database password, API secrets, JWT secret, encryption keys, RSA private key) — you only need to fill in provider-specific credentials
 
 > **Note:** The `keycloak-admin` and `platform-admin` secrets were already created in [Section 5](#pre-bootstrap-secrets). The commands below cover all remaining secrets.
 
 ### Secret Reference
 
-| Secret Name                      | Used By                                             | Keys                                                         |
-| -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------ |
-| `keycloak-admin`                 | Keycloak, bootstrap                                 | `password`                                                   |
-| `platform-admin`                 | Bootstrap                                           | `password`                                                   |
-| `platform-database`              | governance-service, auth-service, integrity-service | `username`, `password`                                       |
-| `platform-keycloak`              | auth-service, governance-service                    | `service-account-client-id`, `service-account-client-secret` |
-| `platform-auth-service`          | auth-service                                        | `api-secret`, `jwt-secret`                                   |
-| `platform-encryption-key`        | governance-service, auth-service                    | `encryption-key`                                             |
-| `platform-governance-worker`     | governance-service worker                           | `encryption-key`, `client-id`, `client-secret`               |
-| `platform-azure-blob`            | governance-service, integrity-service (Azure)       | `account-key`, `connection-string`                           |
-| `platform-aws-s3`                | governance-service, integrity-service (AWS)         | `access-key-id`, `secret-access-key`                         |
-| `platform-gcs`                   | governance-service, integrity-service (GCS)         | `service-account-json`                                       |
-| `platform-azure-key-vault`       | auth-service                                        | `client-id`, `client-secret`, `tenant-id`, `vault-url`       |
-| `platform-governance-service-ai` | governance-service (optional)                       | `api-key`                                                    |
-| `platform-image-pull-secret`     | All services                                        | Docker registry credentials                                  |
+| Secret Name                  | Used By                                             | Keys                                                         |
+| ---------------------------- | --------------------------------------------------- | ------------------------------------------------------------ |
+| `keycloak-admin`             | Keycloak, bootstrap                                 | `password`                                                   |
+| `platform-admin`             | Bootstrap                                           | `password`                                                   |
+| `platform-database`          | governance-service, auth-service, integrity-service | `username`, `password`                                       |
+| `platform-keycloak`          | auth-service, governance-service                    | `service-account-client-id`, `service-account-client-secret` |
+| `platform-auth-service`      | auth-service                                        | `api-secret`, `jwt-secret`                                   |
+| `platform-encryption-key`    | governance-service, auth-service                    | `encryption-key`                                             |
+| `platform-governance-worker` | governance-service worker                           | `encryption-key`, `client-id`, `client-secret`               |
+| `platform-azure-blob`        | governance-service, integrity-service (Azure)       | `account-key`, `connection-string`                           |
+| `platform-aws-s3`            | governance-service, integrity-service (AWS)         | `access-key-id`, `secret-access-key`                         |
+| `platform-gcs`               | governance-service, integrity-service (GCS)         | `service-account-json`                                       |
+| `platform-azure-key-vault`   | auth-service                                        | `client-id`, `client-secret`, `tenant-id`, `vault-url`       |
+| `platform-image-pull-secret` | All services                                        | Docker registry credentials                                  |
 
 ### Create Secrets
 
@@ -905,16 +922,6 @@ kubectl create secret generic platform-azure-key-vault \
   --namespace governance
 ```
 
-#### AI Credentials (Optional)
-
-Only required if `governance-service.config.ai.enabled` is set to `true` in your values file. AI features are **disabled by default**.
-
-```bash
-kubectl create secret generic platform-governance-service-ai \
-  --from-literal=api-key=YOUR_ANTHROPIC_API_KEY \
-  --namespace governance
-```
-
 #### Image Pull Secret
 
 ```bash
@@ -944,11 +951,19 @@ The governance-platform Helm chart is configured through a single values file. S
 
 ### Start from the Example
 
+You can either copy the example values file manually or use `govctl` to generate both values and secrets files interactively:
+
 ```bash
+# Option A: Copy the example and customize manually
 cp charts/governance-platform/examples/values-keycloak.yaml my-values.yaml
+
+# Option B: Use govctl to generate values and secrets
+govctl init
 ```
 
-The example file ([`values-keycloak.yaml`](../charts/governance-platform/examples/values-keycloak.yaml)) has all four services pre-configured for Keycloak with placeholder values you need to replace.
+If using `govctl`, it will generate a `values-{env}.yaml` and `secrets-{env}.yaml` pre-configured for your cloud provider, domain, and auth provider. See the [`govctl` README](../govctl/) for details.
+
+If starting from the example file, [`values-keycloak.yaml`](../charts/governance-platform/examples/values-keycloak.yaml) has all four services pre-configured for Keycloak with placeholder values you need to replace.
 
 ### Global Configuration
 
@@ -1041,8 +1056,6 @@ governance-studio:
     features:
       governance: true # Governance workflows
       lineage: true # Lineage tracking
-      guardianEnabled: false # Guardian features
-      agentManagement: false # Agent management
 ```
 
 > **Important:** The `keycloakClientId` must match the frontend client ID created during [bootstrap](#6-running-keycloak-bootstrap) (`governance-platform-frontend`).
