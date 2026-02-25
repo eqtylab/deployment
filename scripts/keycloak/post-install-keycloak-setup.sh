@@ -17,7 +17,7 @@ Post-install database setup for Keycloak integration
 
 Usage: $0 -k <keycloak-url> [options]
   -k, --keycloak-url <url>        Keycloak URL (required, e.g. https://keycloak.example.com)
-  -n, --namespace <namespace>     Kubernetes namespace (default: $NAMESPACE)
+  -n, --namespace <namespace>     Kubernetes namespace (required)
   -r, --realm <realm>             Keycloak realm name (default: $REALM_NAME)
   -D, --display-name <name>       Organization display name (default: $DISPLAY_NAME)
   -d, --database <database>       Database name (default: $DB_NAME)

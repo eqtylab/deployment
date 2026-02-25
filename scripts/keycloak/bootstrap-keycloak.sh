@@ -17,7 +17,7 @@ Bootstrap Keycloak realm, clients, scopes, and users for the Governance Platform
 
 Usage: $0 -f <values-file> [options]
   -f, --values <file>             Helm values file for keycloak-bootstrap chart (required)
-  -n, --namespace <namespace>     Kubernetes namespace (default: $NAMESPACE)
+  -n, --namespace <namespace>     Kubernetes namespace (required)
   -r, --release <name>            Helm release name (default: $BOOTSTRAP_RELEASE)
   -c, --chart-dir <dir>           Chart directory (default: $CHART_DIR)
   -h, --help                      Show this help message

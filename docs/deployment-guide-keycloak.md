@@ -9,11 +9,12 @@ End-to-end guide for deploying the EQTY Lab Governance Platform on Kubernetes wi
 3. [Infrastructure Setup](#3-infrastructure-setup)
 4. [Domain & TLS Configuration](#4-domain--tls-configuration)
 5. [Deploying Keycloak](#5-deploying-keycloak)
-6. [Running Keycloak Bootstrap](#6-running-keycloak-bootstrap)
-7. [Creating Kubernetes Secrets](#7-creating-kubernetes-secrets)
-8. [Configuring values.yaml](#8-configuring-valuesyaml)
-9. [Deploying the Governance Platform](#9-deploying-the-governance-platform)
-10. [Post-Install Setup & Verification](#10-post-install-setup--verification)
+6. [Generating Configuration with govctl](#6-generating-configuration-with-govctl)
+7. [Running Keycloak Bootstrap](#7-running-keycloak-bootstrap)
+8. [Creating Kubernetes Secrets](#8-creating-kubernetes-secrets)
+9. [Configuring values.yaml](#9-configuring-valuesyaml)
+10. [Deploying the Governance Platform](#10-deploying-the-governance-platform)
+11. [Post-Install Setup & Verification](#11-post-install-setup--verification)
 
 ---
 
@@ -21,7 +22,7 @@ End-to-end guide for deploying the EQTY Lab Governance Platform on Kubernetes wi
 
 ### What You're Deploying
 
-The Governance Platform consists of five microservices deployed via a single Helm umbrella chart (`governance-platform`), backed by a PostgreSQL database, and integrated with an external Keycloak instance for identity and access management.
+The Governance Platform consists of four microservices deployed via a single Helm umbrella chart (`governance-platform`), backed by a PostgreSQL database, and integrated with an external Keycloak instance for identity and access management.
 
 ### Architecture
 
@@ -85,11 +86,11 @@ charts/
 ├── governance-platform/     # Umbrella chart — deploy this
 │   ├── Chart.yaml           # Declares subchart dependencies
 │   ├── values.yaml          # Default values for all services
-│   ├── templates/           # Shared resources (secrets, config, hooks)
+│   ├── templates/           # Shared resources (secrets, config)
 │   └── examples/            # Ready-to-use values files
 │       ├── values-keycloak.yaml    # Keycloak deployment example
 │       ├── values-auth0.yaml       # Auth0 deployment example
-        ├── values-entra.yaml       # Microsoft Entra ID deployment example
+│       ├── values-entra.yaml       # Microsoft Entra ID deployment example
 │       └── secrets-sample.yaml     # Secrets template
 ├── governance-studio/       # Frontend subchart
 ├── governance-service/      # Backend API subchart
@@ -119,23 +120,26 @@ The end-to-end deployment follows this order:
          │
 2. Deploy Keycloak (if self-hosted)
          │
-3. Run keycloak-bootstrap (creates realm, clients, admin user in Keycloak)
+3. Generate configuration with govctl (bootstrap, secrets, values files)
          │
-4. Create Kubernetes secrets (uses Keycloak-generated client secrets)
+4. Run keycloak-bootstrap (creates realm, clients, admin user in Keycloak)
          │
-5. Configure values.yaml
+5. Create Kubernetes secrets (uses Keycloak-generated client secrets)
          │
-6. Deploy governance-platform (Helm umbrella chart)
+6. Configure values.yaml
+         │
+7. Deploy governance-platform (Helm umbrella chart)
          │
          ├── PostgreSQL starts, initializes databases
          ├── governance-service starts, runs migrations
-         ├── Post-install hook creates organization + admin user in DB
          ├── auth-service, integrity-service, governance-studio start
          │
-7. Post-install verification
+8. Run post-install setup script (creates organization + admin user in DB)
+         │
+9. Post-install verification
 ```
 
-> **Key ordering note:** The `keycloak-bootstrap` chart must be run **before** deploying the governance-platform, because the platform services need valid OAuth client credentials at startup. The governance-platform chart includes a post-install hook that automatically creates the organization and platform-admin user in the database after migrations complete.
+> **Key ordering note:** The `keycloak-bootstrap` chart must be run **before** deploying the governance-platform, because the platform services need valid OAuth client credentials at startup. After the platform is deployed, run `scripts/keycloak/post-install-keycloak-setup.sh` to create the organization and platform-admin user in the database.
 
 ---
 
@@ -242,7 +246,7 @@ Provision the following cloud resources before deploying. The platform requires 
 
 ### Object Storage
 
-Choose one storage provider. Both governance-service and integrity-service must use the same provider.
+Choose one storage provider. Each service has its own provider setting (`config.storageProvider` for governance-service, `config.integrityAppBlobStoreType` for integrity-service), so they can be configured independently if needed.
 
 #### Option A: Azure Blob Storage
 
@@ -386,7 +390,7 @@ After completing this section, you should have:
 | Object storage  | Account name/keys, 2 container/bucket names                  |
 | Azure Key Vault | Vault URL, tenant ID, service principal client ID and secret |
 
-These values will be used in [Section 7 (Creating Secrets)](#7-creating-kubernetes-secrets) and [Section 8 (Configuring values.yaml)](#8-configuring-valuesyaml).
+These values will be used in [Section 8 (Creating Secrets)](#8-creating-kubernetes-secrets) and [Section 9 (Configuring values.yaml)](#9-configuring-valuesyaml).
 
 ---
 
@@ -441,7 +445,14 @@ This installs cert-manager into the `ingress-nginx` namespace. To install into a
 
 #### Create a Let's Encrypt Issuer
 
-After cert-manager is running, create an Issuer in your governance namespace:
+cert-manager supports two issuer types:
+
+- **Issuer** — namespace-scoped. Can only issue certificates for ingress resources within the same namespace. Use the `cert-manager.io/issuer` annotation in your ingress.
+- **ClusterIssuer** — cluster-wide. Can issue certificates for ingress resources in any namespace. Use the `cert-manager.io/cluster-issuer` annotation in your ingress.
+
+The example values files use a namespace-scoped **Issuer** with the `cert-manager.io/issuer` annotation. If you prefer a ClusterIssuer (e.g., to share one issuer across multiple namespaces), adjust the kind and ingress annotations accordingly.
+
+**Option A: Namespace-scoped Issuer (used by example values)**
 
 ```bash
 kubectl apply -f - <<EOF
@@ -463,9 +474,34 @@ spec:
 EOF
 ```
 
+Ingress annotation: `cert-manager.io/issuer: "letsencrypt-prod"`
+
+**Option B: ClusterIssuer**
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@your-domain.com
+    privateKeySecretRef:
+      name: letsencrypt-production
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+EOF
+```
+
+Ingress annotation: `cert-manager.io/cluster-issuer: "letsencrypt-prod"`
+
 Replace `admin@your-domain.com` with your actual email address. This email is used by Let's Encrypt for certificate expiration notifications.
 
-> **Note:** The Issuer name (`letsencrypt-prod`) must match the `cert-manager.io/issuer` annotation in your ingress configuration. The example values files use `letsencrypt-prod`.
+> **Note:** The Issuer name (`letsencrypt-prod`) must match the corresponding annotation in your ingress configuration. If you switch from Issuer to ClusterIssuer, update all `cert-manager.io/issuer` annotations to `cert-manager.io/cluster-issuer` in your values file.
 
 ### How TLS Works in the Platform
 
@@ -505,7 +541,7 @@ After DNS propagation:
 # Verify DNS resolution
 dig governance.your-domain.com
 
-# After deploying (Section 9), verify TLS certificate
+# After deploying (Section 10), verify TLS certificate
 kubectl get certificate -n governance
 kubectl describe certificate -n governance
 ```
@@ -514,7 +550,7 @@ kubectl describe certificate -n governance
 
 ## 5. Deploying Keycloak
 
-The Governance Platform requires a running Keycloak instance. This section covers deploying Keycloak into the same Kubernetes cluster. If you already have a Keycloak instance running, skip to [creating the required secrets](#pre-bootstrap-secrets) and then proceed to [Section 6](#6-running-keycloak-bootstrap).
+The Governance Platform requires a running Keycloak instance. This section covers deploying Keycloak into the same Kubernetes cluster. If you already have a Keycloak instance running, skip to [creating the required secrets](#pre-bootstrap-secrets) and then proceed to [Section 7](#7-running-keycloak-bootstrap).
 
 ### Create Namespace
 
@@ -548,7 +584,6 @@ httpRelativePath: "/keycloak/"
 
 # Production mode with TLS termination at ingress
 production: true
-proxy: edge
 
 # PostgreSQL - use a dedicated database or the platform's shared database
 postgresql:
@@ -615,7 +650,7 @@ kubectl get pod -l app.kubernetes.io/name=keycloak -n governance \
 
 # Test internal connectivity (should return HTML or redirect)
 kubectl run curl-test --rm -it --image=curlimages/curl --restart=Never -n governance -- \
-  curl -s -o /dev/null -w "%{http_code}" http://keycloak:8080/keycloak/health/ready
+  curl -s -o /dev/null -w "%{http_code}" http://keycloak:9000/keycloak/health/ready
 ```
 
 You should see `Ready: True` and an HTTP 200 from the health endpoint.
@@ -636,15 +671,91 @@ keycloak:
 
 ### What's Next
 
-With Keycloak running, proceed to [Section 6](#6-running-keycloak-bootstrap) to configure the governance realm, OAuth clients, and initial admin user.
+With Keycloak running, proceed to [Section 6](#6-generating-configuration-with-govctl) to generate your deployment configuration files, or skip ahead to [Section 7](#7-running-keycloak-bootstrap) if you prefer to configure files manually.
 
 ---
 
-## 6. Running Keycloak Bootstrap
+## 6. Generating Configuration with govctl
+
+The `govctl` CLI tool generates the configuration files needed for the remaining deployment steps — bootstrap values, Helm values, and secrets. This is the recommended approach, as it produces a consistent, minimal configuration based on your environment.
+
+> **Note:** This tool generates the minimum viable configuration to get up and running. For advanced or service-specific options, refer to the individual chart READMEs under `charts/`.
+
+### Install govctl
+
+Requires Python 3.10+. From the `govctl/` directory:
+
+```bash
+# With uv (recommended)
+uv pip install -e .
+
+# Or with pip
+python3 -m venv env && source env/bin/activate
+pip install -e .
+```
+
+Verify the installation:
+
+```bash
+govctl --help
+```
+
+### Run govctl init
+
+The interactive wizard walks you through cloud provider, domain, environment, auth provider, and registry configuration:
+
+```bash
+govctl init
+```
+
+For non-interactive usage (all flags required):
+
+```bash
+govctl init -I \
+  --cloud <gcp|aws|azure> \
+  --domain governance.your-domain.com \
+  --environment staging \
+  --auth keycloak
+```
+
+| Flag                             | Short   | Description                                  |
+| -------------------------------- | ------- | -------------------------------------------- |
+| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)       |
+| `--domain`                       | `-d`    | Deployment domain                            |
+| `--environment`                  | `-e`    | Environment name                             |
+| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`) |
+| `--output`                       | `-o`    | Output directory (default: `output`)         |
+| `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                      |
+
+### Generated Files
+
+govctl produces the following files in the output directory:
+
+| File                   | Contents                                             | Used In                                                                   |
+| ---------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| `bootstrap-{env}.yaml` | Keycloak realm, clients, scopes, admin user config   | [Section 7 — Running Keycloak Bootstrap](#7-running-keycloak-bootstrap)   |
+| `secrets-{env}.yaml`   | Secret values (some auto-generated, some to fill in) | [Section 8 — Creating Kubernetes Secrets](#8-creating-kubernetes-secrets) |
+| `values-{env}.yaml`    | Helm values for all platform services                | [Section 9 — Configuring values.yaml](#9-configuring-valuesyaml)          |
+
+### Next Steps
+
+After generating your files:
+
+1. **Review** `bootstrap-{env}.yaml` and `values-{env}.yaml` for correctness
+2. **Fill in** any remaining placeholder values in `secrets-{env}.yaml` (marked with `# REQUIRED` comments)
+3. Continue to [Section 7](#7-running-keycloak-bootstrap) to run the Keycloak bootstrap using your generated bootstrap file
+
+> **Skipping govctl:** If you prefer to configure files manually, you can start from the example values files in `charts/governance-platform/examples/` and `charts/keycloak-bootstrap/examples/` instead. The subsequent sections cover both approaches.
+
+---
+
+## 7. Running Keycloak Bootstrap
 
 The `keycloak-bootstrap` chart runs a Kubernetes Job that configures Keycloak via its Admin REST API. It creates the governance realm, OAuth clients, custom scopes, service account roles, and an initial platform-admin user.
 
 ### Prepare the Bootstrap Values
+
+> If you generated files with govctl in [Section 6](#6-generating-configuration-with-govctl), use your `bootstrap-{env}.yaml` and skip to [Run the Bootstrap](#run-the-bootstrap).
 
 Start from the example values file and customize it for your environment:
 
@@ -731,35 +842,39 @@ kubectl logs job/keycloak-bootstrap -n governance -f
 
 The backend and worker client secrets are **auto-generated by Keycloak** during bootstrap. You must retrieve them to create the platform's Kubernetes secrets in the next step.
 
-```bash
-# Get Keycloak admin token
-KEYCLOAK_URL="http://keycloak:8080/keycloak"  # Adjust if different
-ADMIN_PASS=$(kubectl get secret keycloak-admin -n governance -o jsonpath='{.data.password}' | base64 -d)
+#### Option A: Using port-forward and local curl (Recommended)
 
-TOKEN=$(kubectl run get-token --rm -it --restart=Never -n governance \
-  --image=curlimages/curl -- \
-  curl -s -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
+```bash
+# Port-forward the Keycloak service
+kubectl port-forward svc/keycloak 8080:8080 -n acn &
+
+# Get admin password
+ADMIN_PASS=$(kubectl get secret keycloak-admin -n acn -o jsonpath='{.data.password}' | base64 -d)
+
+# Get admin token
+TOKEN=$(curl -s -X POST "http://localhost:8080/keycloak/realms/master/protocol/openid-connect/token" \
   -d "username=admin" \
   -d "password=$ADMIN_PASS" \
   -d "grant_type=password" \
   -d "client_id=admin-cli" | jq -r '.access_token')
 
 # Get backend client secret
-kubectl run get-backend-secret --rm -it --restart=Never -n governance \
-  --image=curlimages/curl -- \
-  curl -s -H "Authorization: Bearer $TOKEN" \
-  "$KEYCLOAK_URL/admin/realms/governance/clients?clientId=governance-platform-backend" \
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/keycloak/admin/realms/governance/clients?clientId=governance-platform-backend" \
   | jq -r '.[0].secret'
 
 # Get worker client secret
-kubectl run get-worker-secret --rm -it --restart=Never -n governance \
-  --image=curlimages/curl -- \
-  curl -s -H "Authorization: Bearer $TOKEN" \
-  "$KEYCLOAK_URL/admin/realms/governance/clients?clientId=governance-worker" \
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/keycloak/admin/realms/governance/clients?clientId=governance-worker" \
   | jq -r '.[0].secret'
+
+# Stop port-forward
+kill %1
 ```
 
-Alternatively, retrieve them from the **Keycloak Admin Console**:
+If Keycloak is accessible via an external URL, you can skip the port-forward and use the external URL directly (e.g., `https://governance.your-domain.com/keycloak`).
+
+#### Option B: Using the Keycloak Admin Console
 
 1. Navigate to `https://governance.your-domain.com/keycloak/admin`
 2. Select the **governance** realm
@@ -767,18 +882,16 @@ Alternatively, retrieve them from the **Keycloak Admin Console**:
 4. Copy the **Client secret**
 5. Repeat for **governance-worker**
 
-> **Save these secrets** — you'll need them in [Section 7](#7-creating-kubernetes-secrets) to create the `platform-keycloak` and `platform-governance-worker` Kubernetes secrets.
+> **Save these secrets** — you'll need them in [Section 8](#8-creating-kubernetes-secrets) to create the `platform-keycloak` and `platform-governance-worker` Kubernetes secrets.
 
-### Retrieve the Platform Admin Keycloak ID
+### Retrieve the Platform Admin Keycloak ID (Optional)
 
-The bootstrap also creates the `platform-admin` user in Keycloak. Retrieve their Keycloak user ID now — you'll need it when configuring `keycloak.platformAdminKeycloakId` in [Section 8](#keycloak-organization-hook).
+The bootstrap also creates the `platform-admin` user in Keycloak. The post-install script (`scripts/keycloak/post-install-keycloak-setup.sh`) retrieves this ID automatically, but you can look it up manually for verification:
 
 ```bash
-# Using the same admin token from above
-kubectl run get-admin-id --rm -it --restart=Never -n governance \
-  --image=curlimages/curl -- \
-  curl -s -H "Authorization: Bearer $TOKEN" \
-  "$KEYCLOAK_URL/admin/realms/governance/users?username=platform-admin&exact=true" \
+# Using the same port-forward and admin token from above
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/keycloak/admin/realms/governance/users?username=platform-admin&exact=true" \
   | jq -r '.[0].id'
 ```
 
@@ -804,7 +917,7 @@ curl -s https://governance.your-domain.com/keycloak/realms/governance/.well-know
 
 ---
 
-## 7. Creating Kubernetes Secrets
+## 8. Creating Kubernetes Secrets
 
 The governance-platform chart expects secrets to be pre-created in the namespace. There are two approaches:
 
@@ -816,20 +929,20 @@ The governance-platform chart expects secrets to be pre-created in the namespace
 
 ### Secret Reference
 
-| Secret Name                  | Used By                                             | Keys                                                         |
-| ---------------------------- | --------------------------------------------------- | ------------------------------------------------------------ |
-| `keycloak-admin`             | Keycloak, bootstrap                                 | `password`                                                   |
-| `platform-admin`             | Bootstrap                                           | `password`                                                   |
-| `platform-database`          | governance-service, auth-service, integrity-service | `username`, `password`                                       |
-| `platform-keycloak`          | auth-service, governance-service                    | `service-account-client-id`, `service-account-client-secret` |
-| `platform-auth-service`      | auth-service                                        | `api-secret`, `jwt-secret`                                   |
-| `platform-encryption-key`    | governance-service, auth-service                    | `encryption-key`                                             |
-| `platform-governance-worker` | governance-service worker                           | `encryption-key`, `client-id`, `client-secret`               |
-| `platform-azure-blob`        | governance-service, integrity-service (Azure)       | `account-key`, `connection-string`                           |
-| `platform-aws-s3`            | governance-service, integrity-service (AWS)         | `access-key-id`, `secret-access-key`                         |
-| `platform-gcs`               | governance-service, integrity-service (GCS)         | `service-account-json`                                       |
-| `platform-azure-key-vault`   | auth-service                                        | `client-id`, `client-secret`, `tenant-id`, `vault-url`       |
-| `platform-image-pull-secret` | All services                                        | Docker registry credentials                                  |
+| Secret Name                  | Used By                                             | Keys                                                                                       |
+| ---------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `keycloak-admin`             | Keycloak, bootstrap                                 | `password`                                                                                 |
+| `platform-admin`             | Bootstrap                                           | `password`                                                                                 |
+| `platform-database`          | governance-service, auth-service, integrity-service | `username`, `password`                                                                     |
+| `platform-keycloak`          | auth-service, governance-service                    | `service-account-client-id`, `service-account-client-secret`, `token-exchange-private-key` |
+| `platform-auth-service`      | auth-service                                        | `api-secret`, `jwt-secret`                                                                 |
+| `platform-encryption-key`    | governance-service, auth-service                    | `encryption-key`                                                                           |
+| `platform-governance-worker` | governance-service worker                           | `encryption-key`, `client-id`, `client-secret`                                             |
+| `platform-azure-blob`        | governance-service, integrity-service (Azure)       | `account-key`, `connection-string`                                                         |
+| `platform-aws-s3`            | governance-service, integrity-service (AWS)         | `access-key-id`, `secret-access-key`                                                       |
+| `platform-gcs`               | governance-service, integrity-service (GCS)         | `service-account-json`                                                                     |
+| `platform-azure-key-vault`   | auth-service                                        | `client-id`, `client-secret`, `tenant-id`, `vault-url`                                     |
+| `platform-image-pull-secret` | All services                                        | Docker registry credentials                                                                |
 
 ### Create Secrets
 
@@ -846,14 +959,25 @@ kubectl create secret generic platform-database \
 
 #### Keycloak (Service Account Credentials)
 
-Use the backend client secret retrieved from Keycloak in [Section 6](#retrieve-auto-generated-client-secrets):
+Use the backend client secret retrieved from Keycloak in [Section 7](#retrieve-auto-generated-client-secrets).
+
+Generate an RSA private key for token exchange signing:
+
+```bash
+openssl genrsa -out token-exchange-key.pem 2048
+```
+
+Create the secret:
 
 ```bash
 kubectl create secret generic platform-keycloak \
   --from-literal=service-account-client-id=governance-platform-backend \
   --from-literal=service-account-client-secret=YOUR_BACKEND_CLIENT_SECRET \
+  --from-file=token-exchange-private-key=token-exchange-key.pem \
   --namespace governance
 ```
+
+> **Note:** The token exchange private key is used by auth-service to sign token exchange requests with Keycloak. If you used `govctl init`, this key is auto-generated in your secrets file.
 
 #### Auth Service
 
@@ -874,7 +998,7 @@ kubectl create secret generic platform-encryption-key \
 
 #### Governance Worker
 
-Use the worker client secret retrieved from Keycloak in [Section 6](#retrieve-auto-generated-client-secrets):
+Use the worker client secret retrieved from Keycloak in [Section 7](#retrieve-auto-generated-client-secrets):
 
 ```bash
 kubectl create secret generic platform-governance-worker \
@@ -946,7 +1070,7 @@ kubectl get secret platform-keycloak -n governance -o jsonpath='{.data}' | jq 'k
 
 ---
 
-## 8. Configuring values.yaml
+## 9. Configuring values.yaml
 
 The governance-platform Helm chart is configured through a single values file. Start from the Keycloak example and customize it for your environment.
 
@@ -976,7 +1100,7 @@ global:
   environmentType: "production" # Options: development, staging, production
 ```
 
-The `global.secrets.create` setting defaults to `false`, which means secrets must be pre-created (as done in [Section 7](#7-creating-kubernetes-secrets)). If you prefer Helm-managed secrets, set `create: true` and provide values via [`secrets-sample.yaml`](../charts/governance-platform/examples/secrets-sample.yaml).
+The `global.secrets.create` setting defaults to `false`, which means secrets must be pre-created (as done in [Section 8](#8-creating-kubernetes-secrets)). If you prefer Helm-managed secrets, set `create: true` and provide values via [`secrets-sample.yaml`](../charts/governance-platform/examples/secrets-sample.yaml).
 
 ### Auth Service
 
@@ -1012,7 +1136,7 @@ auth-service:
 | ------------------------- | -------------------------------------------- | ----------------------------------------------------- |
 | `idp.issuer`              | Keycloak realm issuer URL                    | `https://<domain>/keycloak/realms/governance`         |
 | `idp.keycloak.adminUrl`   | Keycloak base URL (used for Admin API calls) | Your Keycloak URL without `/realms/...`               |
-| `idp.keycloak.clientId`   | Frontend client ID                           | Set during [bootstrap](#6-running-keycloak-bootstrap) |
+| `idp.keycloak.clientId`   | Frontend client ID                           | Set during [bootstrap](#7-running-keycloak-bootstrap) |
 | `keyVault.azure.vaultUrl` | Azure Key Vault URL                          | From [Section 3](#azure-key-vault)                    |
 | `keyVault.azure.tenantId` | Azure AD tenant ID                           | From your Azure subscription                          |
 
@@ -1059,16 +1183,16 @@ governance-studio:
       lineage: true # Lineage tracking
 ```
 
-> **Important:** The `keycloakClientId` must match the frontend client ID created during [bootstrap](#6-running-keycloak-bootstrap) (`governance-platform-frontend`).
+> **Important:** The `keycloakClientId` must match the frontend client ID created during [bootstrap](#7-running-keycloak-bootstrap) (`governance-platform-frontend`).
 
 ### Integrity Service
 
-The integrity-service handles verifiable credentials. Configure its storage (must use the same provider as governance-service):
+The integrity-service handles verifiable credentials. Configure its storage (can use a different provider than governance-service if needed):
 
 ```yaml
 integrity-service:
   config:
-    integrityAppBlobStoreType: "azure_blob" # Must match governance-service storageProvider
+    integrityAppBlobStoreType: "azure_blob"
     integrityAppBlobStoreAccount: "your-storage-account"
     integrityAppBlobStoreContainer: "your-integrity-store"
 
@@ -1084,52 +1208,18 @@ integrity-service:
 
 ### Ingress Configuration
 
-Each service needs an ingress block. All four services share the same domain with different paths. The pattern is identical across services — here's the template:
+Each service needs an ingress block. All four services share the same domain with path-based routing, but annotations vary per service. If you used `govctl` or started from [`values-keycloak.yaml`](../charts/governance-platform/examples/values-keycloak.yaml), the ingress is already configured correctly.
 
-```yaml
-ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    cert-manager.io/issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-    nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-  hosts:
-    - host: governance.your-domain.com
-      paths:
-        - path: "/<servicePath>(/|$)(.*)"
-          pathType: ImplementationSpecific
-  tls:
-    - secretName: prod-tls-secret
-      hosts:
-        - governance.your-domain.com
-```
+Key differences between services:
 
-| Service            | Path Pattern                   | Notes                              |
-| ------------------ | ------------------------------ | ---------------------------------- |
-| governance-studio  | `/` (Prefix)                   | No regex rewrite needed            |
-| governance-service | `/governanceService(/\|$)(.*)` | Regex rewrite to `/$2`             |
-| auth-service       | `/authService(/\|$)(.*)`       | Extra buffer size annotations      |
-| integrity-service  | `/integrityService(/\|$)(.*)`  | `proxy-body-size: "0"` (unlimited) |
+| Service            | Path Pattern                   | Notes                                                                                                                           |
+| ------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| governance-studio  | `/` (pathType: Prefix)         | No regex or rewrite annotations                                                                                                 |
+| governance-service | `/governanceService(/\|$)(.*)` | Regex rewrite to `/$2`                                                                                                          |
+| auth-service       | `/authService(/\|$)(.*)`       | Regex rewrite + extra buffer size annotations (`proxy-buffer-size`, `client-header-buffer-size`, `large-client-header-buffers`) |
+| integrity-service  | `/integrityService(/\|$)(.*)`  | Regex rewrite + `proxy-body-size: "0"` (unlimited)                                                                              |
 
-> **Note:** The `secretName: prod-tls-secret` must be the same across all four services. cert-manager creates this secret automatically when it provisions the TLS certificate.
-
-### Keycloak Organization Hook
-
-The umbrella chart includes a post-install hook that creates the organization and platform-admin user in the database. Enable it in your values:
-
-```yaml
-keycloak:
-  createOrganization: true
-  realmName: "governance" # Must match auth-service idp.keycloak.realm
-  displayName: "Governance Platform"
-  createPlatformAdmin: true
-  platformAdminKeycloakId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" # From Section 6
-```
-
-> **Note:** The `platformAdminKeycloakId` is the Keycloak user ID for the `platform-admin` user, retrieved in [Section 6](#retrieve-the-platform-admin-keycloak-id). This links the database record to the Keycloak user so login works correctly.
+> **Note:** All four services must use the same `tls.secretName` (e.g., `prod-tls-secret`). cert-manager creates this secret automatically when it provisions the TLS certificate.
 
 ### PostgreSQL
 
@@ -1142,7 +1232,9 @@ postgresql:
     persistence:
       enabled: true
       size: 10Gi
-      storageClass: "standard" # Adjust for your cluster (e.g., "managed-premium" on AKS)
+      # Uses cluster default StorageClass when set to "".
+      # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3", etc.
+      storageClass: ""
     resources:
       requests:
         cpu: 500m
@@ -1152,7 +1244,7 @@ postgresql:
         memory: 2Gi
 ```
 
-The database password is pulled from the `platform-database` secret created in [Section 7](#database).
+The database password is pulled from the `platform-database` secret created in [Section 8](#database).
 
 ### Configuration Checklist
 
@@ -1164,14 +1256,13 @@ Before deploying, verify your values file has:
 - [ ] `auth-service.config.keyVault.azure.vaultUrl` and `tenantId` set
 - [ ] `governance-service.config.storageProvider` and storage fields set
 - [ ] `governance-studio.config.keycloakUrl` and `keycloakRealm` set
-- [ ] `integrity-service.config.integrityAppBlobStoreType` matching governance-service
+- [ ] `integrity-service.config.integrityAppBlobStoreType` and storage fields set
 - [ ] All ingress `host` fields set to your domain
 - [ ] All ingress `tls` blocks using the same `secretName`
-- [ ] `keycloak.createOrganization` set to `true`
 
 ---
 
-## 9. Deploying the Governance Platform
+## 10. Deploying the Governance Platform
 
 ### Update Chart Dependencies
 
@@ -1208,9 +1299,10 @@ The Helm install proceeds in this order:
 2. **governance-service** starts, runs database migrations on startup
 3. **auth-service** and **integrity-service** start (depend on database being ready)
 4. **governance-studio** starts (static frontend, no database dependency)
-5. **Post-install hook** runs (weight 20) — waits for migrations to complete, then creates the organization and platform-admin user in the database
 
 The `--wait` flag ensures Helm waits for all pods to reach `Ready` state before returning.
+
+> **Important:** After the platform is running, you must run the post-install setup script ([Section 11](#11-post-install-setup--verification)) to create the organization and platform-admin user in the database.
 
 ### Monitor the Deployment
 
@@ -1221,8 +1313,6 @@ kubectl get pods -n governance -w
 # Check deployment status
 kubectl get deployments -n governance
 
-# Check the post-install hook job
-kubectl get jobs -n governance
 ```
 
 Expected pod status once healthy:
@@ -1234,7 +1324,6 @@ governance-platform-governance-service-xxxxx-xxxxx      1/1     Running     2m
 governance-platform-governance-studio-xxxxx-xxxxx       1/1     Running     2m
 governance-platform-integrity-service-xxxxx-xxxxx       1/1     Running     2m
 governance-platform-postgresql-0                        1/1     Running     3m
-governance-platform-create-keycloak-org-xxxxx           0/1     Completed   1m
 ```
 
 ### Troubleshooting Deployment Issues
@@ -1266,15 +1355,6 @@ kubectl get pod governance-platform-postgresql-0 -n governance
 kubectl get secret platform-database -n governance -o jsonpath='{.data.password}' | base64 -d
 ```
 
-**Post-install hook failed:**
-
-```bash
-# Check the hook job logs
-kubectl logs job/governance-platform-create-keycloak-org -n governance
-
-# Common cause: migrations haven't completed yet — the init container retries for up to 5 minutes
-```
-
 **Ingress not working:**
 
 ```bash
@@ -1288,14 +1368,15 @@ kubectl describe certificate -n governance
 
 ---
 
-## 10. Post-Install Setup & Verification
+## 11. Post-Install Setup & Verification
 
-### Post-Install Script (Optional)
+### Run the Post-Install Setup Script
 
-If the post-install Helm hook didn't run correctly, or if you need to re-run the database setup, use the helper script:
+After the platform is deployed and all pods are running, run the post-install script to create the organization and platform-admin user in the database:
 
 ```bash
 ./scripts/keycloak/post-install-keycloak-setup.sh \
+  --keycloak-url https://governance.your-domain.com/keycloak \
   --namespace governance \
   --realm governance \
   --display-name "Governance Platform"
@@ -1328,7 +1409,7 @@ curl -s https://$DOMAIN/governanceService/health | jq .
 curl -s https://$DOMAIN/authService/health | jq .
 
 # Integrity Service health
-curl -s https://$DOMAIN/integrityService/health | jq .
+curl -s https://$DOMAIN/integrityService/health/v1 | jq .
 ```
 
 ### Verify Keycloak Integration
