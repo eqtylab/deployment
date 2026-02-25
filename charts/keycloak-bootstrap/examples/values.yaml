@@ -148,7 +148,7 @@ users:
   admin:
     enabled: true
     username: "platform-admin"
-    email: "admin@CHANGE_ME_DOMAIN_HERE"
+    email: "admin@your-domain.com"
     firstName: "Platform"
     lastName: "Admin"
     emailVerified: true

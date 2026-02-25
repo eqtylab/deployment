@@ -16,11 +16,11 @@ usage() {
 Bootstrap Keycloak realm, clients, scopes, and users for the Governance Platform
 
 Usage: $0 -f <values-file> [options]
+  -c, --chart-dir <dir>           Chart directory (default: $CHART_DIR)
   -f, --values <file>             Helm values file for keycloak-bootstrap chart (required)
+  -h, --help                      Show this help message
   -n, --namespace <namespace>     Kubernetes namespace (required)
   -r, --release <name>            Helm release name (default: $BOOTSTRAP_RELEASE)
-  -c, --chart-dir <dir>           Chart directory (default: $CHART_DIR)
-  -h, --help                      Show this help message
 
 Examples:
   $0 -f $CHART_DIR/examples/values.yaml -n governance
@@ -173,18 +173,26 @@ show_summary() {
   print_info "Bootstrap process completed!"
 }
 
-# Default values
+# Configurable parameters
 NAMESPACE=""
-BOOTSTRAP_RELEASE="keycloak-bootstrap"
-CHART_DIR="$ROOTDIR/charts/keycloak-bootstrap"
 VALUES_FILE=""
+CHART_DIR="$ROOTDIR/charts/keycloak-bootstrap"
+BOOTSTRAP_RELEASE="keycloak-bootstrap"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
+  -c | --chart-dir)
+    CHART_DIR="$2"
+    shift 2
+    ;;
   -f | --values)
     VALUES_FILE="$2"
     shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
     ;;
   -n | --namespace)
     NAMESPACE="$2"
@@ -193,14 +201,6 @@ while [[ $# -gt 0 ]]; do
   -r | --release)
     BOOTSTRAP_RELEASE="$2"
     shift 2
-    ;;
-  -c | --chart-dir)
-    CHART_DIR="$2"
-    shift 2
-    ;;
-  -h | --help)
-    usage
-    exit 0
     ;;
   *)
     print_error "Unknown option: $1"

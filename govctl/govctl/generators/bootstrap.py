@@ -137,7 +137,7 @@ def generate_bootstrap(config: PlatformConfig) -> str:
             "admin": {
                 "enabled": True,
                 "username": "platform-admin",
-                "email": f"admin@{realm}.eqtylab.io",
+                "email": f"admin@{domain}",
                 "firstName": "Platform",
                 "lastName": "Admin",
                 "emailVerified": True,

@@ -16,16 +16,15 @@ usage() {
 Post-install database setup for Keycloak integration
 
 Usage: $0 -k <keycloak-url> [options]
+  -e, --admin-email <email>       Platform admin email (default: $ADMIN_EMAIL)
+  -h, --help                      Show this help message
   -k, --keycloak-url <url>        Keycloak URL (required, e.g. https://keycloak.example.com)
   -n, --namespace <namespace>     Kubernetes namespace (required)
   -r, --realm <realm>             Keycloak realm name (default: $REALM_NAME)
-  -D, --display-name <name>       Organization display name (default: $DISPLAY_NAME)
-  -d, --database <database>       Database name (default: $DB_NAME)
-  -h, --help                      Show this help message
 
 Examples:
-  $0 -k https://governance.example.com/keycloak
-  $0 -k https://governance.example.com/keycloak --realm governance --display-name 'Governance Platform'
+  $0 -k https://governance.example.com/keycloak -n governance
+  $0 -k https://governance.example.com/keycloak -n governance --admin-email admin@your-domain.com
 "
 }
 
@@ -186,15 +185,15 @@ create_platform_admin_user() {
   local user_id=$(run_psql_scalar "SELECT gen_random_uuid();")
 
   # Check if user exists (by email or by IDP composite key)
-  local user_exists=$(run_psql_scalar "SELECT COUNT(*) FROM users WHERE email = 'admin@$REALM_NAME.eqtylab.io' OR (idp_provider = 'keycloak' AND idp_user_id = '$keycloak_user_id');")
+  local user_exists=$(run_psql_scalar "SELECT COUNT(*) FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$keycloak_user_id');")
 
   if [ "$user_exists" != "0" ]; then
     print_warn "Platform admin user already exists"
-    user_id=$(run_psql_scalar "SELECT id FROM users WHERE email = 'admin@$REALM_NAME.eqtylab.io' OR (idp_provider = 'keycloak' AND idp_user_id = '$keycloak_user_id') LIMIT 1;")
+    user_id=$(run_psql_scalar "SELECT id FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$keycloak_user_id') LIMIT 1;")
   else
     # Create user
     run_psql -c "INSERT INTO users (id, idp_provider, idp_user_id, email, email_verified, username, display_name, given_name, family_name, active, app_metadata, created_at, updated_at, is_service_account, service_config) \
-          VALUES ('$user_id', 'keycloak', '$keycloak_user_id', 'admin@$REALM_NAME.eqtylab.io', true, 'platform-admin', 'Platform Admin', 'Platform', 'Admin', true, '{}', NOW(), NOW(), false, '{}');"
+          VALUES ('$user_id', 'keycloak', '$keycloak_user_id', '$ADMIN_EMAIL', true, 'platform-admin', 'Platform Admin', 'Platform', 'Admin', true, '{}', NOW(), NOW(), false, '{}');"
     print_info "Created platform admin user"
   fi
 
@@ -223,7 +222,7 @@ create_platform_admin_user() {
   # Show created user
   echo ""
   echo "Platform admin user:"
-  run_psql -c "SELECT id, email, display_name, idp_provider FROM users WHERE email = 'admin@$REALM_NAME.eqtylab.io';"
+  run_psql -c "SELECT id, email, display_name, idp_provider FROM users WHERE email = '$ADMIN_EMAIL';"
 }
 
 # Look up the platform-admin user ID from Keycloak Admin API
@@ -328,11 +327,11 @@ verify_integration() {
     print_error "Organization not found or incorrect idp_provider (count: ${org_count:-unknown})"
   fi
 
-  local user_count=$(run_psql_scalar "SELECT COUNT(*) FROM users WHERE email = 'admin@$REALM_NAME.eqtylab.io' AND idp_provider = 'keycloak';")
+  local user_count=$(run_psql_scalar "SELECT COUNT(*) FROM users WHERE email = '$ADMIN_EMAIL' AND idp_provider = 'keycloak';")
   if [ "$user_count" = "1" ]; then
     print_info "Platform-admin user exists in auth service"
 
-    local membership_count=$(run_psql_scalar "SELECT COUNT(*) FROM user_organization_memberships uom JOIN users u ON uom.user_id = u.id WHERE u.email = 'admin@$REALM_NAME.eqtylab.io' AND 'organization_owner' = ANY(uom.roles);")
+    local membership_count=$(run_psql_scalar "SELECT COUNT(*) FROM user_organization_memberships uom JOIN users u ON uom.user_id = u.id WHERE u.email = '$ADMIN_EMAIL' AND 'organization_owner' = ANY(uom.roles);")
     if [ "$membership_count" = "1" ]; then
       print_info "Platform-admin has organization_owner role"
     else
@@ -352,7 +351,7 @@ show_summary() {
   echo "Database Setup Completed:"
   echo "  - Organization: $REALM_NAME (idp_provider=keycloak)"
   echo "  - Display Name: $DISPLAY_NAME"
-  echo "  - Platform Admin: admin@$REALM_NAME.eqtylab.io"
+  echo "  - Platform Admin: $ADMIN_EMAIL"
   echo "  - Role: organization_owner"
 
   echo ""
@@ -402,20 +401,35 @@ main() {
   print_info "Post-install setup complete!"
 }
 
-# Default values
-NAMESPACE=""
+# Constants
 REALM_NAME="governance"
-DISPLAY_NAME="Governance Platform"
+DISPLAY_NAME="Governance Studio"
 DB_NAME="governance"
-KEYCLOAK_URL=""
 
-# Shared state (populated during setup)
+# Configurable parameters
+NAMESPACE=""
+KEYCLOAK_URL=""
+ADMIN_EMAIL="admin@governance.local"
+
+# Runtime state (populated during setup)
 DB_POD=""
 PG_PASSWORD=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
+  -e | --admin-email)
+    ADMIN_EMAIL="$2"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -k | --keycloak-url)
+    KEYCLOAK_URL="$2"
+    shift 2
+    ;;
   -n | --namespace)
     NAMESPACE="$2"
     shift 2
@@ -423,22 +437,6 @@ while [[ $# -gt 0 ]]; do
   -r | --realm)
     REALM_NAME="$2"
     shift 2
-    ;;
-  -D | --display-name)
-    DISPLAY_NAME="$2"
-    shift 2
-    ;;
-  -d | --database)
-    DB_NAME="$2"
-    shift 2
-    ;;
-  -k | --keycloak-url)
-    KEYCLOAK_URL="$2"
-    shift 2
-    ;;
-  -h | --help)
-    usage
-    exit 0
     ;;
   *)
     print_error "Unknown option: $1"

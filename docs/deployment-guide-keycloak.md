@@ -464,7 +464,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@your-domain.com
+    email: <email address>
     privateKeySecretRef:
       name: letsencrypt-production
     solvers:
@@ -487,7 +487,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@your-domain.com
+    email: <email address>
     privateKeySecretRef:
       name: letsencrypt-production
     solvers:
@@ -499,7 +499,7 @@ EOF
 
 Ingress annotation: `cert-manager.io/cluster-issuer: "letsencrypt-prod"`
 
-Replace `admin@your-domain.com` with your actual email address. This email is used by Let's Encrypt for certificate expiration notifications.
+Replace `<email address>` with your actual email address. This email is used by Let's Encrypt for certificate expiration notifications.
 
 > **Note:** The Issuer name (`letsencrypt-prod`) must match the corresponding annotation in your ingress configuration. If you switch from Issuer to ClusterIssuer, update all `cert-manager.io/issuer` annotations to `cert-manager.io/cluster-issuer` in your values file.
 
@@ -785,7 +785,7 @@ clients:
 # Admin user email
 users:
   admin:
-    email: "admin@governance.your-domain.com"
+    email: "admin@your-domain.com"
 ```
 
 If your Keycloak is not reachable at the default `http://keycloak:8080/keycloak`, update the connection settings:
@@ -1378,8 +1378,7 @@ After the platform is deployed and all pods are running, run the post-install sc
 ./scripts/keycloak/post-install-keycloak-setup.sh \
   --keycloak-url https://governance.your-domain.com/keycloak \
   --namespace governance \
-  --realm governance \
-  --display-name "Governance Platform"
+  --admin-email admin@your-domain.com
 ```
 
 The script will:
