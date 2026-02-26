@@ -618,12 +618,12 @@ Before deploying Keycloak, create the secrets that both Keycloak and the bootstr
 ```bash
 # Keycloak admin password (master realm)
 kubectl create secret generic keycloak-admin \
-  --from-literal=password="$(openssl rand -base64 24)" \
+  --from-literal=password="$(openssl rand -base64 32)" \
   --namespace governance
 
 # Platform admin password (governance realm user — created by bootstrap)
 kubectl create secret generic platform-admin \
-  --from-literal=password="$(openssl rand -base64 16)" \
+  --from-literal=password="$(openssl rand -base64 32)" \
   --namespace governance
 ```
 
@@ -939,7 +939,7 @@ Run these commands in order, replacing placeholder values with your actual crede
 ```bash
 kubectl create secret generic platform-database \
   --from-literal=username=postgres \
-  --from-literal=password="$(openssl rand -base64 24)" \
+  --from-literal=password="$(openssl rand -hex 32)" \
   --namespace governance
 ```
 

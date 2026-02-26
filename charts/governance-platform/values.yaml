@@ -93,16 +93,16 @@ global:
         # Only used if create=true and provider=auth0
         values:
           # -- Auth0 Client ID (EQTYLab Platform API M2M - token validation)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
           clientId: ""
           # -- Auth0 Client Secret (EQTYLab Platform API M2M)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
           clientSecret: ""
           # -- Management API Client ID (Auth Service Backend M2M app)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
           mgmtClientId: ""
           # -- Management API Client Secret (Auth Service Backend M2M app)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
           mgmtClientSecret: ""
 
       # -- Keycloak Configuration
@@ -120,10 +120,10 @@ global:
           # @default -- `governance-platform-backend`
           serviceAccountClientId: "governance-platform-backend"
           # -- Service Account Client Secret
-          # @default -- `""` (REQUIRED if create=true, generate with: openssl rand -hex 32)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Keycloak admin console)
           serviceAccountClientSecret: ""
           # -- Token Exchange Private Key
-          # @default -- `""` (REQUIRED if create=true, for token exchange signing)
+          # @default -- `""` (REQUIRED if create=true, generate with: openssl genrsa 2048)
           tokenExchangePrivateKey: ""
 
       # -- Microsoft Entra ID Configuration
@@ -140,19 +140,19 @@ global:
         # Only used if create=true and provider=entra
         values:
           # -- Entra Client ID (Application (client) ID from Azure app registration)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
           clientId: ""
           # -- Entra Client Secret (Client secret from Azure app registration)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
           clientSecret: ""
           # -- Entra Tenant ID (Directory (tenant) ID from Azure)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
           tenantId: ""
           # -- Graph API Client ID (Application (client) ID for Microsoft Graph access)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
           graphClientId: ""
           # -- Graph API Client Secret (Client secret for Microsoft Graph access)
-          # @default -- `""` (REQUIRED if create=true)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
           graphClientSecret: ""
 
     # -- Auth Service Credentials

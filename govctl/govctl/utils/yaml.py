@@ -54,6 +54,10 @@ def dump_yaml_with_header(
 # Generate random secrets with:
 #   openssl rand -base64 32
 #
+# NOTE: For the database password, use hex encoding to avoid special
+# characters (+, /, =) that break PostgreSQL connection URI parsing:
+#   openssl rand -hex 32
+#
 # =============================================================================
 
 """

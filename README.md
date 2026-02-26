@@ -69,7 +69,7 @@ kubectl create namespace governance
 #    Alternatively, create secrets manually:
 kubectl create secret generic platform-database \
   --from-literal=username=postgres \
-  --from-literal=password="$(openssl rand -base64 24)" \
+  --from-literal=password="$(openssl rand -base64 32)" \
   --namespace governance
 
 # ... additional secrets as documented in governance-platform/README.md

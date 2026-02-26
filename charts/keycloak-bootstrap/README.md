@@ -72,12 +72,12 @@ Before installing, create the following secrets:
 ```bash
 # Keycloak server admin password (for Admin API authentication)
 kubectl create secret generic keycloak-admin \
-  --from-literal=password=YOUR_ADMIN_PASSWORD \
+  --from-literal=password="$(openssl rand -base64 32)" \
   --namespace governance
 
 # Governance Studio admin user password (for logging into Governance Studio)
 kubectl create secret generic platform-admin \
-  --from-literal=password=$(openssl rand -base64 16) \
+  --from-literal=password=$(openssl rand -base64 32) \
   --namespace governance
 ```
 

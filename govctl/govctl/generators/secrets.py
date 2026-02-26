@@ -16,6 +16,15 @@ def _generate_secret(length: int = 32) -> str:
     return base64.b64encode(secrets.token_bytes(length)).decode()
 
 
+def _generate_db_secret(length: int = 32) -> str:
+    """Generate a cryptographically secure hex token.
+
+    Uses only [0-9a-f] characters, safe for inclusion in URIs such as
+    PostgreSQL connection strings.
+    """
+    return secrets.token_hex(length)
+
+
 def _generate_rsa_private_key(bits: int = 2048) -> str:
     """Generate an RSA private key in PEM format."""
     key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
@@ -68,7 +77,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "secretName": "platform-database",
             "values": {
                 "username": "postgres",
-                "password": _generate_secret(),
+                "password": _generate_db_secret(),
             },
         },
         # Auth service secrets (always required)

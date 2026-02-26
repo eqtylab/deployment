@@ -279,13 +279,14 @@ keycloak:
 # # Database Credentials
 # kubectl create secret generic platform-database \
 #   --from-literal=username=postgres \
-#   --from-literal=password="$(openssl rand -base64 24)" \
+#   --from-literal=password="$(openssl rand -hex 32)" \
 #   --namespace governance
 #
 # # Keycloak Credentials
 # kubectl create secret generic platform-keycloak \
 #   --from-literal=service-account-client-id=YOUR_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID \
 #   --from-literal=service-account-client-secret=YOUR_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET \
+#   --from-literal=token-exchange-private-key="$(openssl genrsa 2048)" \
 #   --namespace governance
 #
 # # Auth Service Credentials
