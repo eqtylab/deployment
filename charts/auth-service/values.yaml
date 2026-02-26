@@ -390,7 +390,7 @@ config:
     # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
     environment: ""
     # -- Auth Service URL
-    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}")
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}/api/v1/auth")
     # Internal URL used by auth-service to reference itself (e.g., for JWKS endpoint)
     authServiceUrl: ""
     # -- Swagger Enabled

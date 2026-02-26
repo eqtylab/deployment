@@ -72,10 +72,6 @@ auth-service:
       azure:
         vaultUrl: "https://your-keyvault.vault.azure.net/"
         tenantId: "your-azure-tenant-id"
-    # Extra environment variables for auth-service
-    extraEnvVars:
-      - name: AUTH_SERVICE_URL
-        value: "http://governance-platform-auth-service:8080/api/v1/auth"
 
 # =============================================================================
 # Governance Service
