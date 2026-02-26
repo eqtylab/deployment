@@ -796,6 +796,17 @@ keycloak:
   url: "http://keycloak.other-namespace.svc:8080/keycloak"  # Cross-namespace
 ```
 
+Optionally, customize the Keycloak login page branding for the governance realm:
+
+```yaml
+keycloak:
+  realm:
+    displayName: "Governance Platform"
+    displayNameHtml: '<div class="kc-logo-text"><span>Your Organization</span></div>'
+```
+
+The `displayNameHtml` field controls the HTML branding shown on the Keycloak login page for the governance realm. It defaults to a generic Keycloak logo text if not set.
+
 ### Run the Bootstrap
 
 #### Option A: Using the Helper Script (Recommended)

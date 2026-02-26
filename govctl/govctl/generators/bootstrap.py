@@ -85,7 +85,23 @@ def generate_bootstrap(config: PlatformConfig) -> str:
                                 },
                             }
                         ],
-                    }
+                    },
+                    {
+                        "name": "platform-audience",
+                        "description": "Includes frontend client ID in token audience claim",
+                        "mappers": [
+                            {
+                                "name": "platform-audience-mapper",
+                                "protocolMapper": "oidc-audience-mapper",
+                                "config": {
+                                    "included.client.audience": "governance-platform-frontend",
+                                    "id.token.claim": "false",
+                                    "access.token.claim": "true",
+                                    "introspection.token.claim": "true",
+                                },
+                            }
+                        ],
+                    },
                 ],
             },
             "backend": {

@@ -2,8 +2,8 @@ apiVersion: v2
 name: keycloak-bootstrap
 description: A Helm chart for deploying the EQTY Lab Keycloak Bootstrap - automated realm and client configuration for the Governance Platform
 type: application
-version: 1.1.1
-appVersion: "1.1.1"
+version: 1.1.2
+appVersion: "1.1.2"
 home: https://github.com/eqtylab/governance-studio-infrastructure
 sources:
   - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/keycloak-bootstrap

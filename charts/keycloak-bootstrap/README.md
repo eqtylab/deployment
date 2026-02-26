@@ -72,12 +72,12 @@ Before installing, create the following secrets:
 ```bash
 # Keycloak server admin password (for Admin API authentication)
 kubectl create secret generic keycloak-admin \
-  --from-literal=password="$(openssl rand -base64 32)" \
+  --from-literal=password=YOUR_ADMIN_PASSWORD \
   --namespace governance
 
 # Governance Studio admin user password (for logging into Governance Studio)
 kubectl create secret generic platform-admin \
-  --from-literal=password=$(openssl rand -base64 32) \
+  --from-literal=password=$(openssl rand -base64 16) \
   --namespace governance
 ```
 
@@ -187,6 +187,11 @@ This removes all Kubernetes components associated with the chart and deletes the
 | clients.frontend.defaultScopes  | list   | `["openid","profile","email","roles","sub"]` | Default client scopes                                                   |
 | clients.frontend.optionalScopes | list   | `["offline_access"]`                         | Optional client scopes                                                  |
 | clients.frontend.customScopes   | list   | See values.yaml                              | Custom scopes with protocol mappers to create and assign to this client |
+
+Default custom scopes created for frontend client:
+
+- `sub` - Includes subject identifier in access token
+- `platform-audience` - Adds `governance-platform-frontend` to the token `aud` claim (required for token exchange)
 
 ### Backend Client Configuration
 
