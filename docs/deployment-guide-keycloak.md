@@ -320,7 +320,7 @@ aws s3 mb s3://your-integrity-store --region us-east-1
 # Create IAM user with programmatic access
 aws iam create-user --user-name governance-storage
 aws iam attach-user-policy --user-name governance-storage \
-  --policy-arn arn:aws:iam::policy/AmazonS3FullAccess  # Or a scoped policy
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess  # Or a scoped policy
 
 # Create access key (needed for secrets later)
 aws iam create-access-key --user-name governance-storage
@@ -402,12 +402,12 @@ The platform requires one domain for the governance services. Keycloak can run o
 Create DNS records pointing to your NGINX Ingress Controller's external IP:
 
 ```bash
-# Get the ingress controller external IP
-kubectl get svc -n ingress-nginx ingress-nginx-controller \
-  -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+# Find your ingress controller's external IP or hostname in the EXTERNAL-IP column
+# Note: On EKS this will be a hostname (e.g., xxx.elb.amazonaws.com) rather than an IP
+kubectl get svc -n ingress-nginx ingress-nginx-controller
 ```
 
-Then create A-records (or CNAMEs if using a load balancer hostname):
+Then create A-records (or CNAME records if using an EKS load balancer hostname):
 
 | Record                                          | Type | Value                   |
 | ----------------------------------------------- | ---- | ----------------------- |
@@ -916,13 +916,19 @@ curl -s https://governance.your-domain.com/keycloak/realms/governance/.well-know
 
 ## 8. Creating Kubernetes Secrets
 
-The governance-platform chart expects secrets to be pre-created in the namespace. There are two approaches:
+The governance-platform chart requires several Kubernetes secrets to be available at deploy time. There are three ways to create them — **choose one approach and follow only that subsection**.
 
-- **Option A (Recommended for production):** Create secrets manually with `kubectl` (documented below)
-- **Option B:** Use the [`secrets-sample.yaml`](../charts/governance-platform/examples/secrets-sample.yaml) template with `global.secrets.create: true` to have Helm create them
-- **Option C:** Use [`govctl init`](../govctl/) to generate a `secrets-{env}.yaml` file with auto-generated values for random secrets (database password, API secrets, JWT secret, encryption keys, RSA private key) — you only need to fill in provider-specific credentials
+> **Note:** Regardless of which approach you choose, the `keycloak-admin` and `platform-admin` secrets were already created in [Section 5](#pre-bootstrap-secrets). The instructions below cover all remaining secrets.
 
-> **Note:** The `keycloak-admin` and `platform-admin` secrets were already created in [Section 5](#pre-bootstrap-secrets). The commands below cover all remaining secrets.
+### Choose Your Approach
+
+| Approach                                                              | Best For                                                            | What You Do                                                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[Option A — kubectl](#option-a-manual-creation-with-kubectl)**      | Environments without file-based secrets management                  | Run `kubectl create secret` commands yourself. Secrets live outside of Helm and persist across `helm uninstall` / `helm install` cycles.      |
+| **[Option B — Helm-managed secrets](#option-b-helm-managed-secrets)** | Teams with encrypted secrets workflows (SOPS, sealed-secrets, etc.) | Fill in a secrets values file and pass it to `helm install`. Helm creates the Secret objects for you. Keeps everything declarative.           |
+| **[Option C — govctl](#option-c-govctl-generated-secrets)**           | Any environment (generates files for Option B)                      | Run `govctl init` to auto-generate random values; fill in provider credentials; then use the output as a Helm values file (same as Option B). |
+
+> **Important:** Do not mix approaches. If you use Option B or C (Helm-managed), do **not** also create the same secrets with `kubectl` — Helm will fail if the Secret objects already exist. Conversely, if you use Option A (`kubectl`), leave `global.secrets.create` at its default value of `false`.
 
 ### Secret Reference
 
@@ -941,7 +947,9 @@ The governance-platform chart expects secrets to be pre-created in the namespace
 | `platform-azure-key-vault`   | auth-service                                        | `client-id`, `client-secret`, `tenant-id`, `vault-url`                                     |
 | `platform-image-pull-secret` | All services                                        | Docker registry credentials                                                                |
 
-### Create Secrets
+### Option A: Manual Creation with kubectl
+
+Create each secret manually. Secrets are managed outside of Helm, so they persist across `helm uninstall` / `helm install` cycles.
 
 Run these commands in order, replacing placeholder values with your actual credentials.
 
@@ -1055,7 +1063,61 @@ kubectl create secret docker-registry platform-image-pull-secret \
   --namespace governance
 ```
 
-### Verify Secrets
+After creating all secrets, skip ahead to [Verify Secrets](#verify-secrets).
+
+### Option B: Helm-Managed Secrets
+
+Instead of creating secrets with `kubectl`, you can declare secret values in a YAML file and let Helm create the Secret objects during `helm install`.
+
+1. Copy the sample secrets file to a secure location **outside your repo**:
+
+```bash
+cp charts/governance-platform/examples/secrets-sample.yaml my-secrets.yaml
+```
+
+2. Open `my-secrets.yaml` and:
+   - Ensure `global.secrets.create` is set to `true`
+   - Set `global.secrets.auth.provider` to `keycloak`
+   - Uncomment the `keycloak` block under `global.secrets.auth` and fill in the backend client secret from [Section 7](#retrieve-auto-generated-client-secrets)
+   - Fill in all `REPLACE_WITH_*` values for your chosen storage provider, key vault, and image registry
+   - Generate random values where indicated (e.g., `openssl rand -base64 32` for encryption keys)
+
+3. When deploying in [Section 10](#10-deploying-the-governance-platform), pass **both** your secrets file and values file to Helm:
+
+```bash
+helm upgrade --install governance-platform ./charts/governance-platform \
+  --namespace governance \
+  --values my-secrets.yaml \
+  --values my-values.yaml \
+  --wait --timeout 15m
+```
+
+> **Warning:** Never commit `my-secrets.yaml` to version control. Add it to `.gitignore`.
+
+### Option C: govctl-Generated Secrets
+
+If you ran `govctl init` in [Section 6](#6-generating-configuration-with-govctl), it generated a `secrets-{env}.yaml` file with random values already filled in for database password, API secrets, JWT secret, encryption keys, and the RSA private key.
+
+1. Open `secrets-{env}.yaml` and fill in the remaining values marked with `# REQUIRED` comments:
+   - Keycloak backend client secret (from [Section 7](#retrieve-auto-generated-client-secrets))
+   - Keycloak worker client secret (from [Section 7](#retrieve-auto-generated-client-secrets))
+   - Storage provider credentials
+   - Key vault credentials
+   - Image registry credentials
+
+2. The generated file has `global.secrets.create: true`, so Helm will create the secrets for you. When deploying in [Section 10](#10-deploying-the-governance-platform), pass it alongside your values file:
+
+```bash
+helm upgrade --install governance-platform ./charts/governance-platform \
+  --namespace governance \
+  --values secrets-staging.yaml \
+  --values values-staging.yaml \
+  --wait --timeout 15m
+```
+
+### Verify Secrets (Option A only)
+
+If you created secrets with `kubectl` (Option A), verify they exist before proceeding:
 
 ```bash
 # List all platform secrets
@@ -1064,6 +1126,8 @@ kubectl get secrets -n governance | grep platform
 # Verify a specific secret has the expected keys
 kubectl get secret platform-keycloak -n governance -o jsonpath='{.data}' | jq 'keys'
 ```
+
+If you used Option B or C, Helm creates the secrets during `helm install` — skip this step and continue to [Section 9](#9-configuring-valuesyaml).
 
 ---
 
@@ -1097,7 +1161,7 @@ global:
   environmentType: "production" # Options: development, staging, production
 ```
 
-The `global.secrets.create` setting defaults to `false`, which means secrets must be pre-created (as done in [Section 8](#8-creating-kubernetes-secrets)). If you prefer Helm-managed secrets, set `create: true` and provide values via [`secrets-sample.yaml`](../charts/governance-platform/examples/secrets-sample.yaml).
+The `global.secrets.create` setting controls how secrets are provided. Leave it at `false` (default) if you created secrets with `kubectl` ([Section 8, Option A](#option-a-manual-creation-with-kubectl)). Set it to `true` only if you are using Helm-managed secrets via a secrets file ([Section 8, Option B](#option-b-helm-managed-secrets) or [Option C](#option-c-govctl-generated-secrets)).
 
 ### Auth Service
 
@@ -1298,6 +1362,8 @@ This downloads the Bitnami PostgreSQL chart and links the local subcharts (auth-
 
 ### Install
 
+**If you created secrets with kubectl (Section 8, Option A):**
+
 ```bash
 helm upgrade --install governance-platform ./charts/governance-platform \
   --namespace governance \
@@ -1307,11 +1373,17 @@ helm upgrade --install governance-platform ./charts/governance-platform \
   --timeout 15m
 ```
 
-> If using Helm-managed secrets instead of pre-created secrets, include the secrets file:
->
-> ```bash
-> --values /path/to/secrets.yaml --values /path/to/my-values.yaml
-> ```
+**If you are using Helm-managed secrets (Section 8, Option B or C):** pass the secrets file _before_ the values file so that values can override if needed:
+
+```bash
+helm upgrade --install governance-platform ./charts/governance-platform \
+  --namespace governance \
+  --create-namespace \
+  --values /path/to/my-secrets.yaml \
+  --values /path/to/my-values.yaml \
+  --wait \
+  --timeout 15m
+```
 
 ### What Happens During Install
 
