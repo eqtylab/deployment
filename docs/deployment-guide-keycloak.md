@@ -395,6 +395,16 @@ These values will be used in [Section 8 (Creating Secrets)](#8-creating-kubernet
 
 ## 4. Domain & TLS Configuration
 
+### NGINX Ingress Controller
+
+If not already installed, use the provided helper script:
+
+```bash
+./scripts/nginx.sh
+```
+
+This installs the `ingress-nginx` Helm chart into the `ingress-nginx` namespace.
+
 ### DNS Setup
 
 The platform requires one domain for the governance services. Keycloak can run on a separate domain or on the same domain under `/keycloak`.
@@ -413,16 +423,6 @@ Then create A-records (or CNAME records if using an EKS load balancer hostname):
 | ----------------------------------------------- | ---- | ----------------------- |
 | `governance.your-domain.com`                    | A    | `<ingress-external-ip>` |
 | `keycloak.your-domain.com` (if separate domain) | A    | `<ingress-external-ip>` |
-
-### NGINX Ingress Controller
-
-If not already installed, use the provided helper script:
-
-```bash
-./scripts/nginx.sh
-```
-
-This installs the `ingress-nginx` Helm chart into the `ingress-nginx` namespace.
 
 ### TLS with cert-manager
 
