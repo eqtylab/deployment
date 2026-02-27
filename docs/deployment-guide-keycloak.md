@@ -395,25 +395,6 @@ These values will be used in [Section 8 (Creating Secrets)](#8-creating-kubernet
 
 ## 4. Domain & TLS Configuration
 
-### DNS Setup
-
-The platform requires one domain for the governance services. Keycloak can run on a separate domain or on the same domain under `/keycloak`.
-
-Create DNS records pointing to your NGINX Ingress Controller's external IP:
-
-```bash
-# Get the ingress controller external IP
-kubectl get svc -n ingress-nginx ingress-nginx-controller \
-  -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-```
-
-Then create A-records (or CNAMEs if using a load balancer hostname):
-
-| Record                                          | Type | Value                   |
-| ----------------------------------------------- | ---- | ----------------------- |
-| `governance.your-domain.com`                    | A    | `<ingress-external-ip>` |
-| `keycloak.your-domain.com` (if separate domain) | A    | `<ingress-external-ip>` |
-
 ### NGINX Ingress Controller
 
 If not already installed, use the provided helper script:
@@ -424,6 +405,23 @@ If not already installed, use the provided helper script:
 
 This installs the `ingress-nginx` Helm chart into the `ingress-nginx` namespace.
 
+### DNS Setup
+
+The platform requires one domain for the governance services. Keycloak can run on a separate domain or on the same domain under `/keycloak`.
+
+Create DNS records pointing to your NGINX Ingress Controller's external IP:
+
+```bash
+# copy the ingress controller external IP
+kubectl get svc -n ingress-nginx ingress-nginx-controller
+```
+
+Then create A-records (or CNAMEs if using a load balancer hostname):
+
+| Record                                          | Type | Value                   |
+| ----------------------------------------------- | ---- | ----------------------- |
+| `governance.your-domain.com`                    | A    | `<ingress-external-ip>` |
+| `keycloak.your-domain.com` (if separate domain) | A    | `<ingress-external-ip>` |
 ### TLS with cert-manager
 
 The platform uses cert-manager to automatically provision TLS certificates from Let's Encrypt.
