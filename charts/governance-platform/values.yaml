@@ -2062,6 +2062,13 @@ governance-studio:
     # Only used when authProvider is "entra"
     entraTenantId: ""
 
+    # -- Entra Scopes
+    # @default -- `"openid profile email offline_access api://<backend-client-id>/access_as_user"`
+    # Space-separated list of OAuth scopes requested during login.
+    # **REQUIRED for Entra**: Replace `<backend-client-id>` with the Governance Platform Backend app registration ID
+    # Only used when authProvider is "entra"
+    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
+
     # -- Entra Authority
     # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
     # Optional override for the Entra authority URL
@@ -2664,7 +2671,7 @@ postgresql:
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
 
 # =============================================================================
-# Keycloak Integration
+# Keycloak Post-Install Configuration
 # =============================================================================
 # Configuration for Keycloak identity provider integration
 # Creates the necessary organization and admin user in the governance database
@@ -2708,3 +2715,47 @@ keycloak:
   # @default -- `http://keycloak:8080/keycloak`
   # Internal cluster URL for the Keycloak Admin REST API
   url: "http://keycloak:8080/keycloak"
+
+# ------------------------------------------------------------------------------
+# Microsoft Entra ID Post-Install Configuration
+# ------------------------------------------------------------------------------
+# Configuration for Microsoft Entra ID identity provider integration
+# Creates the necessary organization and admin user in the governance database
+# Only used when global.secrets.auth.provider is set to "entra"
+# ------------------------------------------------------------------------------
+entra:
+  # -- Create Organization
+  # @default -- `false`
+  # Enable automatic organization creation for Entra tenant
+  # Set to true to create organization in database on install/upgrade
+  createOrganization: false
+
+  # -- Organization Name
+  # @default -- `governance`
+  # Organization identifier in the database
+  organizationName: "governance"
+
+  # -- Display Name
+  # @default -- `Governance Studio`
+  # Human-readable display name for the organization
+  displayName: "Governance Studio"
+
+  # -- Create Platform Admin
+  # @default -- `false`
+  # Create platform-admin user in auth service tables
+  # Set to true to create an initial platform administrator
+  # The Entra user ID is automatically resolved by looking up the user by email via Graph API
+  createPlatformAdmin: false
+
+  # -- Platform Admin Email
+  # @default -- `""`
+  # **REQUIRED** when createPlatformAdmin is true
+  # Must be an email address that exists in your Microsoft Entra tenant
+  # (e.g., user@yourorg.onmicrosoft.com or user@yourverifieddomain.com)
+  # Used to look up the Entra user Object ID automatically via Microsoft Graph API
+  platformAdminEmail: ""
+
+  # -- Tenant ID
+  # @default -- `""`
+  # Microsoft Entra tenant ID (required for Graph API user lookup)
+  tenantId: ""

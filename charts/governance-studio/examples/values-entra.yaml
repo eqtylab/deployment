@@ -30,6 +30,7 @@ config:
   # Microsoft Entra ID Configuration
   entraClientId: "your-entra-client-id"
   entraTenantId: "your-tenant-id"
+  entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user" # Replace <backend-client-id> with Governance Platform Backemd app registration ID
   # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional, defaults to https://login.microsoftonline.com/<tenantId>
 
   # Application Settings

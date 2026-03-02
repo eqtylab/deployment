@@ -16,6 +16,7 @@ from govctl.generators.sections.integrity_service import (
 )
 from govctl.generators.sections.postgresql import generate_postgresql_section
 from govctl.generators.sections.keycloak import generate_keycloak_section
+from govctl.generators.sections.entra import generate_entra_section
 
 
 def generate_values(config: PlatformConfig) -> str:
@@ -31,6 +32,8 @@ def generate_values(config: PlatformConfig) -> str:
 
     if config.auth_provider == AuthProvider.KEYCLOAK:
         values["keycloak"] = generate_keycloak_section(config)
+    elif config.auth_provider == AuthProvider.ENTRA:
+        values["entra"] = generate_entra_section(config)
 
     return dump_yaml_with_header(values, "values", config)
 

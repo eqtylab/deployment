@@ -1,0 +1,12 @@
+apiVersion: v2
+name: entra-bootstrap
+description: A Helm chart for deploying the EQTY Lab Entra Bootstrap - automated app registration and configuration for the Governance Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/eqtylab/governance-studio-infrastructure
+sources:
+  - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/entra-bootstrap
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io

@@ -1,11 +1,11 @@
-{{- if .Values.keycloak.createOrganization }}
+{{- if .Values.entra.createOrganization }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "governance-platform.fullname" . }}-post-install-keycloak-setup
+  name: {{ include "governance-platform.fullname" . }}-post-install-entra-setup
   labels:
     {{- include "governance-platform.labels" . | nindent 4 }}
-    app.kubernetes.io/component: keycloak-org-setup
+    app.kubernetes.io/component: entra-org-setup
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "20"
@@ -17,7 +17,7 @@ spec:
     metadata:
       labels:
         {{- include "governance-platform.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: keycloak-org-setup
+        app.kubernetes.io/component: entra-org-setup
     spec:
       restartPolicy: OnFailure
       {{- with .Values.global.imagePullSecrets }}
@@ -38,84 +38,99 @@ spec:
                 sleep 5
               done
 
-              echo "Creating Keycloak organization..."
+              echo "Creating Entra organization..."
+
+              ORG_NAME="{{ .Values.entra.organizationName }}"
 
               # Check if organization already exists
               EXISTS=$(psql \
-                -t -c "SELECT COUNT(*) FROM organization WHERE name = '{{ .Values.keycloak.realmName }}';" | tr -d ' ')
+                -t -c "SELECT COUNT(*) FROM organization WHERE name = '${ORG_NAME}';" | tr -d ' ')
 
               if [ "$EXISTS" = "1" ]; then
-                echo "Organization '{{ .Values.keycloak.realmName }}' already exists"
+                echo "Organization '${ORG_NAME}' already exists"
                 # Update to ensure idp_provider is set correctly
-                psql -c "UPDATE organization SET idp_provider = 'keycloak', updated_at = NOW() WHERE name = '{{ .Values.keycloak.realmName }}';"
-                echo "Updated organization to use Keycloak IDP"
+                psql -c "UPDATE organization SET idp_provider = 'entra', display_name = '{{ .Values.entra.displayName | default .Values.entra.organizationName }}', updated_at = NOW() WHERE name = '${ORG_NAME}';"
+                echo "Updated organization to use Entra IDP"
               else
                 # Create new organization
                 psql -c "INSERT INTO organization (name, description, display_name, idp_provider, settings, created_at, updated_at) \
-                      VALUES ('{{ .Values.keycloak.realmName }}', '{{ .Values.keycloak.realmName }}', '{{ .Values.keycloak.displayName | default .Values.keycloak.realmName }}', 'keycloak', '{}', NOW(), NOW());"
-                echo "Created organization '{{ .Values.keycloak.realmName }}'"
+                      VALUES ('${ORG_NAME}', '${ORG_NAME}', '{{ .Values.entra.displayName | default .Values.entra.organizationName }}', 'entra', '{}', NOW(), NOW());"
+                echo "Created organization '${ORG_NAME}'"
               fi
 
               # Show the organization
               psql \
-                -c "SELECT id, name, display_name, idp_provider FROM organization WHERE name = '{{ .Values.keycloak.realmName }}';"
+                -c "SELECT id, name, display_name, idp_provider FROM organization WHERE name = '${ORG_NAME}';"
 
-              {{- if .Values.keycloak.createPlatformAdmin }}
-              {{- $adminEmail := .Values.keycloak.platformAdminEmail | default (printf "admin@%s" .Values.global.domain) }}
+              {{- if .Values.entra.createPlatformAdmin }}
+              {{- if not .Values.entra.platformAdminEmail }}
+              {{- fail "entra.platformAdminEmail is required when entra.createPlatformAdmin is true. Must be an email that exists in your Entra tenant." }}
+              {{- end }}
+              {{- $adminEmail := .Values.entra.platformAdminEmail }}
               echo "Creating platform-admin user..."
 
-              # Install curl and jq for Keycloak API calls
+              # Install curl and jq for Graph API calls
               apk add --no-cache curl jq > /dev/null 2>&1
 
               ADMIN_EMAIL="{{ $adminEmail }}"
-              echo "Looking up Keycloak user by email: $ADMIN_EMAIL"
+              echo "Looking up Entra user by email: $ADMIN_EMAIL"
 
-              # Get Keycloak admin token
-              KC_TOKEN=$(curl -sf -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+              # Get Graph API access token using client credentials flow
+              TOKEN_RESPONSE=$(curl -s -X POST \
+                "https://login.microsoftonline.com/${ENTRA_TENANT_ID}/oauth2/v2.0/token" \
                 -H "Content-Type: application/x-www-form-urlencoded" \
-                -d "username=${KEYCLOAK_ADMIN_USERNAME}" \
-                -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
-                -d "grant_type=password" \
-                -d "client_id=admin-cli" | jq -r '.access_token')
+                -d "client_id=${ENTRA_CLIENT_ID}" \
+                -d "client_secret=${ENTRA_CLIENT_SECRET}" \
+                -d "scope=https://graph.microsoft.com/.default" \
+                -d "grant_type=client_credentials") || true
 
-              if [ -z "$KC_TOKEN" ] || [ "$KC_TOKEN" = "null" ]; then
-                echo "ERROR: Failed to get Keycloak admin token"
+              GRAPH_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+
+              if [ -z "$GRAPH_TOKEN" ] || [ "$GRAPH_TOKEN" = "null" ]; then
+                echo "ERROR: Failed to get Graph API access token"
+                echo "Response: $TOKEN_RESPONSE"
                 exit 1
               fi
 
-              # Look up user by email in Keycloak
-              KEYCLOAK_USER_ID=$(curl -sf \
-                -H "Authorization: Bearer $KC_TOKEN" \
-                "${KEYCLOAK_URL}/admin/realms/{{ .Values.keycloak.realmName }}/users?email=${ADMIN_EMAIL}&exact=true" | jq -r '.[0].id')
+              # Look up user by email in Entra via Graph API
+              # Try mail field first, then userPrincipalName
+              ENTRA_USER=$(curl -s \
+                -H "Authorization: Bearer $GRAPH_TOKEN" \
+                "https://graph.microsoft.com/v1.0/users?\$filter=mail%20eq%20'${ADMIN_EMAIL}'%20or%20userPrincipalName%20eq%20'${ADMIN_EMAIL}'&\$select=id,mail,displayName,givenName,surname") || true
 
-              if [ -z "$KEYCLOAK_USER_ID" ] || [ "$KEYCLOAK_USER_ID" = "null" ]; then
-                echo "ERROR: Could not find user with email $ADMIN_EMAIL in Keycloak realm '{{ .Values.keycloak.realmName }}'"
-                echo "Make sure the user has been created in Keycloak (e.g., via keycloak-bootstrap) before running this job"
+              ENTRA_USER_ID=$(echo "$ENTRA_USER" | jq -r '.value[0].id')
+              ENTRA_DISPLAY_NAME=$(echo "$ENTRA_USER" | jq -r '.value[0].displayName // "Platform Admin"')
+              ENTRA_GIVEN_NAME=$(echo "$ENTRA_USER" | jq -r '.value[0].givenName // "Platform"')
+              ENTRA_SURNAME=$(echo "$ENTRA_USER" | jq -r '.value[0].surname // "Admin"')
+
+              if [ -z "$ENTRA_USER_ID" ] || [ "$ENTRA_USER_ID" = "null" ]; then
+                echo "ERROR: Could not find user with email $ADMIN_EMAIL in Entra tenant"
+                echo "Make sure the user exists in your Microsoft Entra ID tenant"
                 exit 1
               fi
 
-              echo "Found Keycloak user ID: $KEYCLOAK_USER_ID"
+              echo "Found Entra user ID: $ENTRA_USER_ID"
 
               # Generate UUIDs using PostgreSQL
               USER_ID=$(psql -t -c "SELECT gen_random_uuid();" | tr -d ' ')
 
               # Check if user exists (by email or by idp composite key)
               USER_EXISTS=$(psql \
-                -t -c "SELECT COUNT(*) FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID');" | tr -d ' ')
+                -t -c "SELECT COUNT(*) FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'entra' AND idp_user_id = '$ENTRA_USER_ID');" | tr -d ' ')
 
               if [ "$USER_EXISTS" != "0" ]; then
                 echo "Platform admin user already exists"
-                USER_ID=$(psql -t -c "SELECT id FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID') LIMIT 1;" | tr -d ' ')
+                USER_ID=$(psql -t -c "SELECT id FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'entra' AND idp_user_id = '$ENTRA_USER_ID') LIMIT 1;" | tr -d ' ')
               else
                 # Create user
                 psql -c "INSERT INTO users (id, idp_provider, idp_user_id, email, email_verified, display_name, given_name, family_name, active, app_metadata, created_at, updated_at, is_service_account, service_config) \
-                      VALUES ('$USER_ID', 'keycloak', '$KEYCLOAK_USER_ID', '$ADMIN_EMAIL', true, 'Platform Admin', 'Platform', 'Admin', true, '{}', NOW(), NOW(), false, '{}');"
+                      VALUES ('$USER_ID', 'entra', '$ENTRA_USER_ID', '$ADMIN_EMAIL', true, '$ENTRA_DISPLAY_NAME', '$ENTRA_GIVEN_NAME', '$ENTRA_SURNAME', true, '{}', NOW(), NOW(), false, '{}');"
                 echo "Created platform admin user"
               fi
 
               # Get organization ID
               ORG_ID=$(psql \
-                -t -c "SELECT id FROM organization WHERE name = '{{ .Values.keycloak.realmName }}';" | tr -d ' ')
+                -t -c "SELECT id FROM organization WHERE name = '${ORG_NAME}';" | tr -d ' ')
 
               # Check if membership exists
               MEMBERSHIP_EXISTS=$(psql \
@@ -154,16 +169,20 @@ spec:
                   key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey | default "password" }}
             - name: PGDATABASE
               value: {{ .Values.postgresql.auth.database | default "governance" | quote }}
-            {{- if .Values.keycloak.createPlatformAdmin }}
-            - name: KEYCLOAK_URL
-              value: {{ .Values.keycloak.url | default "http://keycloak:8080/keycloak" | quote }}
-            - name: KEYCLOAK_ADMIN_USERNAME
-              value: "admin"
-            - name: KEYCLOAK_ADMIN_PASSWORD
+            {{- if .Values.entra.createPlatformAdmin }}
+            {{- $entraSecretName := (((.Values.global).secrets).auth).entra.secretName | default "platform-entra" }}
+            - name: ENTRA_TENANT_ID
+              value: {{ .Values.entra.tenantId | quote }}
+            - name: ENTRA_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: keycloak-admin
-                  key: password
+                  name: {{ $entraSecretName | quote }}
+                  key: "graph-client-id"
+            - name: ENTRA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $entraSecretName | quote }}
+                  key: "graph-client-secret"
             {{- end }}
           resources:
             requests:

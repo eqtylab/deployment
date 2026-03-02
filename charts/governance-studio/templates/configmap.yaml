@@ -41,11 +41,9 @@ data:
 
   # Entra ID Settings (only included when Entra is the provider)
   {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "entra" }}
-  VITE_AUTH_PROVIDER: "entra"
-  VITE_ENTRA_CLIENT_ID: {{ .Values.config.entraClientId | default "" | quote }}
-  VITE_ENTRA_TENANT_ID: {{ .Values.config.entraTenantId | default "" | quote }}
-  {{- if .Values.config.entraAuthority }}
-  VITE_ENTRA_AUTHORITY: {{ .Values.config.entraAuthority | quote }}
-  {{- end }}
+  ENTRA_CLIENT_ID: {{ .Values.config.entraClientId | default "" | quote }}
+  ENTRA_TENANT_ID: {{ .Values.config.entraTenantId | default "" | quote }}
+  ENTRA_SCOPES: {{ .Values.config.entraScopes | default "" | quote }}
+  ENTRA_AUTHORITY: {{ .Values.config.entraAuthority | default (printf "https://login.microsoftonline.com/%s" (.Values.config.entraTenantId | default "")) | quote }}
   {{- end }}
 {{- end }}

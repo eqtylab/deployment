@@ -59,7 +59,7 @@ users:
 ```
 
 ```bash
-helm install keycloak-bootstrap ./keycloak-bootstrap \
+helm upgrade --install keycloak-bootstrap ./keycloak-bootstrap \
   -f values.yaml \
   --namespace governance \
   --create-namespace

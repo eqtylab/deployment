@@ -1,0 +1,472 @@
+{{- if .Values.bootstrap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "entra-bootstrap.fullname" . }}-scripts
+  labels:
+    {{- include "entra-bootstrap.labels" . | nindent 4 }}
+data:
+  bootstrap.sh: |
+    #!/bin/bash
+    set -eo pipefail
+
+    # Colors for output
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    NC='\033[0m' # No Color
+
+    # Configuration from environment
+    TENANT_ID="${TENANT_ID}"
+    DOMAIN="${DOMAIN}"
+
+    echo "Starting Entra ID bootstrap process..."
+    echo "Tenant ID: ${TENANT_ID}"
+    echo "Domain: ${DOMAIN}"
+
+    # =========================================================================
+    # Helper functions
+    # =========================================================================
+
+    # Authenticate via service principal
+    authenticate() {
+      echo "Authenticating with service principal..."
+      if ! az login --service-principal \
+        --username "${SP_CLIENT_ID}" \
+        --password "${SP_CLIENT_SECRET}" \
+        --tenant "${TENANT_ID}" \
+        --allow-no-subscriptions \
+        --output none; then
+        echo -e "${RED}Failed to authenticate${NC}"
+        return 1
+      fi
+      echo -e "${GREEN}Successfully authenticated${NC}"
+    }
+
+    # Check if an app registration exists by display name.
+    # Sets APP_ID as a side effect if found.
+    check_app_exists() {
+      local DISPLAY_NAME=$1
+      APP_ID=$(az ad app list --display-name "${DISPLAY_NAME}" --query "[0].appId" -o tsv 2>/dev/null)
+      if [ -n "$APP_ID" ] && [ "$APP_ID" != "None" ]; then
+        echo "  App registration '${DISPLAY_NAME}' already exists (appId: ${APP_ID})"
+        return 0
+      fi
+      return 1
+    }
+
+    # Get the Object ID (directory object) for an app by its appId.
+    # Graph API PATCH /applications/{id} requires the Object ID, not the appId.
+    # Uses `az ad app show` (direct lookup) instead of `az ad app list --filter`
+    # because filter queries have longer propagation delays for new apps.
+    get_object_id() {
+      local CLIENT_APP_ID=$1
+      local OID=""
+      for i in 1 2 3 4 5; do
+        OID=$(az ad app show --id "${CLIENT_APP_ID}" --query "id" -o tsv 2>/dev/null) && break
+        echo "  Waiting for app to be queryable (attempt $i/5)..." >&2
+        sleep 5
+      done
+      echo "${OID}"
+    }
+
+    # =========================================================================
+    # App registration functions
+    # =========================================================================
+
+    # Create a confidential app registration.
+    # Sets ${VAR_NAME}_APP_ID and ${VAR_NAME}_SECRET as side effects.
+    create_confidential_app() {
+      local DISPLAY_NAME=$1
+      local VAR_NAME=$2
+      local CURRENT_APP_ID=""
+      local IS_NEW=false
+
+      echo "Creating confidential app registration: ${DISPLAY_NAME}..."
+
+      if check_app_exists "${DISPLAY_NAME}"; then
+        CURRENT_APP_ID="${APP_ID}"
+      else
+        IS_NEW=true
+        CURRENT_APP_ID=$(az ad app create \
+          --display-name "${DISPLAY_NAME}" \
+          --sign-in-audience "AzureADMyOrg" \
+          --query "appId" -o tsv)
+
+        if [ -z "$CURRENT_APP_ID" ]; then
+          echo -e "${RED}  Failed to create app: ${DISPLAY_NAME}${NC}"
+          return 1
+        fi
+
+        echo "  Created app with appId: ${CURRENT_APP_ID}"
+
+        # Wait for app registration to propagate before performing operations
+        echo "  Waiting for app registration to propagate..."
+        sleep 10
+      fi
+
+      eval "${VAR_NAME}_APP_ID=${CURRENT_APP_ID}"
+
+      # Ensure a service principal exists for the app
+      echo "  Ensuring service principal exists..."
+      az ad sp create --id "${CURRENT_APP_ID}" --output none 2>/dev/null || true
+
+      # Only create a client secret for newly created apps to avoid
+      # invalidating existing secrets on re-runs
+      if [ "$IS_NEW" = true ]; then
+        echo "  Creating client secret..."
+        local SECRET=""
+        for i in 1 2 3; do
+          SECRET=$(az ad app credential reset \
+            --id "${CURRENT_APP_ID}" \
+            --display-name "governance-platform" \
+            --years 2 \
+            --query "password" -o tsv 2>/dev/null) && break
+          echo "  Retrying credential creation (attempt $i/3)..."
+          sleep 5
+        done
+
+        eval "${VAR_NAME}_SECRET=${SECRET}"
+
+        if [ -n "$SECRET" ]; then
+          echo -e "${YELLOW}  CLIENT SECRET for ${DISPLAY_NAME}: ${SECRET}${NC}"
+          echo -e "${YELLOW}  Save this secret - it will not be shown again!${NC}"
+        fi
+      else
+        echo -e "${YELLOW}  App already exists — skipping secret creation to preserve existing credentials.${NC}"
+        echo -e "${YELLOW}  To rotate, use: az ad app credential reset --id ${CURRENT_APP_ID}${NC}"
+      fi
+
+      echo -e "${GREEN}  Confidential app created successfully${NC}"
+    }
+
+    # Create a SPA (public) app registration for the frontend.
+    # Sets FRONTEND_APP_ID as a side effect.
+    # Called AFTER backend app is created so we can reference the backend API scope.
+    create_frontend_app() {
+      local DISPLAY_NAME="{{ .Values.apps.frontend.displayName }}"
+
+      echo "Creating frontend app registration: ${DISPLAY_NAME}..."
+
+      if check_app_exists "${DISPLAY_NAME}"; then
+        FRONTEND_APP_ID="${APP_ID}"
+      else
+        # Create the app registration
+        FRONTEND_APP_ID=$(az ad app create \
+          --display-name "${DISPLAY_NAME}" \
+          --sign-in-audience "AzureADMyOrg" \
+          --enable-id-token-issuance true \
+          --enable-access-token-issuance false \
+          --query "appId" -o tsv)
+
+        if [ -z "$FRONTEND_APP_ID" ]; then
+          echo -e "${RED}  Failed to create frontend app${NC}"
+          return 1
+        fi
+
+        echo "  Created app with appId: ${FRONTEND_APP_ID}"
+
+        # Wait for app registration to propagate before performing operations
+        echo "  Waiting for app registration to propagate..."
+        sleep 10
+      fi
+
+      # Build the PATCH body as a temp file to avoid shell quoting issues
+      local OBJECT_ID
+      OBJECT_ID=$(get_object_id "${FRONTEND_APP_ID}")
+
+      local BODY_FILE="/tmp/frontend-patch.json"
+
+      # Start with Graph API permissions
+      cat > "${BODY_FILE}" <<JSONEOF
+    {
+      "spa": {
+        "redirectUris": {{ .Values.apps.frontend.redirectUris | toJson }}
+      },
+      "requiredResourceAccess": [
+        {
+          "resourceAppId": "00000003-0000-0000-c000-000000000000",
+          "resourceAccess": [
+            {"id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", "type": "Scope"},
+            {"id": "14dad69e-099b-42c9-810b-d002981feec1", "type": "Scope"},
+            {"id": "37f7f235-527c-4136-accd-4a02d197296e", "type": "Scope"},
+            {"id": "7427e0e9-2fba-42fe-b0c0-848c9e6a8182", "type": "Scope"}
+          ]
+        }
+    JSONEOF
+
+      # If backend app exists with access_as_user scope, add frontend → backend permission
+      if [ -n "${BACKEND_APP_ID}" ] && [ -n "${ACCESS_AS_USER_SCOPE_ID}" ]; then
+        echo "  Adding frontend → backend API permission (access_as_user)..."
+        cat >> "${BODY_FILE}" <<JSONEOF
+        ,{
+          "resourceAppId": "${BACKEND_APP_ID}",
+          "resourceAccess": [
+            {"id": "${ACCESS_AS_USER_SCOPE_ID}", "type": "Scope"}
+          ]
+        }
+    JSONEOF
+      fi
+
+      # Close the JSON
+      echo ']}' >> "${BODY_FILE}"
+
+      az rest --method PATCH \
+        --uri "https://graph.microsoft.com/v1.0/applications/${OBJECT_ID}" \
+        --headers "Content-Type=application/json" \
+        --body @"${BODY_FILE}" --output none
+
+      rm -f "${BODY_FILE}"
+
+      echo -e "${GREEN}  Frontend app configured successfully${NC}"
+    }
+
+    # =========================================================================
+    # Configuration functions
+    # =========================================================================
+
+    # Set accessTokenAcceptedVersion to 2 on an app registration.
+    # Required so the auth-service can validate v2.0 tokens from the
+    # https://login.microsoftonline.com/{tenant}/v2.0 issuer.
+    set_token_version_v2() {
+      local APP_ID=$1
+      local DISPLAY_NAME=$2
+
+      echo "  Setting accessTokenAcceptedVersion=2 on ${DISPLAY_NAME}..."
+
+      local OBJECT_ID
+      OBJECT_ID=$(get_object_id "${APP_ID}")
+      if [ -z "$OBJECT_ID" ] || [ "$OBJECT_ID" = "None" ]; then
+        echo -e "${RED}  Failed to get Object ID for ${APP_ID}${NC}"
+        return 1
+      fi
+
+      az rest --method PATCH \
+        --uri "https://graph.microsoft.com/v1.0/applications/${OBJECT_ID}" \
+        --headers "Content-Type=application/json" \
+        --body '{"api":{"requestedAccessTokenVersion":2}}' \
+        --output none
+
+      echo -e "${GREEN}  Token version set to v2${NC}"
+    }
+
+    # Set the Application ID URI (identifierUris) on an app.
+    # Required for the access_as_user scope to be requestable as
+    # api://<appId>/access_as_user.
+    set_identifier_uri() {
+      local APP_ID=$1
+      local DISPLAY_NAME=$2
+
+      echo "  Setting identifierUri on ${DISPLAY_NAME}..."
+
+      local OBJECT_ID
+      OBJECT_ID=$(get_object_id "${APP_ID}")
+      if [ -z "$OBJECT_ID" ] || [ "$OBJECT_ID" = "None" ]; then
+        echo -e "${RED}  Failed to get Object ID for ${APP_ID}${NC}"
+        return 1
+      fi
+
+      az rest --method PATCH \
+        --uri "https://graph.microsoft.com/v1.0/applications/${OBJECT_ID}" \
+        --headers "Content-Type=application/json" \
+        --body "{\"identifierUris\": [\"api://${APP_ID}\"]}" \
+        --output none
+
+      echo -e "${GREEN}  identifierUri set to api://${APP_ID}${NC}"
+    }
+
+    # Create the access_as_user OAuth2 permission scope on an app.
+    # Sets ACCESS_AS_USER_SCOPE_ID as a side effect for use by frontend permission setup.
+    #
+    # NOTE: The PATCH replaces the entire oauth2PermissionScopes array.
+    # This is safe for bootstrap of a new app. If re-running against an app with
+    # additional custom scopes, those would need to be included in the PATCH body.
+    create_access_as_user_scope() {
+      local APP_ID=$1
+      local DISPLAY_NAME=$2
+
+      echo "  Creating access_as_user scope on ${DISPLAY_NAME}..."
+
+      local OBJECT_ID
+      OBJECT_ID=$(get_object_id "${APP_ID}")
+      if [ -z "$OBJECT_ID" ] || [ "$OBJECT_ID" = "None" ]; then
+        echo -e "${RED}  Failed to get Object ID for ${APP_ID}${NC}"
+        return 1
+      fi
+
+      # Check if scope already exists and get its ID
+      local EXISTING_SCOPE_ID
+      EXISTING_SCOPE_ID=$(az rest --method GET \
+        --uri "https://graph.microsoft.com/v1.0/applications/${OBJECT_ID}" \
+        --query "api.oauth2PermissionScopes[?value=='access_as_user'].id | [0]" -o tsv 2>/dev/null)
+
+      if [ -n "$EXISTING_SCOPE_ID" ] && [ "$EXISTING_SCOPE_ID" != "None" ]; then
+        echo "  Scope access_as_user already exists (id: ${EXISTING_SCOPE_ID})"
+        ACCESS_AS_USER_SCOPE_ID="${EXISTING_SCOPE_ID}"
+        return 0
+      fi
+
+      # Generate a deterministic UUID from the app ID for the scope ID
+      # md5sum is available on the Azure CLI image (Debian-based)
+      ACCESS_AS_USER_SCOPE_ID=$(echo -n "access_as_user:${APP_ID}" | md5sum | sed 's/^\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)\(.\{12\}\).*/\1-\2-\3-\4-\5/')
+
+      az rest --method PATCH \
+        --uri "https://graph.microsoft.com/v1.0/applications/${OBJECT_ID}" \
+        --headers "Content-Type=application/json" \
+        --body "{
+          \"api\": {
+            \"oauth2PermissionScopes\": [
+              {
+                \"adminConsentDescription\": \"Allow the application to access the API on behalf of the signed-in user\",
+                \"adminConsentDisplayName\": \"Access as user\",
+                \"id\": \"${ACCESS_AS_USER_SCOPE_ID}\",
+                \"isEnabled\": true,
+                \"type\": \"User\",
+                \"userConsentDescription\": \"Allow the application to access the API on your behalf\",
+                \"userConsentDisplayName\": \"Access as user\",
+                \"value\": \"access_as_user\"
+              }
+            ]
+          }
+        }" --output none
+
+      echo -e "${GREEN}  Scope access_as_user created (id: ${ACCESS_AS_USER_SCOPE_ID})${NC}"
+    }
+
+    # Add Graph API permissions to a confidential app.
+    # Microsoft Graph well-known permission IDs:
+    #   e1fe6dd8-... = User.Read        (delegated)
+    #   14dad69e-... = profile           (delegated)
+    #   37f7f235-... = openid            (delegated)
+    #   df021288-... = User.Read.All     (application - for user management)
+    add_graph_permissions() {
+      local APP_ID=$1
+      local DISPLAY_NAME=$2
+
+      echo "  Adding Graph API permissions to ${DISPLAY_NAME}..."
+
+      local OBJECT_ID
+      OBJECT_ID=$(get_object_id "${APP_ID}")
+
+      az rest --method PATCH \
+        --uri "https://graph.microsoft.com/v1.0/applications/${OBJECT_ID}" \
+        --headers "Content-Type=application/json" \
+        --body '{
+          "requiredResourceAccess": [
+            {
+              "resourceAppId": "00000003-0000-0000-c000-000000000000",
+              "resourceAccess": [
+                {"id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", "type": "Scope"},
+                {"id": "14dad69e-099b-42c9-810b-d002981feec1", "type": "Scope"},
+                {"id": "37f7f235-527c-4136-accd-4a02d197296e", "type": "Scope"},
+                {"id": "df021288-bdef-4463-88db-98f22de89214", "type": "Role"}
+              ]
+            }
+          ]
+        }' --output none
+
+      echo -e "${GREEN}  Graph permissions added${NC}"
+    }
+
+    # Grant admin consent for an app
+    grant_admin_consent() {
+      local APP_ID=$1
+      local DISPLAY_NAME=$2
+
+      echo "  Granting admin consent for ${DISPLAY_NAME}..."
+      # Wait briefly for propagation
+      sleep 5
+      az ad app permission admin-consent --id "${APP_ID}" 2>/dev/null || \
+        echo -e "${YELLOW}  Admin consent may need to be granted manually in Azure Portal${NC}"
+    }
+
+    # =========================================================================
+    # Main bootstrap process
+    # =========================================================================
+    #
+    # Execution order matters:
+    #   1. Backend app (must exist before frontend can reference its scope)
+    #   2. Token v2 on backend
+    #   3. identifierUri on backend (required for scope to be requestable)
+    #   4. access_as_user scope on backend
+    #   5. Graph API permissions + admin consent on backend
+    #   6. Frontend app (references backend scope in requiredResourceAccess)
+    #   7. Token v2 on frontend
+    #   8. Worker app (no special config needed)
+    # =========================================================================
+
+    main() {
+      if ! authenticate; then
+        echo "Failed to authenticate with Azure"
+        exit 1
+      fi
+
+      # --- 1. Create backend app (confidential client) ---
+      create_confidential_app \
+        "{{ .Values.apps.backend.displayName }}" \
+        "BACKEND"
+
+      # --- 2-5. Configure backend app ---
+      if [ -n "${BACKEND_APP_ID}" ]; then
+        set_token_version_v2 "${BACKEND_APP_ID}" "{{ .Values.apps.backend.displayName }}"
+        set_identifier_uri "${BACKEND_APP_ID}" "{{ .Values.apps.backend.displayName }}"
+        create_access_as_user_scope "${BACKEND_APP_ID}" "{{ .Values.apps.backend.displayName }}"
+        add_graph_permissions "${BACKEND_APP_ID}" "{{ .Values.apps.backend.displayName }}"
+        grant_admin_consent "${BACKEND_APP_ID}" "{{ .Values.apps.backend.displayName }}"
+      fi
+
+      # --- 6. Create frontend app (SPA / public client) ---
+      # Created after backend so it can reference api://<backend>/access_as_user
+      create_frontend_app
+
+      # --- 7. Set token version to v2 on frontend ---
+      if [ -n "${FRONTEND_APP_ID}" ]; then
+        set_token_version_v2 "${FRONTEND_APP_ID}" "{{ .Values.apps.frontend.displayName }}"
+      fi
+
+      # --- 8. Create worker app (confidential client, no special config) ---
+      create_confidential_app \
+        "{{ .Values.apps.worker.displayName }}" \
+        "WORKER"
+
+      echo ""
+      echo "============================================"
+      echo "Entra ID Bootstrap Summary"
+      echo "============================================"
+      echo "Tenant ID:      ${TENANT_ID}"
+      echo ""
+      echo "Backend App:    ${BACKEND_APP_ID}"
+      echo "  Secret:       ${BACKEND_SECRET:-<existing — not rotated>}"
+      echo "  API URI:      api://${BACKEND_APP_ID}"
+      echo "  Scope:        api://${BACKEND_APP_ID}/access_as_user"
+      echo ""
+      echo "Frontend App:   ${FRONTEND_APP_ID}"
+      echo ""
+      echo "Worker App:     ${WORKER_APP_ID}"
+      echo "  Secret:       ${WORKER_SECRET:-<existing — not rotated>}"
+      echo ""
+      echo "============================================"
+      echo "platform-entra secret:"
+      echo "============================================"
+      echo "  client-id:           ${BACKEND_APP_ID}"
+      echo "  client-secret:       ${BACKEND_SECRET:-<use existing>}"
+      echo "  tenant-id:           ${TENANT_ID}"
+      echo "  graph-client-id:     ${BACKEND_APP_ID}"
+      echo "  graph-client-secret: ${BACKEND_SECRET:-<use existing>}"
+      echo ""
+      echo "platform-governance-worker secret:"
+      echo "  client-id:           ${WORKER_APP_ID}"
+      echo "  client-secret:       ${WORKER_SECRET:-<use existing>}"
+      echo ""
+      echo "governance-studio Helm values:"
+      echo "  config.entraClientId:  ${FRONTEND_APP_ID}"
+      echo "  config.entraTenantId:  ${TENANT_ID}"
+      echo "  config.entraScopes:    openid profile email offline_access api://${BACKEND_APP_ID}/access_as_user"
+      echo ""
+      echo -e "${YELLOW}Save these values — client secrets cannot be retrieved after this.${NC}"
+      echo -e "${GREEN}Entra ID bootstrap completed successfully!${NC}"
+    }
+
+    # Run main function
+    main
+{{- end }}

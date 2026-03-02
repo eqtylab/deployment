@@ -1,0 +1,38 @@
+{{- if .Values.bootstrap.enabled }}
+Entra ID Bootstrap Job has been created!
+
+The bootstrap job will:
+1. Authenticate to Microsoft Entra ID (tenant: {{ .Values.entra.tenantId }})
+2. Create app registrations:
+   - Backend:  {{ .Values.apps.backend.displayName }}
+   - Frontend: {{ .Values.apps.frontend.displayName }}
+   - Worker:   {{ .Values.apps.worker.displayName }}
+3. Configure backend: token v2, identifierUri, access_as_user scope, Graph API permissions
+4. Configure frontend: SPA redirect URIs, frontend → backend API permission
+5. Grant admin consent for Graph API permissions
+
+IMPORTANT: Client secrets are only displayed once during initial creation.
+You MUST save them from the job logs immediately after the first run.
+They cannot be retrieved later — only rotated with `az ad app credential reset`.
+
+To check the job status:
+  kubectl get jobs -l "app.kubernetes.io/name={{ include "entra-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+To view the job logs (contains client secrets on first run):
+  kubectl logs -l "app.kubernetes.io/name={{ include "entra-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+After the job completes, populate the platform-entra secret with:
+  - client-id:           Backend app client ID
+  - client-secret:       Backend app client secret (from logs)
+  - tenant-id:           {{ .Values.entra.tenantId }}
+  - graph-client-id:     Backend app client ID (same as client-id)
+  - graph-client-secret: Backend app client secret (same as client-secret)
+
+And set these Helm values for governance-studio:
+  - config.entraClientId:  Frontend app client ID (from logs)
+  - config.entraTenantId:  {{ .Values.entra.tenantId }}
+  - config.entraScopes:    openid profile email offline_access api://<backend-client-id>/access_as_user
+
+{{- else }}
+Entra ID Bootstrap is disabled. To enable it, set bootstrap.enabled=true
+{{- end }}

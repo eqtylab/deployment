@@ -9,7 +9,7 @@
 #
 # Usage:
 #   helm dependency update ./charts/governance-platform
-#   helm install governance-platform ./charts/governance-platform \
+#   helm upgrade --install governance-platform ./charts/governance-platform \
 #     --namespace governance \
 #     --create-namespace \
 #     --values values-keycloak.yaml
@@ -268,6 +268,7 @@ keycloak:
   displayName: "Governance Platform"
   createPlatformAdmin: true
   platformAdminEmail: "" # Defaults to admin@<global.domain>, looked up in Keycloak automatically
+
 
 # =============================================================================
 # SECRET CREATION COMMANDS

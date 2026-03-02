@@ -12,6 +12,7 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 | [integrity-service](charts/integrity-service/)     | Subchart | Rust-based verifiable credentials and lineage service |
 | [auth-service](charts/auth-service/)               | Subchart | Go-based authentication and authorization service     |
 | [keycloak-bootstrap](charts/keycloak-bootstrap/)   | Utility  | Keycloak realm and client configuration job           |
+| [entra-bootstrap](charts/entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job |
 
 ## Architecture
 
@@ -27,7 +28,8 @@ charts/
 ├── governance-service/      # Backend API subchart
 ├── integrity-service/       # Credentials/lineage subchart
 ├── auth-service/            # Authentication subchart
-└── keycloak-bootstrap/      # Keycloak configuration utility
+├── keycloak-bootstrap/      # Keycloak configuration utility
+└── entra-bootstrap/         # Entra ID configuration utility
 ```
 
 **Recommended approach**: Deploy using the `governance-platform` umbrella chart. This provides:
@@ -69,7 +71,7 @@ kubectl create namespace governance
 #    Alternatively, create secrets manually:
 kubectl create secret generic platform-database \
   --from-literal=username=postgres \
-  --from-literal=password="$(openssl rand -base64 32)" \
+  --from-literal=password="$(openssl rand -hex 32)" \
   --namespace governance
 
 # ... additional secrets as documented in governance-platform/README.md
@@ -229,6 +231,7 @@ The umbrella chart (`governance-platform`) version is incremented when:
 | [integrity-service/README.md](charts/integrity-service/README.md)     | Credentials service configuration    |
 | [auth-service/README.md](charts/auth-service/README.md)               | Authentication service configuration |
 | [keycloak-bootstrap/README.md](charts/keycloak-bootstrap/README.md)   | Keycloak realm/client configuration  |
+| [entra-bootstrap/README.md](charts/entra-bootstrap/README.md)         | Entra ID app registration setup      |
 
 ## Support
 

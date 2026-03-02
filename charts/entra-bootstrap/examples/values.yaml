@@ -1,0 +1,74 @@
+# Entra ID Bootstrap values example
+# This configures the bootstrap job to create app registrations
+# and configure OAuth for the Governance Platform via Microsoft Graph API
+
+# Bootstrap job configuration
+bootstrap:
+  enabled: true
+
+  # Azure CLI image (includes az CLI and jq)
+  image:
+    repository: mcr.microsoft.com/azure-cli
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  # Job settings
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 600
+
+  # Resources
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+# Microsoft Entra ID connection
+entra:
+  # REQUIRED: Your Entra tenant ID (directory ID)
+  tenantId: "YOUR_ENTRA_TENANT_ID"
+
+  # REQUIRED: Domain for redirect URIs
+  domain: "governance.example.com"
+
+  # Secret containing bootstrap service principal credentials
+  # This is separate from `platform-entra` (which stores the created app credentials)
+  # The service principal must have:
+  #   - Application.ReadWrite.All (Application)
+  #   - DelegatedPermissionGrant.ReadWrite.All (Application)
+  servicePrincipalSecret:
+    name: "entra-bootstrap-sp"
+    clientIdKey: "client-id"
+    clientSecretKey: "client-secret"
+
+# App registration configuration
+apps:
+  # Frontend app registration (SPA / public client)
+  frontend:
+    displayName: "Governance Platform Frontend"
+    # SPA redirect URIs (configured as Single-page application platform)
+    redirectUris:
+      - "https://governance.example.com"
+      - "http://localhost:5173"
+
+  # Backend app registration (confidential client)
+  # Will be configured with:
+  #   - accessTokenAcceptedVersion: 2
+  #   - identifierUri: api://<appId>
+  #   - access_as_user OAuth2 scope
+  #   - Graph API permissions (User.Read, profile, openid, User.Read.All)
+  backend:
+    displayName: "Governance Platform Backend"
+
+  # Worker app registration (confidential client)
+  worker:
+    displayName: "Governance Worker"

@@ -307,6 +307,13 @@ config:
   # Only used when authProvider is "entra"
   entraTenantId: ""
 
+  # -- Entra Scopes
+  # @default -- `"openid profile email offline_access api://<backend-client-id>/access_as_user"`
+  # Space-separated list of OAuth scopes requested during login.
+  # **REQUIRED for Entra**: Replace `<backend-client-id>` with the Governance Platform Backend app registration ID
+  # Only used when authProvider is "entra"
+  entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
+
   # -- Entra Authority
   # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
   # Optional override for the Entra authority URL
@@ -343,4 +350,3 @@ config:
     # @default -- `true`
     # Enable lineage and integrity features (requires integrity-service)
     lineage: true
-

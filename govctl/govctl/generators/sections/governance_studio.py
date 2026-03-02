@@ -43,6 +43,7 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
 
     if config.auth_provider == AuthProvider.AUTH0:
         auth0_domain = config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com"
+        section["config"]["authProvider"] = "auth0"
         section["config"]["auth0Domain"] = auth0_domain
         section["config"]["auth0Audience"] = (
             config.auth0_audience or f"https://{auth0_domain}/api/v2/"
@@ -56,10 +57,12 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
         section["config"]["keycloakClientId"] = "governance-platform-frontend"
     elif config.auth_provider == AuthProvider.ENTRA:
         tenant_id = config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
+        section["config"]["authProvider"] = "entra"
         section["config"]["entraClientId"] = (
             config.entra_client_id or "YOUR_ENTRA_CLIENT_ID"
         )
         section["config"]["entraTenantId"] = tenant_id
+        section["config"]["entraScopes"] = "openid profile email offline_access api://<backend-client-id>/access_as_user"  # Replace <backend-client-id> with backend app registration ID
 
     # Application settings
     section["config"][

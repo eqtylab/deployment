@@ -9,7 +9,8 @@ from rich.prompt import Confirm
 from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider
 from govctl.generators.values import generate_values
 from govctl.generators.secrets import generate_secrets
-from govctl.generators.bootstrap import generate_bootstrap
+from govctl.generators.keycloak_bootstrap import generate_keycloak_bootstrap
+from govctl.generators.entra_bootstrap import generate_entra_bootstrap
 
 from govctl.utils.output import console
 from govctl.cli.prompts import collect_interactive_config
@@ -122,7 +123,11 @@ def init_cmd(
 
     bootstrap_file = None
     if config.auth_provider == AuthProvider.KEYCLOAK:
-        bootstrap_content = generate_bootstrap(config)
+        bootstrap_content = generate_keycloak_bootstrap(config)
+        bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
+        bootstrap_file.write_text(bootstrap_content)
+    elif config.auth_provider == AuthProvider.ENTRA:
+        bootstrap_content = generate_entra_bootstrap(config)
         bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
         bootstrap_file.write_text(bootstrap_content)
 

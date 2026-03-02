@@ -65,7 +65,7 @@ helm upgrade --install ingress-nginx ingress-nginx \
 **Option A: cert-manager (Recommended)**
 
 ```bash
-helm install cert-manager cert-manager \
+helm upgrade --install cert-manager cert-manager \
   --repo https://charts.jetstack.io \
   --namespace cert-manager \
   --create-namespace \
@@ -151,7 +151,7 @@ kubectl get ingress -n governance
 ### Installing from OCI Registry
 
 ```bash
-helm install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
+helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
   --version 0.1.0 \
   --create-namespace \
   --namespace governance \
@@ -424,6 +424,19 @@ Optional post-install/post-upgrade hook that seeds the governance database with 
 | keycloak.platformAdminEmail  | string | `""`                              | Admin email (defaults to admin@<global.domain>)    |
 | keycloak.url                 | string | `"http://keycloak:8080/keycloak"` | Internal Keycloak URL for API lookups              |
 
+### Entra ID Post-Install Hook
+
+Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user for Microsoft Entra ID deployments:
+
+| Key                       | Type   | Default               | Description                                                                 |
+| ------------------------- | ------ | --------------------- | --------------------------------------------------------------------------- |
+| entra.createOrganization  | bool   | `false`               | Enable the post-install hook to create the org                              |
+| entra.organizationName    | string | `"governance"`        | Organization identifier in the database                                     |
+| entra.displayName         | string | `"Governance Studio"` | Display name for the organization                                           |
+| entra.createPlatformAdmin | bool   | `false`               | Also create the platform-admin user and membership                          |
+| entra.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in Entra tenant |
+| entra.tenantId            | string | `""`                  | Microsoft Entra tenant ID (required for Graph API user lookup)              |
+
 ## Configuration Inheritance
 
 When deployed via the umbrella chart, configuration follows this precedence (highest to lowest):
@@ -679,6 +692,7 @@ governance-studio:
     authProvider: "entra"
     entraClientId: "your-entra-client-id"
     entraTenantId: "your-tenant-id"
+    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user" # Replace <backend-client-id> with Governance Platform Backend app registration ID
     # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional
 
 auth-service:
@@ -705,6 +719,25 @@ kubectl create secret generic platform-entra \
   --from-literal=graph-client-secret=YOUR_GRAPH_CLIENT_SECRET \
   --namespace governance
 ```
+
+#### Post-Install Database Seed
+
+When using Entra ID, the chart includes an optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user. Enable it by setting:
+
+```yaml
+entra:
+  createOrganization: true # Creates the organization record in the database
+  organizationName: "governance"
+  displayName: "Governance Studio"
+  tenantId: "your-tenant-id" # Required for Graph API user lookup
+
+  createPlatformAdmin: true # Also create the platform-admin user
+  platformAdminEmail: "admin@yourorg.onmicrosoft.com" # Must exist in your Entra tenant
+```
+
+The hook authenticates to Microsoft Graph API using credentials from the `platform-entra` secret to look up the admin user's Entra Object ID. It waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
+
+> **Note:** Unlike Keycloak, the `platformAdminEmail` must be explicitly set and must be an email that exists in your Microsoft Entra tenant (e.g., `user@yourorg.onmicrosoft.com` or `user@yourverifieddomain.com`).
 
 ## Environment-Specific Configurations
 

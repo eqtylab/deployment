@@ -26,6 +26,7 @@ def show_config_summary(config: PlatformConfig) -> None:
 
     if config.azure_key_vault_url:
         table.add_row("Key Vault URL", config.azure_key_vault_url)
+        table.add_row("Key Vault Tenant ID", config.azure_tenant_id)
 
     if config.auth_provider == AuthProvider.AUTH0:
         table.add_row("Auth0 Domain", config.auth0_domain)
@@ -34,13 +35,14 @@ def show_config_summary(config: PlatformConfig) -> None:
         table.add_row("Keycloak Realm", config.keycloak_realm)
     elif config.auth_provider == AuthProvider.ENTRA:
         table.add_row("Entra Tenant ID", config.entra_tenant_id)
-        table.add_row("Entra Client ID", config.entra_client_id)
 
     # Image registry
     if config.image_registry_url:
         table.add_row("Image Registry", config.image_registry_url)
     if config.image_registry_username:
         table.add_row("Registry Username", config.image_registry_username)
+    if config.image_registry_email:
+        table.add_row("Registry Email", config.image_registry_email)
 
     console.print(table)
 
@@ -77,10 +79,20 @@ def show_next_steps(
     step += 1
 
     if bootstrap_file:
-        console.print(f"  {step}. Run the Keycloak bootstrap:")
+        if config.auth_provider == AuthProvider.KEYCLOAK:
+            chart_name = "keycloak-bootstrap"
+            chart_path = "./charts/keycloak-bootstrap"
+        elif config.auth_provider == AuthProvider.ENTRA:
+            chart_name = "entra-bootstrap"
+            chart_path = "./charts/entra-bootstrap"
+        else:
+            chart_name = "bootstrap"
+            chart_path = "./charts/bootstrap"
+
+        console.print(f"  {step}. Run the {config.auth_provider.value} bootstrap:")
         console.print()
         bootstrap_cmd = (
-            f"     helm upgrade --install keycloak-bootstrap ./charts/keycloak-bootstrap \\\n"
+            f"     helm upgrade --install {chart_name} {chart_path} \\\n"
             f"       -f {bootstrap_file} \\\n"
             f"       -n {config.namespace} --wait"
         )

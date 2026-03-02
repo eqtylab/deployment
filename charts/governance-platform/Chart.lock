@@ -7,12 +7,12 @@ dependencies:
   version: 2.0.1
 - name: governance-studio
   repository: file://../governance-studio
-  version: 1.5.1
+  version: 1.5.4
 - name: integrity-service
   repository: file://../integrity-service
   version: 1.2.0
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.1.15
-digest: sha256:aef1942bb210d323a97f4154e9559e7ea5e3a6fc70090fa1b7d05bf4ceb3fed2
-generated: "2026-02-24T20:44:27.162198-05:00"
+digest: sha256:4ee688bd4d101cc2e7457d2bbbf2980c689c1a801e3a11a85f62fb2f586e9996
+generated: "2026-03-02T11:46:04.804427-05:00"

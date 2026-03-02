@@ -1,0 +1,72 @@
+{{- if .Values.bootstrap.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "entra-bootstrap.fullname" . }}
+  labels:
+    {{- include "entra-bootstrap.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "10"
+spec:
+  backoffLimit: {{ .Values.bootstrap.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.bootstrap.ttlSecondsAfterFinished }}
+  activeDeadlineSeconds: {{ .Values.bootstrap.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "entra-bootstrap.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: bootstrap
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.bootstrap.securityContext | nindent 8 }}
+      containers:
+        - name: bootstrap
+          image: "{{ .Values.bootstrap.image.repository }}:{{ .Values.bootstrap.image.tag }}"
+          imagePullPolicy: {{ .Values.bootstrap.image.pullPolicy }}
+          command: ["/bin/bash"]
+          args: ["/scripts/bootstrap.sh"]
+          env:
+            - name: HOME
+              value: "/tmp"
+            - name: AZURE_CONFIG_DIR
+              value: "/tmp/.azure"
+            - name: TENANT_ID
+              value: "{{ .Values.entra.tenantId }}"
+            - name: DOMAIN
+              value: "{{ .Values.entra.domain }}"
+            - name: SP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.entra.servicePrincipalSecret.name }}
+                  key: {{ .Values.entra.servicePrincipalSecret.clientIdKey }}
+            - name: SP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.entra.servicePrincipalSecret.name }}
+                  key: {{ .Values.entra.servicePrincipalSecret.clientSecretKey }}
+          resources:
+            {{- toYaml .Values.bootstrap.resources | nindent 12 }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "entra-bootstrap.fullname" . }}-scripts
+            defaultMode: 0755
+{{- end }}

@@ -9,7 +9,7 @@
 #
 # Usage:
 #   helm dependency update ./charts/governance-platform
-#   helm install governance-platform ./charts/governance-platform \
+#   helm upgrade --install governance-platform ./charts/governance-platform \
 #     --namespace governance \
 #     --create-namespace \
 #     --values values-entra.yaml
@@ -162,6 +162,7 @@ governance-studio:
     # Microsoft Entra ID Configuration
     entraTenantId: "your-tenant-id"
     entraClientId: "your-entra-client-id"
+    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user" # Replace <backend-client-id> with Governance Platform Backend app registration ID
     # Feature Flags
     features:
       governance: true
@@ -246,6 +247,23 @@ postgresql:
       limits:
         cpu: 2000m
         memory: 2Gi
+
+# =============================================================================
+# Entra ID Post-Install Hook
+# =============================================================================
+# Seeds the governance database with the organization and platform-admin user.
+# Runs as a Helm post-install/post-upgrade hook after migrations complete.
+# The admin user is looked up via Microsoft Graph API using the email below.
+# ------------------------------------------------------------------------------
+entra:
+  createOrganization: true
+  organizationName: "governance"
+  displayName: "Governance Platform"
+  tenantId: "your-tenant-id"
+  createPlatformAdmin: true
+  platformAdminEmail: "admin@yourorg.onmicrosoft.com" # Must exist in your Entra tenant
+
+
 # =============================================================================
 # SECRET CREATION COMMANDS
 # =============================================================================

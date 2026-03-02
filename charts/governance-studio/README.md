@@ -122,6 +122,7 @@ governance-studio:
     authProvider: "entra"
     entraClientId: "your-entra-client-id"
     entraTenantId: "your-tenant-id"
+    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
     # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional
 ```
 
@@ -145,6 +146,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 
 - `config.entraClientId` - Application (client) ID from Azure app registration (public, not a secret)
 - `config.entraTenantId` - Directory (tenant) ID from Azure
+- `config.entraScopes` - OAuth scopes including `api://<backend-client-id>/access_as_user` (replace with Governance Platform Backend app registration ID)
 - `config.entraAuthority` - (Optional) Authority URL override, defaults to `https://login.microsoftonline.com/<tenantId>`
 
 **What gets auto-configured:**
@@ -309,22 +311,24 @@ Authentication is automatically configured from global values in umbrella deploy
 
 - `config.entraClientId` - Application (client) ID from Azure app registration (public, not a secret)
 - `config.entraTenantId` - Directory (tenant) ID from Azure
+- `config.entraScopes` - OAuth scopes including `api://<backend-client-id>/access_as_user` (replace with Governance Platform Backend app registration ID)
 - `config.entraAuthority` - (Optional) Authority URL override, defaults to `https://login.microsoftonline.com/<tenantId>`
 
 #### All Authentication Values
 
-| Key                     | Type   | Default | Description                                                                                |
-| ----------------------- | ------ | ------- | ------------------------------------------------------------------------------------------ |
-| config.authProvider     | string | `""`    | Auth provider (auto-configured from global.secrets.auth.provider)                          |
-| config.auth0Domain      | string | `""`    | Auth0 tenant domain (**must be set**)                                                      |
-| config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public)                                              |
-| config.auth0Audience    | string | `""`    | Auth0 API audience (**must be set**)                                                       |
-| config.keycloakUrl      | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                |
-| config.keycloakClientId | string | `""`    | Keycloak SPA client ID (**must be set**, public, e.g., "governance-platform-frontend")     |
-| config.keycloakRealm    | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                                  |
-| config.entraClientId    | string | `""`    | Entra application (client) ID (**must be set**, public)                                    |
-| config.entraTenantId    | string | `""`    | Entra directory (tenant) ID (**must be set**)                                              |
-| config.entraAuthority   | string | `""`    | Entra authority URL (optional, defaults to `https://login.microsoftonline.com/<tenantId>`) |
+| Key                     | Type   | Default | Description                                                                                                          |
+| ----------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| config.authProvider     | string | `""`    | Auth provider (auto-configured from global.secrets.auth.provider)                                                    |
+| config.auth0Domain      | string | `""`    | Auth0 tenant domain (**must be set**)                                                                                |
+| config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public)                                                                        |
+| config.auth0Audience    | string | `""`    | Auth0 API audience (**must be set**)                                                                                 |
+| config.keycloakUrl      | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                                          |
+| config.keycloakClientId | string | `""`    | Keycloak SPA client ID (**must be set**, public, e.g., "governance-platform-frontend")                               |
+| config.keycloakRealm    | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                                                            |
+| config.entraClientId    | string | `""`    | Entra application (client) ID (**must be set**, public)                                                              |
+| config.entraTenantId    | string | `""`    | Entra directory (tenant) ID (**must be set**)                                                                        |
+| config.entraScopes      | string | `""`    | OAuth scopes (**must be set**, e.g., `openid profile email offline_access api://<backend-client-id>/access_as_user`) |
+| config.entraAuthority   | string | `""`    | Entra authority URL (optional, defaults to `https://login.microsoftonline.com/<tenantId>`)                           |
 
 ### Feature Flags
 

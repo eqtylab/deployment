@@ -66,39 +66,43 @@ govctl init
 │ Generate Helm values for your deployment │
 ╰──────────────────────────────────────────╯
 
-Cloud provider [gcp/aws/azure] (gcp): azure
-Domain (governance.example.com): governance.example.com
-Environment (staging): staging
-Auth provider [auth0/keycloak/entra] (keycloak): keycloak
+Domain (governance.f0829.eqtylab.io): governance.staging.eqtylab.io
+Environment (development): staging
 
-Provider-specific configuration:
+Cloud Configuration:
+  Cloud Provider [gcp/aws/azure] (gcp): gcp
+
+Auth Configuration:
+  Auth Provider [auth0/keycloak/entra] (keycloak): keycloak
+  Keycloak URL (https://governance.staging.eqtylab.io/keycloak): https://governance.staging.eqtylab.io/keycloak
+  Keycloak Realm (governance): governance
 
   Configure Azure Key Vault for DID keys? [y/n] (y): y
-  Azure Key Vault URL (https://your-keyvault.vault.azure.net/): https://my-keyvault.vault.azure.net/
-  Azure Tenant ID (): 00000000-0000-0000-0000-000000000000
-  Keycloak URL (https://governance.example.com/keycloak):
-  Keycloak realm (governance):
+  Azure Key Vault URL (https://your-keyvault.vault.azure.net/): https://govstudio-staging-kv.vault.azure.net/
+  Azure Key Vault Tenant ID (): 6712fe8e-3505-4daf-b881-675312392087
 
-Image registry configuration:
-  Registry URL (ghcr.io):
-  Registry username (): my-username
-  Registry email ():
+Image Registry Configuration:
+  Registry URL (ghcr.io): ghcr.io
+  Registry Username (): eqtylab-bot
+  Registry Email (): ci@eqtylab.io
 
-                        Configuration Summary
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Setting           ┃ Value                                          ┃
-┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ Cloud Provider    │ AZURE                                          │
-│ Domain            │ governance.example.com                         │
-│ Environment       │ staging                                        │
-│ Auth Provider     │ keycloak                                       │
-│ Storage Provider  │ azure_blob                                     │
-│ Key Vault URL     │ https://my-keyvault.vault.azure.net/           │
-│ Keycloak URL      │ https://governance.example.com/keycloak        │
-│ Keycloak Realm    │ governance                                     │
-│ Image Registry    │ ghcr.io                                        │
-│ Registry Username │ my-username                                    │
-└───────────────────┴────────────────────────────────────────────────┘
+                         Configuration Summary
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Setting             ┃ Value                                          ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ Cloud Provider      │ GCP                                            │
+│ Domain              │ governance.staging.eqtylab.io                  │
+│ Environment         │ staging                                        │
+│ Auth Provider       │ keycloak                                       │
+│ Storage Provider    │ gcs                                            │
+│ Key Vault URL       │ https://govstudio-staging-kv.vault.azure.net/  │
+│ Key Vault Tenant ID │ 6712fe8e-3505-4daf-b881-675312392087           │
+│ Keycloak URL        │ https://governance.staging.eqtylab.io/keycloak │
+│ Keycloak Realm      │ governance                                     │
+│ Image Registry      │ ghcr.io                                        │
+│ Registry Username   │ eqtylab-bot                                    │
+│ Registry Email      │ ci@eqtylab.io                                  │
+└─────────────────────┴────────────────────────────────────────────────┘
 
 Generate files with this configuration? [y/n]: y
 
@@ -155,7 +159,7 @@ All flags are required in non-interactive mode:
 ```bash
 govctl init -I \
   --cloud gcp \
-  --domain governance.example.com \
+  --domain governance.staging.eqtylab.io \
   --environment staging \
   --auth keycloak
 ```

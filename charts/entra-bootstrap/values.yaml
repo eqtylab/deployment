@@ -1,0 +1,171 @@
+# =============================================================================
+# ENTRA BOOTSTRAP - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Entra ID Bootstrap job for creating
+# app registrations and configuring OAuth for the Governance Platform.
+#
+# The bootstrap job runs as a Kubernetes Job that configures Microsoft Entra ID
+# via the Azure CLI and Microsoft Graph API. It is typically run once during
+# initial deployment.
+# =============================================================================
+
+# -- Name Override
+# @default -- `""`
+# Override the chart name used for resource naming
+nameOverride: ""
+
+# -- Full Name Override
+# @default -- `""`
+# Override the full name of the release
+fullnameOverride: ""
+
+# -- Global Configuration
+# @default -- See values below
+global:
+  # -- Image Pull Secrets
+  # @default -- `[]`
+  # Image pull secrets for private registries
+  imagePullSecrets: []
+
+# =============================================================================
+# BOOTSTRAP JOB CONFIGURATION
+# =============================================================================
+
+# -- Bootstrap Job Configuration
+# @default -- See values below
+bootstrap:
+  # -- Enabled
+  # @default -- `true`
+  # Enable the bootstrap job
+  enabled: true
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Uses Azure CLI image (includes az CLI and jq)
+  image:
+    # -- Repository
+    # @default -- `mcr.microsoft.com/azure-cli`
+    repository: mcr.microsoft.com/azure-cli
+    # -- Pull Policy
+    # @default -- `IfNotPresent`
+    pullPolicy: IfNotPresent
+    # -- Tag
+    # @default -- `latest`
+    tag: "latest"
+
+  # -- Backoff Limit
+  # @default -- `3`
+  # Job backoff limit
+  backoffLimit: 3
+
+  # -- Active Deadline Seconds
+  # @default -- `600`
+  # Job active deadline in seconds
+  activeDeadlineSeconds: 600
+
+  # -- TTL Seconds After Finished
+  # @default -- `300`
+  # TTL for completed jobs
+  ttlSecondsAfterFinished: 300
+
+  # -- Resources
+  # @default -- See values below
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  # -- Security Context
+  # @default -- See values below
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+# =============================================================================
+# MICROSOFT ENTRA ID CONFIGURATION
+# =============================================================================
+
+# -- Entra ID Configuration
+# @default -- See values below
+entra:
+  # -- Tenant ID
+  # @default -- `""`
+  # **REQUIRED**: Microsoft Entra tenant ID (directory ID)
+  tenantId: ""
+
+  # -- Domain
+  # @default -- `""`
+  # **REQUIRED**: Domain for redirect URIs
+  domain: ""
+
+  # -- Service Principal Secret
+  # @default -- See values below
+  # Secret containing bootstrap service principal credentials for Graph API access.
+  # This is a dedicated secret for the bootstrap job, separate from `platform-entra`
+  # which stores the created app registration credentials for the platform services.
+  #
+  # The service principal must have the following Microsoft Graph API permissions:
+  #   - Application.ReadWrite.All (Application) — create/update app registrations
+  #   - DelegatedPermissionGrant.ReadWrite.All (Application) — grant admin consent
+  #
+  # See README.md for instructions on creating the service principal.
+  servicePrincipalSecret:
+    # -- Secret Name
+    # @default -- `entra-bootstrap-sp`
+    name: "entra-bootstrap-sp"
+    # -- Client ID Key
+    # @default -- `client-id`
+    clientIdKey: "client-id"
+    # -- Client Secret Key
+    # @default -- `client-secret`
+    clientSecretKey: "client-secret"
+
+# =============================================================================
+# APP REGISTRATION CONFIGURATION
+# =============================================================================
+
+# -- App Registrations
+# @default -- See values below
+apps:
+  # ---------------------------------------------------------------------------
+  # Frontend App Registration (SPA / Public Client)
+  # ---------------------------------------------------------------------------
+
+  # -- Frontend App
+  # @default -- See values below
+  frontend:
+    # -- Display Name
+    # @default -- `Governance Platform Frontend`
+    displayName: "Governance Platform Frontend"
+    # -- Redirect URIs
+    # @default -- See values below
+    # SPA redirect URIs (configured as Single-page application platform)
+    redirectUris:
+      - "https://governance.example.com"
+      - "http://localhost:5173"
+
+  # ---------------------------------------------------------------------------
+  # Backend App Registration (Confidential Client)
+  # ---------------------------------------------------------------------------
+
+  # -- Backend App
+  # @default -- See values below
+  backend:
+    # -- Display Name
+    # @default -- `Governance Platform Backend`
+    displayName: "Governance Platform Backend"
+
+  # ---------------------------------------------------------------------------
+  # Worker App Registration (Confidential Client)
+  # ---------------------------------------------------------------------------
+
+  # -- Worker App
+  # @default -- See values below
+  worker:
+    # -- Display Name
+    # @default -- `Governance Worker`
+    displayName: "Governance Worker"

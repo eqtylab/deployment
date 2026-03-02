@@ -9,7 +9,7 @@
 #
 # Usage:
 #   helm dependency update ./charts/governance-platform
-#   helm install governance-platform ./charts/governance-platform \
+#   helm upgrade --install governance-platform ./charts/governance-platform \
 #     --namespace governance \
 #     --create-namespace \
 #     --values values-auth0.yaml
@@ -249,6 +249,7 @@ postgresql:
       limits:
         cpu: 2000m
         memory: 2Gi
+
 # =============================================================================
 # SECRET CREATION COMMANDS
 # =============================================================================

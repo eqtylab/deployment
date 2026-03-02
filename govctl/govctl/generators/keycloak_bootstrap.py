@@ -6,7 +6,7 @@ from govctl.core.models import PlatformConfig
 from govctl.utils.yaml import dump_yaml_with_header
 
 
-def generate_bootstrap(config: PlatformConfig) -> str:
+def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
     """Generate keycloak-bootstrap values.yaml content based on configuration."""
     domain = config.domain
     realm = config.keycloak_realm
