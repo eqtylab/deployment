@@ -4,7 +4,7 @@ from pathlib import Path
 
 from rich.table import Table
 
-from govctl.core.models import PlatformConfig, AuthProvider
+from govctl.core.models import PlatformConfig, AuthProvider, KeyManagementProvider
 from govctl.utils.output import console
 
 
@@ -24,9 +24,19 @@ def show_config_summary(config: PlatformConfig) -> None:
     table.add_row("Auth Provider", config.auth_provider.value)
     table.add_row("Storage Provider", config.storage_provider)
 
-    if config.azure_key_vault_url:
-        table.add_row("Key Vault URL", config.azure_key_vault_url)
-        table.add_row("Key Vault Tenant ID", config.azure_tenant_id)
+    table.add_row("Key Management", config.key_management_provider.value)
+    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        if config.azure_key_vault_url:
+            table.add_row("Key Vault URL", config.azure_key_vault_url)
+        if config.azure_tenant_id:
+            table.add_row("Key Vault Tenant ID", config.azure_tenant_id)
+    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        if config.aws_kms_region:
+            table.add_row("AWS KMS Region", config.aws_kms_region)
+        if config.aws_kms_endpoint:
+            table.add_row("AWS KMS Endpoint", config.aws_kms_endpoint)
+        if config.aws_kms_alias_prefix:
+            table.add_row("AWS KMS Alias Prefix", config.aws_kms_alias_prefix)
 
     if config.auth_provider == AuthProvider.AUTH0:
         table.add_row("Auth0 Domain", config.auth0_domain)

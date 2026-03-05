@@ -116,9 +116,8 @@ spec:
             {{- end }}
           env:
             # ========================================================================
-            # Database Credentials
+            # Database Configuration
             # ========================================================================
-
             - name: DB_PASSWORD
               {{- if .Values.externalDatabase.password }}
               value: {{ .Values.externalDatabase.password | quote }}
@@ -130,12 +129,13 @@ spec:
               {{- end }}
 
             # ========================================================================
-            # Identity Provider Credentials
+            # Identity Provider Configuration
             # ========================================================================
-
             {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
+
             {{- if eq $idpProvider "keycloak" }}
-            {{- /* Keycloak credentials */}}
+            
+            # Keycloak Configuration
             {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
             - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID
               {{- if .Values.config.idp.keycloak.serviceAccountClientId }}
@@ -157,7 +157,8 @@ spec:
               {{- end }}
 
             {{- else if eq $idpProvider "entra" }}
-            {{- /* Microsoft Entra ID credentials */}}
+            
+            # Microsoft Entra ID Configuration
             {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
             - name: IDP_CLIENT_ID
               {{- if .Values.config.idp.entra.clientId }}
@@ -199,7 +200,8 @@ spec:
             {{- end }}
 
             {{- else }}
-            {{- /* Auth0 credentials (default) */}}
+            
+            # Auth0 Configuration
             {{- $authSecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}
             - name: IDP_CLIENT_ID
               {{- if .Values.config.idp.auth0.clientId }}
@@ -240,9 +242,8 @@ spec:
             {{- end }}
 
             # ========================================================================
-            # Auth Service Credentials (API and JWT secrets)
+            # Auth Service Configuration
             # ========================================================================
-
             {{- $authServiceSecretName := .Values.secrets.authService.name | default (((.Values.global).secrets).authService).secretName | default "" }}
             - name: API_SECRET
               {{- if .Values.config.apiSecret }}
@@ -264,37 +265,74 @@ spec:
               {{- end }}
 
             # ========================================================================
-            # Secret Manager Credentials (for DID key signing)
+            # Key Management Configuration
             # ========================================================================
+            {{- $keyMgmtProvider := .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" }}
 
-            {{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
-            {{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
-            {{- $keyVaultSecretName := .Values.secrets.secretManager.azure_key_vault.name | default ((((.Values.global).secrets).secretManager).azure_key_vault).secretName | default "" }}
+            {{- if eq $keyMgmtProvider "azure_key_vault" }}
+            
+            # Azure Key Vault Configuration
+            {{- $azureKeyVaultSecretName := .Values.secrets.keyManagement.azure_key_vault.name | default ((((.Values.global).secrets).keyManagement).azure_key_vault).secretName | default "" }}
             - name: AZURE_CLIENT_ID
-              {{- if .Values.config.keyVault.azure.clientId }}
-              value: {{ .Values.config.keyVault.azure.clientId | quote }}
+              {{- if .Values.config.keyManagement.azure_key_vault.clientId }}
+              value: {{ .Values.config.keyManagement.azure_key_vault.clientId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $keyVaultSecretName | quote }}
-                  key: {{ (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientId | default "client-id" | quote }}
+                  name: {{ $azureKeyVaultSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).azure_key_vault).keys).clientId | default "client-id" | quote }}
               {{- end }}
             - name: AZURE_CLIENT_SECRET
-              {{- if .Values.config.keyVault.azure.clientSecret }}
-              value: {{ .Values.config.keyVault.azure.clientSecret | quote }}
+              {{- if .Values.config.keyManagement.azure_key_vault.clientSecret }}
+              value: {{ .Values.config.keyManagement.azure_key_vault.clientSecret | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $keyVaultSecretName | quote }}
-                  key: {{ (((((.Values.global).secrets).secretManager).azure_key_vault).keys).clientSecret | default "client-secret" | quote }}
+                  name: {{ $azureKeyVaultSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).azure_key_vault).keys).clientSecret | default "client-secret" | quote }}
               {{- end }}
             {{- end }}
 
-            # ========================================================================
-            # Governance Worker Credentials (governance-worker service account)
-            # ========================================================================
+            {{- if eq $keyMgmtProvider "aws_kms" }}
+            
+            # AWS KMS Configuration
+            {{- $awsKmsSecretName := .Values.secrets.keyManagement.aws_kms.name | default ((((.Values.global).secrets).keyManagement).aws_kms).secretName | default "" }}
+            - name: AWS_ACCESS_KEY_ID
+              {{- if .Values.config.keyManagement.aws_kms.accessKeyId }}
+              value: {{ .Values.config.keyManagement.aws_kms.accessKeyId | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $awsKmsSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).aws_kms).keys).accessKeyId | default "access-key-id" | quote }}
+              {{- end }}
+            - name: AWS_SECRET_ACCESS_KEY
+              {{- if .Values.config.keyManagement.aws_kms.secretAccessKey }}
+              value: {{ .Values.config.keyManagement.aws_kms.secretAccessKey | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $awsKmsSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).aws_kms).keys).secretAccessKey | default "secret-access-key" | quote }}
+              {{- end }}
+            {{- if or .Values.config.keyManagement.aws_kms.sessionToken ((((((.Values.global).secrets).keyManagement).aws_kms).values).sessionToken) }}
+            - name: AWS_SESSION_TOKEN
+              {{- if .Values.config.keyManagement.aws_kms.sessionToken }}
+              value: {{ .Values.config.keyManagement.aws_kms.sessionToken | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $awsKmsSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).aws_kms).keys).sessionToken | default "session-token" | quote }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
 
             {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
+
+            # ========================================================================
+            # Governance Worker Configuration
+            # ========================================================================
             {{- $workerSecretName := .Values.secrets.governanceWorker.name | default (((.Values.global).secrets).governanceWorker).secretName | default "" }}
             {{- $workerClientIdKey := ((((.Values.global).secrets).governanceWorker).keys).clientId | default "client-id" }}
             {{- $workerClientSecretKey := ((((.Values.global).secrets).governanceWorker).keys).clientSecret | default "client-secret" }}
@@ -349,11 +387,11 @@ spec:
             {{- end }}
             {{- end }}
 
-            # ========================================================================
-            # Token Exchange (Keycloak)
-            # ========================================================================
-
             {{- if .Values.config.tokenExchange.enabled }}
+
+            # ========================================================================
+            # Token Exchange Configuration
+            # ========================================================================
             - name: AUTH_SERVICE_PRIVATE_KEY
               {{- if .Values.config.tokenExchange.privateKey }}
               value: {{ .Values.config.tokenExchange.privateKey | quote }}
@@ -365,11 +403,11 @@ spec:
               {{- end }}
             {{- end }}
 
+            {{- with .Values.extraEnvVars }}
+
             # ========================================================================
             # Extra Environment Variables
             # ========================================================================
-
-            {{- with .Values.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 

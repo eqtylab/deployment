@@ -7,7 +7,12 @@ from typing import Any
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
-from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider
+from govctl.core.models import (
+    PlatformConfig,
+    CloudProvider,
+    AuthProvider,
+    KeyManagementProvider,
+)
 from govctl.utils.yaml import dump_yaml_with_header, _LiteralStr
 
 
@@ -177,11 +182,13 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             },
         }
 
-    # Azure Key Vault (required for DID keys - currently only Azure supported)
-    secrets["secretManager"] = {
-        "provider": "azure_key_vault",
-        "azure_key_vault": {
-            "enabled": True,
+    # Key Management (required for DID keys)
+    secrets["keyManagement"] = {
+        "provider": config.key_management_provider.value,
+    }
+
+    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        secrets["keyManagement"]["azure_key_vault"] = {
             "secretName": "platform-azure-key-vault",
             "values": {
                 "clientId": _required("Azure AD App Client ID"),
@@ -190,7 +197,15 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "vaultUrl": config.azure_key_vault_url
                 or _required("Azure Key Vault URL"),
             },
-        },
-    }
+        }
+    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        secrets["keyManagement"]["aws_kms"] = {
+            "secretName": "platform-aws-kms",
+            "values": {
+                "accessKeyId": _required("AWS Access Key ID for KMS"),
+                "secretAccessKey": _required("AWS Secret Access Key for KMS"),
+                "sessionToken": "",
+            },
+        }
 
     return secrets

@@ -59,12 +59,19 @@ auth-service:
       entra:
         tenantId: "your-tenant-id"
         defaultRoles: "user"
-    # Key Vault Configuration (for DID keys)
-    keyVault:
+    # Key Management Configuration (for DID keys)
+    keyManagement:
       provider: "azure_key_vault"
-      azure:
+      azure_key_vault:
         vaultUrl: "https://your-keyvault.vault.azure.net/"
         tenantId: "your-azure-tenant-id"
+
+      # Key Management - AWS KMS (uncomment to use instead)
+      # provider: "aws_kms"
+      # aws_kms:
+      #   region: "us-east-1"
+      #   endpoint: ""
+      #   aliasPrefix: "alias/eqtylab/did"
 
 # =============================================================================
 # Governance Service
@@ -309,12 +316,19 @@ entra:
 #   --from-literal=secret-access-key=YOUR_AWS_SECRET_KEY \
 #   --namespace governance
 #
-# # Azure Key Vault Credentials
+# # Azure Key Vault Credentials (if using Azure Key Vault)
 # kubectl create secret generic platform-azure-key-vault \
 #   --from-literal=client-id=YOUR_AZURE_CLIENT_ID \
 #   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
 #   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
 #   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
+#   --namespace governance
+#
+# # AWS KMS Credentials (if using AWS KMS)
+# kubectl create secret generic platform-aws-kms \
+#   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
+#   --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
+#   --from-literal=session-token="" \
 #   --namespace governance
 #
 # # Encryption Key Credentials

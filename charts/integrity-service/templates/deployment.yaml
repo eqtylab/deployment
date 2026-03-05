@@ -90,27 +90,18 @@ spec:
             # ========================================================================
             # Application Configuration
             # ========================================================================
-
-            # Server Port
             - name: INTEGRITY_APP__server__port
               value: {{ .Values.service.port | default 3050 | quote }}
-
-            # Rust Environment
             - name: RUST_ENVIRONMENT
               value: {{ .Values.config.rustEnv | default ((.Values.global).environmentType | default "") | quote }}
-
-            # Service URLs
             - name: INTEGRITY_SERVICE_URL
               value: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "")) | quote }}
-
-            # Swagger Configuration
             - name: SWAGGER_BASE_PATH
               value: {{ .Values.config.swaggerBasePath | default "/integrityService" | quote }}
 
             # ========================================================================
             # Database Configuration
             # ========================================================================
-            
             - name: INTEGRITY_APP__db__host
               value: {{ .Values.config.integrityAppDbHost | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
             - name: INTEGRITY_APP__db__port
@@ -130,9 +121,8 @@ spec:
               {{- end }}
 
             # ========================================================================
-            # Blob Storage Configuration
+            # Storage Configuration
             # ========================================================================
-            
             {{- $storageProvider := .Values.config.integrityAppBlobStoreType }}
             
             {{- if $storageProvider }}
@@ -141,6 +131,7 @@ spec:
             {{- end }}
             
             {{- if eq $storageProvider "aws_s3" }}
+            
             # AWS S3 Configuration
             {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
             - name: INTEGRITY_APP__blob_store__region
@@ -170,6 +161,7 @@ spec:
             {{- end }}
 
             {{- if eq $storageProvider "azure_blob" }}
+            
             # Azure Blob Storage Configuration
             - name: INTEGRITY_APP__blob_store__account
               value: {{ .Values.config.integrityAppBlobStoreAccount | quote }}
@@ -187,6 +179,7 @@ spec:
             {{- end }}
 
             {{- if eq $storageProvider "gcs" }}
+            
             # GCS Configuration
             - name: INTEGRITY_APP__blob_store__bucket
               value: {{ .Values.config.integrityAppBlobStoreGcsBucket | quote }}
@@ -199,7 +192,6 @@ spec:
             # ========================================================================
             # Logging Configuration
             # ========================================================================
-            
             - name: INTEGRITY_APP__logging__log_level__default
               value: {{ .Values.config.integrityAppLoggingLogLevelDefault | quote }}
             - name: INTEGRITY_APP__logging__log_level__integrity_service
@@ -208,7 +200,6 @@ spec:
             # ========================================================================
             # Authentication Configuration
             # ========================================================================
-            
             - name: INTEGRITY_APP__auth__type
               value: {{ .Values.config.integrityAppAuthType | quote }}
             - name: INTEGRITY_APP__auth__url

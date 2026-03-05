@@ -53,8 +53,9 @@ data:
   {{- end }}
   IDP_SKIP_ISSUER_VERIFICATION: "{{ .Values.config.idp.skipIssuerVerification }}"
 
-  # Auth0 Configuration
   {{- if or (eq $idpProvider "auth0") (not $idpProvider) }}
+  
+  # Auth0 Configuration
   {{- if .Values.config.idp.auth0.domain }}
   IDP_AUTH0_DOMAIN: {{ .Values.config.idp.auth0.domain | quote }}
   {{- end }}
@@ -69,8 +70,9 @@ data:
   IDP_AUTH0_SEND_INVITATION_EMAIL: "{{ .Values.config.idp.auth0.sendInvitationEmail }}"
   {{- end }}
 
-  # Keycloak Configuration
   {{- if eq $idpProvider "keycloak" }}
+  
+  # Keycloak Configuration
   {{- if .Values.config.idp.keycloak.realm }}
   IDP_KEYCLOAK_REALM: "{{ .Values.config.idp.keycloak.realm }}"
   {{- end }}
@@ -84,8 +86,9 @@ data:
   IDP_KEYCLOAK_ENABLE_GROUP_SYNC: "{{ .Values.config.idp.keycloak.enableGroupSync }}"
   {{- end }}
 
-  # Microsoft Entra ID Configuration
   {{- if eq $idpProvider "entra" }}
+  
+  # Microsoft Entra ID Configuration
   {{- if .Values.config.idp.entra.tenantId }}
   IDP_ENTRA_TENANT_ID: {{ .Values.config.idp.entra.tenantId | quote }}
   {{- end }}
@@ -95,44 +98,64 @@ data:
   {{- end }}
 
   # ==========================================================================
-  # Key Vault Configuration
+  # Key Management Configuration
   # ==========================================================================
-  {{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
-  DID_KEY_CACHE_TTL_MINUTES: "{{ .Values.config.keyVault.cacheTTLMinutes }}"
+  {{- $keyMgmtProvider := .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" }}
+  KEY_MANAGEMENT_PROVIDER: "{{ $keyMgmtProvider }}"
+  DID_KEY_CACHE_TTL_MINUTES: "{{ .Values.config.keyManagement.cacheTTLMinutes | default 15 }}"
 
+  {{- if eq $keyMgmtProvider "azure_key_vault" }}
+  
   # Azure Key Vault Configuration
-  {{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
-  {{- $vaultUrl := .Values.config.keyVault.azure.vaultUrl | default ((((.Values.global).secrets).secretManager).azure_key_vault).values.vaultUrl | default "" }}
+  {{- $vaultUrl := .Values.config.keyManagement.azure_key_vault.vaultUrl | default ((((.Values.global).secrets).keyManagement).azure_key_vault).values.vaultUrl | default "" }}
   {{- if $vaultUrl }}
   AZURE_KEY_VAULT_URL: "{{ $vaultUrl }}"
   {{- end }}
-  {{- $tenantId := .Values.config.keyVault.azure.tenantId | default ((((.Values.global).secrets).secretManager).azure_key_vault).values.tenantId | default "" }}
+  {{- $tenantId := .Values.config.keyManagement.azure_key_vault.tenantId | default ((((.Values.global).secrets).keyManagement).azure_key_vault).values.tenantId | default "" }}
   {{- if $tenantId }}
   AZURE_TENANT_ID: "{{ $tenantId }}"
   {{- end }}
   {{- end }}
 
+  {{- if eq $keyMgmtProvider "aws_kms" }}
+  
+  # AWS KMS Configuration
+  {{- if .Values.config.keyManagement.aws_kms.region }}
+  AWS_KMS_REGION: "{{ .Values.config.keyManagement.aws_kms.region }}"
+  {{- end }}
+  {{- if .Values.config.keyManagement.aws_kms.endpoint }}
+  AWS_KMS_ENDPOINT: "{{ .Values.config.keyManagement.aws_kms.endpoint }}"
+  {{- end }}
+  {{- $awsAliasPrefix := .Values.config.keyManagement.aws_kms.aliasPrefix | default "alias/eqtylab/did" }}
+  AWS_KMS_ALIAS_PREFIX: "{{ $awsAliasPrefix }}"
+  {{- $awsDeletionDays := .Values.config.keyManagement.aws_kms.deletionWindowDays | default 7 }}
+  AWS_KMS_DELETION_WINDOW_DAYS: "{{ $awsDeletionDays }}"
+  {{- end }}
+
+  {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
+  
   # ==========================================================================
   # Service Account Configuration
   # ==========================================================================
-  {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
   {{- $workerAudience := .Values.config.serviceAccounts.governanceWorker.audience | default (((((.Values.global).secrets).auth).auth0).management).audience | default "" }}
   {{- if $workerAudience }}
   AUTH0_GOVERNANCE_WORKER_AUDIENCE: "{{ $workerAudience }}"
   {{- end }}
   {{- end }}
 
+  {{- if .Values.config.tokenExchange.enabled }}
+  
   # ==========================================================================
   # Token Exchange Configuration
   # ==========================================================================
-  {{- if .Values.config.tokenExchange.enabled }}
   AUTH_SERVICE_KEY_ID: "{{ .Values.config.tokenExchange.keyId }}"
   {{- end }}
 
+  {{- if .Values.metrics.enabled }}
+  
   # ==========================================================================
   # Metrics Configuration
   # ==========================================================================
-  {{- if .Values.metrics.enabled }}
   METRICS_ENABLED: "true"
   METRICS_PORT: "{{ .Values.metrics.port }}"
   METRICS_PATH: "{{ .Values.metrics.path }}"

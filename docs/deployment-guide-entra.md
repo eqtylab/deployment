@@ -47,7 +47,7 @@ flowchart TD
   subgraph EXT[🧩 External Dependencies]
     ENTRA[🔑 Microsoft Entra ID - IdP]
     OS[📦 Object Storage]
-    KV[🗝️ Azure Key Vault]
+    KM[🗝️ Key Management - Azure Key Vault / AWS KMS]
   end
 
   K8s --> EXT
@@ -69,13 +69,13 @@ All four application services are exposed through a single domain via NGINX Ingr
 
 These components live **outside** the `governance-platform` Helm chart and must be provisioned separately before deploying.
 
-| Dependency             | Purpose                                                            | Required? |
-| ---------------------- | ------------------------------------------------------------------ | --------- |
-| **Microsoft Entra ID** | Identity provider — manages users, app registrations, OAuth flows  | Yes       |
-| **Object Storage**     | Artifact and document storage (Azure Blob, GCS, or AWS S3)         | Yes       |
-| **Azure Key Vault**    | DID signing key management for verifiable credentials (VC signing) | Yes       |
-| **DNS**                | A-record or CNAME pointing your domain to the cluster ingress      | Yes       |
-| **TLS Certificates**   | cert-manager with a ClusterIssuer/Issuer, or pre-provisioned certs | Yes       |
+| Dependency             | Purpose                                                                            | Required? |
+| ---------------------- | ---------------------------------------------------------------------------------- | --------- |
+| **Microsoft Entra ID** | Identity provider — manages users, app registrations, OAuth flows                  | Yes       |
+| **Object Storage**     | Artifact and document storage (Azure Blob, GCS, or AWS S3)                         | Yes       |
+| **Key Management**     | DID signing key management for verifiable credentials (Azure Key Vault or AWS KMS) | Yes       |
+| **DNS**                | A-record or CNAME pointing your domain to the cluster ingress                      | Yes       |
+| **TLS Certificates**   | cert-manager with a ClusterIssuer/Issuer, or pre-provisioned certs                 | Yes       |
 
 ### Helm Chart Structure
 
@@ -116,7 +116,7 @@ The Entra bootstrap creates three app registrations in your Entra tenant:
 The end-to-end deployment follows this order:
 
 ```
-1. Provision infrastructure (storage, key vault, DNS, TLS)
+1. Provision infrastructure (storage, key management, DNS, TLS)
          │
 2. Configure Microsoft Entra ID (create bootstrap service principal)
          │
@@ -199,9 +199,10 @@ Depending on your cloud provider, provision the following **before** deployment:
 - **Google Cloud Storage** — bucket(s) + service account with storage admin permissions
 - **AWS S3** — bucket(s) + IAM user/role with read/write access
 
-**Key Vault** (for verifiable credential signing):
+**Key Management** (for verifiable credential signing — choose one):
 
 - **Azure Key Vault** — vault instance + service principal with key sign/verify permissions
+- **AWS KMS** — IAM user/role with kms:CreateKey, kms:Sign, kms:Verify, kms:DescribeKey, kms:GetPublicKey, kms:CreateAlias, kms:ScheduleKeyDeletion permissions
 
 ### DNS
 
@@ -229,7 +230,7 @@ Before proceeding, confirm:
 - [ ] You have Application Administrator (or Global Administrator) role in the Entra tenant
 - [ ] Platform admin user exists in the Entra tenant
 - [ ] Object storage is provisioned (Azure Blob, GCS, or S3)
-- [ ] Azure Key Vault is provisioned (if using VC signing)
+- [ ] Key management is provisioned (Azure Key Vault or AWS KMS) for VC signing
 - [ ] DNS domain is available and you can create records
 - [ ] GitHub PAT with `read:packages` scope is available
 - [ ] Helm 3.8+ and kubectl 1.21+ are installed locally
@@ -239,7 +240,7 @@ Before proceeding, confirm:
 
 ## 3. Infrastructure Setup
 
-Provision the following cloud resources before deploying. The platform requires object storage and Azure Key Vault for DID signing. A running Kubernetes cluster with `kubectl` configured is assumed.
+Provision the following cloud resources before deploying. The platform requires object storage and a key management provider (Azure Key Vault or AWS KMS) for DID signing. A running Kubernetes cluster with `kubectl` configured is assumed.
 
 > **Terraform alternative:** These resources can also be provisioned using Terraform instead of the CLI commands below.
 
@@ -335,9 +336,13 @@ You'll need these values for your `values.yaml`:
 | Integrity bucket            | —                        | `integrityAppBlobStoreAwsBucket` |
 | Integrity folder (optional) | —                        | `integrityAppBlobStoreAwsFolder` |
 
-### Azure Key Vault
+### Key Management
 
-The auth-service uses Azure Key Vault for DID signing key management. It dynamically creates per-user signing keys, so the service principal needs key create/delete permissions in addition to sign/verify.
+The auth-service uses a key management provider for DID signing key management. It dynamically creates per-user signing keys. Choose one of the following providers.
+
+#### Option A: Azure Key Vault
+
+The service principal needs key create/delete permissions in addition to sign/verify.
 
 ```bash
 # Create Key Vault
@@ -361,12 +366,12 @@ az keyvault set-policy \
 
 You'll need these values for your `values.yaml` and `secrets.yaml`:
 
-| Value                           | Field                                               |
-| ------------------------------- | --------------------------------------------------- |
-| Vault URL                       | `auth-service.config.keyVault.azure.vaultUrl`       |
-| Tenant ID                       | `auth-service.config.keyVault.azure.tenantId`       |
-| Service principal client ID     | Secret: `platform-azure-key-vault` → `clientId`     |
-| Service principal client secret | Secret: `platform-azure-key-vault` → `clientSecret` |
+| Value                           | Field                                                        |
+| ------------------------------- | ------------------------------------------------------------ |
+| Vault URL                       | `auth-service.config.keyManagement.azure_key_vault.vaultUrl` |
+| Tenant ID                       | `auth-service.config.keyManagement.azure_key_vault.tenantId` |
+| Service principal client ID     | Secret: `platform-azure-key-vault` → `client-id`             |
+| Service principal client secret | Secret: `platform-azure-key-vault` → `client-secret`         |
 
 To retrieve the service principal credentials:
 
@@ -380,14 +385,62 @@ az ad sp list --display-name governance-keyvault-sp --query '[0].appId' -o tsv
 az ad sp credential reset --id <service-principal-app-id> --query password -o tsv
 ```
 
+#### Option B: AWS KMS
+
+Create an IAM user or role with KMS permissions for DID signing.
+
+```bash
+# Create IAM policy for KMS access
+aws iam create-policy \
+  --policy-name governance-kms-signing \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateKey",
+        "kms:CreateAlias",
+        "kms:DeleteAlias",
+        "kms:DescribeKey",
+        "kms:GetPublicKey",
+        "kms:ListAliases",
+        "kms:ListKeys",
+        "kms:ScheduleKeyDeletion",
+        "kms:Sign",
+        "kms:Verify",
+        "kms:TagResource"
+      ],
+      "Resource": "*"
+    }]
+  }'
+
+# Create IAM user and attach policy
+aws iam create-user --user-name governance-kms-user
+aws iam attach-user-policy \
+  --user-name governance-kms-user \
+  --policy-arn arn:aws:iam::YOUR_ACCOUNT_ID:policy/governance-kms-signing
+
+# Create access keys
+aws iam create-access-key --user-name governance-kms-user
+```
+
+You'll need these values for your `values.yaml` and `secrets.yaml`:
+
+| Value             | Field                                                   |
+| ----------------- | ------------------------------------------------------- |
+| Region            | `auth-service.config.keyManagement.aws_kms.region`      |
+| Access Key ID     | Secret: `platform-aws-kms` → `access-key-id`            |
+| Secret Access Key | Secret: `platform-aws-kms` → `secret-access-key`        |
+| Session Token     | Secret: `platform-aws-kms` → `session-token` (optional) |
+
 ### Summary of Provisioned Resources
 
 After completing this section, you should have:
 
-| Resource        | What You Need for Later                                      |
-| --------------- | ------------------------------------------------------------ |
-| Object storage  | Account name/keys, 2 container/bucket names                  |
-| Azure Key Vault | Vault URL, tenant ID, service principal client ID and secret |
+| Resource       | What You Need for Later                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Object storage | Account name/keys, 2 container/bucket names                                                                                     |
+| Key management | **Azure Key Vault**: vault URL, tenant ID, SP client ID/secret — **or** — **AWS KMS**: region, access key ID, secret access key |
 
 These values will be used in [Section 8 (Creating Secrets)](#8-creating-kubernetes-secrets) and [Section 9 (Configuring values.yaml)](#9-configuring-valuesyaml).
 
@@ -867,6 +920,7 @@ The governance-platform chart requires several Kubernetes secrets to be availabl
 | `platform-aws-s3`            | governance-service, integrity-service (AWS)         | `access-key-id`, `secret-access-key`                                                |
 | `platform-gcs`               | governance-service, integrity-service (GCS)         | `service-account-json`                                                              |
 | `platform-azure-key-vault`   | auth-service                                        | `client-id`, `client-secret`, `tenant-id`, `vault-url`                              |
+| `platform-aws-kms`           | auth-service                                        | `access-key-id`, `secret-access-key`, `session-token` (optional)                    |
 | `platform-image-pull-secret` | All services                                        | Docker registry credentials                                                         |
 
 ### Option A: Manual Creation with kubectl
@@ -957,7 +1011,9 @@ kubectl create secret generic platform-gcs \
   --namespace governance
 ```
 
-#### Azure Key Vault
+#### Key Management
+
+**Azure Key Vault:**
 
 ```bash
 kubectl create secret generic platform-azure-key-vault \
@@ -966,6 +1022,16 @@ kubectl create secret generic platform-azure-key-vault \
   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
   --namespace governance
+```
+
+**AWS KMS:**
+
+```bash
+kubectl create secret generic platform-aws-kms \
+  --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
+  --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
+  --namespace governance
+# Optionally add: --from-literal=session-token=YOUR_AWS_SESSION_TOKEN
 ```
 
 #### Image Pull Secret
@@ -995,7 +1061,7 @@ cp charts/governance-platform/examples/secrets-sample.yaml my-secrets.yaml
    - Ensure `global.secrets.create` is set to `true`
    - Set `global.secrets.auth.provider` to `entra`
    - Uncomment the `entra` block under `global.secrets.auth` and fill in the backend app ID, client secret, and tenant ID from [Section 7](#retrieve-app-registration-credentials)
-   - Fill in all `REPLACE_WITH_*` values for your chosen storage provider, key vault, and image registry
+   - Fill in all `REPLACE_WITH_*` values for your chosen storage provider, key management, and image registry
    - Generate random values where indicated (e.g., `openssl rand -base64 32` for encryption keys)
 
 3. When deploying in [Section 10](#10-deploying-the-governance-platform), pass **both** your secrets file and values file to Helm:
@@ -1018,7 +1084,7 @@ If you ran `govctl init` in [Section 6](#6-generating-configuration-with-govctl)
    - Entra backend app client ID and secret (from [Section 7](#retrieve-app-registration-credentials))
    - Entra worker app client ID and secret (from [Section 7](#retrieve-app-registration-credentials))
    - Storage provider credentials
-   - Key vault credentials
+   - Key management credentials
    - Image registry credentials
 
 2. The generated file has `global.secrets.create: true`, so Helm will create the secrets for you. When deploying in [Section 10](#10-deploying-the-governance-platform), pass it alongside your values file:
@@ -1095,20 +1161,24 @@ auth-service:
         tenantId: "your-tenant-id"
         defaultRoles: "user"
 
-    # Key Vault — for DID signing keys
-    keyVault:
-      provider: "azure_key_vault"
-      azure:
+    # Key Management — for DID signing keys (choose one provider)
+    keyManagement:
+      provider: "azure_key_vault" # Options: azure_key_vault, aws_kms
+      azure_key_vault:
         vaultUrl: "https://your-keyvault.vault.azure.net/"
         tenantId: "your-azure-tenant-id"
+      # aws_kms:
+      #   region: "us-east-1"
 ```
 
-| Field                     | Description                             | Where to Get It                                      |
-| ------------------------- | --------------------------------------- | ---------------------------------------------------- |
-| `idp.issuer`              | Entra ID v2.0 issuer URL                | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
-| `idp.entra.tenantId`      | Entra Directory (tenant) ID             | Azure Portal > Entra ID > Overview                   |
-| `keyVault.azure.vaultUrl` | Azure Key Vault URL                     | From [Section 3](#azure-key-vault)                   |
-| `keyVault.azure.tenantId` | Azure AD tenant ID for Key Vault access | From your Azure subscription                         |
+| Field                                    | Description                                              | Where to Get It                                      |
+| ---------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------- |
+| `idp.issuer`                             | Entra ID v2.0 issuer URL                                 | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
+| `idp.entra.tenantId`                     | Entra Directory (tenant) ID                              | Azure Portal > Entra ID > Overview                   |
+| `keyManagement.provider`                 | Key management provider (`azure_key_vault` or `aws_kms`) | Choose based on your cloud provider                  |
+| `keyManagement.azure_key_vault.vaultUrl` | Azure Key Vault URL                                      | From [Section 3](#key-management)                    |
+| `keyManagement.azure_key_vault.tenantId` | Azure AD tenant ID for Key Vault access                  | From your Azure subscription                         |
+| `keyManagement.aws_kms.region`           | AWS KMS region                                           | Your AWS region (e.g., `us-east-1`)                  |
 
 ### Governance Service
 
@@ -1250,7 +1320,7 @@ Before deploying, verify your values file has:
 - [ ] `global.domain` set to your actual domain
 - [ ] `auth-service.config.idp.issuer` set to `https://login.microsoftonline.com/{tenant-id}/v2.0`
 - [ ] `auth-service.config.idp.entra.tenantId` set to your Entra tenant ID
-- [ ] `auth-service.config.keyVault.azure.vaultUrl` and `tenantId` set
+- [ ] `auth-service.config.keyManagement` provider and credentials configured (Azure Key Vault or AWS KMS)
 - [ ] `governance-service.config.storageProvider` and storage fields set
 - [ ] `governance-service.config.entraTenantId` set
 - [ ] `governance-studio.config.entraTenantId` and `entraClientId` set

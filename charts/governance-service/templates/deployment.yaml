@@ -92,7 +92,6 @@ spec:
           # ========================================================================
           # Application Configuration
           # ========================================================================
-          
           - name: LOG_LEVEL
             value: {{ .Values.config.logLevel | quote }}
           - name: APP_ENV
@@ -101,7 +100,6 @@ spec:
           # ========================================================================
           # Database Configuration
           # ========================================================================
-          
           - name: DB_HOST
             value: {{ .Values.externalDatabase.host | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
           - name: DB_PORT
@@ -125,7 +123,6 @@ spec:
           # ========================================================================
           # Storage Configuration
           # ========================================================================
-          
           {{- $storageProvider := .Values.config.storageProvider }}
           {{- if $storageProvider }}
           - name: STORAGE_PROVIDER
@@ -133,6 +130,7 @@ spec:
           {{- end }}
 
           {{- if eq $storageProvider "gcs" }}
+          
           # GCS Configuration
           - name: GCS_BUCKET_NAME
             value: {{ .Values.config.gcsBucketName | quote }}
@@ -141,6 +139,7 @@ spec:
           {{- end }}
 
           {{- if eq $storageProvider "azure_blob" }}
+          
           # Azure Blob Storage Configuration
           {{- $azureSecretName := .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | default "" }}
           - name: AZURE_STORAGE_ACCOUNT_NAME
@@ -172,6 +171,7 @@ spec:
           {{- end }}
 
           {{- if eq $storageProvider "aws_s3" }}
+          
           # AWS S3 Configuration
           {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | default "" }}
           - name: AWS_REGION
@@ -201,10 +201,10 @@ spec:
           # ========================================================================
           # Authentication Configuration
           # ========================================================================
-
           {{- $authProvider := .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "auth0" }}
 
           {{- if eq $authProvider "auth0" }}
+          
           # Auth0 Configuration
           {{- $auth0SecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}
           {{- if .Values.config.auth0Domain }}
@@ -236,6 +236,7 @@ spec:
           {{- end }}
 
           {{- if eq $authProvider "keycloak" }}
+          
           # Keycloak Configuration
           {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
           - name: KEYCLOAK_URL
@@ -263,6 +264,7 @@ spec:
           {{- end }}
 
           {{- if eq $authProvider "entra" }}
+          
           # Microsoft Entra ID Configuration
           {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
           - name: ENTRA_TENANT_ID
@@ -297,7 +299,6 @@ spec:
           # ========================================================================
           # Encryption Configuration
           # ========================================================================
-
           - name: CREDENTIAL_ENCRYPTION_KEY
             {{- if .Values.config.credentialEncryptionKey }}
             value: {{ .Values.config.credentialEncryptionKey | quote }}
@@ -311,17 +312,16 @@ spec:
           # ========================================================================
           # Integration URLs
           # ========================================================================
-          
           - name: INTEGRITY_SERVICE_URL
             value: {{ .Values.config.integrityServiceUrl | default (printf "http://%s-integrity-service:3050" .Release.Name) | quote }}
           - name: AUTH_SERVICE_URL
             value: {{ .Values.config.authServiceUrl | default (printf "http://%s-auth-service:8080" .Release.Name) | quote }}
 
-          # ========================================================================
-          # Worker Configuration
-          # ========================================================================
-
           {{- if .Values.config.serviceAccount.enabled }}
+
+          # ========================================================================
+          # Governance Worker Configuration
+          # ========================================================================
           - name: AUTH_SERVICE_API_KEY
             {{- if .Values.config.serviceAccount.authServiceApiKey }}
             value: {{ .Values.config.serviceAccount.authServiceApiKey | quote }}
@@ -338,11 +338,11 @@ spec:
             {{- end }}
           {{- end }}
 
+          {{- if .Values.migrations }}
+
           # ========================================================================
           # Migration Configuration
           # ========================================================================
-          
-          {{- if .Values.migrations }}
           - name: MIGRATIONS_RUN_AT_STARTUP
             value: {{ .Values.migrations.runAtStartup | quote }}
           - name: MIGRATIONS_PATH

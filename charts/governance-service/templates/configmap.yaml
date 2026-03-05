@@ -6,14 +6,21 @@ metadata:
   labels:
     {{- include "governance-service.labels" . | nindent 4 }}
 data:
+  # ==========================================================================
+  # Server Configuration
+  # ==========================================================================
   SERVER_PORT: "{{ .Values.service.port }}"
   SERVER_READ_TIMEOUT_SECONDS: "{{ .Values.config.server.readTimeout }}"
   SERVER_WRITE_TIMEOUT_SECONDS: "{{ .Values.config.server.writeTimeout }}"
   SERVER_IDLE_TIMEOUT_SECONDS: "{{ .Values.config.server.idleTimeout }}"
-  LOG_LEVEL: "{{ .Values.config.logLevel }}"
   SWAGGER_ENABLED: "{{ .Values.config.server.swaggerEnabled }}"
   {{- if .Values.config.server.swaggerEnabled }}
   SWAGGER_HOST: "{{ .Values.config.server.swaggerHost | default ((.Values.global).domain) | default "" }}"
   SWAGGER_BASE_PATH: "{{ .Values.config.server.swaggerBasePath | default "/governanceService" }}"
   {{- end }}
+
+  # ==========================================================================
+  # Logging Configuration
+  # ==========================================================================
+  LOG_LEVEL: "{{ .Values.config.logLevel }}"
 {{- end }}

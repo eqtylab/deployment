@@ -347,16 +347,23 @@ secrets:
     # @default -- `""` (auto-configured from global.secrets.authService.secretName)
     name: ""
 
-  # -- Secret Manager Credentials
+  # -- Key Management Credentials
   # @default -- See values below
   # For DID key signing
-  secretManager:
+  keyManagement:
     # -- Azure Key Vault Secret
     # @default -- See values below
     # Only used when provider is "azure_key_vault"
     azure_key_vault:
       # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault.secretName)
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName)
+      name: ""
+    # -- AWS KMS Secret
+    # @default -- See values below
+    # Only used when provider is "aws_kms"
+    aws_kms:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.aws_kms.secretName)
       name: ""
 
   # -- Governance Worker Secret
@@ -581,15 +588,15 @@ config:
       defaultRoles: ""
 
   # ---------------------------------------------------------------------------
-  # Key Vault Configuration
+  # Key Management Configuration
   # ---------------------------------------------------------------------------
 
-  # -- Key Vault Configuration
+  # -- Key Management Configuration
   # @default -- See values below
-  keyVault:
+  keyManagement:
     # -- Provider
-    # @default -- `""` (auto-configured from global.secrets.secretManager.provider)
-    # Options: azure_key_vault, local
+    # @default -- `""` (auto-configured from global.secrets.keyManagement.provider)
+    # Options: azure_key_vault, aws_kms
     provider: ""
     # -- Cache TTL Minutes
     # @default -- `15`
@@ -599,21 +606,45 @@ config:
     # -- Azure Key Vault Configuration
     # @default -- See values below
     # Only used when provider is "azure_key_vault"
-    azure:
+    azure_key_vault:
       # -- Vault URL
-      # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault.values.vaultUrl)
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
       vaultUrl: ""
       # -- Tenant ID
-      # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault.values.tenantId)
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
       tenantId: ""
-      # -- Client ID
-      # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
-      # Only used when provider is "azure_key_vault"
+      # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+      # @default -- `""`
       clientId: ""
-      # -- Client Secret
-      # @default -- `""` (auto-configured from global.secrets.secretManager.azure_key_vault)
-      # Only used when provider is "azure_key_vault"
+      # -- Client Secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+      # @default -- `""`
       clientSecret: ""
+
+    # -- AWS KMS Configuration
+    # @default -- See values below
+    # Only used when provider is "aws_kms"
+    aws_kms:
+      # -- AWS KMS Region
+      # @default -- `""`
+      region: ""
+      # -- AWS KMS Endpoint (optional, for custom endpoints like LocalStack)
+      # @default -- `""`
+      endpoint: ""
+      # -- AWS KMS Alias Prefix
+      # @default -- `alias/eqtylab/did`
+      aliasPrefix: ""
+      # -- AWS Access Key ID (secret - auto-configured from global.secrets.keyManagement.aws_kms)
+      # @default -- `""`
+      accessKeyId: ""
+      # -- AWS Secret Access Key (secret - auto-configured from global.secrets.keyManagement.aws_kms)
+      # @default -- `""`
+      secretAccessKey: ""
+      # -- AWS Session Token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)
+      # @default -- `""`
+      sessionToken: ""
+      # -- AWS KMS Deletion Window Days
+      # @default -- `7`
+      deletionWindowDays: 7
 
   # ---------------------------------------------------------------------------
   # Service Accounts Configuration

@@ -1,8 +1,13 @@
 """Interactive prompts for govctl CLI."""
 
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Prompt
 
-from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider
+from govctl.core.models import (
+    PlatformConfig,
+    CloudProvider,
+    AuthProvider,
+    KeyManagementProvider,
+)
 from govctl.utils.naming import generate_domain_code
 from govctl.utils.validate import (
     is_valid_aws_region,
@@ -85,6 +90,63 @@ def collect_interactive_config(
     if cloud_provider == CloudProvider.AWS:
         config.cloud_region = aws_region
 
+    # --- Key Management (required for DID keys) ---
+    console.print()
+    console.print("[bold]Key Management Configuration (for DID keys):[/bold]")
+    km_default = "aws_kms" if cloud_provider == CloudProvider.AWS else "azure_key_vault"
+    km_choice = Prompt.ask(
+        "  Key Management Provider",
+        choices=["azure_key_vault", "aws_kms"],
+        default=km_default,
+    )
+    config.key_management_provider = KeyManagementProvider(km_choice)
+
+    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        while True:
+            keyvault_url = Prompt.ask(
+                "  Azure Key Vault URL",
+                default="https://your-keyvault.vault.azure.net/",
+            )
+            if is_valid_keyvault_url(keyvault_url):
+                break
+            console.print(
+                "[red]Invalid Key Vault URL. Expected format: https://{vault-name}.vault.azure.net/[/red]"
+            )
+        config.azure_key_vault_url = keyvault_url
+        while True:
+            kv_tenant_id = Prompt.ask(
+                "  Azure Key Vault Tenant ID",
+                default="",
+            )
+            if not kv_tenant_id or is_valid_uuid(kv_tenant_id):
+                break
+            console.print(
+                "[red]Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx[/red]"
+            )
+        config.azure_tenant_id = kv_tenant_id
+    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        while True:
+            aws_kms_region = Prompt.ask(
+                "  AWS KMS Region",
+                default=config.cloud_region or "us-east-1",
+            )
+            if is_valid_aws_region(aws_kms_region):
+                break
+            console.print(
+                "[red]Invalid AWS region format. Expected format: us-east-1, eu-west-2, etc.[/red]"
+            )
+        config.aws_kms_region = aws_kms_region
+        aws_kms_endpoint = Prompt.ask(
+            "  AWS KMS Endpoint (optional, for custom endpoints)",
+            default="",
+        )
+        config.aws_kms_endpoint = aws_kms_endpoint
+        aws_kms_alias_prefix = Prompt.ask(
+            "  AWS KMS Alias Prefix",
+            default="alias/eqtylab/did",
+        )
+        config.aws_kms_alias_prefix = aws_kms_alias_prefix
+
     # --- Auth provider ---
     console.print()
     console.print("[bold]Auth Configuration:[/bold]")
@@ -160,31 +222,6 @@ def collect_interactive_config(
                 "[red]Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx[/red]"
             )
         config.entra_tenant_id = entra_tenant_id
-
-    # Azure Key Vault (required for DID keys)
-    if Confirm.ask("\n  Configure Azure Key Vault for DID keys?", default=True):
-        while True:
-            keyvault_url = Prompt.ask(
-                "  Azure Key Vault URL",
-                default="https://your-keyvault.vault.azure.net/",
-            )
-            if is_valid_keyvault_url(keyvault_url):
-                break
-            console.print(
-                "[red]Invalid Key Vault URL. Expected format: https://{vault-name}.vault.azure.net/[/red]"
-            )
-        config.azure_key_vault_url = keyvault_url
-        while True:
-            kv_tenant_id = Prompt.ask(
-                "  Azure Key Vault Tenant ID",
-                default="",
-            )
-            if not kv_tenant_id or is_valid_uuid(kv_tenant_id):
-                break
-            console.print(
-                "[red]Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx[/red]"
-            )
-        config.azure_tenant_id = kv_tenant_id
 
     # --- Image registry ---
     console.print()

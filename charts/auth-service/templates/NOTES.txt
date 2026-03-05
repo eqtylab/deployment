@@ -17,7 +17,7 @@ To access the service, you need to enable ingress or use port-forwarding:
 Configuration:
   Environment: {{ .Values.config.server.environment | default ((.Values.global).environmentType | default "not set") }}
   IDP Provider: {{ .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "not set" }}
-  Key Vault Provider: {{ .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "not set" }}
+  Key Management Provider: {{ .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "not set" }}
   Log Level: {{ .Values.config.logging.level }}
 
 {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
@@ -33,10 +33,13 @@ Keycloak Configuration:
   User Management: {{ if .Values.config.idp.keycloak.enableUserManagement }}enabled{{ else }}disabled{{ end }}
 {{- end }}
 
-{{- $keyVaultProvider := .Values.config.keyVault.provider | default (((.Values.global).secrets).secretManager).provider | default "" }}
-{{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
+{{- $keyMgmtProvider := .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" }}
+{{- if eq $keyMgmtProvider "azure_key_vault" }}
 Azure Key Vault:
-  Vault URL: {{ .Values.config.keyVault.azure.vaultUrl | default (((((.Values.global).secrets).secretManager).azure_key_vault).values).vaultUrl | default "not set" }}
+  Vault URL: {{ .Values.config.keyManagement.azure_key_vault.vaultUrl | default (((((.Values.global).secrets).keyManagement).azure_key_vault).values).vaultUrl | default "not set" }}
+{{- else if eq $keyMgmtProvider "aws_kms" }}
+AWS KMS:
+  Region: {{ .Values.config.keyManagement.aws_kms.region | default (((((.Values.global).secrets).keyManagement).aws_kms).values).region | default "not set" }}
 {{- end }}
 
 Database:
@@ -71,17 +74,25 @@ Please set: auth-service.config.idp.auth0.domain
 {{- end }}
 {{- end }}
 
-{{- if not $keyVaultProvider }}
+{{- if not $keyMgmtProvider }}
 
-WARNING: Key Vault provider is not configured!
-Please set: auth-service.config.keyVault.provider to "azure_key_vault"
+WARNING: Key Management provider is not configured!
+Please set: auth-service.config.keyManagement.provider to "azure_key_vault" or "aws_kms"
 {{- end }}
 
-{{- if or (eq $keyVaultProvider "azure") (eq $keyVaultProvider "azure_key_vault") }}
-{{- if not (or .Values.config.keyVault.azure.vaultUrl (((((.Values.global).secrets).secretManager).azure_key_vault).values).vaultUrl) }}
+{{- if eq $keyMgmtProvider "azure_key_vault" }}
+{{- if not (or .Values.config.keyManagement.azure_key_vault.vaultUrl (((((.Values.global).secrets).keyManagement).azure_key_vault).values).vaultUrl) }}
 
 WARNING: Azure Key Vault URL is not configured!
-Please set: auth-service.config.keyVault.azure.vaultUrl
+Please set: auth-service.config.keyManagement.azure_key_vault.vaultUrl
+{{- end }}
+{{- end }}
+
+{{- if eq $keyMgmtProvider "aws_kms" }}
+{{- if not (or .Values.config.keyManagement.aws_kms.region (((((.Values.global).secrets).keyManagement).aws_kms).values).region) }}
+
+WARNING: AWS KMS Region is not configured!
+Please set: auth-service.config.keyManagement.aws_kms.region
 {{- end }}
 {{- end }}
 {{- end }}

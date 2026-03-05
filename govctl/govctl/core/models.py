@@ -16,6 +16,11 @@ class AuthProvider(str, Enum):
     ENTRA = "entra"
 
 
+class KeyManagementProvider(str, Enum):
+    AZURE_KEY_VAULT = "azure_key_vault"
+    AWS_KMS = "aws_kms"
+
+
 # Mapping of cloud provider to storage provider
 CLOUD_TO_STORAGE = {
     CloudProvider.GCP: "gcs",
@@ -50,9 +55,20 @@ class PlatformConfig:
     release_name: str = "governance-platform"
     namespace: str = "governance"
 
-    # Azure-specific
+    # Key management
+    key_management_provider: KeyManagementProvider = (
+        KeyManagementProvider.AZURE_KEY_VAULT
+    )
+
+    # Azure Key Vault-specific
     azure_key_vault_url: str = ""
     azure_tenant_id: str = ""
+
+    # AWS KMS-specific
+    aws_kms_region: str = ""
+    aws_kms_endpoint: str = ""
+    aws_kms_alias_prefix: str = ""
+    aws_kms_deletion_window_days: int = 7
 
     # Auth0-specific
     auth0_domain: str = ""

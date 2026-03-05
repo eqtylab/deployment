@@ -30,6 +30,36 @@ def dump_yaml(data: dict[str, Any], width: int = 120) -> str:
     )
 
 
+def _section_header(title: str, description: str) -> str:
+    """Generate a section header comment block."""
+    return (
+        f"# =============================================================================\n"
+        f"# {title}\n"
+        f"# =============================================================================\n"
+        f"# {description}\n"
+        f"# ------------------------------------------------------------------------------\n"
+    )
+
+
+def dump_yaml_sections(
+    sections: list[tuple[str, str, str, dict[str, Any]]],
+) -> str:
+    """Dump multiple YAML sections, each with a comment header.
+
+    Args:
+        sections: List of (key, title, description, data) tuples.
+
+    Returns:
+        YAML string with section headers between top-level keys.
+    """
+    parts: list[str] = []
+    for key, title, description, data in sections:
+        header = _section_header(title, description)
+        yaml_str = dump_yaml({key: data})
+        parts.append(header + yaml_str)
+    return "\n".join(parts)
+
+
 def dump_yaml_with_header(
     data: dict[str, Any],
     file_type: str,

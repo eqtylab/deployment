@@ -76,9 +76,9 @@ The platform requires object storage (for artifacts) and a key vault (for DID ke
 
 Set up ingress, DNS, and certificate management:
 
-- Install the [NGINX Ingress Controller](../scripts/nginx.sh) as the default ingress class
+- Install the [NGINX Ingress Controller](../scripts/services/nginx.sh) as the default ingress class
 - Create a DNS A-record pointing your domain to the ingress external IP
-- Install [cert-manager](../scripts/cert-issuer.sh) and create a Let's Encrypt Issuer for automatic TLS
+- Install [cert-manager](../scripts/services/cert-manager.sh) and create a Let's Encrypt Issuer for automatic TLS
 
 **4. Create namespace**
 

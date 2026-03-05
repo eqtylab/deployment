@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from govctl.core.models import PlatformConfig, AuthProvider
+from govctl.core.models import PlatformConfig, AuthProvider, KeyManagementProvider
 
 
 def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
@@ -92,14 +92,27 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "defaultRoles": "user",
         }
 
-    # Azure Key Vault config (required for DID keys)
-    if config.azure_key_vault_url:
-        section["config"]["keyVault"] = {
-            "provider": "azure_key_vault",
-            "azure": {
-                "vaultUrl": config.azure_key_vault_url,
-                "tenantId": config.azure_tenant_id,
-            },
+    # Key management config (required for DID keys)
+    section["config"]["keyManagement"] = {
+        "provider": config.key_management_provider.value,
+    }
+
+    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        section["config"]["keyManagement"]["azure_key_vault"] = {
+            "vaultUrl": config.azure_key_vault_url,
+            "tenantId": config.azure_tenant_id,
         }
+    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        aws_kms_config: dict[str, Any] = {}
+        if config.aws_kms_region:
+            aws_kms_config["region"] = config.aws_kms_region
+        if config.aws_kms_endpoint:
+            aws_kms_config["endpoint"] = config.aws_kms_endpoint
+        if config.aws_kms_alias_prefix:
+            aws_kms_config["aliasPrefix"] = config.aws_kms_alias_prefix
+        if config.aws_kms_deletion_window_days != 7:
+            aws_kms_config["deletionWindowDays"] = config.aws_kms_deletion_window_days
+        if aws_kms_config:
+            section["config"]["keyManagement"]["aws_kms"] = aws_kms_config
 
     return section
