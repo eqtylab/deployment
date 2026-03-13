@@ -74,24 +74,3 @@ Returns empty string otherwise
 {{- end }}
 {{- if and $probeCRD $blackboxExists }}true{{ end }}
 {{- end }}
-
-{{/*
-Get Grafana host URL for dashboard links
-Automatically discovers the Grafana ingress host from kube-prometheus-stack
-Falls back to .Values.alerts.grafanaHost if explicitly provided
-Returns empty string if no Grafana host can be found
-*/}}
-{{- define "governance-ops.grafanaHost" -}}
-{{- if .Values.alerts.grafanaHost }}
-  {{- .Values.alerts.grafanaHost }}
-{{- else }}
-  {{- $grafanaHost := "" }}
-  {{- $ingresses := (lookup "networking.k8s.io/v1" "Ingress" "" "").items }}
-  {{- range $ingresses }}
-    {{- if and (hasPrefix "kube-prometheus-stack-grafana" .metadata.name) (gt (len .spec.rules) 0) }}
-      {{- $grafanaHost = (index .spec.rules 0).host }}
-    {{- end }}
-  {{- end }}
-  {{- $grafanaHost }}
-{{- end }}
-{{- end }}

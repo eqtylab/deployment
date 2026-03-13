@@ -31,10 +31,6 @@ spec:
           annotations:
             summary: "Governance Platform service {{ "{{ $labels.deployment }}" }} has no available replicas"
             description: "Deployment {{ "{{ $labels.deployment }}" }} in namespace {{ "{{ $labels.namespace }}" }} has been unavailable for {{ .Values.alerts.rules.serviceDown.for }}."
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- if .Values.alerts.rules.podNotReady.enabled }}
@@ -48,10 +44,6 @@ spec:
           annotations:
             summary: "Pod {{ "{{ $labels.pod }}" }} not ready"
             description: "Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} has been in a not-ready state for {{ .Values.alerts.rules.podNotReady.for }}."
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- if .Values.alerts.rules.highErrorRate.enabled }}
@@ -70,10 +62,6 @@ spec:
           annotations:
             summary: "Elevated 5xx error rate - {{ "{{ $labels.ingress }}" }}"
             description: 'Service {{ "{{ $labels.ingress }}" }} in namespace {{ "{{ $labels.exported_namespace }}" }} is experiencing {{ "{{ humanizePercentage $value }}" }} error rate (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highErrorRate.warningThreshold | float64) 100) }}). Investigation recommended.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.exported_namespace }}" }}'
-            {{- end }}
 
         - alert: GovernancePlatformErrorRateCritical
           expr: |
@@ -90,10 +78,6 @@ spec:
           annotations:
             summary: "Critical 5xx error rate - {{ "{{ $labels.ingress }}" }} degraded"
             description: 'Service {{ "{{ $labels.ingress }}" }} in namespace {{ "{{ $labels.exported_namespace }}" }} is experiencing {{ "{{ humanizePercentage $value }}" }} error rate. Immediate action required.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.exported_namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- if .Values.alerts.rules.podCrashLooping.enabled }}
@@ -107,10 +91,6 @@ spec:
           annotations:
             summary: "Pod {{ "{{ $labels.pod }}" }} is crash looping"
             description: "Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} (container: {{ "{{ $labels.container }}" }}) is restarting frequently."
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- if .Values.alerts.rules.highMemoryUsage.enabled }}
@@ -128,10 +108,6 @@ spec:
           annotations:
             summary: "Pod {{ "{{ $labels.pod }}" }} elevated memory usage"
             description: 'Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} is using {{ "{{ humanizePercentage $value }}" }} of its memory limit (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highMemoryUsage.warningThreshold | float64) 100) }}). May indicate capacity issues or memory leak.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
 
         - alert: GovernancePlatformMemoryUsageCritical
           expr: |
@@ -147,10 +123,6 @@ spec:
           annotations:
             summary: "Pod {{ "{{ $labels.pod }}" }} critical memory usage - OOM imminent"
             description: 'Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} is using {{ "{{ humanizePercentage $value }}" }} of its memory limit. Risk of OOM kill.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- if .Values.alerts.rules.memorySpike.enabled }}
@@ -169,10 +141,6 @@ spec:
           annotations:
             summary: "Pod {{ "{{ $labels.pod }}" }} memory spike detected"
             description: 'Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} memory increased by {{ "{{ humanizePercentage $value }}" }} in the last 5 minutes. Possible memory leak or deployment issue.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- if .Values.alerts.rules.highCpuUsage.enabled }}
@@ -190,10 +158,6 @@ spec:
           annotations:
             summary: "Pod {{ "{{ $labels.pod }}" }} elevated CPU usage"
             description: 'Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} is using {{ "{{ humanizePercentage $value }}" }} of its CPU limit (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highCpuUsage.warningThreshold | float64) 100) }}). May indicate capacity issues.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
 
         - alert: GovernancePlatformCPUUsageCritical
           expr: |
@@ -209,10 +173,6 @@ spec:
           annotations:
             summary: "Pod {{ "{{ $labels.pod }}" }} critical CPU usage - throttling imminent"
             description: 'Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} is using {{ "{{ humanizePercentage $value }}" }} of its CPU limit. Performance degradation likely.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- if .Values.alerts.rules.persistentVolumeUsage.enabled }}
@@ -230,10 +190,6 @@ spec:
           annotations:
             summary: "PersistentVolume {{ "{{ $labels.persistentvolumeclaim }}" }} elevated usage"
             description: 'PersistentVolume {{ "{{ $labels.persistentvolumeclaim }}" }} in namespace {{ "{{ $labels.namespace }}" }} is {{ "{{ humanizePercentage $value }}" }} full. Consider planning storage expansion.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
 
         - alert: GovernancePlatformPersistentVolumeCritical
           expr: |
@@ -249,10 +205,6 @@ spec:
           annotations:
             summary: "PersistentVolume {{ "{{ $labels.persistentvolumeclaim }}" }} critically full"
             description: 'PersistentVolume {{ "{{ $labels.persistentvolumeclaim }}" }} in namespace {{ "{{ $labels.namespace }}" }} is {{ "{{ humanizePercentage $value }}" }} full. Immediate action required to prevent service disruption.'
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
         {{- /* Only create endpoint down alert if blackbox-exporter is available */ -}}
@@ -267,10 +219,6 @@ spec:
           annotations:
             summary: "Endpoint {{ "{{ $labels.target }}" }} is down"
             description: "HTTPS endpoint {{ "{{ $labels.target }}" }} has been failing health checks for {{ .Values.alerts.rules.endpointDown.for }}. The service may be unavailable."
-            {{- $grafanaHost := include "governance-ops.grafanaHost" . }}
-            {{- if $grafanaHost }}
-            grafana_url: 'https://{{ $grafanaHost }}/d/platform-overview/governance-platform?var-namespace={{ "{{ $labels.namespace }}" }}'
-            {{- end }}
         {{- end }}
 
 {{- if .Values.alerts.customRules }}

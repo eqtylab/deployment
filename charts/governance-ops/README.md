@@ -51,6 +51,8 @@ This creates:
 
 Dashboards, alerts, and probes are **enabled by default**. Probes are only created if blackbox-exporter is available.
 
+**Note on Endpoint Monitoring Panels**: The Grafana dashboard includes an "Endpoint Monitoring" section with panels that display HTTP/HTTPS endpoint availability. If prometheus-blackbox-exporter is not installed, these panels will show "No data". You can manually hide or delete the "Endpoint Monitoring" row in Grafana if you don't plan to use endpoint monitoring.
+
 ### Deploying to a Custom Namespace
 
 ```bash
