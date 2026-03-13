@@ -8,6 +8,7 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 | ------------------------------------------- | -------- | ----------------------------------------------------- |
 | [auth-service](auth-service/)               | Subchart | Go-based authentication and authorization service     |
 | [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job |
+| [governance-ops](governance-ops/)           | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
 | [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)            |
 | [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine              |
 | [governance-studio](governance-studio/)     | Subchart | React-based frontend application                      |
@@ -22,6 +23,7 @@ The chart repository is organized using an **umbrella chart pattern**:
 charts/
 ├── auth-service/            # Authentication subchart
 ├── entra-bootstrap/         # Entra ID configuration utility
+├── governance-ops/          # Operational monitoring (dashboards, alerts)
 ├── governance-platform/     # Umbrella chart (deploy this for full platform)
 │   ├── Chart.yaml           # Dependencies on all subcharts
 │   ├── values.yaml          # Global configuration + subchart overrides
@@ -284,15 +286,16 @@ The umbrella chart (`governance-platform`) version is incremented when:
 
 ## Documentation
 
-| Document                                                       | Description                          |
-| -------------------------------------------------------------- | ------------------------------------ |
-| [auth-service/README.md](auth-service/README.md)               | Authentication service configuration |
-| [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup      |
-| [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide   |
-| [governance-service/README.md](governance-service/README.md)   | Backend API configuration            |
-| [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration               |
-| [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration    |
-| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration  |
+| Document                                                       | Description                             |
+| -------------------------------------------------------------- | --------------------------------------- |
+| [auth-service/README.md](auth-service/README.md)               | Authentication service configuration    |
+| [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup         |
+| [governance-ops/README.md](governance-ops/README.md)           | Operational monitoring setup            |
+| [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide      |
+| [governance-service/README.md](governance-service/README.md)   | Backend API configuration               |
+| [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration                  |
+| [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration       |
+| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration     |
 
 ## Support
 

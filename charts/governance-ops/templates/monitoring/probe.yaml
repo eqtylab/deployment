@@ -1,0 +1,146 @@
+{{- if .Values.probes.enabled }}
+{{- /* Check if Probe CRD exists (prometheus-operator) AND blackbox-exporter is available */ -}}
+{{- if include "governance-ops.blackboxAvailable" . }}
+{{- if .Values.probes.ingressDiscovery.enabled }}
+{{- /* Dynamically discover ingresses from target release and create static probes with clean URLs */ -}}
+{{- $targetRelease := .Values.targetRelease }}
+{{- $fullname := include "governance-ops.fullname" . }}
+{{- $labels := include "governance-ops.labels" . }}
+{{- $probeLabels := .Values.probes.labels }}
+{{- $probeAnnotations := .Values.probes.annotations }}
+{{- $interval := .Values.probes.interval }}
+{{- $scrapeTimeout := .Values.probes.scrapeTimeout }}
+{{- $module := .Values.probes.module }}
+
+{{- /* Lookup all ingresses in the cluster */ -}}
+{{- $ingresses := (lookup "networking.k8s.io/v1" "Ingress" "" "") }}
+{{- if $ingresses }}
+{{- range $ingress := $ingresses.items }}
+{{- /* Only process ingresses from the target release */ -}}
+{{- $ingressInstance := "" }}
+{{- if $ingress.metadata.labels }}
+{{- $ingressInstance = index $ingress.metadata.labels "app.kubernetes.io/instance" | default "" }}
+{{- end }}
+{{- if eq $ingressInstance $targetRelease }}
+{{- range $rule := $ingress.spec.rules }}
+{{- range $pathObj := $rule.http.paths }}
+{{- /* Clean the path by removing nginx regex patterns */ -}}
+{{- $originalPath := $pathObj.path }}
+{{- $cleanPath := regexReplaceAll "\\([^)]*\\)" $originalPath "" }}
+{{- $cleanPath := trimSuffix "/" $cleanPath }}
+{{- if eq $cleanPath "" }}{{ $cleanPath = "/" }}{{ end }}
+{{- /* Get health check path from service deployment */ -}}
+{{- $probePath := $cleanPath }}
+{{- $serviceName := $pathObj.backend.service.name }}
+{{- $deployment := lookup "apps/v1" "Deployment" $ingress.metadata.namespace $serviceName }}
+{{- if $deployment }}
+{{- $containers := $deployment.spec.template.spec.containers }}
+{{- if $containers }}
+{{- $container := index $containers 0 }}
+{{- if $container.livenessProbe }}
+{{- if $container.livenessProbe.httpGet }}
+{{- $healthPath := $container.livenessProbe.httpGet.path }}
+{{- if ne $cleanPath "/" }}
+{{- $probePath = printf "%s%s" $cleanPath $healthPath }}
+{{- else }}
+{{- $probePath = $healthPath }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- /* Determine scheme from ingress TLS */ -}}
+{{- $scheme := "http" }}
+{{- if $ingress.spec.tls }}{{ $scheme = "https" }}{{ end }}
+{{- /* Generate a unique probe name (include namespace to avoid duplicates) */ -}}
+{{- $pathSuffix := regexReplaceAll "[^a-z0-9-]" ($cleanPath | lower) "-" }}
+{{- $pathSuffix := trimPrefix "-" $pathSuffix }}
+{{- $pathSuffix := trimSuffix "-" $pathSuffix }}
+{{- $probeName := printf "%s-%s-%s" $fullname $ingress.metadata.namespace $ingress.metadata.name }}
+{{- if ne $pathSuffix "" }}
+{{- $probeName = printf "%s-%s" $probeName $pathSuffix }}
+{{- end }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: {{ $probeName }}
+  labels:
+    {{- $labels | nindent 4 }}
+    release: kube-prometheus-stack
+    {{- with $probeLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $probeAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  interval: {{ $interval }}
+  scrapeTimeout: {{ $scrapeTimeout }}
+  module: {{ $module }}
+
+  # Static target with clean URL (nginx regex patterns removed)
+  # Uses health check path from deployment probe configuration
+  targets:
+    staticConfig:
+      static:
+        - {{ $scheme }}://{{ $rule.host }}{{ $probePath }}
+
+      # Labels to identify this probe
+      labels:
+        ingress: {{ $ingress.metadata.name }}
+        namespace: {{ $ingress.metadata.namespace }}
+        host: {{ $rule.host }}
+        path: {{ $probePath }}
+        scheme: {{ $scheme }}
+        target: {{ $scheme }}://{{ $rule.host }}{{ $probePath }}
+
+  prober:
+    url: prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /* Static URL Probes */ -}}
+{{- range $probe := .Values.probes.staticProbes }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: {{ include "governance-ops.fullname" $ }}-{{ $probe.name }}
+  labels:
+    {{- include "governance-ops.labels" $ | nindent 4 }}
+    release: kube-prometheus-stack
+    {{- with $.Values.probes.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $.Values.probes.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  interval: {{ $.Values.probes.interval }}
+  scrapeTimeout: {{ $.Values.probes.scrapeTimeout }}
+  module: {{ $probe.module | default $.Values.probes.module }}
+
+  # Static target URL
+  targets:
+    staticConfig:
+      static:
+        - {{ $probe.url }}
+
+      # Add labels to identify this probe
+      labels:
+        probe_name: {{ $probe.name }}
+        probe_type: static
+        target: {{ $probe.url }}
+
+  prober:
+    url: prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+{{- end }}
+{{- end }}
+{{- end }}

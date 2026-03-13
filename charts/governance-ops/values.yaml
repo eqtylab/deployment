@@ -1,0 +1,322 @@
+# =============================================================================
+# GOVERNANCE OPS - MONITORING & OBSERVABILITY
+# =============================================================================
+# This chart provides monitoring and observability resources for Governance
+# Platform deployments, including Grafana dashboards and Prometheus alerts.
+#
+# Deploy this chart alongside your governance-platform deployment to enable
+# comprehensive monitoring capabilities.
+# =============================================================================
+
+# -- Target Release Name
+# @default -- `governance-platform`
+# The Helm release name of the governance-platform deployment to monitor
+# Used to construct resource selectors and labels
+targetRelease: "governance-platform"
+
+# =============================================================================
+# GRAFANA DASHBOARDS
+# =============================================================================
+dashboards:
+  # -- Enable Dashboards
+  # @default -- `true`
+  # Global enable/disable for all dashboard provisioning
+  # Set to true to create dashboard ConfigMaps with grafana_dashboard label
+  enabled: true
+
+  # -- Dashboard Labels
+  # @default -- `{}`
+  # Additional labels to add to all dashboard ConfigMaps
+  # Note: grafana_dashboard: "1" is always added automatically
+  labels: {}
+
+  # -- Dashboard Annotations
+  # @default -- `{}`
+  # Additional annotations to add to all dashboard ConfigMaps
+  annotations: {}
+
+  # -- Governance Platform Dashboard
+  # @default -- See values below
+  # Comprehensive monitoring dashboard for the Governance Platform including:
+  # - Platform Health: Service uptime gauges and replica counts
+  # - Service Readiness Timeline: Real-time readiness status
+  # - Request Traffic: Request rates per service from nginx ingress
+  # - Server Error Rates (5xx): Error tracking for service health
+  # - Resource Utilization: CPU and memory usage by pod
+  # Uses Grafana $namespace variable for namespace selection
+  platformOverview:
+    # -- Enable Governance Platform Dashboard
+    # @default -- `true`
+    # Provision governance-platform.json dashboard
+    # Requirements: kube-state-metrics, nginx-ingress-controller metrics
+    enabled: true
+
+# =============================================================================
+# PROMETHEUS ALERTS
+# =============================================================================
+alerts:
+  # -- Enable Alerts
+  # @default -- `true`
+  # Global enable/disable for all PrometheusRule provisioning
+  # Creates alert rules monitored by Prometheus and routed via AlertManager
+  enabled: true
+
+  # -- Alert Evaluation Interval
+  # @default -- `30s`
+  # How often Prometheus evaluates alert rules
+  interval: 30s
+
+  # -- Alert Labels
+  # @default -- `{}`
+  # Additional labels to add to PrometheusRule resource
+  # Note: Labels matching Prometheus serviceMonitorSelector are required for discovery
+  labels: {}
+
+  # -- Alert Annotations
+  # @default -- `{}`
+  # Additional annotations to add to PrometheusRule resource
+  annotations: {}
+
+  # -- Alert Rules Configuration
+  # @default -- See values below
+  # Configure individual alert rules and their thresholds
+  rules:
+    # -- Service Down Alert
+    # @default -- See values below
+    # Alert when a service has no available endpoints
+    serviceDown:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- For Duration
+      # @default -- `5m`
+      for: 5m
+      # -- Severity
+      # @default -- `critical`
+      severity: critical
+
+    # -- Pod Not Ready Alert
+    # @default -- See values below
+    # Alert when pods are not ready for extended period
+    podNotReady:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- For Duration
+      # @default -- `10m`
+      for: 10m
+      # -- Severity
+      # @default -- `warning`
+      severity: warning
+
+    # -- Pod Crash Looping Alert
+    # @default -- See values below
+    # Alert when pods are crash looping
+    podCrashLooping:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- For Duration
+      # @default -- `5m`
+      for: 5m
+      # -- Severity
+      # @default -- `warning`
+      severity: warning
+
+    # -- High Memory Usage Alert
+    # @default -- See values below
+    # Tiered alerts for memory usage (warning at 75%, critical at 90%)
+    highMemoryUsage:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- Warning Threshold
+      # @default -- `0.75`
+      # Memory usage approaching limits (75% - time to investigate)
+      warningThreshold: 0.75
+      # -- Warning For Duration
+      # @default -- `10m`
+      warningFor: 10m
+      # -- Critical Threshold
+      # @default -- `0.90`
+      # Memory usage dangerously high (90% - OOM imminent)
+      criticalThreshold: 0.90
+      # -- Critical For Duration
+      # @default -- `5m`
+      criticalFor: 5m
+
+    # -- Memory Spike Alert
+    # @default -- See values below
+    # Alert when memory increases rapidly (potential leak detection)
+    memorySpike:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- Threshold
+      # @default -- `0.50`
+      # 50% memory increase in 5 minutes indicates possible leak or deployment issue
+      # Increased from 30% to reduce false positives during normal scaling/deployments
+      threshold: 0.50
+      # -- For Duration
+      # @default -- `5m`
+      # Wait 5 minutes before alerting to avoid noise from temporary spikes
+      for: 5m
+
+    # -- High CPU Usage Alert
+    # @default -- See values below
+    # Tiered alerts for CPU usage (warning at 75%, critical at 90%)
+    highCpuUsage:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- Warning Threshold
+      # @default -- `0.75`
+      # CPU usage approaching limits (75% - may affect performance)
+      warningThreshold: 0.75
+      # -- Warning For Duration
+      # @default -- `10m`
+      warningFor: 10m
+      # -- Critical Threshold
+      # @default -- `0.90`
+      # CPU usage dangerously high (90% - severe throttling likely)
+      criticalThreshold: 0.90
+      # -- Critical For Duration
+      # @default -- `5m`
+      criticalFor: 5m
+
+    # -- High Error Rate Alert
+    # @default -- See values below
+    # Tiered alerts for HTTP error rates (warning at 1%, critical at 5%)
+    highErrorRate:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- Warning Threshold
+      # @default -- `0.01`
+      # 1% error rate - something wrong
+      warningThreshold: 0.01
+      # -- Warning For Duration
+      # @default -- `5m`
+      warningFor: 5m
+      # -- Critical Threshold
+      # @default -- `0.05`
+      # 5% error rate - service degraded
+      criticalThreshold: 0.05
+      # -- Critical For Duration
+      # @default -- `2m`
+      criticalFor: 2m
+
+    # -- Persistent Volume Usage Alert
+    # @default -- See values below
+    # Tiered alerts for storage usage (warning at 75%, critical at 90%)
+    persistentVolumeUsage:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- Warning Threshold
+      # @default -- `0.75`
+      # 75% full - plan expansion
+      warningThreshold: 0.75
+      # -- Warning For Duration
+      # @default -- `15m`
+      warningFor: 15m
+      # -- Critical Threshold
+      # @default -- `0.90`
+      # 90% full - urgent action needed
+      criticalThreshold: 0.90
+      # -- Critical For Duration
+      # @default -- `5m`
+      criticalFor: 5m
+
+    # -- Endpoint Down Alert
+    # @default -- See values below
+    # Alert when blackbox exporter probes detect endpoints are down (only created if blackbox-exporter exists)
+    endpointDown:
+      # -- Enable Alert
+      # @default -- `true`
+      enabled: true
+      # -- For Duration
+      # @default -- `2m`
+      for: 2m
+      # -- Severity
+      # @default -- `critical`
+      severity: critical
+
+  # -- Custom Alert Rules
+  # @default -- `[]`
+  # Additional custom alert rules to include
+  # Example:
+  # customRules:
+  #   - alert: CustomAlert
+  #     expr: up{job="my-service"} == 0
+  #     for: 5m
+  #     labels:
+  #       severity: warning
+  #     annotations:
+  #       summary: "Custom alert"
+  customRules: []
+
+# =============================================================================
+# BLACKBOX EXPORTER PROBES
+# =============================================================================
+probes:
+  # -- Enable Probes
+  # @default -- `true`
+  # Enable blackbox exporter probes (only created if Probe CRD and blackbox-exporter exist)
+  # Uses Ingress service discovery to automatically probe governance-platform endpoints
+  enabled: true
+
+  # -- Probe Labels
+  # @default -- `{}`
+  # Additional labels to add to all Probe resources
+  # Note: The 'release: kube-prometheus-stack' label is automatically added for Prometheus discovery
+  labels: {}
+
+  # -- Probe Annotations
+  # @default -- `{}`
+  # Additional annotations to add to all Probe resources
+  annotations: {}
+
+  # -- Probe Interval
+  # @default -- `30s`
+  # How often to probe the endpoints
+  interval: 30s
+
+  # -- Probe Timeout
+  # @default -- `10s`
+  # Timeout for each probe attempt
+  scrapeTimeout: 10s
+
+  # -- Blackbox Exporter Module
+  # @default -- `https_2xx`
+  # Which blackbox exporter module to use for probing
+  # Options: http_2xx, https_2xx, http_post_2xx
+  module: https_2xx
+
+  # -- Ingress Discovery
+  # @default -- `true`
+  # Automatically discover and probe ingress resources from targetRelease
+  # When enabled, probes all ingress hosts created by the governance-platform chart
+  ingressDiscovery:
+    enabled: true
+    # -- Namespace Selector
+    # @default -- `{ any: true }` (discovers ingresses in all namespaces)
+    # Namespace selector for ingress discovery
+    # Set to { any: true } to discover ingresses across all namespaces (recommended for centralized deployment)
+    # For specific namespaces use: namespaceSelector: { matchNames: ["namespace1", "namespace2"] }
+    # For label-based selection use: namespaceSelector: { matchLabels: { environment: "prod" } }
+    namespaceSelector:
+      any: true
+    # Ingress label selector - matches ingresses from the targetRelease
+    # Automatically set to: app.kubernetes.io/instance={{ .Values.targetRelease }}
+
+  # -- Custom Static Probes
+  # @default -- `[]`
+  # Additional static URL endpoints to probe
+  # Use this for external endpoints or URLs not discovered via ingress
+  # Example:
+  # staticProbes:
+  #   - name: external-api
+  #     url: https://external-api.example.com/health
+  #     module: https_2xx
+  staticProbes: []

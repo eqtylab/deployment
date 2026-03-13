@@ -1,0 +1,68 @@
+#################################################################################
+#                                                                               #
+#                   Governance Ops Successfully Deployed!                       #
+#                                                                               #
+#################################################################################
+
+Release Name:     {{ .Release.Name }}
+Namespace:        {{ .Release.Namespace }}
+Chart Version:    {{ .Chart.Version }}
+Status:           {{ .Release.Status }}
+Revision:         {{ .Release.Revision }}
+{{- $targetRelease := .Values.targetRelease | default "governance-platform" }}
+
+Monitoring for:   {{ $targetRelease }}
+
+#################################################################################
+# What Was Deployed
+#################################################################################
+{{- if .Values.dashboards.enabled }}
+✓ Grafana Dashboards:
+  {{- if .Values.dashboards.platformOverview.enabled }}
+  - Governance Platform Overview Dashboard
+  {{- end }}
+{{- end }}
+
+{{- if .Values.alerts.enabled }}
+✓ Prometheus Alerts:
+  - Service availability monitoring
+  - Resource usage alerts (CPU, Memory, Storage)
+  - HTTP error rate monitoring
+  - Pod health checks
+{{- end }}
+
+#################################################################################
+# Next Steps
+#################################################################################
+
+1. Verify Grafana discovered the dashboards:
+   kubectl get configmaps -n {{ .Release.Namespace }} -l grafana_dashboard=1
+
+2. Access Grafana and navigate to Dashboards → Browse
+   Look for "Governance Platform" dashboard
+
+3. Verify Prometheus discovered the alerts:
+   kubectl get prometheusrule -n {{ .Release.Namespace }}
+
+4. View active alerts in Prometheus:
+   kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
+   Open: http://localhost:9090/alerts
+
+{{- if .Values.alerts.enabled }}
+5. Configure AlertManager notifications (if not already done):
+   See: docs/monitoring-setup.md#configuring-alerts
+{{- end }}
+
+#################################################################################
+# Troubleshooting
+#################################################################################
+
+If dashboards don't appear in Grafana:
+  # Check Grafana sidecar logs
+  kubectl logs -n monitoring deployment/kube-prometheus-stack-grafana -c grafana-sc-dashboard
+
+  # Force reload
+  kubectl rollout restart deployment/kube-prometheus-stack-grafana -n monitoring
+
+For more information:
+  https://github.com/eqtylab/governance-studio-infrastructure/tree/main/docs/monitoring-setup.md
