@@ -365,6 +365,13 @@ secrets:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.keyManagement.aws_kms.secretName)
       name: ""
+    # -- GCP KMS Secret
+    # @default -- See values below
+    # Only used when provider is "gcp_kms"
+    gcp_kms:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.gcp_kms.secretName)
+      name: ""
 
   # -- Governance Worker Secret
   # @default -- See values below
@@ -596,7 +603,7 @@ config:
   keyManagement:
     # -- Provider
     # @default -- `""` (auto-configured from global.secrets.keyManagement.provider)
-    # Options: azure_key_vault, aws_kms
+    # Options: azure_key_vault, aws_kms, gcp_kms
     provider: ""
     # -- Cache TTL Minutes
     # @default -- `15`
@@ -645,6 +652,31 @@ config:
       # -- AWS KMS Deletion Window Days
       # @default -- `7`
       deletionWindowDays: 7
+
+    # -- GCP KMS Configuration
+    # @default -- See values below
+    # Only used when provider is "gcp_kms"
+    gcp_kms:
+      # -- GCP Project ID
+      # @default -- `""`
+      # **REQUIRED for GCP KMS**: Google Cloud project ID
+      projectId: ""
+      # -- GCP KMS Location ID
+      # @default -- `""`
+      # **REQUIRED for GCP KMS**: KMS location (e.g., "us-east1", "global")
+      locationId: ""
+      # -- GCP KMS Key Ring ID
+      # @default -- `eqtylab-did`
+      # Key ring name for DID signing keys
+      keyRingId: ""
+      # -- GCP KMS Scheduled Destroy Days
+      # @default -- `24`
+      # Number of days before a scheduled key version is destroyed
+      scheduledDestroyDays: 24
+      # -- GCP Service Account JSON (secret - auto-configured from global.secrets.keyManagement.gcp_kms)
+      # @default -- `""`
+      # Optional — not needed if using Workload Identity or Application Default Credentials (ADC)
+      serviceAccountJson: ""
 
   # ---------------------------------------------------------------------------
   # Service Accounts Configuration

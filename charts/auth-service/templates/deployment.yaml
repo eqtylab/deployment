@@ -328,6 +328,23 @@ spec:
             {{- end }}
             {{- end }}
 
+            {{- if eq $keyMgmtProvider "gcp_kms" }}
+
+            # GCP KMS Configuration
+            {{- $gcpKmsSecretName := .Values.secrets.keyManagement.gcp_kms.name | default ((((.Values.global).secrets).keyManagement).gcp_kms).secretName | default "" }}
+            {{- if or .Values.config.keyManagement.gcp_kms.serviceAccountJson $gcpKmsSecretName }}
+            - name: GCP_CREDENTIALS_JSON
+              {{- if .Values.config.keyManagement.gcp_kms.serviceAccountJson }}
+              value: {{ .Values.config.keyManagement.gcp_kms.serviceAccountJson | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $gcpKmsSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).gcp_kms).keys).serviceAccountJson | default "service-account-json" | quote }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+
             {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
 
             # ========================================================================

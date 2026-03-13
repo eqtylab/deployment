@@ -80,6 +80,14 @@ auth-service:
       #   endpoint: ""
       #   aliasPrefix: "alias/eqtylab/did"
 
+      # Key Management - GCP KMS (uncomment to use instead)
+      # provider: "gcp_kms"
+      # gcp_kms:
+      #   projectId: "your-gcp-project-id"
+      #   locationId: "us-east1"
+      #   keyRingId: "eqtylab-did"
+      #   scheduledDestroyDays: 24
+
 # =============================================================================
 # Governance Service
 # =============================================================================
@@ -333,6 +341,11 @@ keycloak:
 #   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
 #   --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
 #   --from-literal=session-token="" \
+#   --namespace governance
+#
+# # GCP KMS Credentials (if using GCP KMS with explicit service account)
+# kubectl create secret generic platform-gcp-kms \
+#   --from-literal=service-account-json="$(cat gcp-service-account.json)" \
 #   --namespace governance
 #
 # # Encryption Key Credentials

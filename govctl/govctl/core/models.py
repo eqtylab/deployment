@@ -19,6 +19,7 @@ class AuthProvider(str, Enum):
 class KeyManagementProvider(str, Enum):
     AZURE_KEY_VAULT = "azure_key_vault"
     AWS_KMS = "aws_kms"
+    GCP_KMS = "gcp_kms"
 
 
 # Mapping of cloud provider to storage provider
@@ -69,6 +70,12 @@ class PlatformConfig:
     aws_kms_endpoint: str = ""
     aws_kms_alias_prefix: str = ""
     aws_kms_deletion_window_days: int = 7
+
+    # GCP KMS-specific
+    gcp_kms_project_id: str = ""
+    gcp_kms_location_id: str = ""
+    gcp_kms_key_ring_id: str = "eqtylab-did"
+    gcp_kms_scheduled_destroy_days: int = 24
 
     # Auth0-specific
     auth0_domain: str = ""

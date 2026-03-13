@@ -114,5 +114,14 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             aws_kms_config["deletionWindowDays"] = config.aws_kms_deletion_window_days
         if aws_kms_config:
             section["config"]["keyManagement"]["aws_kms"] = aws_kms_config
+    elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
+        gcp_kms_config: dict[str, Any] = {
+            "projectId": config.gcp_kms_project_id,
+            "locationId": config.gcp_kms_location_id,
+            "keyRingId": config.gcp_kms_key_ring_id,
+        }
+        if config.gcp_kms_scheduled_destroy_days != 24:
+            gcp_kms_config["scheduledDestroyDays"] = config.gcp_kms_scheduled_destroy_days
+        section["config"]["keyManagement"]["gcp_kms"] = gcp_kms_config
 
     return section

@@ -207,5 +207,14 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "sessionToken": "",
             },
         }
+    elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
+        secrets["keyManagement"]["gcp_kms"] = {
+            "secretName": "platform-gcp-kms",
+            "values": {
+                "serviceAccountJson": _required(
+                    "Base64-encoded GCP service account JSON (optional if using Workload Identity)"
+                ),
+            },
+        }
 
     return secrets

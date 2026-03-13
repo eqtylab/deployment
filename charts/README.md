@@ -192,12 +192,23 @@ The `governance-platform/examples/` directory contains complete deployment examp
 
 ## Deployment Guides
 
-The `docs/` directory contains step-by-step deployment guides:
+The `docs/` directory contains step-by-step deployment guides organized by auth provider and cloud platform:
 
-| Guide                                                                | Description                                               |
-| -------------------------------------------------------------------- | --------------------------------------------------------- |
-| [deployment-guide-entra.md](../docs/deployment-guide-entra.md)       | End-to-end deployment using Entra ID as identity provider |
-| [deployment-guide-keycloak.md](../docs/deployment-guide-keycloak.md) | End-to-end deployment using Keycloak as identity provider |
+**Entra ID**
+
+| Guide                                                                | Cloud Platform                             |
+| -------------------------------------------------------------------- | ------------------------------------------ |
+| [deployment-guide-azure.md](../docs/entra/deployment-guide-azure.md) | Entra ID + Azure (Blob Storage, Key Vault) |
+| [deployment-guide-aws.md](../docs/entra/deployment-guide-aws.md)     | Entra ID + AWS (S3, KMS)                   |
+| [deployment-guide-gcp.md](../docs/entra/deployment-guide-gcp.md)     | Entra ID + GCP (GCS, Azure Key Vault)      |
+
+**Keycloak**
+
+| Guide                                                                   | Cloud Platform                             |
+| ----------------------------------------------------------------------- | ------------------------------------------ |
+| [deployment-guide-azure.md](../docs/keycloak/deployment-guide-azure.md) | Keycloak + Azure (Blob Storage, Key Vault) |
+| [deployment-guide-aws.md](../docs/keycloak/deployment-guide-aws.md)     | Keycloak + AWS (S3, KMS)                   |
+| [deployment-guide-gcp.md](../docs/keycloak/deployment-guide-gcp.md)     | Keycloak + GCP (GCS, Azure Key Vault)      |
 
 ## Development
 

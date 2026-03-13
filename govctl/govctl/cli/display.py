@@ -37,6 +37,13 @@ def show_config_summary(config: PlatformConfig) -> None:
             table.add_row("AWS KMS Endpoint", config.aws_kms_endpoint)
         if config.aws_kms_alias_prefix:
             table.add_row("AWS KMS Alias Prefix", config.aws_kms_alias_prefix)
+    elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
+        if config.gcp_kms_project_id:
+            table.add_row("GCP KMS Project ID", config.gcp_kms_project_id)
+        if config.gcp_kms_location_id:
+            table.add_row("GCP KMS Location", config.gcp_kms_location_id)
+        if config.gcp_kms_key_ring_id:
+            table.add_row("GCP KMS Key Ring", config.gcp_kms_key_ring_id)
 
     if config.auth_provider == AuthProvider.AUTH0:
         table.add_row("Auth0 Domain", config.auth0_domain)

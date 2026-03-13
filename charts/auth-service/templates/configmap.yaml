@@ -118,7 +118,7 @@ data:
   {{- end }}
 
   {{- if eq $keyMgmtProvider "aws_kms" }}
-  
+
   # AWS KMS Configuration
   {{- if .Values.config.keyManagement.aws_kms.region }}
   AWS_KMS_REGION: "{{ .Values.config.keyManagement.aws_kms.region }}"
@@ -130,6 +130,21 @@ data:
   AWS_KMS_ALIAS_PREFIX: "{{ $awsAliasPrefix }}"
   {{- $awsDeletionDays := .Values.config.keyManagement.aws_kms.deletionWindowDays | default 7 }}
   AWS_KMS_DELETION_WINDOW_DAYS: "{{ $awsDeletionDays }}"
+  {{- end }}
+
+  {{- if eq $keyMgmtProvider "gcp_kms" }}
+
+  # GCP KMS Configuration
+  {{- if .Values.config.keyManagement.gcp_kms.projectId }}
+  GCP_KMS_PROJECT_ID: "{{ .Values.config.keyManagement.gcp_kms.projectId }}"
+  {{- end }}
+  {{- if .Values.config.keyManagement.gcp_kms.locationId }}
+  GCP_KMS_LOCATION_ID: "{{ .Values.config.keyManagement.gcp_kms.locationId }}"
+  {{- end }}
+  {{- $gcpKeyRingId := .Values.config.keyManagement.gcp_kms.keyRingId | default "eqtylab-did" }}
+  GCP_KMS_KEY_RING_ID: "{{ $gcpKeyRingId }}"
+  {{- $gcpDestroyDays := .Values.config.keyManagement.gcp_kms.scheduledDestroyDays | default 24 }}
+  GCP_KMS_SCHEDULED_DESTROY_DAYS: "{{ $gcpDestroyDays }}"
   {{- end }}
 
   {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}

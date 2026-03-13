@@ -40,6 +40,11 @@ Azure Key Vault:
 {{- else if eq $keyMgmtProvider "aws_kms" }}
 AWS KMS:
   Region: {{ .Values.config.keyManagement.aws_kms.region | default (((((.Values.global).secrets).keyManagement).aws_kms).values).region | default "not set" }}
+{{- else if eq $keyMgmtProvider "gcp_kms" }}
+GCP KMS:
+  Project ID: {{ .Values.config.keyManagement.gcp_kms.projectId | default "not set" }}
+  Location ID: {{ .Values.config.keyManagement.gcp_kms.locationId | default "not set" }}
+  Key Ring ID: {{ .Values.config.keyManagement.gcp_kms.keyRingId | default "eqtylab-did" }}
 {{- end }}
 
 Database:
@@ -77,7 +82,7 @@ Please set: auth-service.config.idp.auth0.domain
 {{- if not $keyMgmtProvider }}
 
 WARNING: Key Management provider is not configured!
-Please set: auth-service.config.keyManagement.provider to "azure_key_vault" or "aws_kms"
+Please set: auth-service.config.keyManagement.provider to "azure_key_vault", "aws_kms", or "gcp_kms"
 {{- end }}
 
 {{- if eq $keyMgmtProvider "azure_key_vault" }}
@@ -93,6 +98,19 @@ Please set: auth-service.config.keyManagement.azure_key_vault.vaultUrl
 
 WARNING: AWS KMS Region is not configured!
 Please set: auth-service.config.keyManagement.aws_kms.region
+{{- end }}
+{{- end }}
+
+{{- if eq $keyMgmtProvider "gcp_kms" }}
+{{- if not .Values.config.keyManagement.gcp_kms.projectId }}
+
+WARNING: GCP KMS Project ID is not configured!
+Please set: auth-service.config.keyManagement.gcp_kms.projectId
+{{- end }}
+{{- if not .Values.config.keyManagement.gcp_kms.locationId }}
+
+WARNING: GCP KMS Location ID is not configured!
+Please set: auth-service.config.keyManagement.gcp_kms.locationId
 {{- end }}
 {{- end }}
 {{- end }}

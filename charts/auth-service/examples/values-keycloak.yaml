@@ -62,3 +62,11 @@ config:
     #   region: "us-east-1"
     #   endpoint: ""
     #   aliasPrefix: "alias/eqtylab/did"
+
+    # Key Management - GCP KMS (uncomment to use instead)
+    # provider: "gcp_kms"
+    # gcp_kms:
+    #   projectId: "your-gcp-project-id"
+    #   locationId: "us-east1"
+    #   keyRingId: "eqtylab-did"
+    #   scheduledDestroyDays: 24

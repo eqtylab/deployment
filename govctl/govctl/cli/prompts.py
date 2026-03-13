@@ -13,6 +13,9 @@ from govctl.utils.validate import (
     is_valid_aws_region,
     is_valid_domain,
     is_valid_email,
+    is_valid_gcp_key_ring_id,
+    is_valid_gcp_location,
+    is_valid_gcp_project_id,
     is_valid_https_url,
     is_valid_keyvault_url,
     is_valid_realm,
@@ -93,10 +96,15 @@ def collect_interactive_config(
     # --- Key Management (required for DID keys) ---
     console.print()
     console.print("[bold]Key Management Configuration (for DID keys):[/bold]")
-    km_default = "aws_kms" if cloud_provider == CloudProvider.AWS else "azure_key_vault"
+    km_defaults = {
+        CloudProvider.AWS: "aws_kms",
+        CloudProvider.GCP: "gcp_kms",
+        CloudProvider.AZURE: "azure_key_vault",
+    }
+    km_default = km_defaults[cloud_provider]
     km_choice = Prompt.ask(
         "  Key Management Provider",
-        choices=["azure_key_vault", "aws_kms"],
+        choices=["azure_key_vault", "aws_kms", "gcp_kms"],
         default=km_default,
     )
     config.key_management_provider = KeyManagementProvider(km_choice)
@@ -146,6 +154,40 @@ def collect_interactive_config(
             default="alias/eqtylab/did",
         )
         config.aws_kms_alias_prefix = aws_kms_alias_prefix
+    elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
+        while True:
+            gcp_kms_project_id = Prompt.ask(
+                "  GCP Project ID",
+                default="your-gcp-project-id",
+            )
+            if is_valid_gcp_project_id(gcp_kms_project_id):
+                break
+            console.print(
+                "[red]Invalid GCP project ID. Must be 6-30 lowercase letters, digits, and hyphens, starting with a letter.[/red]"
+            )
+        config.gcp_kms_project_id = gcp_kms_project_id
+        while True:
+            gcp_kms_location = Prompt.ask(
+                "  GCP KMS Location",
+                default="us-east1",
+            )
+            if is_valid_gcp_location(gcp_kms_location):
+                break
+            console.print(
+                "[red]Invalid GCP location. Expected format: us-east1, europe-west4, etc.[/red]"
+            )
+        config.gcp_kms_location_id = gcp_kms_location
+        while True:
+            gcp_kms_key_ring = Prompt.ask(
+                "  GCP KMS Key Ring ID",
+                default="eqtylab-did",
+            )
+            if is_valid_gcp_key_ring_id(gcp_kms_key_ring):
+                break
+            console.print(
+                "[red]Invalid key ring ID. Use only letters, numbers, hyphens, and underscores.[/red]"
+            )
+        config.gcp_kms_key_ring_id = gcp_kms_key_ring
 
     # --- Auth provider ---
     console.print()

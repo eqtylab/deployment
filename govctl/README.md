@@ -41,7 +41,7 @@ Before running `govctl init`, you'll need the following in place:
   - GCP: GCS bucket
   - AWS: S3 bucket
   - Azure: Blob Storage account and container
-- **Azure Key Vault** — for DID key management (required regardless of cloud provider)
+- **Key management** — for DID signing keys (one of: Azure Key Vault, AWS KMS, or GCP KMS)
 
 ### Auth Provider
 
@@ -72,14 +72,16 @@ Environment (development): staging
 Cloud Configuration:
   Cloud Provider [gcp/aws/azure] (gcp): gcp
 
+Key Management Configuration (for DID keys):
+  Key Management Provider [azure_key_vault/aws_kms/gcp_kms] (gcp_kms): gcp_kms
+  GCP Project ID (your-gcp-project-id): my-governance-project
+  GCP KMS Location (us-east1): us-east1
+  GCP KMS Key Ring ID (eqtylab-did): eqtylab-did
+
 Auth Configuration:
   Auth Provider [auth0/keycloak/entra] (keycloak): keycloak
   Keycloak URL (https://governance.staging.eqtylab.io/keycloak): https://governance.staging.eqtylab.io/keycloak
   Keycloak Realm (governance): governance
-
-  Configure Azure Key Vault for DID keys? [y/n] (y): y
-  Azure Key Vault URL (https://your-keyvault.vault.azure.net/): https://govstudio-staging-kv.vault.azure.net/
-  Azure Key Vault Tenant ID (): 6712fe8e-3505-4daf-b881-675312392087
 
 Image Registry Configuration:
   Registry URL (ghcr.io): ghcr.io
@@ -95,8 +97,10 @@ Image Registry Configuration:
 │ Environment         │ staging                                        │
 │ Auth Provider       │ keycloak                                       │
 │ Storage Provider    │ gcs                                            │
-│ Key Vault URL       │ https://govstudio-staging-kv.vault.azure.net/  │
-│ Key Vault Tenant ID │ 6712fe8e-3505-4daf-b881-675312392087           │
+│ Key Management      │ gcp_kms                                        │
+│ GCP KMS Project ID  │ my-governance-project                          │
+│ GCP KMS Location    │ us-east1                                       │
+│ GCP KMS Key Ring    │ eqtylab-did                                    │
 │ Keycloak URL        │ https://governance.staging.eqtylab.io/keycloak │
 │ Keycloak Realm      │ governance                                     │
 │ Image Registry      │ ghcr.io                                        │
@@ -141,7 +145,7 @@ The interactive wizard walks you through:
 2. **Domain** — your deployment domain
 3. **Environment** — freeform (e.g. `dev`, `staging`, `prod`)
 4. **Auth provider** — Auth0, Keycloak, or Microsoft Entra ID
-5. **Provider-specific settings** — Key Vault, auth config, etc.
+5. **Provider-specific settings** — key management, auth config, etc.
 6. **Image registry** — container registry credentials
 
 Generated files:
@@ -207,12 +211,20 @@ Only includes secrets relevant to your configuration:
 - **Auth provider** — Auth0 _or_ Keycloak _or_ Entra secrets (not all three)
 - **Storage** — GCS _or_ S3 _or_ Azure Blob credentials
 - **Image registry** — pull secret for container images
-- **Azure Key Vault** — credentials for DID key management
+- **Key management** — Azure Key Vault _or_ AWS KMS _or_ GCP KMS credentials for DID keys
 
 ## Next Steps
 
-After generating your files, follow the deployment guide for your auth provider:
+After generating your files, follow the deployment guide for your auth provider and cloud platform:
 
-- [Auth0 Deployment Guide](https://github.com/eqtylab/deployment/blob/main/docs/deployment-guide-auth0.md)
-- [Keycloak Deployment Guide](https://github.com/eqtylab/deployment/blob/main/docs/deployment-guide-keycloak.md)
-- [Entra ID Deployment Guide](https://github.com/eqtylab/deployment/blob/main/docs/deployment-guide-entra.md)
+**Entra ID**
+
+- [Entra ID + Azure](../docs/entra/deployment-guide-azure.md)
+- [Entra ID + AWS](../docs/entra/deployment-guide-aws.md)
+- [Entra ID + GCP](../docs/entra/deployment-guide-gcp.md)
+
+**Keycloak**
+
+- [Keycloak + Azure](../docs/keycloak/deployment-guide-azure.md)
+- [Keycloak + AWS](../docs/keycloak/deployment-guide-aws.md)
+- [Keycloak + GCP](../docs/keycloak/deployment-guide-gcp.md)

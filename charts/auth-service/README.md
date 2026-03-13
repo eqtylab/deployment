@@ -11,7 +11,7 @@ Key capabilities:
 - **Identity Provider Integration**: Native support for Auth0, Keycloak, and Microsoft Entra ID
 - **RBAC Authorization**: Fine-grained permission management with caching
 - **Service Accounts**: Machine-to-machine authentication for platform workers
-- **DID Key Management**: Integration with Azure Key Vault or AWS KMS for credential signing
+- **DID Key Management**: Integration with Azure Key Vault, AWS KMS, or GCP KMS for credential signing
 - **Token Exchange**: Keycloak token exchange support for federated authentication
 
 ## Configuration Model
@@ -31,7 +31,7 @@ This allows:
 - Helm 3.8+
 - PostgreSQL database (provided by umbrella chart or external)
 - Authentication provider (Auth0, Keycloak, or Entra ID)
-- Key management provider: Azure Key Vault or AWS KMS (for DID key signing)
+- Key management provider: Azure Key Vault, AWS KMS, or GCP KMS (for DID key signing)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
@@ -219,6 +219,14 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 - `config.keyManagement.aws_kms.region` - AWS region (e.g., `us-east-1`)
 - Access Key ID and Secret Access Key are auto-configured from the `global.secrets.keyManagement.aws_kms` secret
 
+**Key Management (GCP KMS):**
+
+- `config.keyManagement.gcp_kms.projectId` - GCP project ID
+- `config.keyManagement.gcp_kms.locationId` - GCP location (e.g., `us-east1`)
+- `config.keyManagement.gcp_kms.keyRingId` - KMS key ring ID (defaults to `eqtylab-did`)
+- `config.keyManagement.gcp_kms.scheduledDestroyDays` - Key destroy schedule (defaults to `24`)
+- Service account JSON is auto-configured from the `global.secrets.keyManagement.gcp_kms` secret (optional with Workload Identity)
+
 **What gets auto-configured:**
 
 From global values:
@@ -243,25 +251,26 @@ Generated defaults:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                                     | Type   | Description                                        |
-| ------------------------------------------------------- | ------ | -------------------------------------------------- |
-| global.domain                                           | string | Base domain for all services                       |
-| global.environmentType                                  | string | Environment type (development/staging/production)  |
-| global.postgresql.host                                  | string | PostgreSQL host                                    |
-| global.postgresql.port                                  | int    | PostgreSQL port                                    |
-| global.postgresql.database                              | string | PostgreSQL database name                           |
-| global.postgresql.username                              | string | PostgreSQL username                                |
-| global.secrets.database.secretName                      | string | Name of database credentials secret                |
-| global.secrets.auth.provider                            | string | Auth provider (auth0, keycloak, or entra)          |
-| global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                      |
-| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                   |
-| global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                   |
-| global.secrets.authService.secretName                   | string | Auth service security secrets name                 |
-| global.secrets.keyManagement.provider                   | string | Key management provider (azure_key_vault, aws_kms) |
-| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name            |
-| global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                    |
-| global.secrets.governanceWorker.secretName              | string | Worker credentials secret name                     |
-| global.secrets.imageRegistry.secretName                 | string | Registry pull secret name                          |
+| Key                                                     | Type   | Description                                                    |
+| ------------------------------------------------------- | ------ | -------------------------------------------------------------- |
+| global.domain                                           | string | Base domain for all services                                   |
+| global.environmentType                                  | string | Environment type (development/staging/production)              |
+| global.postgresql.host                                  | string | PostgreSQL host                                                |
+| global.postgresql.port                                  | int    | PostgreSQL port                                                |
+| global.postgresql.database                              | string | PostgreSQL database name                                       |
+| global.postgresql.username                              | string | PostgreSQL username                                            |
+| global.secrets.database.secretName                      | string | Name of database credentials secret                            |
+| global.secrets.auth.provider                            | string | Auth provider (auth0, keycloak, or entra)                      |
+| global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                                  |
+| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                               |
+| global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                               |
+| global.secrets.authService.secretName                   | string | Auth service security secrets name                             |
+| global.secrets.keyManagement.provider                   | string | Key management provider (azure_key_vault, aws_kms, or gcp_kms) |
+| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                        |
+| global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                                |
+| global.secrets.keyManagement.gcp_kms.secretName         | string | GCP KMS credentials secret name                                |
+| global.secrets.governanceWorker.secretName              | string | Worker credentials secret name                                 |
+| global.secrets.imageRegistry.secretName                 | string | Registry pull secret name                                      |
 
 ### Chart-Specific Parameters
 
@@ -419,6 +428,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------ |
 | secrets.keyManagement.azure_key_vault.name | string | Secret name (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName) |
 | secrets.keyManagement.aws_kms.name         | string | Secret name (auto-configured from global.secrets.keyManagement.aws_kms.secretName)         |
+| secrets.keyManagement.gcp_kms.name         | string | Secret name (auto-configured from global.secrets.keyManagement.gcp_kms.secretName)         |
 
 #### Governance Worker Secret
 
@@ -510,21 +520,26 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Key Management Configuration
 
-| Key                                               | Type   | Default | Description                                                                                                |
-| ------------------------------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------------------------- |
-| config.keyManagement.provider                     | string | `""`    | Provider (`"azure_key_vault"` or `"aws_kms"`) (auto-configured from global.secrets.keyManagement.provider) |
-| config.keyManagement.cacheTTLMinutes              | int    | `15`    | DID key cache TTL in minutes                                                                               |
-| config.keyManagement.azure_key_vault.vaultUrl     | string | `""`    | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)    |
-| config.keyManagement.azure_key_vault.tenantId     | string | `""`    | Azure tenant ID (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)        |
-| config.keyManagement.azure_key_vault.clientId     | string | `""`    | Azure client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)               |
-| config.keyManagement.azure_key_vault.clientSecret | string | `""`    | Azure client secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)           |
-| config.keyManagement.aws_kms.region               | string | `""`    | AWS KMS region                                                                                             |
-| config.keyManagement.aws_kms.endpoint             | string | `""`    | AWS KMS endpoint (optional, for custom endpoints like LocalStack)                                          |
-| config.keyManagement.aws_kms.aliasPrefix          | string | `""`    | AWS KMS alias prefix (defaults to `alias/eqtylab/did`)                                                     |
-| config.keyManagement.aws_kms.accessKeyId          | string | `""`    | AWS access key ID (secret - auto-configured from global.secrets.keyManagement.aws_kms)                     |
-| config.keyManagement.aws_kms.secretAccessKey      | string | `""`    | AWS secret access key (secret - auto-configured from global.secrets.keyManagement.aws_kms)                 |
-| config.keyManagement.aws_kms.sessionToken         | string | `""`    | AWS session token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)           |
-| config.keyManagement.aws_kms.deletionWindowDays   | int    | `7`     | AWS KMS deletion window in days                                                                            |
+| Key                                               | Type   | Default | Description                                                                                                              |
+| ------------------------------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| config.keyManagement.provider                     | string | `""`    | Provider (`"azure_key_vault"`, `"aws_kms"`, or `"gcp_kms"`) (auto-configured from global.secrets.keyManagement.provider) |
+| config.keyManagement.cacheTTLMinutes              | int    | `15`    | DID key cache TTL in minutes                                                                                             |
+| config.keyManagement.azure_key_vault.vaultUrl     | string | `""`    | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)                  |
+| config.keyManagement.azure_key_vault.tenantId     | string | `""`    | Azure tenant ID (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)                      |
+| config.keyManagement.azure_key_vault.clientId     | string | `""`    | Azure client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                             |
+| config.keyManagement.azure_key_vault.clientSecret | string | `""`    | Azure client secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                         |
+| config.keyManagement.aws_kms.region               | string | `""`    | AWS KMS region                                                                                                           |
+| config.keyManagement.aws_kms.endpoint             | string | `""`    | AWS KMS endpoint (optional, for custom endpoints like LocalStack)                                                        |
+| config.keyManagement.aws_kms.aliasPrefix          | string | `""`    | AWS KMS alias prefix (defaults to `alias/eqtylab/did`)                                                                   |
+| config.keyManagement.aws_kms.accessKeyId          | string | `""`    | AWS access key ID (secret - auto-configured from global.secrets.keyManagement.aws_kms)                                   |
+| config.keyManagement.aws_kms.secretAccessKey      | string | `""`    | AWS secret access key (secret - auto-configured from global.secrets.keyManagement.aws_kms)                               |
+| config.keyManagement.aws_kms.sessionToken         | string | `""`    | AWS session token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)                         |
+| config.keyManagement.aws_kms.deletionWindowDays   | int    | `7`     | AWS KMS deletion window in days                                                                                          |
+| config.keyManagement.gcp_kms.projectId            | string | `""`    | GCP project ID                                                                                                           |
+| config.keyManagement.gcp_kms.locationId           | string | `""`    | GCP location (e.g., `us-east1`)                                                                                          |
+| config.keyManagement.gcp_kms.keyRingId            | string | `""`    | GCP KMS key ring ID (defaults to `eqtylab-did`)                                                                          |
+| config.keyManagement.gcp_kms.scheduledDestroyDays | int    | `24`    | GCP KMS scheduled destroy days                                                                                           |
+| config.keyManagement.gcp_kms.serviceAccountJson   | string | `""`    | GCP service account JSON (optional with Workload Identity)                                                               |
 
 #### Service Account Configuration
 
@@ -711,7 +726,7 @@ kubectl create secret generic platform-entra \
 
 ## Key Management Configuration
 
-Choose one key management provider for DID credential signing: Azure Key Vault or AWS KMS.
+Choose one key management provider for DID credential signing: Azure Key Vault, AWS KMS, or GCP KMS.
 
 ### Azure Key Vault
 
@@ -782,6 +797,43 @@ kubectl create secret generic platform-aws-kms \
   --namespace governance
 ```
 
+### GCP KMS
+
+#### Required GCP Setup
+
+1. **Create a GCP project** with Cloud KMS API enabled
+2. **Create a key ring** (or use the default `eqtylab-did`)
+3. **Create a service account** with KMS permissions (or use Workload Identity)
+4. **Grant KMS permissions** (cloudkms.cryptoKeys.create, cloudkms.cryptoKeyVersions.useToSign, cloudkms.cryptoKeyVersions.viewPublicKey, cloudkms.cryptoKeys.get)
+
+#### Example Configuration
+
+```yaml
+config:
+  keyManagement:
+    provider: "gcp_kms"
+    gcp_kms:
+      projectId: "your-gcp-project-id"
+      locationId: "us-east1"
+      keyRingId: "eqtylab-did" # defaults to "eqtylab-did"
+      scheduledDestroyDays: 24 # defaults to 24
+
+secrets:
+  keyManagement:
+    gcp_kms:
+      name: "platform-gcp-kms"
+```
+
+> **Note:** When using GCP Workload Identity or Application Default Credentials, the secret is not required and can be omitted.
+
+#### Secret Creation
+
+```bash
+kubectl create secret generic platform-gcp-kms \
+  --from-literal=service-account-json="$(cat gcp-service-account.json)" \
+  --namespace governance
+```
+
 ## Troubleshooting
 
 ### Viewing Logs
@@ -802,7 +854,7 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/auth-service -n governance -- env | grep -E 'IDP|AUTH0|KEYCLOAK|ENTRA|VAULT|KMS|KEY_MANAGEMENT|DATABASE|DB_'
+kubectl exec -it deployment/auth-service -n governance -- env | grep -E 'IDP|AUTH0|KEYCLOAK|ENTRA|VAULT|KMS|GCP|KEY_MANAGEMENT|DATABASE|DB_'
 ```
 
 View all environment variables:
@@ -846,6 +898,13 @@ kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/he
 - Verify AWS region and credentials (access key ID, secret access key)
 - Check IAM user/role has required KMS permissions
 - If using a custom endpoint, verify it is reachable
+
+**Key management errors (GCP KMS)**
+
+- Verify GCP project ID and location ID are correct
+- Check service account has required KMS permissions
+- If using Workload Identity, ensure the Kubernetes service account is annotated correctly
+- Verify the key ring exists in the specified project and location
 
 **Service account issues**
 
