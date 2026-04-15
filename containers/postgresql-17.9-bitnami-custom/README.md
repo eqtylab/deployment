@@ -31,7 +31,7 @@ so this build takes the practical fallback path:
 ```bash
 docker buildx build \
   --platform linux/amd64 \
-  --tag ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p1 \
+  --tag ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p2 \
   --load \
   containers/postgresql-17.9-bitnami-custom
 ```
@@ -40,7 +40,7 @@ Or use the helper script:
 
 ```bash
 PUSH=1 ./containers/postgresql-17.9-bitnami-custom/build.sh \
-  ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p1
+  ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p2
 ```
 
 ## Verify
@@ -50,7 +50,7 @@ After the build:
 ```bash
 docker run --rm --platform linux/amd64 \
   --entrypoint /bin/bash \
-  ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p1 \
+  ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p2 \
   -lc '/opt/bitnami/postgresql/bin/postgres --version'
 ```
 
@@ -66,7 +66,7 @@ To smoke test the default startup path:
 docker run -d --platform linux/amd64 \
   --name pg179-smoke \
   -e ALLOW_EMPTY_PASSWORD=yes \
-  ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p1
+  ghcr.io/eqtylab/bitnami-postgresql:17.9-custom-p2
 
 docker logs pg179-smoke
 docker inspect --format '{{.State.Status}} {{.State.ExitCode}}' pg179-smoke
@@ -89,9 +89,13 @@ package residuals:
 - glibc `CVE-2026-0861`
 - openldap `CVE-2023-2953`
 - ncurses `CVE-2025-69720`
-- sqlite `CVE-2025-7458`
 - systemd `CVE-2026-29111`
 - zlib `CVE-2023-45853`
+
+`libsqlite3-0` was removed from the final image, which eliminated the SQLite
+CRITICAL reported by Trivy. The remaining CRITICAL is `zlib`, which Debian
+tracks as a Bookworm false positive because the vulnerable MiniZip code is not
+built in the shipped binary package.
 
 ## Notes
 

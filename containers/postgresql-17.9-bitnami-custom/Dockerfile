@@ -89,6 +89,7 @@ RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
  && DEBIAN_FRONTEND=noninteractive apt-get purge -y --auto-remove \
       gnupg2 \
+      libsqlite3-0 \
       sqlite3 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
