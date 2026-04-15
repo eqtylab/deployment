@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG BASE_IMAGE=docker.io/bitnamilegacy/postgresql:17.5.0-debian-12-r17
+ARG BASE_IMAGE=docker.io/bitnamilegacy/postgresql:17.6.0-debian-12-r4
 FROM ${BASE_IMAGE}
 
 USER root
