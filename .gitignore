@@ -23,6 +23,7 @@
 Session.vim
 .netrwhist
 .history
+.zed/
 
 # Helm
 /**/*.tgz
