@@ -76,19 +76,26 @@ podLabels: {}
 # -- Pod Security Context
 # @default -- `{}`
 # Security context applied at the pod level
-podSecurityContext: {}
-  # fsGroup: 2000
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1001
+
+# -- Container Port
+# @default -- `8081`
+# Port the UBI nginx container listens on (non-root, avoids collision with
+# the base image's baked default_server on 8080)
+containerPort: 8081
 
 # -- Container Security Context
 # @default -- `{}`
 # Security context applied at the container level
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #     - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
 
 # -- Service Configuration
 # @default -- See values below

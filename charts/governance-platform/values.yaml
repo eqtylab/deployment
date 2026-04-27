@@ -2273,17 +2273,19 @@ integrity-service:
   # -- Pod Security Context
   # @default -- `{}`
   # Security context applied at the pod level
-  podSecurityContext: {}
-    # fsGroup: 2000
+  podSecurityContext:
+    runAsNonRoot: true
 
   # -- Container Security Context
   # @default -- See values below
   # Security context applied at the container level
   securityContext:
-    # -- Read-Only Root Filesystem
-    # @default -- `false`
-    # Disabled to allow Rust app file operations
-    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
   # -- Service Configuration
   # @default -- See values below

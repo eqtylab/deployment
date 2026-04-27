@@ -23,7 +23,6 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
                 "cert-manager.io/issuer": "letsencrypt-prod",
                 "nginx.ingress.kubernetes.io/use-regex": "true",
                 "nginx.ingress.kubernetes.io/rewrite-target": "/$2",
-                "nginx.ingress.kubernetes.io/enable-cors": "true",
                 "nginx.ingress.kubernetes.io/proxy-body-size": "0",
             },
             "hosts": [

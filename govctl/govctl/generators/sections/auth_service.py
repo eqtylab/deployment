@@ -23,7 +23,6 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
                 "cert-manager.io/issuer": "letsencrypt-prod",
                 "nginx.ingress.kubernetes.io/use-regex": "true",
                 "nginx.ingress.kubernetes.io/rewrite-target": "/$2",
-                "nginx.ingress.kubernetes.io/enable-cors": "true",
                 "nginx.ingress.kubernetes.io/proxy-body-size": "64m",
                 "nginx.ingress.kubernetes.io/proxy-buffer-size": "16k",
                 "nginx.ingress.kubernetes.io/client-header-buffer-size": "16k",

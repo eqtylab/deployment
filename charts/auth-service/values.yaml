@@ -251,12 +251,16 @@ readinessProbe:
 # -- Volumes
 # @default -- `[]`
 # Additional volumes on the Deployment
-volumes: []
+volumes:
+  - name: tmp
+    emptyDir: {}
 
 # -- Volume Mounts
 # @default -- `[]`
 # Additional volumeMounts on the Deployment
-volumeMounts: []
+volumeMounts:
+  - name: tmp
+    mountPath: /tmp
 
 # =============================================================================
 # DATABASE CONFIGURATION

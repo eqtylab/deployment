@@ -21,7 +21,6 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
             "className": "nginx",
             "annotations": {
                 "cert-manager.io/issuer": "letsencrypt-prod",
-                "nginx.ingress.kubernetes.io/enable-cors": "true",
                 "nginx.ingress.kubernetes.io/proxy-body-size": "64m",
             },
             "hosts": [

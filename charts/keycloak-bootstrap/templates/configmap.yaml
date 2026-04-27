@@ -5,6 +5,7 @@ metadata:
   name: {{ include "keycloak-bootstrap.fullname" . }}-scripts
   labels:
     {{- include "keycloak-bootstrap.labels" . | nindent 4 }}
+# trivy:ignore:KSV-0109 scripts reference secret names via env vars, not actual values
 data:
   bootstrap.sh: |
     #!/bin/sh

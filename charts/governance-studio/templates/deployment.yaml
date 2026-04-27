@@ -51,6 +51,21 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        - name: copy-assets
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - cp -r /opt/app-root/src/. /mnt/src/
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: app-src
+              mountPath: /mnt/src
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -64,7 +79,7 @@ spec:
                 name: {{ include "governance-studio.fullname" . }}-config
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ .Values.containerPort | default .Values.service.port }}
               protocol: TCP
           {{- with .Values.startupProbe }}
           startupProbe:
@@ -82,4 +97,34 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: app-src
+              mountPath: /opt/app-root/src
+            - name: nginx-d
+              mountPath: /opt/app-root/etc/nginx.d
+            - name: nginx-log
+              mountPath: /var/log/nginx
+            - name: nginx-lib-tmp
+              mountPath: /var/lib/nginx/tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: app-src
+          emptyDir: {}
+        - name: nginx-d
+          emptyDir: {}
+        - name: nginx-log
+          emptyDir: {}
+        - name: nginx-lib-tmp
+          emptyDir: {}
 {{- end }}

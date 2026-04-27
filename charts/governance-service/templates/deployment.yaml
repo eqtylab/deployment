@@ -55,6 +55,14 @@ spec:
         - name: wait-db
           image: busybox:1.36
           imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           command:
             - sh
             - -ec
@@ -350,6 +358,8 @@ spec:
           {{- end }}
 
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             {{- if eq $storageProvider "gcs" }}
             - name: gcs-sa-volume
               mountPath: /var/secrets/google
@@ -376,6 +386,8 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         {{- if eq $storageProvider "gcs" }}
         - name: gcs-sa-volume
           secret:
