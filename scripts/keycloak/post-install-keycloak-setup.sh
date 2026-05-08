@@ -24,7 +24,7 @@ Usage: $0 -k <keycloak-url> [options]
 
 Examples:
   $0 -k https://governance.example.com/keycloak -n governance
-  $0 -k https://governance.example.com/keycloak -n governance --admin-email admin@your-domain.com
+  $0 -k https://governance.example.com/keycloak -n governance --admin-email admin@example.com
 "
 }
 
@@ -243,7 +243,7 @@ get_platform_admin_keycloak_id() {
   local token_response=$(curl -sk -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "username=admin" \
-    --data-urlencode "password=$admin_pass" \
+    -d "password=$admin_pass" \
     -d "grant_type=password" \
     -d "client_id=admin-cli" 2>/dev/null)
 
@@ -284,7 +284,7 @@ verify_integration() {
     local token_response=$(curl -sk -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
       -H "Content-Type: application/x-www-form-urlencoded" \
       -d "username=admin" \
-      --data-urlencode "password=$admin_pass" \
+      -d "password=$admin_pass" \
       -d "grant_type=password" \
       -d "client_id=admin-cli" 2>/dev/null)
 

@@ -81,17 +81,30 @@ spec:
             - name: http
               containerPort: {{ .Values.containerPort | default .Values.service.port }}
               protocol: TCP
-          {{- with .Values.startupProbe }}
+          {{- $basePath := trimSuffix "/" (.Values.config.basePath | default "/") }}
+          {{- if .Values.startupProbe }}
           startupProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- $probe := deepCopy .Values.startupProbe }}
+            {{- if $probe.httpGet }}
+              {{- $_ := set $probe.httpGet "path" (printf "%s%s" $basePath ($probe.httpGet.path | default "/")) }}
+            {{- end }}
+            {{- toYaml $probe | nindent 12 }}
           {{- end }}
-          {{- with .Values.livenessProbe }}
+          {{- if .Values.livenessProbe }}
           livenessProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- $probe := deepCopy .Values.livenessProbe }}
+            {{- if $probe.httpGet }}
+              {{- $_ := set $probe.httpGet "path" (printf "%s%s" $basePath ($probe.httpGet.path | default "/")) }}
+            {{- end }}
+            {{- toYaml $probe | nindent 12 }}
           {{- end }}
-          {{- with .Values.readinessProbe }}
+          {{- if .Values.readinessProbe }}
           readinessProbe:
-            {{- toYaml . | nindent 12 }}
+            {{- $probe := deepCopy .Values.readinessProbe }}
+            {{- if $probe.httpGet }}
+              {{- $_ := set $probe.httpGet "path" (printf "%s%s" $basePath ($probe.httpGet.path | default "/")) }}
+            {{- end }}
+            {{- toYaml $probe | nindent 12 }}
           {{- end }}
           {{- with .Values.resources }}
           resources:
