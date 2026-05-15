@@ -355,18 +355,18 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Database Configuration
 
-| Key                                        | Type   | Default             | Description                                                           |
-| ------------------------------------------ | ------ | ------------------- | --------------------------------------------------------------------- |
-| externalDatabase.host                      | string | `""`                | Database host (auto-generated as {Release.Name}-postgresql)           |
-| externalDatabase.port                      | int    | `5432`              | Database port                                                         |
-| externalDatabase.name                      | string | `"governance"`      | Database name                                                         |
-| externalDatabase.user                      | string | `"postgres"`        | Database user                                                         |
-| externalDatabase.password                  | string | `""`                | Database password (auto-configured from global.secrets.database)      |
-| externalDatabase.sslMode                   | string | `"disable"`         | SSL mode (disable/require/verify-ca/verify-full)                      |
-| externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name (auto-configured from global.secrets.database.secretName) |
-| externalDatabase.passwordSecretKeyRef.key  | string | `"password"`        | Secret key name for password                                          |
-| migrations.runAtStartup                    | bool   | `true`              | Run database migrations automatically at startup                      |
-| migrations.path                            | string | `"/app/migrations"` | Path to migration files within the container                          |
+| Key                                        | Type   | Default             | Description                                                                                                                         |
+| ------------------------------------------ | ------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| externalDatabase.host                      | string | `""`                | Database host (auto-generated as {Release.Name}-postgresql)                                                                         |
+| externalDatabase.port                      | int    | `5432`              | Database port                                                                                                                       |
+| externalDatabase.name                      | string | `"governance"`      | Database name                                                                                                                       |
+| externalDatabase.user                      | string | `"postgres"`        | Database user                                                                                                                       |
+| externalDatabase.password                  | string | `""`                | Database password (auto-configured from global.secrets.database)                                                                    |
+| externalDatabase.sslMode                   | string | `""`                | SSL mode (auto-configured from global.postgresql.sslMode, defaults to "disable"). Options: disable, require, verify-ca, verify-full |
+| externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name (auto-configured from global.secrets.database.secretName)                                                               |
+| externalDatabase.passwordSecretKeyRef.key  | string | `"password"`        | Secret key name for password                                                                                                        |
+| migrations.runAtStartup                    | bool   | `true`              | Run database migrations automatically at startup                                                                                    |
+| migrations.path                            | string | `"/app/migrations"` | Path to migration files within the container                                                                                        |
 
 ### Secret Configuration
 

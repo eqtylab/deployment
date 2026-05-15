@@ -129,6 +129,11 @@ spec:
                   name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
                   key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
               {{- end }}
+            {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+            {{- end }}
 
             # ========================================================================
             # Identity Provider Configuration
@@ -447,6 +452,11 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+            {{- end }}
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -454,6 +464,21 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       volumes:
+        {{- if $pgSslRootCert.secretName }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgSslRootCert.secretName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+        {{- else if $pgSslRootCert.configMapName }}
+        - name: postgres-ca
+          configMap:
+            name: {{ $pgSslRootCert.configMapName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+        {{- end }}
         {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

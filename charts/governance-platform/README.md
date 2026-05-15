@@ -338,12 +338,16 @@ Centralized secret configuration for all platform components:
 
 Shared PostgreSQL connection settings:
 
-| Key                        | Type   | Default        | Description                                                 |
-| -------------------------- | ------ | -------------- | ----------------------------------------------------------- |
-| global.postgresql.host     | string | `""`           | Database host (auto-generated as {Release.Name}-postgresql) |
-| global.postgresql.port     | int    | `5432`         | Database port                                               |
-| global.postgresql.database | string | `"governance"` | Default database name                                       |
-| global.postgresql.username | string | `"postgres"`   | Database username                                           |
+| Key                                         | Type   | Default        | Description                                                                                              |
+| ------------------------------------------- | ------ | -------------- | -------------------------------------------------------------------------------------------------------- |
+| global.postgresql.host                      | string | `""`           | Database host (auto-generated as {Release.Name}-postgresql when bundled; set explicitly for external DB) |
+| global.postgresql.port                      | int    | `5432`         | Database port                                                                                            |
+| global.postgresql.database                  | string | `"governance"` | Default database name                                                                                    |
+| global.postgresql.username                  | string | `"postgres"`   | Database username                                                                                        |
+| global.postgresql.sslMode                   | string | `"disable"`    | Shared SSL mode for all services. Options: disable, require, verify-ca, verify-full                      |
+| global.postgresql.sslRootCert.secretName    | string | `""`           | Secret holding the CA bundle (mounted at `/etc/ssl/postgres/<key>` when set)                             |
+| global.postgresql.sslRootCert.configMapName | string | `""`           | ConfigMap holding the CA bundle (alternative to secretName)                                              |
+| global.postgresql.sslRootCert.key           | string | `"ca.crt"`     | Key within the Secret/ConfigMap holding the PEM-encoded CA bundle                                        |
 
 ### Governance Studio Configuration
 
@@ -522,6 +526,74 @@ integrity-service:
     integrityAppBlobStoreContainer: "your-integrity-store-container"
 ```
 
+## Cloud-Managed PostgreSQL Configuration
+
+The platform can run against an external, cloud-managed PostgreSQL instance instead of the bundled Bitnami subchart. Supported providers: AWS RDS / Aurora PostgreSQL, Azure Database for PostgreSQL — Flexible Server, GCP Cloud SQL for PostgreSQL.
+
+### How it works
+
+- `postgresql.enabled: false` disables the bundled subchart.
+- `global.postgresql.host`, `port`, `username`, `database` are shared by all platform services (auth-service, governance-service, integrity-service).
+- `global.postgresql.sslMode` and `global.postgresql.sslRootCert` configure TLS to the managed instance.
+- `global.secrets.database.secretName` is the Secret name all platform components use for the DB password. If `global.secrets.create: true`, the chart can create it from `global.secrets.database.values`; if `false`, pre-create it in the release namespace.
+
+A pre-install guardrail aborts with a clear message if `postgresql.enabled=false` and `global.postgresql.host` is empty (no database configured). Setting `global.postgresql.host` alongside the bundled chart is allowed — it lets you point services at a renamed in-cluster Service (e.g., when also using `postgresql.fullnameOverride`); NOTES.txt will emit a soft warning to make sure the override is intentional.
+
+### Prerequisites (all providers)
+
+1. The managed Postgres instance is reachable from the cluster (VPC peering, private link, VNet integration, or a connection proxy as a sidecar — provider-specific).
+2. Create the two databases the platform expects:
+   ```sql
+   CREATE DATABASE governance;
+   CREATE DATABASE "IntegrityServiceDB";
+   ```
+3. If you are deploying with `global.secrets.create: false` (the default in this chart and in the example values files), create the password Secret in the release namespace:
+   ```sh
+   kubectl create secret generic platform-database \
+     --from-literal=password='<your-db-password>' \
+     --namespace governance
+   ```
+   If you are deploying with `global.secrets.create: true` instead, the chart can create `platform-database` for you from `global.secrets.database.values`.
+4. (For `sslMode: verify-ca` or `verify-full`) create a Secret or ConfigMap holding the provider's CA bundle:
+   ```sh
+   kubectl create secret generic postgres-ca \
+     --from-file=ca.crt=<bundle>.pem \
+     --namespace governance
+   ```
+
+### Example values
+
+A ready-to-use overlay lives at [examples/values-external-postgres.yaml](./examples/values-external-postgres.yaml). Combine it with one of the auth-flavored examples:
+
+```sh
+helm upgrade --install governance-platform ./charts/governance-platform \
+  --namespace governance \
+  --create-namespace \
+  --values examples/values-auth0.yaml \
+  --values examples/values-external-postgres.yaml
+```
+
+### Provider-specific notes
+
+**AWS RDS / Aurora PostgreSQL**
+
+- Host: `<instance>.<region>.rds.amazonaws.com` (or the Aurora cluster endpoint)
+- CA bundle: <https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem>
+- TLS: every RDS instance supports TLS; `verify-full` is recommended
+
+**Azure Database for PostgreSQL — Flexible Server**
+
+- Host: `<server>.postgres.database.azure.com`
+- Username: plain `<username>` (NOT `<username>@<server>` — that's the older Single Server)
+- CA bundle: DigiCert Global Root CA — see the Azure PostgreSQL TLS docs for the current CA URL
+- TLS: required by default
+
+**GCP Cloud SQL for PostgreSQL**
+
+- Host: the private IP, or the Cloud SQL Auth Proxy sidecar address
+- CA bundle: download the server CA from the Cloud SQL instance "Connections" tab
+- TLS: optional but recommended
+
 ## Storage Provider Configuration
 
 Each service can independently choose its storage provider. Credentials are inherited from global configuration, but provider type and bucket/container names must be explicitly set.
@@ -640,8 +712,8 @@ auth-service:
       gcp_kms:
         projectId: "your-gcp-project-id"
         locationId: "us-east1"
-        keyRingId: "eqtylab-did"        # defaults to "eqtylab-did"
-        scheduledDestroyDays: 24        # defaults to 24
+        keyRingId: "eqtylab-did" # defaults to "eqtylab-did"
+        scheduledDestroyDays: 24 # defaults to 24
 ```
 
 > **Note:** When using GCP Workload Identity or Application Default Credentials, the `gcp_kms.secretName` secret is not required. Only provide it when using explicit service account JSON credentials.

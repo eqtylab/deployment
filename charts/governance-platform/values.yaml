@@ -61,6 +61,26 @@ global:
     username: "postgres"
     # Note: Password is retrieved from the platform-database secret for security
 
+    # -- SSL Mode
+    # @default -- `disable`
+    # Options: disable, require, verify-ca, verify-full
+    # Shared default for all services; overridable via <service>.externalDatabase.sslMode
+    sslMode: "disable"
+
+    # -- SSL Root Certificate
+    # @default -- See values below
+    # CA bundle used when sslMode is verify-ca or verify-full
+    sslRootCert:
+      # -- Secret Name
+      # @default -- `""` (set to reference a Secret containing the CA bundle)
+      secretName: ""
+      # -- ConfigMap Name
+      # @default -- `""` (set to reference a ConfigMap containing the CA bundle)
+      configMapName: ""
+      # -- Key
+      # @default -- `ca.crt`
+      key: "ca.crt"
+
   # -- Secrets Configuration
   # Centralized secret configuration for all platform components
   # Secrets can be created automatically by the chart or pre-created manually
@@ -637,9 +657,9 @@ auth-service:
     # @default -- `""` (auto-configured from global.secrets.database)
     password: ""
     # -- SSL Mode
-    # @default -- `disable`
+    # @default -- `""` (auto-configured from global.postgresql.sslMode, defaults to "disable")
     # Options: disable, require, verify-ca, verify-full
-    sslMode: "disable"
+    sslMode: ""
 
     # -- Password Secret Reference
     # @default -- See values below
@@ -1503,9 +1523,9 @@ governance-service:
     # @default -- `""` (auto-configured from global.secrets.database)
     password: ""
     # -- SSL Mode
-    # @default -- `disable`
+    # @default -- `""` (auto-configured from global.postgresql.sslMode, defaults to "disable")
     # Options: disable, require, verify-ca, verify-full
-    sslMode: "disable"
+    sslMode: ""
 
     # -- Password Secret Reference
     # @default -- See values below
@@ -2448,36 +2468,49 @@ integrity-service:
       hostPath: /var/lib/integrity
 
   # =============================================================================
+  # DATABASE CONFIGURATION
+  # =============================================================================
+
+  # -- External Database Configuration
+  # @default -- See values below
+  externalDatabase:
+    # -- Database Host
+    # @default -- `""` (auto-configured from global.postgresql.host, then "{Release.Name}-postgresql")
+    host: ""
+    # -- Database Port
+    # @default -- `""` (auto-configured from global.postgresql.port, defaults to 5432)
+    port: ""
+    # -- Database Name
+    # @default -- `IntegrityServiceDB`
+    name: "IntegrityServiceDB"
+    # -- Database User
+    # @default -- `""` (auto-configured from global.postgresql.username, defaults to "postgres")
+    user: ""
+    # -- Database Password
+    # @default -- `""` (auto-configured from global.secrets.database)
+    password: ""
+    # -- SSL Mode
+    # @default -- `""` (auto-configured from global.postgresql.sslMode, defaults to "disable")
+    # Options: disable, require, verify-ca, verify-full
+    sslMode: ""
+
+    # -- Password Secret Reference
+    # @default -- See values below
+    passwordSecretKeyRef:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.database.secretName)
+      name: ""
+      # -- Secret Key
+      # @default -- `""` (defaults to "password")
+      key: ""
+
+  # =============================================================================
   # APPLICATION CONFIGURATION
   # =============================================================================
   config:
     # -- Rust Environment
     # @default -- `""` (auto-configured from global.environmentType)
     rustEnv: ""
-
-    # ---------------------------------------------------------------------------
-    # Database Configuration
-    # ---------------------------------------------------------------------------
-
-    # -- Database Host
-    # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
-    integrityAppDbHost: ""
-
-    # -- Database Port
-    # @default -- `""` (auto-configured from global.postgresql.port)
-    integrityAppDbPort: ""
-
-    # -- Database Name
-    # @default -- `IntegrityServiceDB`
-    integrityAppDbName: "IntegrityServiceDB"
-
-    # -- Database User
-    # @default -- `""` (auto-configured from global.postgresql.username)
-    integrityAppDbUser: ""
-
-    # -- Database Password
-    # @default -- `""` (auto-configured from global.secrets.database)
-    integrityAppDbPassword: ""
 
     # ---------------------------------------------------------------------------
     # Storage Configuration
@@ -2595,13 +2628,6 @@ integrity-service:
   # SECRETS CONFIGURATION
   # =============================================================================
   secrets:
-    # -- Database Secret
-    # @default -- See values below
-    database:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.database.secretName)
-      name: ""
-
     # -- Storage Secrets
     # @default -- See values below
     # Only configure the section matching your storage provider

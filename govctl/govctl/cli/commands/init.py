@@ -6,7 +6,7 @@ import click
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider
+from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider, DatabaseMode
 from govctl.generators.values import generate_values
 from govctl.generators.secrets import generate_secrets
 from govctl.generators.keycloak_bootstrap import generate_keycloak_bootstrap
@@ -41,6 +41,12 @@ from govctl.cli.display import show_config_summary, show_next_steps
     help="Authentication provider",
 )
 @click.option(
+    "--database",
+    "-D",
+    type=click.Choice(["bundled", "external"], case_sensitive=False),
+    help="Database mode (bundled Bitnami PostgreSQL or external managed PostgreSQL)",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(),
@@ -58,6 +64,7 @@ def init_cmd(
     domain: str | None,
     environment: str | None,
     auth: str | None,
+    database: str | None,
     output: str,
     interactive: bool,
 ):
@@ -86,17 +93,28 @@ def init_cmd(
 
     # Collect configuration
     if interactive:
-        config = collect_interactive_config(cloud, domain, environment, auth)
+        config = collect_interactive_config(cloud, domain, environment, auth, database)
     else:
         if not all([cloud, domain, environment, auth]):
             raise click.UsageError(
                 "All options (--cloud, --domain, --environment, --auth) are required in non-interactive mode"
             )
+        env_lower = environment.lower()
+        db_mode = (
+            DatabaseMode(database.lower())
+            if database
+            else (
+                DatabaseMode.EXTERNAL
+                if env_lower == "production"
+                else DatabaseMode.BUNDLED
+            )
+        )
         config = PlatformConfig(
             cloud_provider=CloudProvider(cloud.lower()),
             domain=domain,
-            environment=environment.lower(),
+            environment=env_lower,
             auth_provider=AuthProvider(auth.lower()),
+            database_mode=db_mode,
         )
 
     # Show summary

@@ -1,4 +1,12 @@
 {{- define "governanceplatform.notes" }}
+
+{{- /* Database Configuration Validation */}}
+{{- $bundledPgEnabled := .Values.postgresql.enabled }}
+{{- $externalPgHost := ((.Values.global).postgresql).host }}
+{{- if and (not $bundledPgEnabled) (not $externalPgHost) }}
+  {{- fail "No database configured: postgresql.enabled is false and global.postgresql.host is empty. Either set postgresql.enabled=true to deploy the bundled PostgreSQL, or set global.postgresql.host to point at an external PostgreSQL." }}
+{{- end }}
+
 #################################################################################
 #                                                                               #
 #                   Governance Platform Successfully Deployed!                  #
@@ -128,6 +136,25 @@ Revision:         {{ .Release.Revision }}
 ---------------------------------------------------------------------------------
 ⚙️ Important Configuration & Secrets:
 ---------------------------------------------------------------------------------
+* **Database:**
+    {{- if $bundledPgEnabled }}
+    Using the bundled PostgreSQL subchart (in-cluster).
+    Host: {{ $externalPgHost | default (printf "%s-postgresql" .Release.Name) }}
+    {{- if $externalPgHost }}
+    ⚠ global.postgresql.host is overridden ({{ $externalPgHost | quote }}). This is fine
+      for customizing the in-cluster Service name (e.g., when postgresql.fullnameOverride
+      is also set). If you intended to use an external managed PostgreSQL instead, set
+      postgresql.enabled=false.
+    {{- end }}
+    {{- else }}
+    Using an external PostgreSQL instance.
+    Host: {{ $externalPgHost }}
+    SSL Mode: {{ ((.Values.global).postgresql).sslMode | default "disable" }}
+    {{- if or (((.Values.global).postgresql).sslRootCert).secretName (((.Values.global).postgresql).sslRootCert).configMapName }}
+    CA Bundle: mounted at /etc/ssl/postgres/{{ ((((.Values.global).postgresql).sslRootCert).key) | default "ca.crt" }}
+    {{- end }}
+    {{- end }}
+
 * **Domain:** Your platform is configured for the domain: {{ $globalDomain }}
     Ensure your DNS records point to your Kubernetes Ingress controller's external IP.
 

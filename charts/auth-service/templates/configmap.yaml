@@ -39,7 +39,7 @@ data:
   DB_PORT: "{{ .Values.externalDatabase.port | default ((.Values.global).postgresql).port | default 5432 }}"
   DB_NAME: "{{ .Values.externalDatabase.name | default ((.Values.global).postgresql).database | default "governance" }}"
   DB_USER: "{{ .Values.externalDatabase.user | default ((.Values.global).postgresql).username | default "postgres" }}"
-  DB_SSL_MODE: "{{ .Values.externalDatabase.sslMode }}"
+  DB_SSL_MODE: "{{ .Values.externalDatabase.sslMode | default ((.Values.global).postgresql).sslMode | default "disable" }}"
   DATABASE_AUTO_MIGRATE: "{{ .Values.migrations.runAtStartup }}"
   DATABASE_MIGRATIONS_PATH: "{{ .Values.migrations.path }}"
 

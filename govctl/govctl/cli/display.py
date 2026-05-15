@@ -4,7 +4,12 @@ from pathlib import Path
 
 from rich.table import Table
 
-from govctl.core.models import PlatformConfig, AuthProvider, KeyManagementProvider
+from govctl.core.models import (
+    AuthProvider,
+    DatabaseMode,
+    KeyManagementProvider,
+    PlatformConfig,
+)
 from govctl.utils.output import console
 
 
@@ -23,6 +28,7 @@ def show_config_summary(config: PlatformConfig) -> None:
     table.add_row("Environment", config.environment)
     table.add_row("Auth Provider", config.auth_provider.value)
     table.add_row("Storage Provider", config.storage_provider)
+    table.add_row("Database Mode", config.database_mode.value)
 
     table.add_row("Key Management", config.key_management_provider.value)
     if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
@@ -114,6 +120,20 @@ def show_next_steps(
             f"       -n {config.namespace} --wait"
         )
         console.print(f"[dim]{bootstrap_cmd}[/dim]")
+        console.print()
+        step += 1
+
+    if config.database_mode == DatabaseMode.EXTERNAL:
+        console.print(
+            f"  {step}. External PostgreSQL setup — required before deploying:"
+        )
+        console.print(
+            f"     - Set [cyan]global.postgresql.host[/cyan] in {values_file}"
+            f'\n     - Create the [cyan]governance[/cyan] and [cyan]"IntegrityServiceDB"[/cyan] databases on the managed instance'
+            f"\n     - Keep [cyan]global.secrets.create[/cyan] enabled in {secrets_file} to have Helm create the [cyan]platform-database[/cyan] Secret for you, or disable it and pre-create that Secret manually"
+            f"\n     - (For sslMode verify-ca/verify-full) create a Secret or ConfigMap named [cyan]postgres-ca[/cyan] holding the CA bundle at key [cyan]ca.crt[/cyan]"
+            f"\n     See: charts/governance-platform/README.md (Cloud-Managed PostgreSQL Configuration)"
+        )
         console.print()
         step += 1
 

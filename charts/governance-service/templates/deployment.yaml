@@ -123,10 +123,15 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
-                key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | quote }}
+                key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
             {{- end }}
           - name: DB_SSLMODE
-            value: {{ .Values.externalDatabase.sslMode | quote }}
+            value: {{ .Values.externalDatabase.sslMode | default ((.Values.global).postgresql).sslMode | default "disable" | quote }}
+          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
+          {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+          - name: PGSSLROOTCERT
+            value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+          {{- end }}
 
           # ========================================================================
           # Storage Configuration
@@ -360,6 +365,11 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+            {{- end }}
             {{- if eq $storageProvider "gcs" }}
             - name: gcs-sa-volume
               mountPath: /var/secrets/google
@@ -388,6 +398,21 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- if $pgSslRootCert.secretName }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgSslRootCert.secretName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+        {{- else if $pgSslRootCert.configMapName }}
+        - name: postgres-ca
+          configMap:
+            name: {{ $pgSslRootCert.configMapName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+        {{- end }}
         {{- if eq $storageProvider "gcs" }}
         - name: gcs-sa-volume
           secret:

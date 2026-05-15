@@ -1,0 +1,79 @@
+# Cloud-Managed PostgreSQL — Database Overlay
+# -----------------------------------------------------------------------------
+# This file is a DATABASE-CONFIG OVERLAY for pointing the Governance Platform
+# at a cloud-managed PostgreSQL instance (AWS RDS, Azure Database for
+# PostgreSQL — Flexible Server, or GCP Cloud SQL for PostgreSQL).
+#
+# Combine it with one of the full values files (values-auth0.yaml,
+# values-keycloak.yaml, values-entra.yaml).
+#
+# Usage:
+#   helm upgrade --install governance-platform ./charts/governance-platform \
+#     --namespace governance \
+#     --create-namespace \
+#     --values values-auth0.yaml \
+#     --values values-external-postgres.yaml
+#
+# Prerequisites when using the example values files as-is
+# (their default is `global.secrets.create: false`, so secrets must be pre-created):
+#   1. A managed PostgreSQL instance reachable from the cluster.
+#   2. The two platform databases pre-created on the instance:
+#        CREATE DATABASE governance;
+#        CREATE DATABASE "IntegrityServiceDB";
+#   3. A Kubernetes Secret holding the DB password:
+#        kubectl create secret generic platform-database \
+#          --from-literal=password='<your-db-password>' \
+#          --namespace governance
+#   4. (Only if using sslMode verify-ca/verify-full) A Secret or ConfigMap
+#      with the provider's CA bundle (see per-provider notes below):
+#        kubectl create secret generic postgres-ca \
+#          --from-file=ca.crt=<bundle>.pem \
+#          --namespace governance
+#   If you are installing with `global.secrets.create: true` (for example, via
+#   govctl-generated `secrets.yaml`), the chart can create `platform-database`
+#   for you and only the optional CA Secret/ConfigMap must exist ahead of time.
+# -----------------------------------------------------------------------------
+# Provider-specific notes:
+#
+# AWS RDS / Aurora PostgreSQL:
+#   - host: "<instance>.<region>.rds.amazonaws.com" (or the Aurora cluster endpoint)
+#   - CA bundle: https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+#   - Network: VPC peering, transit gateway, or VPC endpoint to reach the cluster
+#
+# Azure Database for PostgreSQL — Flexible Server:
+#   - host: "<server>.postgres.database.azure.com"
+#   - username: plain "<username>" (NOT "<username>@<server>" — that's Single Server)
+#   - CA bundle: DigiCert Global Root CA (see Azure docs for the current CA URL)
+#   - Network: private DNS zone with VNet integration, or VNet injection
+#
+# GCP Cloud SQL for PostgreSQL:
+#   - host: private IP, or the Cloud SQL Auth Proxy sidecar address
+#   - CA bundle: download the server CA from the Cloud SQL instance "Connections" tab
+#   - Network: Private IP with VPC peering, or the Cloud SQL Auth Proxy as a sidecar
+# -----------------------------------------------------------------------------
+
+# Disable the bundled PostgreSQL subchart
+postgresql:
+  enabled: false
+
+global:
+  postgresql:
+    host: "your-postgres-host.example.com"
+    port: 5432
+    database: "governance"
+    username: "postgres"
+    # Managed Postgres services all support TLS. Use verify-full when you have
+    # the provider's CA bundle mounted; downgrade to "require" if you cannot
+    # provide a CA bundle but still want encryption in transit.
+    sslMode: "verify-full"
+    sslRootCert:
+      secretName: "postgres-ca"
+      key: "ca.crt"
+
+  secrets:
+    # Use a pre-existing Secret for the DB password (do not let the chart create one)
+    create: false
+    database:
+      secretName: "platform-database"
+      keys:
+        password: "password"

@@ -22,6 +22,11 @@ class KeyManagementProvider(str, Enum):
     GCP_KMS = "gcp_kms"
 
 
+class DatabaseMode(str, Enum):
+    BUNDLED = "bundled"
+    EXTERNAL = "external"
+
+
 # Mapping of cloud provider to storage provider
 CLOUD_TO_STORAGE = {
     CloudProvider.GCP: "gcs",
@@ -42,6 +47,9 @@ class PlatformConfig:
 
     # Feature flags
     enable_ingress: bool = True
+
+    # Database mode (bundled Bitnami PostgreSQL or external managed PostgreSQL)
+    database_mode: DatabaseMode = DatabaseMode.BUNDLED
 
     # Derived settings (computed from cloud_provider)
     @property

@@ -2,11 +2,14 @@
 
 from typing import Any
 
-from govctl.core.models import PlatformConfig
+from govctl.core.models import DatabaseMode, PlatformConfig
 
 
 def generate_postgresql_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the postgresql section of values.yaml."""
+    if config.database_mode == DatabaseMode.EXTERNAL:
+        return {"enabled": False}
+
     return {
         "enabled": True,
         "primary": {

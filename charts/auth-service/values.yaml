@@ -285,9 +285,9 @@ externalDatabase:
   # @default -- `""` (auto-configured from global.secrets.database)
   password: ""
   # -- SSL Mode
-  # @default -- `disable`
+  # @default -- `""` (auto-configured from global.postgresql.sslMode, defaults to "disable")
   # Options: disable, require, verify-ca, verify-full
-  sslMode: "disable"
+  sslMode: ""
 
   # -- Password Secret Reference
   # @default -- See values below

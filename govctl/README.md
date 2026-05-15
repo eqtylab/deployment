@@ -69,6 +69,9 @@ govctl init
 Domain (governance.f0829.eqtylab.io): governance.staging.eqtylab.io
 Environment (development): staging
 
+Database Configuration:
+  Database Mode (bundled = Bitnami PostgreSQL in-cluster; external = cloud-managed PostgreSQL) [bundled/external] (bundled): bundled
+
 Cloud Configuration:
   Cloud Provider [gcp/aws/azure] (gcp): gcp
 
@@ -97,6 +100,7 @@ Image Registry Configuration:
 │ Environment         │ staging                                        │
 │ Auth Provider       │ keycloak                                       │
 │ Storage Provider    │ gcs                                            │
+│ Database Mode       │ bundled                                        │
 │ Key Management      │ gcp_kms                                        │
 │ GCP KMS Project ID  │ my-governance-project                          │
 │ GCP KMS Location    │ us-east1                                       │
@@ -144,9 +148,10 @@ The interactive wizard walks you through:
 1. **Cloud provider** — GCP, AWS, or Azure
 2. **Domain** — your deployment domain
 3. **Environment** — freeform (e.g. `dev`, `staging`, `prod`)
-4. **Auth provider** — Auth0, Keycloak, or Microsoft Entra ID
-5. **Provider-specific settings** — key management, auth config, etc.
-6. **Image registry** — container registry credentials
+4. **Database mode** — bundled Bitnami PostgreSQL (default for non-prod) or external managed PostgreSQL (default for `production`)
+5. **Auth provider** — Auth0, Keycloak, or Microsoft Entra ID
+6. **Provider-specific settings** — key management, auth config, etc.
+7. **Image registry** — container registry credentials
 
 Generated files:
 
@@ -165,19 +170,21 @@ govctl init -I \
   --cloud gcp \
   --domain governance.staging.eqtylab.io \
   --environment staging \
-  --auth keycloak
+  --auth keycloak \
+  --database bundled
 ```
 
 ### CLI Options
 
-| Flag                             | Short   | Description                                  |
-| -------------------------------- | ------- | -------------------------------------------- |
-| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)       |
-| `--domain`                       | `-d`    | Deployment domain                            |
-| `--environment`                  | `-e`    | Environment name                             |
-| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`) |
-| `--output`                       | `-o`    | Output directory (default: `output`)         |
-| `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                      |
+| Flag                             | Short   | Description                                                                                                           |
+| -------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)                                                                                |
+| `--domain`                       | `-d`    | Deployment domain                                                                                                     |
+| `--environment`                  | `-e`    | Environment name                                                                                                      |
+| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`)                                                                          |
+| `--database`                     | `-D`    | Database mode (`bundled` or `external`). Defaults to `external` when environment is `production`, otherwise `bundled` |
+| `--output`                       | `-o`    | Output directory (default: `output`)                                                                                  |
+| `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                                                                                               |
 
 ## What Gets Generated
 
@@ -185,12 +192,14 @@ govctl init -I \
 
 Configures all platform services based on your selections:
 
-- **global** — environment name, domain
+- **global** — environment name, domain. Also `global.postgresql.{host, port, database, username, sslMode, sslRootCert}` placeholders when database mode is `external`
 - **auth-service** — IDP provider config, token exchange, ingress
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **governance-studio** — frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, persistence, ingress
-- **postgresql** — storage class, resource limits
+- **postgresql** — `enabled: true` plus storage class and resource limits when database mode is `bundled`; just `enabled: false` when `external`
+
+When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/governance-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
 
 ### bootstrap-{env}.yaml _(Keycloak only)_
 

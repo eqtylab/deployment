@@ -6,6 +6,7 @@ from govctl.core.models import (
     PlatformConfig,
     CloudProvider,
     AuthProvider,
+    DatabaseMode,
     KeyManagementProvider,
 )
 from govctl.utils.naming import generate_domain_code
@@ -29,6 +30,7 @@ def collect_interactive_config(
     domain: str | None,
     environment: str | None,
     auth: str | None,
+    database: str | None = None,
 ) -> PlatformConfig:
     """Collect configuration interactively."""
     console.print()
@@ -56,6 +58,21 @@ def collect_interactive_config(
             "[bold]Environment[/bold]",
             default="development",
         )
+
+    # --- Database mode ---
+    # Default to external for production, bundled otherwise.
+    db_default = "external" if env == "production" else "bundled"
+    if database:
+        database_mode = DatabaseMode(database.lower())
+    else:
+        console.print()
+        console.print("[bold]Database Configuration:[/bold]")
+        db_choice = Prompt.ask(
+            "  Database Mode (bundled = Bitnami PostgreSQL in-cluster; external = cloud-managed PostgreSQL)",
+            choices=["bundled", "external"],
+            default=db_default,
+        )
+        database_mode = DatabaseMode(db_choice)
 
     # --- Cloud provider ---
     console.print()
@@ -88,6 +105,7 @@ def collect_interactive_config(
         domain=domain_value,
         environment=env,
         auth_provider=AuthProvider.KEYCLOAK,  # placeholder, set below
+        database_mode=database_mode,
     )
 
     if cloud_provider == CloudProvider.AWS:

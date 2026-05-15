@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from govctl.core.models import AuthProvider, PlatformConfig
+from govctl.core.models import AuthProvider, DatabaseMode, PlatformConfig
 from govctl.utils.yaml import dump_yaml_with_header, dump_yaml_sections
 from govctl.generators.sections.auth_service import generate_auth_service_section
 from govctl.generators.sections.governance_service import (
@@ -96,7 +96,26 @@ def generate_values(config: PlatformConfig) -> str:
 
 def _generate_global_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the global section of values.yaml."""
-    return {
+    section: dict[str, Any] = {
         "environmentType": config.environment,
         "domain": config.domain,
     }
+
+    if config.database_mode == DatabaseMode.EXTERNAL:
+        # Placeholders for cloud-managed PostgreSQL.
+        # See charts/governance-platform/examples/values-external-postgres.yaml
+        # and charts/governance-platform/README.md (Cloud-Managed PostgreSQL Configuration)
+        # for provider-specific notes (AWS RDS, Azure Flexible Server, GCP Cloud SQL).
+        section["postgresql"] = {
+            "host": "TODO-set-managed-pg-host.example.com",
+            "port": 5432,
+            "database": "governance",
+            "username": "postgres",
+            "sslMode": "verify-full",
+            "sslRootCert": {
+                "secretName": "postgres-ca",
+                "key": "ca.crt",
+            },
+        }
+
+    return section

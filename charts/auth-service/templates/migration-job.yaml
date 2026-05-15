@@ -54,11 +54,39 @@ spec:
                   key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((.Values.global.secrets).database).keys.password | default "password" | quote }}
               {{- end }}
             - name: DB_SSL_MODE
-              value: {{ .Values.externalDatabase.sslMode | quote }}
+              value: {{ .Values.externalDatabase.sslMode | default ((.Values.global).postgresql).sslMode | default "disable" | quote }}
+            {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+            {{- end }}
             - name: DATABASE_MIGRATIONS_PATH
               value: {{ .Values.migrations.path | quote }}
           {{- with .Values.migration.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+          volumeMounts:
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+          {{- end }}
+      {{- if $pgSslRootCert.secretName }}
+      volumes:
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgSslRootCert.secretName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+      {{- else if $pgSslRootCert.configMapName }}
+      volumes:
+        - name: postgres-ca
+          configMap:
+            name: {{ $pgSslRootCert.configMapName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+      {{- end }}
 {{- end }}

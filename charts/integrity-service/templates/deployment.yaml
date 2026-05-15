@@ -76,9 +76,9 @@ spec:
               echo "Postgres is ready!"
           env:
             - name: DB_HOST
-              value: {{ .Values.config.integrityAppDbHost | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
+              value: {{ .Values.externalDatabase.host | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
             - name: DB_PORT
-              value: {{ ((.Values.global).postgresql).port | default "5432" | quote }}
+              value: {{ .Values.externalDatabase.port | default ((.Values.global).postgresql).port | default "5432" | quote }}
         {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -111,22 +111,29 @@ spec:
             # Database Configuration
             # ========================================================================
             - name: INTEGRITY_APP__db__host
-              value: {{ .Values.config.integrityAppDbHost | default (((.Values.global).postgresql).host) | default (printf "%s-postgresql" .Release.Name) | quote }}
+              value: {{ .Values.externalDatabase.host | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
             - name: INTEGRITY_APP__db__port
-              value: {{ .Values.config.integrityAppDbPort | default (((.Values.global).postgresql).port) | default "5432" | quote }}
+              value: {{ .Values.externalDatabase.port | default ((.Values.global).postgresql).port | default "5432" | quote }}
             - name: INTEGRITY_APP__db__db_name
-              value: {{ .Values.config.integrityAppDbName | quote }}
+              value: {{ .Values.externalDatabase.name | quote }}
             - name: INTEGRITY_APP__db__user
-              value: {{ .Values.config.integrityAppDbUser | default (((.Values.global).postgresql).username | default "postgres") | quote }}
+              value: {{ .Values.externalDatabase.user | default ((.Values.global).postgresql).username | default "postgres" | quote }}
             - name: INTEGRITY_APP__db__password
-              {{- if .Values.config.integrityAppDbPassword }}
-              value: {{ .Values.config.integrityAppDbPassword | quote }}
+              {{- if .Values.externalDatabase.password }}
+              value: {{ .Values.externalDatabase.password | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.database.name | default (((.Values.global).secrets).database).secretName | quote }}
-                  key: {{ ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
+                  name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
+                  key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
               {{- end }}
+            - name: INTEGRITY_APP__db__ssl_mode
+              value: {{ .Values.externalDatabase.sslMode | default ((.Values.global).postgresql).sslMode | default "disable" | quote }}
+            {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: INTEGRITY_APP__db__ssl_root_cert
+              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+            {{- end }}
 
             # ========================================================================
             # Storage Configuration
@@ -236,6 +243,11 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+            {{- end }}
             {{- if .Values.persistence.enabled }}
             - name: "{{template "integrity-service.name" . }}"
               mountPath: {{ .Values.persistence.integrity.mountPath }}
@@ -249,6 +261,21 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- if $pgSslRootCert.secretName }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgSslRootCert.secretName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+        {{- else if $pgSslRootCert.configMapName }}
+        - name: postgres-ca
+          configMap:
+            name: {{ $pgSslRootCert.configMapName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+        {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: "{{template "integrity-service.name" . }}"
           hostPath:

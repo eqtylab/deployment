@@ -294,23 +294,20 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Database Configuration
 
-| Key                           | Type   | Default                | Description                                                      |
-| ----------------------------- | ------ | ---------------------- | ---------------------------------------------------------------- |
-| config.integrityAppDbHost     | string | `""`                   | Database host (auto-generated as {Release.Name}-postgresql)      |
-| config.integrityAppDbPort     | string | `""`                   | Database port (auto-configured from global.postgresql.port)      |
-| config.integrityAppDbName     | string | `"IntegrityServiceDB"` | Database name                                                    |
-| config.integrityAppDbUser     | string | `""`                   | Database user (auto-configured from global.postgresql.username)  |
-| config.integrityAppDbPassword | string | `""`                   | Database password (auto-configured from global.secrets.database) |
+| Key                                        | Type   | Default                | Description                                                                                                                         |
+| ------------------------------------------ | ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| externalDatabase.host                      | string | `""`                   | Database host (auto-configured from global.postgresql.host or generated as {Release.Name}-postgresql)                               |
+| externalDatabase.port                      | string | `""`                   | Database port (auto-configured from global.postgresql.port; defaults to `5432` when empty)                                          |
+| externalDatabase.name                      | string | `"IntegrityServiceDB"` | Database name                                                                                                                       |
+| externalDatabase.user                      | string | `""`                   | Database user (auto-configured from global.postgresql.username, default "postgres")                                                 |
+| externalDatabase.password                  | string | `""`                   | Database password (auto-configured from global.secrets.database)                                                                    |
+| externalDatabase.sslMode                   | string | `""`                   | SSL mode (auto-configured from global.postgresql.sslMode, defaults to "disable"). Options: disable, require, verify-ca, verify-full |
+| externalDatabase.passwordSecretKeyRef.name | string | `""`                   | Secret name (auto-configured from global.secrets.database.secretName)                                                               |
+| externalDatabase.passwordSecretKeyRef.key  | string | `""`                   | Secret key for password (defaults to "password")                                                                                    |
 
 ### Secret Configuration
 
 All secret references support global fallbacks when deployed via umbrella chart.
-
-#### Database Secrets
-
-| Key                   | Type   | Description                                                           |
-| --------------------- | ------ | --------------------------------------------------------------------- |
-| secrets.database.name | string | Secret name (auto-configured from global.secrets.database.secretName) |
 
 #### Storage Secrets
 

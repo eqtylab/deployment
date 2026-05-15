@@ -33,7 +33,7 @@ spec:
             - |
               set -e
               echo "Waiting for database to be ready..."
-              until pg_isready -h $PGHOST -p 5432 -U $PGUSER; do
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
                 echo "Database not ready yet..."
                 sleep 5
               done
@@ -139,21 +139,29 @@ spec:
               {{- end }}
 
               echo "Setup complete!"
+          {{- $bundledPgAuth := (((.Values.postgresql).auth) | default dict) }}
+          {{- $bundledPgSecretKeys := (($bundledPgAuth.secretKeys) | default dict) }}
+          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
           env:
             - name: PGHOST
-              value: {{ .Values.postgresql.host | default (printf "%s-postgresql" .Release.Name) | quote }}
+              value: {{ ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
+            - name: PGPORT
+              value: {{ ((.Values.global).postgresql).port | default 5432 | quote }}
             - name: PGUSER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.postgresql.auth.existingSecret | default "platform-database" }}
-                  key: {{ .Values.postgresql.auth.secretKeys.usernameKey | default "username" }}
+              value: {{ ((.Values.global).postgresql).username | default ($bundledPgAuth.username | default "postgres") | quote }}
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.postgresql.auth.existingSecret | default "platform-database" }}
-                  key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey | default "password" }}
+                  name: {{ (((.Values.global).secrets).database).secretName | default ($bundledPgAuth.existingSecret | default "platform-database") | quote }}
+                  key: {{ ((((.Values.global).secrets).database).keys).password | default ($bundledPgSecretKeys.userPasswordKey | default "password") | quote }}
             - name: PGDATABASE
-              value: {{ .Values.postgresql.auth.database | default "governance" | quote }}
+              value: {{ ((.Values.global).postgresql).database | default ($bundledPgAuth.database | default "governance") | quote }}
+            - name: PGSSLMODE
+              value: {{ ((.Values.global).postgresql).sslMode | default "disable" | quote }}
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+            {{- end }}
             {{- if .Values.keycloak.createPlatformAdmin }}
             - name: KEYCLOAK_URL
               value: {{ .Values.keycloak.url | default "http://keycloak:8080/keycloak" | quote }}
@@ -165,6 +173,12 @@ spec:
                   name: keycloak-admin
                   key: password
             {{- end }}
+          {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+          volumeMounts:
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+          {{- end }}
           resources:
             requests:
               cpu: 100m
@@ -182,7 +196,7 @@ spec:
               echo "Waiting for database schema to be ready..."
 
               # Wait for database to be reachable
-              until pg_isready -h $PGHOST -p 5432 -U $PGUSER; do
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
                 echo "Waiting for database to be ready..."
                 sleep 5
               done
@@ -217,19 +231,48 @@ spec:
 
               echo "Warning: Some tables may not exist, but proceeding..."
               exit 0
+          {{- $bundledPgAuth := (((.Values.postgresql).auth) | default dict) }}
+          {{- $bundledPgSecretKeys := (($bundledPgAuth.secretKeys) | default dict) }}
+          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
           env:
             - name: PGHOST
-              value: {{ .Values.postgresql.host | default (printf "%s-postgresql" .Release.Name) | quote }}
+              value: {{ ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
+            - name: PGPORT
+              value: {{ ((.Values.global).postgresql).port | default 5432 | quote }}
             - name: PGUSER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.postgresql.auth.existingSecret | default "platform-database" }}
-                  key: {{ .Values.postgresql.auth.secretKeys.usernameKey | default "username" }}
+              value: {{ ((.Values.global).postgresql).username | default ($bundledPgAuth.username | default "postgres") | quote }}
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.postgresql.auth.existingSecret | default "platform-database" }}
-                  key: {{ .Values.postgresql.auth.secretKeys.userPasswordKey | default "password" }}
+                  name: {{ (((.Values.global).secrets).database).secretName | default ($bundledPgAuth.existingSecret | default "platform-database") | quote }}
+                  key: {{ ((((.Values.global).secrets).database).keys).password | default ($bundledPgSecretKeys.userPasswordKey | default "password") | quote }}
             - name: PGDATABASE
-              value: {{ .Values.postgresql.auth.database | default "governance" | quote }}
+              value: {{ ((.Values.global).postgresql).database | default ($bundledPgAuth.database | default "governance") | quote }}
+            - name: PGSSLMODE
+              value: {{ ((.Values.global).postgresql).sslMode | default "disable" | quote }}
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+          volumeMounts:
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+            {{- end }}
+      {{- if $pgSslRootCert.secretName }}
+      volumes:
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgSslRootCert.secretName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+      {{- else if $pgSslRootCert.configMapName }}
+      volumes:
+        - name: postgres-ca
+          configMap:
+            name: {{ $pgSslRootCert.configMapName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+      {{- end }}
 {{- end }}
