@@ -1,0 +1,156 @@
+---
+name: Helm CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/helm-ci.yaml"
+      - "charts/**"
+      - "releases/**"
+      - "docs-site/**"
+      - "schemas/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/helm-ci.yaml"
+      - "charts/**"
+      - "releases/**"
+      - "docs-site/**"
+      - "schemas/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  helm-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.20.0
+
+      - name: Install yq
+        run: |
+          sudo curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+            -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Refuse committed packaged charts
+        run: |
+          if find charts -name '*.tgz' -print -quit | grep -q .; then
+            echo "::error::Do not commit generated chart .tgz archives."
+            find charts -name '*.tgz' -print
+            exit 1
+          fi
+
+      - name: Build umbrella dependencies
+        run: helm dependency build charts/governance-platform
+
+      - name: Lint charts
+        run: |
+          for chart in charts/*; do
+            if [ -f "$chart/Chart.yaml" ]; then
+              helm lint "$chart"
+            fi
+          done
+
+      - name: Template supported install paths
+        run: |
+          helm template governance-platform charts/governance-platform >/dev/null
+          helm template governance-platform charts/governance-platform \
+            --values charts/governance-platform/examples/values-keycloak.yaml \
+            --values charts/governance-platform/examples/values-external-postgres.yaml \
+            >/dev/null
+          helm template governance-platform charts/governance-platform \
+            --values charts/governance-platform/examples/values-auth0.yaml \
+            --values charts/governance-platform/examples/values-external-postgres.yaml \
+            >/dev/null
+          helm template governance-platform charts/governance-platform \
+            --values charts/governance-platform/examples/values-entra.yaml \
+            --values charts/governance-platform/examples/values-external-postgres.yaml \
+            >/dev/null
+
+      - name: Template registry override paths
+        run: |
+          helm template governance-platform charts/governance-platform \
+            --set global.imageRegistryOverride=registry.customer.example \
+            >/tmp/registry-override.yaml
+          helm template governance-platform charts/governance-platform \
+            --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
+            >/tmp/repository-prefix-override.yaml
+
+          grep -q 'registry.customer.example/eqtylab/governance-studio' /tmp/repository-prefix-override.yaml
+          grep -q 'registry.customer.example/eqtylab/governance-service' /tmp/repository-prefix-override.yaml
+          grep -q 'registry.customer.example/eqtylab/auth-service' /tmp/repository-prefix-override.yaml
+          grep -q 'registry.customer.example/eqtylab/integrity-service' /tmp/repository-prefix-override.yaml
+
+      - name: Validate release manifests
+        run: |
+          shopt -s nullglob
+          for manifest in releases/v*/release-manifest.yaml; do
+            version="$(yq '.platform.version' "$manifest")"
+            release_type="$(yq '.platform.releaseType' "$manifest")"
+
+            if [ -z "$version" ] || [ "$version" = "null" ]; then
+              echo "::error file=${manifest}::Missing platform.version"
+              exit 1
+            fi
+
+            case "$release_type" in
+              prerelease|stable) ;;
+              *)
+                echo "::error file=${manifest}::platform.releaseType must be prerelease or stable"
+                exit 1
+                ;;
+            esac
+
+            validation_mode="$(yq '.validation.mode' "$manifest")"
+            validation_status="$(yq '.validation.evidence.status' "$manifest")"
+
+            if [ "$validation_mode" != "manual" ]; then
+              echo "::error file=${manifest}::validation.mode must be manual"
+              exit 1
+            fi
+
+            case "$validation_status" in
+              pending|approved|rejected) ;;
+              *)
+                echo "::error file=${manifest}::validation.evidence.status must be pending, approved, or rejected"
+                exit 1
+                ;;
+            esac
+
+            for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
+              chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"
+              if [ "$chart_version" != "$version" ]; then
+                echo "::error file=charts/${chart}/Chart.yaml::Expected chart version ${version}; found ${chart_version}"
+                exit 1
+              fi
+            done
+
+            for image in authService governanceService governanceStudio integrityService; do
+              tag="$(yq ".images.${image}.tag" "$manifest")"
+              digest="$(yq ".images.${image}.digest" "$manifest")"
+              if [ "$tag" != "$version" ]; then
+                echo "::error file=${manifest}::${image} tag must match platform version ${version}"
+                exit 1
+              fi
+              if [ -z "$digest" ] || [ "$digest" = "null" ]; then
+                echo "::error file=${manifest}::${image} digest is required"
+                exit 1
+              fi
+            done
+          done
+
+      - name: Prevent latest image tags in release-facing files
+        run: |
+          if grep -RIn --include='*.yaml' --include='*.yml' --include='*.md' ':latest' charts releases docs-site 2>/dev/null; then
+            echo "::error::Customer release files must not reference latest image tags."
+            exit 1
+          fi

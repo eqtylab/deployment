@@ -42,3 +42,27 @@ Selector labels
 app.kubernetes.io/name: {{ include "governance-studio.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{/*
+Resolve the image repository, honoring customer registry mirror overrides.
+*/}}
+{{- define "governance-studio.imageRepository" -}}
+{{- $repository := .Values.image.repository -}}
+{{- $registryOverride := default "" ((.Values.global).imageRegistryOverride) -}}
+{{- $prefixOverride := default "" ((.Values.global).imageRepositoryPrefixOverride) -}}
+{{- if $prefixOverride -}}
+{{- printf "%s/%s" (trimSuffix "/" $prefixOverride) (base $repository) -}}
+{{- else if $registryOverride -}}
+{{- $parts := splitList "/" $repository -}}
+{{- printf "%s/%s" (trimSuffix "/" $registryOverride) (join "/" (slice $parts 1)) -}}
+{{- else -}}
+{{- $repository -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve the full image reference.
+*/}}
+{{- define "governance-studio.image" -}}
+{{- printf "%s:%s" (include "governance-studio.imageRepository" .) (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}

@@ -1,0 +1,370 @@
+---
+name: Release Platform Package
+
+on:
+  push:
+    tags:
+      - "platform/v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Platform version without leading v, for dry-run packaging"
+        required: true
+        type: string
+      publish:
+        description: "Publish charts and GitHub Release"
+        required: false
+        default: false
+        type: boolean
+      build_airgap:
+        description: "Build optional air-gap package"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: platform-package-${{ github.ref_name || inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: customer-release-publication
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.20.0
+
+      - name: Install yq
+        run: |
+          sudo curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+            -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Resolve release
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            version="${GITHUB_REF_NAME#platform/v}"
+            publish="true"
+          else
+            version="$INPUT_VERSION"
+            publish="${{ inputs.publish }}"
+          fi
+
+          manifest="releases/v${version}/release-manifest.yaml"
+          if [ ! -f "$manifest" ]; then
+            echo "::error::Missing release manifest: ${manifest}"
+            exit 1
+          fi
+
+          release_type="$(yq '.platform.releaseType' "$manifest")"
+          if [ "$release_type" = "prerelease" ]; then
+            prerelease="true"
+          else
+            prerelease="false"
+          fi
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "manifest=${manifest}" >> "$GITHUB_OUTPUT"
+          echo "release_type=${release_type}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release manifest
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          MANIFEST: ${{ steps.release.outputs.manifest }}
+          PUBLISH: ${{ steps.release.outputs.publish }}
+        run: |
+          manifest_version="$(yq '.platform.version' "$MANIFEST")"
+          if [ "$manifest_version" != "$VERSION" ]; then
+            echo "::error file=${MANIFEST}::Manifest version ${manifest_version} does not match ${VERSION}."
+            exit 1
+          fi
+
+          validation_mode="$(yq '.validation.mode' "$MANIFEST")"
+          validation_status="$(yq '.validation.evidence.status' "$MANIFEST")"
+
+          if [ "$validation_mode" != "manual" ]; then
+            echo "::error file=${MANIFEST}::validation.mode must be manual."
+            exit 1
+          fi
+
+          if [ "$PUBLISH" = "true" ] && [ "$validation_status" != "approved" ]; then
+            echo "::error file=${MANIFEST}::Customer publication requires validation.evidence.status=approved."
+            exit 1
+          fi
+
+          for service in authService governanceService governanceStudio integrityService; do
+            tag="$(yq ".images.${service}.tag" "$MANIFEST")"
+            digest="$(yq ".images.${service}.digest" "$MANIFEST")"
+            if [ "$tag" != "$VERSION" ]; then
+              echo "::error file=${MANIFEST}::${service} image tag must be ${VERSION}."
+              exit 1
+            fi
+            if [ -z "$digest" ] || [ "$digest" = "null" ]; then
+              echo "::error file=${MANIFEST}::${service} digest is required."
+              exit 1
+            fi
+          done
+
+          for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
+            chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"
+            app_version="$(yq '.appVersion' "charts/${chart}/Chart.yaml")"
+            if [ "$chart_version" != "$VERSION" ]; then
+              echo "::error file=charts/${chart}/Chart.yaml::Expected chart version ${VERSION}; got ${chart_version}."
+              exit 1
+            fi
+            if [ "$app_version" != "$VERSION" ]; then
+              echo "::error file=charts/${chart}/Chart.yaml::Expected appVersion ${VERSION}; got ${app_version}."
+              exit 1
+            fi
+          done
+
+      - name: Helm validation
+        run: |
+          helm dependency build charts/governance-platform
+          for chart in charts/auth-service charts/governance-service charts/governance-studio charts/integrity-service charts/governance-platform; do
+            helm lint "$chart"
+          done
+          helm template governance-platform charts/governance-platform >/dev/null
+          helm template governance-platform charts/governance-platform \
+            --values charts/governance-platform/examples/values-keycloak.yaml \
+            --values charts/governance-platform/examples/values-external-postgres.yaml \
+            >/dev/null
+          helm template governance-platform charts/governance-platform \
+            --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
+            >/dev/null
+
+      - name: Login to GHCR
+        if: steps.release.outputs.publish == 'true'
+        run: echo "${{ github.token }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Publish platform charts
+        id: charts
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          PUBLISH: ${{ steps.release.outputs.publish }}
+        run: |
+          mkdir -p dist/charts
+          chart_digest_file="dist/chart-digests.yaml"
+          echo "charts:" > "$chart_digest_file"
+
+          publish_chart() {
+            local chart="$1"
+            local chart_dir="charts/${chart}"
+            local oci_ref="oci://ghcr.io/eqtylab/charts/${chart}"
+            local package_path
+            local digest
+            local package_sha
+
+            if [ "$chart" = "governance-platform" ]; then
+              helm dependency build "$chart_dir"
+            fi
+
+            if [ "$PUBLISH" = "true" ] && helm show chart "$oci_ref" --version "$VERSION" >/dev/null 2>&1; then
+              echo "${oci_ref}:${VERSION} already exists; pulling for package assembly."
+              helm pull "$oci_ref" --version "$VERSION" --destination dist/charts
+              package_path="dist/charts/${chart}-${VERSION}.tgz"
+              digest="existing"
+            else
+              helm package "$chart_dir" --destination dist/charts
+              package_path="dist/charts/${chart}-${VERSION}.tgz"
+
+              if [ "$PUBLISH" = "true" ]; then
+                helm push "$package_path" oci://ghcr.io/eqtylab/charts | tee "dist/charts/${chart}-push.log"
+                digest="$(awk '/Digest:/ {print $2; exit}' "dist/charts/${chart}-push.log")"
+                if [ -z "$digest" ]; then
+                  echo "::error::Could not parse OCI digest for ${chart}."
+                  exit 1
+                fi
+              else
+                digest="dry-run"
+              fi
+            fi
+
+            package_sha="$(sha256sum "$package_path" | awk '{print $1}')"
+            sha256sum "$package_path" > "${package_path}.sha256"
+
+            cat >> "$chart_digest_file" <<EOF
+            ${chart}:
+              version: ${VERSION}
+              oci: ${oci_ref}
+              ociDigest: ${digest}
+              package: $(basename "$package_path")
+              packageSha256: ${package_sha}
+          EOF
+          }
+
+          for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
+            publish_chart "$chart"
+          done
+
+      - name: Build connected customer package
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          MANIFEST: ${{ steps.release.outputs.manifest }}
+        run: |
+          package_root="dist/governance-platform-v${VERSION}"
+          mkdir -p "$package_root/charts" "$package_root/docs" "$package_root/examples"
+
+          cp "$MANIFEST" "$package_root/release-manifest.yaml"
+          cp dist/chart-digests.yaml "$package_root/chart-digests.yaml"
+          cp dist/charts/*.tgz "$package_root/charts/"
+          cp dist/charts/*.sha256 "$package_root/charts/"
+          cp -R charts/governance-platform/examples "$package_root/examples/governance-platform"
+
+          if [ -d docs-site ]; then
+            cp -R docs-site "$package_root/docs/docs-site"
+          fi
+
+          cat > "$package_root/INSTALL.md" <<EOF
+          # Governance Platform v${VERSION}
+
+          Install the customer release with the published umbrella chart:
+
+          \`\`\`bash
+          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
+            --version ${VERSION} \\
+            --namespace governance \\
+            --create-namespace \\
+            --values values.yaml
+          \`\`\`
+
+          Runtime images are private. Configure image pull credentials or mirror the images to a customer registry before installing.
+          EOF
+
+          (cd dist && tar -czf "governance-platform-v${VERSION}.tar.gz" "governance-platform-v${VERSION}")
+          sha256sum "dist/governance-platform-v${VERSION}.tar.gz" > "dist/governance-platform-v${VERSION}.tar.gz.sha256"
+          sha256sum dist/charts/*.tgz > dist/CHARTS.sha256
+
+      - name: Build optional air-gap package
+        if: inputs.build_airgap == true
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          package_root="dist/governance-platform-v${VERSION}-airgap"
+          mkdir -p "$package_root/images" "$package_root/charts" "$package_root/scripts"
+          cp dist/charts/*.tgz "$package_root/charts/"
+          cp "releases/v${VERSION}/release-manifest.yaml" "$package_root/release-manifest.yaml"
+
+          cat > "$package_root/scripts/mirror-images.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          if [ "$#" -ne 1 ]; then
+            echo "usage: $0 <target-registry-prefix>" >&2
+            exit 1
+          fi
+
+          echo "Mirror the images listed in release-manifest.yaml to: $1"
+          echo "This package is chart-ready; image archive export is enabled in a later milestone."
+          EOF
+          chmod +x "$package_root/scripts/mirror-images.sh"
+
+          (cd dist && tar -czf "governance-platform-v${VERSION}-airgap.tar.gz" "governance-platform-v${VERSION}-airgap")
+          sha256sum "dist/governance-platform-v${VERSION}-airgap.tar.gz" > "dist/governance-platform-v${VERSION}-airgap.tar.gz.sha256"
+
+      - name: Verify package
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          mkdir -p /tmp/package-check
+          tar -xzf "dist/governance-platform-v${VERSION}.tar.gz" -C /tmp/package-check
+          test -f "/tmp/package-check/governance-platform-v${VERSION}/release-manifest.yaml"
+          test -f "/tmp/package-check/governance-platform-v${VERSION}/chart-digests.yaml"
+          helm template governance-platform "dist/charts/governance-platform-${VERSION}.tgz" >/dev/null
+
+      - name: Attest release packages
+        if: steps.release.outputs.publish == 'true'
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/governance-platform-v${{ steps.release.outputs.version }}.tar.gz
+            dist/charts/*.tgz
+
+      - name: Create release notes
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_TYPE: ${{ steps.release.outputs.release_type }}
+        run: |
+          notes="dist/release-notes.md"
+          cat > "$notes" <<EOF
+          ## Governance Platform v${VERSION}
+
+          Release type: \`${RELEASE_TYPE}\`
+
+          ### Install
+
+          \`\`\`bash
+          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
+            --version ${VERSION} \\
+            --namespace governance \\
+            --create-namespace \\
+            --values values.yaml
+          \`\`\`
+
+          ### Artifacts
+
+          - Connected package: \`governance-platform-v${VERSION}.tar.gz\`
+          - Release manifest: \`release-manifest.yaml\`
+          - Chart digests: \`chart-digests.yaml\`
+          - Runtime image tags: \`${VERSION}\`
+
+          This release uses private runtime images. Customers must configure GHCR image pull credentials or mirror images into their own registry.
+          EOF
+
+      - name: Publish GitHub release
+        if: steps.release.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+        run: |
+          tag="platform/v${VERSION}"
+          assets=(
+            "dist/governance-platform-v${VERSION}.tar.gz"
+            "dist/governance-platform-v${VERSION}.tar.gz.sha256"
+            "dist/CHARTS.sha256"
+            "dist/chart-digests.yaml"
+            "releases/v${VERSION}/release-manifest.yaml"
+          )
+
+          if [ -f "dist/governance-platform-v${VERSION}-airgap.tar.gz" ]; then
+            assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz")
+            assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz.sha256")
+          fi
+
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then
+            flags+=(--prerelease)
+          else
+            flags+=(--latest)
+          fi
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --clobber
+            gh release edit "$tag" \
+              --title "Governance Platform v${VERSION}" \
+              --notes-file dist/release-notes.md \
+              "${flags[@]}"
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --title "Governance Platform v${VERSION}" \
+              --notes-file dist/release-notes.md \
+              --verify-tag \
+              "${flags[@]}"
+          fi
