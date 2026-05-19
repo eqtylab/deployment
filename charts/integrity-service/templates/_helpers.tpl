@@ -42,3 +42,27 @@ Selector labels
 app.kubernetes.io/name: {{ include "integrity-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{/*
+Resolve the image repository, honoring customer registry mirror overrides.
+*/}}
+{{- define "integrity-service.imageRepository" -}}
+{{- $repository := .Values.image.repository -}}
+{{- $registryOverride := default "" ((.Values.global).imageRegistryOverride) -}}
+{{- $prefixOverride := default "" ((.Values.global).imageRepositoryPrefixOverride) -}}
+{{- if $prefixOverride -}}
+{{- printf "%s/%s" (trimSuffix "/" $prefixOverride) (base $repository) -}}
+{{- else if $registryOverride -}}
+{{- $parts := splitList "/" $repository -}}
+{{- printf "%s/%s" (trimSuffix "/" $registryOverride) (join "/" (slice $parts 1)) -}}
+{{- else -}}
+{{- $repository -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve the full image reference.
+*/}}
+{{- define "integrity-service.image" -}}
+{{- printf "%s:%s" (include "integrity-service.imageRepository" .) (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}

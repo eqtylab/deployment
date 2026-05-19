@@ -36,6 +36,14 @@ global:
   # - Never: Never pull, use local image only
   imagePullPolicy: "IfNotPresent"
 
+  # -- Replace only the image registry host for EQTY runtime images.
+  # Example: registry.customer.example
+  imageRegistryOverride: ""
+
+  # -- Replace the full EQTY image repository prefix for mirrored installs.
+  # Example: registry.customer.example/eqtylab
+  imageRepositoryPrefixOverride: ""
+
   # -- Image Pull Secrets
   # @default -- `[{"name": "platform-image-pull-secret"}]`
   # Secrets for accessing private container registries

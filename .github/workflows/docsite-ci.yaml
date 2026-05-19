@@ -1,0 +1,104 @@
+---
+name: Docsite CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/docsite-ci.yaml"
+      - "docs-site/**"
+      - "releases/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/docsite-ci.yaml"
+      - "docs-site/**"
+      - "releases/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docsite-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install yq
+        run: |
+          sudo curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+            -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Validate required docs source
+        run: |
+          required=(
+            "docs-site/readme/guides/release-overview.md"
+            "docs-site/readme/guides/install/connected-install.md"
+            "docs-site/readme/guides/install/airgap-install.md"
+            "docs-site/readme/guides/upgrade/upgrade.md"
+            "docs-site/readme/guides/upgrade/rollback.md"
+            "docs-site/readme/guides/operate/known-issues.md"
+            "docs-site/readme/reference/release-manifest.md"
+          )
+
+          for file in "${required[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "::error::Missing required docsite source file: ${file}"
+              exit 1
+            fi
+          done
+
+      - name: Validate release metadata links
+        run: |
+          shopt -s nullglob
+          for manifest in releases/v*/release-manifest.yaml; do
+            docs_version="$(yq '.docs.version' "$manifest")"
+            docs_state="$(yq '.docs.state' "$manifest")"
+
+            if [ -z "$docs_version" ] || [ "$docs_version" = "null" ]; then
+              echo "::error file=${manifest}::docs.version is required"
+              exit 1
+            fi
+
+            case "$docs_state" in
+              beta|public|hidden|deprecated) ;;
+              *)
+                echo "::error file=${manifest}::docs.state must be beta, public, hidden, or deprecated"
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Prevent release doc drift
+        run: |
+          if grep -RIn --include='*.md' ':latest' docs-site releases 2>/dev/null; then
+            echo "::error::Docsite source must not recommend latest image tags."
+            exit 1
+          fi
+
+          if grep -RIn --include='*.md' 'gke_eqtylab\|internal\.eqtylab\|localhost:[0-9]' docs-site releases 2>/dev/null; then
+            echo "::error::Docsite source appears to include internal-only or local URLs."
+            exit 1
+          fi
+
+      - name: Validate local markdown links
+        run: |
+          missing=0
+          while IFS= read -r file; do
+            while IFS= read -r link; do
+              target="${link%%#*}"
+              [ -z "$target" ] && continue
+              case "$target" in
+                http://*|https://*|mailto:*|/*) continue ;;
+              esac
+              if [ ! -e "$(dirname "$file")/$target" ]; then
+                echo "::error file=${file}::Broken local link: ${link}"
+                missing=1
+              fi
+            done < <(grep -oE '\]\(([^)]+)\)' "$file" | sed -E 's/^\]\(([^)]+)\)$/\1/' || true)
+          done < <(find docs-site -name '*.md' -print)
+
+          exit "$missing"

@@ -29,7 +29,7 @@ spec:
       {{- end }}
       containers:
         - name: migrate
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "auth-service.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["/migrate"]
           env:

@@ -88,7 +88,7 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "integrity-service.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - "integrity-service"

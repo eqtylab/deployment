@@ -12,6 +12,13 @@
 # Enable the Governance Studio frontend application
 enabled: true
 
+# -- Global values shared by umbrella and standalone installs
+global:
+  # -- Replace only the image registry host, for example registry.customer.example
+  imageRegistryOverride: ""
+  # -- Replace the full EQTY image repository prefix, for example registry.customer.example/eqtylab
+  imageRepositoryPrefixOverride: ""
+
 # -- Replica Count
 # @default -- `1`
 # Number of pod replicas to run (ignored if autoscaling.enabled is true)

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/eqtylab/deployment/schemas/release-manifest.schema.json",
+  "title": "Governance Platform Release Manifest",
+  "type": "object",
+  "required": ["platform", "sources", "images", "charts", "validation", "docs"],
+  "properties": {
+    "platform": {
+      "type": "object",
+      "required": ["name", "version", "releaseType", "kubernetesMinimumVersion", "architecture"],
+      "properties": {
+        "name": { "const": "governance-platform" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-.][0-9A-Za-z.-]+)?$" },
+        "releaseType": { "enum": ["prerelease", "stable"] },
+        "releaseDate": { "type": "string" },
+        "kubernetesMinimumVersion": { "type": "string" },
+        "architecture": { "const": "linux/amd64" }
+      }
+    },
+    "images": {
+      "type": "object",
+      "required": ["authService", "governanceService", "governanceStudio", "integrityService"],
+      "additionalProperties": {
+        "type": "object",
+        "required": ["repository", "tag", "digest", "sourceSha"],
+        "properties": {
+          "repository": { "type": "string" },
+          "tag": { "type": "string" },
+          "digest": { "type": "string" },
+          "sourceSha": { "type": "string" }
+        }
+      }
+    },
+    "charts": { "type": "object" },
+    "sources": { "type": "object" },
+    "validation": {
+      "type": "object",
+      "required": ["required", "mode", "identityProvider", "database", "evidence"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "mode": { "const": "manual" },
+        "identityProvider": { "type": "string" },
+        "database": { "type": "string" },
+        "evidence": {
+          "type": "object",
+          "required": ["status", "recordedIn"],
+          "properties": {
+            "status": { "enum": ["pending", "approved", "rejected"] },
+            "recordedIn": { "type": "string" },
+            "reviewer": { "type": "string" },
+            "reviewedAt": { "type": "string" },
+            "notes": { "type": "string" }
+          }
+        }
+      }
+    },
+    "docs": {
+      "type": "object",
+      "required": ["provider", "version", "state"],
+      "properties": {
+        "provider": { "const": "readme" },
+        "version": { "type": "string" },
+        "state": { "enum": ["beta", "public", "hidden", "deprecated"] },
+        "default": { "type": "boolean" },
+        "sourceRepository": { "type": "string" }
+      }
+    }
+  }
+}
