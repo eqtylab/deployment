@@ -11,6 +11,7 @@ from govctl.generators.values import generate_values
 from govctl.generators.secrets import generate_secrets
 from govctl.generators.keycloak_bootstrap import generate_keycloak_bootstrap
 from govctl.generators.entra_bootstrap import generate_entra_bootstrap
+from govctl.generators.auth0_bootstrap import generate_auth0_bootstrap
 
 from govctl.utils.output import console
 from govctl.cli.prompts import collect_interactive_config
@@ -21,7 +22,7 @@ from govctl.cli.display import show_config_summary, show_next_steps
 @click.option(
     "--cloud",
     "-c",
-    type=click.Choice(["gcp", "aws", "azure"], case_sensitive=False),
+    type=click.Choice(["aws", "azure", "gcp"], case_sensitive=False),
     help="Cloud provider",
 )
 @click.option(
@@ -37,7 +38,7 @@ from govctl.cli.display import show_config_summary, show_next_steps
 @click.option(
     "--auth",
     "-a",
-    type=click.Choice(["auth0", "keycloak", "entra"], case_sensitive=False),
+    type=click.Choice(["auth0", "entra", "keycloak"], case_sensitive=False),
     help="Authentication provider",
 )
 @click.option(
@@ -140,12 +141,16 @@ def init_cmd(
     secrets_file.write_text(secrets_content)
 
     bootstrap_file = None
-    if config.auth_provider == AuthProvider.KEYCLOAK:
-        bootstrap_content = generate_keycloak_bootstrap(config)
+    if config.auth_provider == AuthProvider.AUTH0:
+        bootstrap_content = generate_auth0_bootstrap(config)
         bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
         bootstrap_file.write_text(bootstrap_content)
     elif config.auth_provider == AuthProvider.ENTRA:
         bootstrap_content = generate_entra_bootstrap(config)
+        bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
+        bootstrap_file.write_text(bootstrap_content)
+    elif config.auth_provider == AuthProvider.KEYCLOAK:
+        bootstrap_content = generate_keycloak_bootstrap(config)
         bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
         bootstrap_file.write_text(bootstrap_content)
 

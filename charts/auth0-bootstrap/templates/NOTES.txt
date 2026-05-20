@@ -1,0 +1,28 @@
+{{- if .Values.bootstrap.enabled }}
+Auth0 Bootstrap Job has been created!
+
+The bootstrap job will:
+1. Authenticate with the Auth0 Management API ({{ .Values.auth0.domain }})
+2. Create the API: {{ .Values.auth0.api.name }} ({{ .Values.auth0.api.identifier }})
+3. Configure applications:
+   - Frontend (SPA): {{ .Values.applications.frontend.name }}
+   - Backend (M2M): {{ .Values.applications.backend.name }}
+   - Worker (M2M): {{ .Values.applications.worker.name }}
+4. Create custom permissions/scopes on the API
+5. Grant M2M applications access to the API
+{{- if .Values.users.admin.enabled }}
+6. Create admin user: {{ .Values.users.admin.email }}
+{{- end }}
+
+To check the job status:
+  kubectl get jobs -l "app.kubernetes.io/name={{ include "auth0-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+To view the job logs:
+  kubectl logs -l "app.kubernetes.io/name={{ include "auth0-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+IMPORTANT: After the job completes, retrieve the M2M client secrets from the job logs
+and create the required Kubernetes secrets before deploying the governance-platform chart.
+
+{{- else }}
+Auth0 Bootstrap is disabled. To enable it, set bootstrap.enabled=true
+{{- end }}

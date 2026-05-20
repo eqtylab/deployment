@@ -44,8 +44,8 @@ data:
       echo -e "${GREEN}Successfully authenticated${NC}"
     }
 
-    # Check if an app registration exists by display name.
-    # Sets APP_ID as a side effect if found.
+    # Check if an app registration exists by display name
+    # Sets APP_ID as a side effect if found
     check_app_exists() {
       local DISPLAY_NAME=$1
       APP_ID=$(az ad app list --display-name "${DISPLAY_NAME}" --query "[0].appId" -o tsv 2>/dev/null)
@@ -56,10 +56,10 @@ data:
       return 1
     }
 
-    # Get the Object ID (directory object) for an app by its appId.
-    # Graph API PATCH /applications/{id} requires the Object ID, not the appId.
+    # Get the Object ID (directory object) for an app by its appId
+    # Graph API PATCH /applications/{id} requires the Object ID, not the appId
     # Uses `az ad app show` (direct lookup) instead of `az ad app list --filter`
-    # because filter queries have longer propagation delays for new apps.
+    # because filter queries have longer propagation delays for new apps
     get_object_id() {
       local CLIENT_APP_ID=$1
       local OID=""
@@ -75,8 +75,8 @@ data:
     # App registration functions
     # =========================================================================
 
-    # Create a confidential app registration.
-    # Sets ${VAR_NAME}_APP_ID and ${VAR_NAME}_SECRET as side effects.
+    # Create a confidential app registration
+    # Sets ${VAR_NAME}_APP_ID and ${VAR_NAME}_SECRET as side effects
     create_confidential_app() {
       local DISPLAY_NAME=$1
       local VAR_NAME=$2
@@ -141,9 +141,9 @@ data:
       echo -e "${GREEN}  Confidential app created successfully${NC}"
     }
 
-    # Create a SPA (public) app registration for the frontend.
-    # Sets FRONTEND_APP_ID as a side effect.
-    # Called AFTER backend app is created so we can reference the backend API scope.
+    # Create a SPA (public) app registration for the frontend
+    # Sets FRONTEND_APP_ID as a side effect
+    # Called AFTER backend app is created so we can reference the backend API scope
     create_frontend_app() {
       local DISPLAY_NAME="{{ .Values.apps.frontend.displayName }}"
 
@@ -226,9 +226,9 @@ data:
     # Configuration functions
     # =========================================================================
 
-    # Set accessTokenAcceptedVersion to 2 on an app registration.
+    # Set accessTokenAcceptedVersion to 2 on an app registration
     # Required so the auth-service can validate v2.0 tokens from the
-    # https://login.microsoftonline.com/{tenant}/v2.0 issuer.
+    # https://login.microsoftonline.com/{tenant}/v2.0 issuer
     set_token_version_v2() {
       local APP_ID=$1
       local DISPLAY_NAME=$2
@@ -251,9 +251,9 @@ data:
       echo -e "${GREEN}  Token version set to v2${NC}"
     }
 
-    # Set the Application ID URI (identifierUris) on an app.
+    # Set the Application ID URI (identifierUris) on an app
     # Required for the access_as_user scope to be requestable as
-    # api://<appId>/access_as_user.
+    # api://<appId>/access_as_user
     set_identifier_uri() {
       local APP_ID=$1
       local DISPLAY_NAME=$2
@@ -276,12 +276,12 @@ data:
       echo -e "${GREEN}  identifierUri set to api://${APP_ID}${NC}"
     }
 
-    # Create the access_as_user OAuth2 permission scope on an app.
-    # Sets ACCESS_AS_USER_SCOPE_ID as a side effect for use by frontend permission setup.
+    # Create the access_as_user OAuth2 permission scope on an app
+    # Sets ACCESS_AS_USER_SCOPE_ID as a side effect for use by frontend permission setup
     #
-    # NOTE: The PATCH replaces the entire oauth2PermissionScopes array.
+    # NOTE: The PATCH replaces the entire oauth2PermissionScopes array
     # This is safe for bootstrap of a new app. If re-running against an app with
-    # additional custom scopes, those would need to be included in the PATCH body.
+    # additional custom scopes, those would need to be included in the PATCH body
     create_access_as_user_scope() {
       local APP_ID=$1
       local DISPLAY_NAME=$2
@@ -334,7 +334,7 @@ data:
       echo -e "${GREEN}  Scope access_as_user created (id: ${ACCESS_AS_USER_SCOPE_ID})${NC}"
     }
 
-    # Add Graph API permissions to a confidential app.
+    # Add Graph API permissions to a confidential app
     # Microsoft Graph well-known permission IDs:
     #   e1fe6dd8-... = User.Read        (delegated)
     #   14dad69e-... = profile           (delegated)

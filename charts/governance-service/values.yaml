@@ -1,10 +1,10 @@
 # =============================================================================
 # GOVERNANCE SERVICE - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the Governance Service backend API.
+# This values file configures the Governance Service backend API
 #
 # When deployed via the umbrella chart (governance-platform), most values
-# are auto-configured from global settings.
+# are auto-configured from global settings
 # =============================================================================
 
 # -- Enable Service
@@ -321,13 +321,6 @@ secrets:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.auth.auth0.secretName)
       name: ""
-    # -- Keycloak Secret
-    # @default -- See values below
-    # Only used when auth provider is "keycloak"
-    keycloak:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
-      name: ""
     # -- Entra Secret
     # @default -- See values below
     # Only used when auth provider is "entra"
@@ -335,25 +328,32 @@ secrets:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
       name: ""
+    # -- Keycloak Secret
+    # @default -- See values below
+    # Only used when auth provider is "keycloak"
+    keycloak:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
+      name: ""
 
   # -- Storage Secrets
   # @default -- See values below
   # Only configure the section matching your storage provider
   storage:
-    # -- Azure Blob Storage Secret
-    # @default -- See values below
-    # Only used when storageProvider is "azure_blob"
-    azure_blob:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
-      name: ""
-
     # -- AWS S3 Secret
     # @default -- See values below
     # Only used when storageProvider is "aws_s3"
     aws_s3:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
+      name: ""
+
+    # -- Azure Blob Storage Secret
+    # @default -- See values below
+    # Only used when storageProvider is "azure_blob"
+    azure_blob:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
       name: ""
 
     # -- GCS Secret
@@ -435,14 +435,8 @@ config:
   # -- Storage Provider
   # @default -- `""`
   # **REQUIRED**: Cloud storage provider
-  # Options: gcs, azure_blob, aws_s3
+  # Options: aws_s3, azure_blob, gcs
   storageProvider: ""
-
-  # -- GCS Bucket Name
-  # @default -- `""`
-  # **REQUIRED for GCS**: Bucket name
-  # Only used when storageProvider is "gcs"
-  gcsBucketName: ""
 
   # -- AWS S3 Region
   # @default -- `""`
@@ -494,13 +488,19 @@ config:
   # Only used when storageProvider is "azure_blob"
   azureUseManagedIdentity: false
 
+  # -- GCS Bucket Name
+  # @default -- `""`
+  # **REQUIRED for GCS**: Bucket name
+  # Only used when storageProvider is "gcs"
+  gcsBucketName: ""
+
   # ---------------------------------------------------------------------------
   # Authentication Provider Configuration
   # ---------------------------------------------------------------------------
 
   # -- Auth Provider
   # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-  # Options: auth0, keycloak, entra
+  # Options: auth0, entra, keycloak
   authProvider: ""
 
   # -- Auth0 Domain
@@ -531,6 +531,22 @@ config:
   # Only used when auth provider is "auth0"
   auth0SyncPageSize: 100
 
+  # -- Entra Tenant ID
+  # @default -- `""` (auto-configured from global.secrets.auth.entra)
+  # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+  # Only used when auth provider is "entra"
+  entraTenantId: ""
+
+  # -- Entra Client ID
+  # @default -- `""` (auto-configured from global.secrets.auth.entra)
+  # Only used when auth provider is "entra"
+  entraClientId: ""
+
+  # -- Entra Client Secret
+  # @default -- `""` (auto-configured from global.secrets.auth.entra)
+  # Only used when auth provider is "entra"
+  entraClientSecret: ""
+
   # -- Keycloak URL
   # @default -- `""`
   # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
@@ -552,22 +568,6 @@ config:
   # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
   # Only used when auth provider is "keycloak"
   keycloakClientSecret: ""
-
-  # -- Entra Tenant ID
-  # @default -- `""` (auto-configured from global.secrets.auth.entra)
-  # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
-  # Only used when auth provider is "entra"
-  entraTenantId: ""
-
-  # -- Entra Client ID
-  # @default -- `""` (auto-configured from global.secrets.auth.entra)
-  # Only used when auth provider is "entra"
-  entraClientId: ""
-
-  # -- Entra Client Secret
-  # @default -- `""` (auto-configured from global.secrets.auth.entra)
-  # Only used when auth provider is "entra"
-  entraClientSecret: ""
 
   # ---------------------------------------------------------------------------
   # Service Integration URLs

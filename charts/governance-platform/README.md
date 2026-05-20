@@ -11,7 +11,7 @@ The platform provides:
 - **Governance Management**: Policy management, compliance tracking, and governance workflows
 - **Integrity & Lineage**: Verifiable credentials, data lineage, and audit trails
 - **Multi-Tenancy**: Organization-based access control and isolation
-- **Flexible Authentication**: Support for Auth0, Keycloak, and Microsoft Entra ID
+- **Flexible Authentication**: Support for Auth0, Microsoft Entra ID, and Keycloak
 - **Cloud-Native**: Kubernetes-native with horizontal scaling and high availability
 
 ## Architecture
@@ -128,7 +128,7 @@ See the [govctl README](../../govctl/README.md) for full usage and options.
 Whether using `govctl` or manual configuration, these values **must** be set:
 
 - **`global.domain`** - Base domain for all services
-- **`global.secrets.auth.provider`** - Auth provider (`auth0`, `keycloak`, or `entra`)
+- **`global.secrets.auth.provider`** - Auth provider (`auth0`, `entra`, or `keycloak`)
 - **Storage provider** per service (`governance-service.config.storageProvider`, `integrity-service.config.integrityAppBlobStoreType`)
 - **Storage bucket/container names** per service
 - **Auth provider public settings** - SPA client IDs, domains, tenant IDs (varies by provider)
@@ -137,8 +137,8 @@ Whether using `govctl` or manual configuration, these values **must** be set:
 See the [examples/](examples/) directory for complete configuration examples:
 
 - [values-auth0.yaml](examples/values-auth0.yaml) - Auth0 deployment
-- [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
 - [values-entra.yaml](examples/values-entra.yaml) - Entra ID deployment
+- [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
 - [secrets-sample.yaml](examples/secrets-sample.yaml) - Complete secrets template
 
 ### Verify
@@ -200,7 +200,7 @@ If you need to store secrets in version control (for GitOps workflows), **always
 
 #### SOPS (Recommended)
 
-[SOPS](https://github.com/getsops/sops) encrypts YAML values while keeping keys readable. Works with AWS KMS, GCP KMS, Azure Key Vault, and PGP.
+[SOPS](https://github.com/getsops/sops) encrypts YAML values while keeping keys readable. Works with AWS KMS, Azure Key Vault, GCP KMS, and PGP.
 
 ```bash
 # Install SOPS
@@ -318,16 +318,16 @@ Centralized secret configuration for all platform components:
 | ------------------------------------------------------- | ------ | ------------------------------ | ------------------------------------------------------------------------------------- |
 | global.secrets.create                                   | bool   | `false`                        | Auto-create secrets from values (dev only)                                            |
 | global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name                                                      |
-| global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, keycloak, or entra)                                             |
+| global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, entra, or keycloak)                                             |
 | global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`             | Auth0 credentials secret name                                                         |
-| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`          | Keycloak credentials secret name                                                      |
 | global.secrets.auth.entra.secretName                    | string | `"platform-entra"`             | Microsoft Entra ID credentials secret name                                            |
-| global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`               | GCS credentials secret name                                                           |
-| global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`        | Azure Blob credentials secret name                                                    |
+| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`          | Keycloak credentials secret name                                                      |
 | global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`            | AWS S3 credentials secret name                                                        |
-| global.secrets.keyManagement.provider                   | string | `"azure_key_vault"`            | Key management provider for credential signing (azure_key_vault, aws_kms, or gcp_kms) |
-| global.secrets.keyManagement.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name                                               |
+| global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`        | Azure Blob credentials secret name                                                    |
+| global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`               | GCS credentials secret name                                                           |
+| global.secrets.keyManagement.provider                   | string | `"azure_key_vault"`            | Key management provider for credential signing (aws_kms, azure_key_vault, or gcp_kms) |
 | global.secrets.keyManagement.aws_kms.secretName         | string | `"platform-aws-kms"`           | AWS KMS credentials secret name                                                       |
+| global.secrets.keyManagement.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name                                               |
 | global.secrets.keyManagement.gcp_kms.secretName         | string | `"platform-gcp-kms"`           | GCP KMS credentials secret name                                                       |
 | global.secrets.encryption.secretName                    | string | `"platform-encryption-key"`    | Platform encryption key secret name                                                   |
 | global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth service secrets (session, JWT, API keys)                                         |
@@ -349,6 +349,31 @@ Shared PostgreSQL connection settings:
 | global.postgresql.sslRootCert.configMapName | string | `""`           | ConfigMap holding the CA bundle (alternative to secretName)                                              |
 | global.postgresql.sslRootCert.key           | string | `"ca.crt"`     | Key within the Secret/ConfigMap holding the PEM-encoded CA bundle                                        |
 
+### Auth Service Configuration
+
+Authentication and authorization service settings. See [auth-service/README.md](../auth-service/README.md) for complete documentation.
+
+| Key                                        | Type   | Default | Description                                                                          |
+| ------------------------------------------ | ------ | ------- | ------------------------------------------------------------------------------------ |
+| auth-service.enabled                       | bool   | `true`  | Enable Auth Service                                                                  |
+| auth-service.replicaCount                  | int    | `2`     | Number of replicas                                                                   |
+| auth-service.config.idp.provider           | string | `""`    | IDP provider (auto-configured from global.secrets.auth.provider)                     |
+| auth-service.config.keyManagement.provider | string | `""`    | Key management provider (auto-configured from global.secrets.keyManagement.provider) |
+| auth-service.ingress.enabled               | bool   | `false` | Enable ingress                                                                       |
+| auth-service.autoscaling.enabled           | bool   | `false` | Enable horizontal pod autoscaling                                                    |
+
+### Governance Service Configuration
+
+Backend API service settings. See [governance-service/README.md](../governance-service/README.md) for complete documentation.
+
+| Key                                       | Type   | Default | Description                                            |
+| ----------------------------------------- | ------ | ------- | ------------------------------------------------------ |
+| governance-service.enabled                | bool   | `true`  | Enable Governance Service                              |
+| governance-service.replicaCount           | int    | `2`     | Number of replicas                                     |
+| governance-service.ingress.enabled        | bool   | `false` | Enable ingress                                         |
+| governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs) |
+| governance-service.autoscaling.enabled    | bool   | `false` | Enable horizontal pod autoscaling                      |
+
 ### Governance Studio Configuration
 
 Frontend application settings. See [governance-studio/README.md](../governance-studio/README.md) for complete documentation.
@@ -363,18 +388,6 @@ Frontend application settings. See [governance-studio/README.md](../governance-s
 | governance-studio.config.displayTimezone | string | `"UTC"`               | Timezone used for displayed timestamps (IANA name, e.g. America/New_York) |
 | governance-studio.autoscaling.enabled    | bool   | `false`               | Enable horizontal pod autoscaling                                         |
 
-### Governance Service Configuration
-
-Backend API service settings. See [governance-service/README.md](../governance-service/README.md) for complete documentation.
-
-| Key                                       | Type   | Default | Description                                       |
-| ----------------------------------------- | ------ | ------- | ------------------------------------------------- |
-| governance-service.enabled                | bool   | `true`  | Enable Governance Service                         |
-| governance-service.replicaCount           | int    | `2`     | Number of replicas                                |
-| governance-service.ingress.enabled        | bool   | `false` | Enable ingress                                    |
-| governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: gcs/azure/aws_s3) |
-| governance-service.autoscaling.enabled    | bool   | `false` | Enable horizontal pod autoscaling                 |
-
 ### Integrity Service Configuration
 
 Credential and lineage service settings. See [integrity-service/README.md](../integrity-service/README.md) for complete documentation.
@@ -386,19 +399,6 @@ Credential and lineage service settings. See [integrity-service/README.md](../in
 | integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                         |
 | integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs) |
 | integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                      |
-
-### Auth Service Configuration
-
-Authentication and authorization service settings. See [auth-service/README.md](../auth-service/README.md) for complete documentation.
-
-| Key                                        | Type   | Default | Description                                                                          |
-| ------------------------------------------ | ------ | ------- | ------------------------------------------------------------------------------------ |
-| auth-service.enabled                       | bool   | `true`  | Enable Auth Service                                                                  |
-| auth-service.replicaCount                  | int    | `2`     | Number of replicas                                                                   |
-| auth-service.config.idp.provider           | string | `""`    | IDP provider (auto-configured from global.secrets.auth.provider)                     |
-| auth-service.config.keyManagement.provider | string | `""`    | Key management provider (auto-configured from global.secrets.keyManagement.provider) |
-| auth-service.ingress.enabled               | bool   | `false` | Enable ingress                                                                       |
-| auth-service.autoscaling.enabled           | bool   | `false` | Enable horizontal pod autoscaling                                                    |
 
 ### PostgreSQL Configuration
 
@@ -418,18 +418,20 @@ Bitnami PostgreSQL chart configuration:
 
 > **Note:** The `postgresPassword` is a placeholder that satisfies Bitnami chart validation during upgrades. The actual password is read from `existingSecret` at runtime. The secret is created via `global.secrets.database` when `global.secrets.create: true`.
 
-### Keycloak Post-Install Hook
+### Auth0 Post-Install Hook
 
-Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user:
+Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user for Auth0 deployments:
 
-| Key                          | Type   | Default                           | Description                                        |
-| ---------------------------- | ------ | --------------------------------- | -------------------------------------------------- |
-| keycloak.createOrganization  | bool   | `false`                           | Enable the post-install hook to create the org     |
-| keycloak.realmName           | string | `"governance"`                    | Keycloak realm name (used as org name in database) |
-| keycloak.displayName         | string | `"Governance Studio"`             | Display name for the organization                  |
-| keycloak.createPlatformAdmin | bool   | `false`                           | Also create the platform-admin user and membership |
-| keycloak.platformAdminEmail  | string | `""`                              | Admin email (defaults to admin@<global.domain>)    |
-| keycloak.url                 | string | `"http://keycloak:8080/keycloak"` | Internal Keycloak URL for API lookups              |
+| Key                       | Type   | Default               | Description                                                                                        |
+| ------------------------- | ------ | --------------------- | -------------------------------------------------------------------------------------------------- |
+| auth0.createOrganization  | bool   | `false`               | Enable the post-install hook to create the org                                                     |
+| auth0.organizationName    | string | `"governance"`        | Organization identifier in the database                                                            |
+| auth0.displayName         | string | `"Governance Studio"` | Display name for the organization                                                                  |
+| auth0.createPlatformAdmin | bool   | `false`               | Also create the platform-admin user and membership                                                 |
+| auth0.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in the Auth0 tenant                    |
+| auth0.domain              | string | `""`                  | **Required** when `createPlatformAdmin` is true. Auth0 tenant domain (e.g., `tenant.us.auth0.com`) |
+
+The hook authenticates against the Auth0 Management API using `mgmt-client-id` / `mgmt-client-secret` from the `platform-auth0` secret and resolves the admin's `user_id` via `/api/v2/users-by-email`.
 
 ### Entra ID Post-Install Hook
 
@@ -443,6 +445,19 @@ Optional post-install/post-upgrade hook that seeds the governance database with 
 | entra.createPlatformAdmin | bool   | `false`               | Also create the platform-admin user and membership                          |
 | entra.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in Entra tenant |
 | entra.tenantId            | string | `""`                  | Microsoft Entra tenant ID (required for Graph API user lookup)              |
+
+### Keycloak Post-Install Hook
+
+Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user:
+
+| Key                          | Type   | Default                           | Description                                        |
+| ---------------------------- | ------ | --------------------------------- | -------------------------------------------------- |
+| keycloak.createOrganization  | bool   | `false`                           | Enable the post-install hook to create the org     |
+| keycloak.realmName           | string | `"governance"`                    | Keycloak realm name (used as org name in database) |
+| keycloak.displayName         | string | `"Governance Studio"`             | Display name for the organization                  |
+| keycloak.createPlatformAdmin | bool   | `false`                           | Also create the platform-admin user and membership |
+| keycloak.platformAdminEmail  | string | `""`                              | Admin email (defaults to admin@<global.domain>)    |
+| keycloak.url                 | string | `"http://keycloak:8080/keycloak"` | Internal Keycloak URL for API lookups              |
 
 ## Configuration Inheritance
 
@@ -471,7 +486,7 @@ When services are deployed via the umbrella chart, they automatically inherit:
 Services require explicit configuration for:
 
 - Storage provider type (`storageProvider`, `integrityAppBlobStoreType`)
-- Storage account/bucket/container names (`azureStorageAccountName`, `gcsBucketName`, `azureStorageContainerName`, etc.)
+- Storage account/bucket/container names (`awsS3BucketName`, `azureStorageAccountName`, `azureStorageContainerName`, `gcsBucketName`, etc.)
 - Feature flags (governance-studio)
 - Service-specific settings (AI config, indicator settings, etc.)
 
@@ -599,19 +614,27 @@ helm upgrade --install governance-platform ./charts/governance-platform \
 
 Each service can independently choose its storage provider. Credentials are inherited from global configuration, but provider type and bucket/container names must be explicitly set.
 
-### Google Cloud Storage
+### AWS S3
 
 ```yaml
 global:
   secrets:
     storage:
-      gcs:
-        secretName: "platform-gcs"
+      aws_s3:
+        secretName: "platform-aws-s3"
 
 governance-service:
   config:
-    storageProvider: "gcs"
-    gcsBucketName: "your-governance-artifacts-bucket"
+    storageProvider: "aws_s3"
+    awsS3Region: "us-east-1"
+    awsS3BucketName: "your-governance-artifacts-bucket"
+
+integrity-service:
+  config:
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreAwsRegion: "us-east-1"
+    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
 ```
 
 ### Azure Blob Storage
@@ -636,49 +659,24 @@ integrity-service:
     integrityAppBlobStoreContainer: "your-integrity-store-container"
 ```
 
-### AWS S3
+### Google Cloud Storage
 
 ```yaml
 global:
   secrets:
     storage:
-      aws_s3:
-        secretName: "platform-aws-s3"
+      gcs:
+        secretName: "platform-gcs"
 
 governance-service:
   config:
-    storageProvider: "aws_s3"
-    awsS3Region: "us-east-1"
-    awsS3BucketName: "your-governance-artifacts-bucket"
-
-integrity-service:
-  config:
-    integrityAppBlobStoreType: "aws_s3"
-    integrityAppBlobStoreAwsRegion: "us-east-1"
-    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
-    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+    storageProvider: "gcs"
+    gcsBucketName: "your-governance-artifacts-bucket"
 ```
 
 ## Key Management Provider Configuration
 
 The auth-service uses a key management provider for credential signing. The provider is set globally and credentials are inherited automatically.
-
-### Azure Key Vault
-
-```yaml
-global:
-  secrets:
-    keyManagement:
-      provider: "azure_key_vault"
-      azure_key_vault:
-        secretName: "platform-azure-key-vault"
-
-auth-service:
-  config:
-    keyManagement:
-      azure_key_vault:
-        vaultUrl: "https://your-vault.vault.azure.net"
-```
 
 ### AWS KMS
 
@@ -695,6 +693,23 @@ auth-service:
     keyManagement:
       aws_kms:
         region: "us-east-1"
+```
+
+### Azure Key Vault
+
+```yaml
+global:
+  secrets:
+    keyManagement:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        secretName: "platform-azure-key-vault"
+
+auth-service:
+  config:
+    keyManagement:
+      azure_key_vault:
+        vaultUrl: "https://your-vault.vault.azure.net"
 ```
 
 ### GCP KMS
@@ -755,56 +770,6 @@ auth-service:
         managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
         apiIdentifier: "https://your-tenant.us.auth0.com/api/v2/"
 ```
-
-### Keycloak Configuration
-
-Keycloak requires a service account (confidential) client and a SPA (public) client:
-
-1. **Service Account** (Confidential) - For backend API calls (`keycloak.values.serviceAccountClientId/serviceAccountClientSecret`)
-2. **Governance Studio** (SPA/Public) - For frontend authentication (configured via `governance-studio.config` and `auth-service.config`)
-
-```yaml
-global:
-  secrets:
-    auth:
-      provider: "keycloak"
-      keycloak:
-        secretName: "platform-keycloak"
-
-    governanceWorker:
-      secretName: "platform-governance-worker"
-
-governance-studio:
-  config:
-    # SPA settings must be explicitly set (public, not secrets)
-    keycloakUrl: "https://keycloak.your-domain.com"
-    keycloakClientId: "governance-platform-frontend"
-    keycloakRealm: "governance"
-
-auth-service:
-  config:
-    idp:
-      keycloak:
-        realm: "governance"
-        adminUrl: "https://keycloak.your-domain.com"
-        clientId: "governance-platform-frontend"
-```
-
-#### Post-Install Database Seed
-
-When using Keycloak, the chart includes an optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user. Enable it by setting:
-
-```yaml
-keycloak:
-  createOrganization: true # Creates the organization record in the database
-  realmName: "governance" # Must match your Keycloak realm name
-  displayName: "Governance Studio"
-
-  createPlatformAdmin: true # Also create the platform-admin user
-  platformAdminEmail: "" # Defaults to admin@<global.domain>, looked up in Keycloak automatically
-```
-
-The hook waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
 
 ### Microsoft Entra ID Configuration
 
@@ -873,6 +838,56 @@ entra:
 The hook authenticates to Microsoft Graph API using credentials from the `platform-entra` secret to look up the admin user's Entra Object ID. It waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
 
 > **Note:** Unlike Keycloak, the `platformAdminEmail` must be explicitly set and must be an email that exists in your Microsoft Entra tenant (e.g., `user@yourorg.onmicrosoft.com` or `user@yourverifieddomain.com`).
+
+### Keycloak Configuration
+
+Keycloak requires a service account (confidential) client and a SPA (public) client:
+
+1. **Service Account** (Confidential) - For backend API calls (`keycloak.values.serviceAccountClientId/serviceAccountClientSecret`)
+2. **Governance Studio** (SPA/Public) - For frontend authentication (configured via `auth-service.config` and `governance-studio.config`)
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "keycloak"
+      keycloak:
+        secretName: "platform-keycloak"
+
+    governanceWorker:
+      secretName: "platform-governance-worker"
+
+governance-studio:
+  config:
+    # SPA settings must be explicitly set (public, not secrets)
+    keycloakUrl: "https://keycloak.your-domain.com"
+    keycloakClientId: "governance-platform-frontend"
+    keycloakRealm: "governance"
+
+auth-service:
+  config:
+    idp:
+      keycloak:
+        realm: "governance"
+        adminUrl: "https://keycloak.your-domain.com"
+        clientId: "governance-platform-frontend"
+```
+
+#### Post-Install Database Seed
+
+When using Keycloak, the chart includes an optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user. Enable it by setting:
+
+```yaml
+keycloak:
+  createOrganization: true # Creates the organization record in the database
+  realmName: "governance" # Must match your Keycloak realm name
+  displayName: "Governance Studio"
+
+  createPlatformAdmin: true # Also create the platform-admin user
+  platformAdminEmail: "" # Defaults to admin@<global.domain>, looked up in Keycloak automatically
+```
+
+The hook waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
 
 ## Environment-Specific Configurations
 
@@ -971,7 +986,7 @@ postgresql:
     persistence:
       size: 100Gi
       # Uses cluster default StorageClass when set to "".
-      # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3"
+      # Override per CSP if needed: EKS="gp3", AKS="managed-csi", GKE="standard"
       storageClass: "fast-ssd"
     resources:
       requests:
@@ -1035,17 +1050,17 @@ helm rollback governance-platform 3 -n governance
 ### Viewing Logs
 
 ```bash
+# Auth Service
+kubectl logs -f deployment/governance-platform-auth-service -n governance
+
 # Governance Service
 kubectl logs -f deployment/governance-platform-governance-service -n governance
-
-# Integrity Service
-kubectl logs -f deployment/governance-platform-integrity-service -n governance
 
 # Governance Studio
 kubectl logs -f deployment/governance-platform-governance-studio -n governance
 
-# Auth Service
-kubectl logs -f deployment/governance-platform-auth-service -n governance
+# Integrity Service
+kubectl logs -f deployment/governance-platform-integrity-service -n governance
 ```
 
 ### Checking Pod Status
@@ -1092,8 +1107,8 @@ kubectl exec -it deployment/governance-platform-governance-service -n governance
 
 - Verify auth provider matches `global.secrets.auth.provider`
 - For Auth0: check domain, client ID, and client secret
-- For Keycloak: check URL, realm, and client credentials
 - For Entra: check tenant ID, client ID, client secret, and issuer URL
+- For Keycloak: check URL, realm, and client credentials
 - Ensure auth service is running and accessible
 
 **Configuration not applying**
@@ -1107,6 +1122,11 @@ kubectl exec -it deployment/governance-platform-governance-service -n governance
 Enable debug logging for troubleshooting:
 
 ```yaml
+auth-service:
+  config:
+    logging:
+      level: "debug"
+
 governance-service:
   config:
     logLevel: "debug"
@@ -1114,21 +1134,16 @@ governance-service:
 integrity-service:
   config:
     integrityAppLoggingLogLevelDefault: "debug"
-
-auth-service:
-  config:
-    logging:
-      level: "debug"
 ```
 
 ## Health Endpoints
 
 | Service            | Endpoint                          |
 | ------------------ | --------------------------------- |
-| Governance Studio  | `GET /`                           |
-| Governance Service | `GET /governanceService/health`   |
-| Integrity Service  | `GET /integrityService/health/v1` |
 | Auth Service       | `GET /authService/health`         |
+| Governance Service | `GET /governanceService/health`   |
+| Governance Studio  | `GET /`                           |
+| Integrity Service  | `GET /integrityService/health/v1` |
 
 ### API Documentation
 
@@ -1136,9 +1151,9 @@ Each backend service exposes Swagger/OpenAPI documentation:
 
 | Service            | Swagger UI                                  |
 | ------------------ | ------------------------------------------- |
+| Auth Service       | `GET /authService/swagger/index.html`       |
 | Governance Service | `GET /governanceService/swagger/index.html` |
 | Integrity Service  | `GET /integrityService/swagger/index.html`  |
-| Auth Service       | `GET /authService/swagger/index.html`       |
 
 ## Support
 

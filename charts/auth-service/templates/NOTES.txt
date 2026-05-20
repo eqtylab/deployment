@@ -68,7 +68,7 @@ To check health:
 {{- if not $idpProvider }}
 
 WARNING: Identity provider is not configured!
-Please set: auth-service.config.idp.provider to "auth0" or "keycloak"
+Please set: auth-service.config.idp.provider to "auth0", "entra", or "keycloak"
 {{- end }}
 
 {{- if eq $idpProvider "auth0" }}

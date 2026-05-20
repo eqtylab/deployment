@@ -8,10 +8,10 @@ The Auth Service provides centralized authentication, authorization, and identit
 
 Key capabilities:
 
-- **Identity Provider Integration**: Native support for Auth0, Keycloak, and Microsoft Entra ID
+- **Identity Provider Integration**: Native support for Auth0, Microsoft Entra ID, and Keycloak
 - **RBAC Authorization**: Fine-grained permission management with caching
 - **Service Accounts**: Machine-to-machine authentication for platform workers
-- **DID Key Management**: Integration with Azure Key Vault, AWS KMS, or GCP KMS for credential signing
+- **DID Key Management**: Integration with AWS KMS, Azure Key Vault, or GCP KMS for credential signing
 - **Token Exchange**: Keycloak token exchange support for federated authentication
 
 ## Configuration Model
@@ -30,8 +30,8 @@ This allows:
 - Kubernetes 1.21+
 - Helm 3.8+
 - PostgreSQL database (provided by umbrella chart or external)
-- Authentication provider (Auth0, Keycloak, or Entra ID)
-- Key management provider: Azure Key Vault, AWS KMS, or GCP KMS (for DID key signing)
+- Authentication provider (Auth0, Entra ID, or Keycloak)
+- Key management provider: AWS KMS, Azure Key Vault, or GCP KMS (for DID key signing)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
@@ -89,6 +89,47 @@ auth-service:
         audience: "https://governance.yourcompany.com"
 ```
 
+**Microsoft Entra ID:**
+
+```yaml
+auth-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+      nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+      nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
+      nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "auth-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    idp:
+      provider: "entra"
+      issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+      entra:
+        tenantId: "your-tenant-id"
+        defaultRoles: "user"
+    # Key Management Configuration (for DID keys)
+    keyManagement:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        vaultUrl: "https://your-vault.vault.azure.net/"
+        tenantId: "your-azure-tenant-id"
+```
+
 **Keycloak:**
 
 ```yaml
@@ -140,47 +181,6 @@ auth-service:
       keyId: "auth-service-prod-001"
 ```
 
-**Microsoft Entra ID:**
-
-```yaml
-auth-service:
-  image:
-    tag: ""
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-      nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
-    hosts:
-      - host: "governance.yourcompany.com"
-        paths:
-          - path: "/authService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
-    tls:
-      - secretName: "auth-service-tls"
-        hosts:
-          - "governance.yourcompany.com"
-  config:
-    idp:
-      provider: "entra"
-      issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
-      entra:
-        tenantId: "your-tenant-id"
-        defaultRoles: "user"
-    # Key Management Configuration (for DID keys)
-    keyManagement:
-      provider: "azure_key_vault"
-      azure_key_vault:
-        vaultUrl: "https://your-vault.vault.azure.net/"
-        tenantId: "your-azure-tenant-id"
-```
-
 ### Required Configuration
 
 Beyond what is auto-configured, these values **must** be explicitly set:
@@ -191,13 +191,6 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 - `config.idp.auth0.managementAudience` - Management API audience, the URL of your Auth0 tenant's Management API (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
 - `config.idp.auth0.apiIdentifier` - API identifier, the logical identifier for your governance platform API registered in Auth0 (e.g., `https://governance.yourcompany.com`). This is distinct from `managementAudience`; it identifies _your_ API, not Auth0's Management API.
 
-**Keycloak:**
-
-- `config.idp.keycloak.realm` - Realm name (e.g., `governance`)
-- `config.idp.keycloak.adminUrl` - Keycloak server URL (e.g., `https://keycloak.example.com`)
-- `config.idp.keycloak.clientId` - Frontend SPA client ID (public, e.g., `governance-platform-frontend`)
-- `config.idp.issuer` - Recommended: OIDC issuer URL (e.g., `https://keycloak.example.com/realms/governance`)
-
 **Microsoft Entra ID:**
 
 - `config.idp.entra.tenantId` - Microsoft Entra ID tenant ID
@@ -205,16 +198,23 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 - Client ID, client secret, Graph API client ID, and Graph API client secret are auto-configured from the `global.secrets.auth.entra` secret
 - `config.idp.entra.defaultRoles` - Optional: comma-separated default roles for new users
 
-**Key Management (Azure Key Vault):**
+**Keycloak:**
 
-- `config.keyManagement.azure_key_vault.vaultUrl` - Vault URL (e.g., `https://your-vault.vault.azure.net/`)
-- `config.keyManagement.azure_key_vault.tenantId` - Azure tenant ID
-- Client ID and secret are auto-configured from the `global.secrets.keyManagement.azure_key_vault` secret
+- `config.idp.keycloak.realm` - Realm name (e.g., `governance`)
+- `config.idp.keycloak.adminUrl` - Keycloak server URL (e.g., `https://keycloak.example.com`)
+- `config.idp.keycloak.clientId` - Frontend SPA client ID (public, e.g., `governance-platform-frontend`)
+- `config.idp.issuer` - Recommended: OIDC issuer URL (e.g., `https://keycloak.example.com/realms/governance`)
 
 **Key Management (AWS KMS):**
 
 - `config.keyManagement.aws_kms.region` - AWS region (e.g., `us-east-1`)
 - Access Key ID and Secret Access Key are auto-configured from the `global.secrets.keyManagement.aws_kms` secret
+
+**Key Management (Azure Key Vault):**
+
+- `config.keyManagement.azure_key_vault.vaultUrl` - Vault URL (e.g., `https://your-vault.vault.azure.net/`)
+- `config.keyManagement.azure_key_vault.tenantId` - Azure tenant ID
+- Client ID and secret are auto-configured from the `global.secrets.keyManagement.azure_key_vault` secret
 
 **Key Management (GCP KMS):**
 
@@ -257,14 +257,14 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.postgresql.database                              | string | PostgreSQL database name                                       |
 | global.postgresql.username                              | string | PostgreSQL username                                            |
 | global.secrets.database.secretName                      | string | Name of database credentials secret                            |
-| global.secrets.auth.provider                            | string | Auth provider (auth0, keycloak, or entra)                      |
+| global.secrets.auth.provider                            | string | Auth provider (auth0, entra, or keycloak)                      |
 | global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                                  |
-| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                               |
 | global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                               |
+| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                               |
 | global.secrets.authService.secretName                   | string | Auth service security secrets name                             |
-| global.secrets.keyManagement.provider                   | string | Key management provider (azure_key_vault, aws_kms, or gcp_kms) |
-| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                        |
+| global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, or gcp_kms) |
 | global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                                |
+| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                        |
 | global.secrets.keyManagement.gcp_kms.secretName         | string | GCP KMS credentials secret name                                |
 | global.secrets.governanceWorker.secretName              | string | Worker credentials secret name                                 |
 | global.secrets.imageRegistry.secretName                 | string | Registry pull secret name                                      |
@@ -401,17 +401,17 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | ----------------------- | ------ | ----------------------------------------------------------------------- |
 | secrets.auth.auth0.name | string | Secret name (auto-configured from global.secrets.auth.auth0.secretName) |
 
-#### Keycloak Secret (only used when auth provider is Keycloak)
-
-| Key                        | Type   | Description                                                                |
-| -------------------------- | ------ | -------------------------------------------------------------------------- |
-| secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
-
 #### Entra ID Secret (only used when auth provider is Entra ID)
 
 | Key                     | Type   | Description                                                             |
 | ----------------------- | ------ | ----------------------------------------------------------------------- |
 | secrets.auth.entra.name | string | Secret name (auto-configured from global.secrets.auth.entra.secretName) |
+
+#### Keycloak Secret (only used when auth provider is Keycloak)
+
+| Key                        | Type   | Description                                                                |
+| -------------------------- | ------ | -------------------------------------------------------------------------- |
+| secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
 
 #### Auth Service Secret
 
@@ -423,8 +423,8 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 | Key                                        | Type   | Description                                                                                |
 | ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------ |
-| secrets.keyManagement.azure_key_vault.name | string | Secret name (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName) |
 | secrets.keyManagement.aws_kms.name         | string | Secret name (auto-configured from global.secrets.keyManagement.aws_kms.secretName)         |
+| secrets.keyManagement.azure_key_vault.name | string | Secret name (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName) |
 | secrets.keyManagement.gcp_kms.name         | string | Secret name (auto-configured from global.secrets.keyManagement.gcp_kms.secretName)         |
 
 #### Governance Worker Secret
@@ -492,6 +492,17 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.idp.auth0.managementClientId     | string | `""`                                 | Management API client ID (auto-configured from global.secrets.auth.auth0)     |
 | config.idp.auth0.managementClientSecret | string | `""`                                 | Management API client secret (auto-configured from global.secrets.auth.auth0) |
 
+**Entra ID Configuration (only used when provider is "entra"):**
+
+| Key                                | Type   | Default | Description                                                              |
+| ---------------------------------- | ------ | ------- | ------------------------------------------------------------------------ |
+| config.idp.entra.tenantId          | string | `""`    | Microsoft Entra ID tenant ID (**must be set**)                           |
+| config.idp.entra.clientId          | string | `""`    | OIDC client ID (auto-configured from global.secrets.auth.entra)          |
+| config.idp.entra.clientSecret      | string | `""`    | OIDC client secret (auto-configured from global.secrets.auth.entra)      |
+| config.idp.entra.graphClientId     | string | `""`    | Graph API client ID (auto-configured from global.secrets.auth.entra)     |
+| config.idp.entra.graphClientSecret | string | `""`    | Graph API client secret (auto-configured from global.secrets.auth.entra) |
+| config.idp.entra.defaultRoles      | string | `""`    | Comma-separated default roles for new users (optional)                   |
+
 **Keycloak Configuration (only used when provider is "keycloak"):**
 
 | Key                                            | Type   | Default | Description                                                                                                             |
@@ -504,27 +515,12 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.idp.keycloak.serviceAccountClientId     | string | `""`    | Service account client ID (auto-configured from global.secrets.auth.keycloak)                                           |
 | config.idp.keycloak.serviceAccountClientSecret | string | `""`    | Service account client secret (auto-configured from global.secrets.auth.keycloak)                                       |
 
-**Entra ID Configuration (only used when provider is "entra"):**
-
-| Key                                | Type   | Default | Description                                                              |
-| ---------------------------------- | ------ | ------- | ------------------------------------------------------------------------ |
-| config.idp.entra.tenantId          | string | `""`    | Microsoft Entra ID tenant ID (**must be set**)                           |
-| config.idp.entra.clientId          | string | `""`    | OIDC client ID (auto-configured from global.secrets.auth.entra)          |
-| config.idp.entra.clientSecret      | string | `""`    | OIDC client secret (auto-configured from global.secrets.auth.entra)      |
-| config.idp.entra.graphClientId     | string | `""`    | Graph API client ID (auto-configured from global.secrets.auth.entra)     |
-| config.idp.entra.graphClientSecret | string | `""`    | Graph API client secret (auto-configured from global.secrets.auth.entra) |
-| config.idp.entra.defaultRoles      | string | `""`    | Comma-separated default roles for new users (optional)                   |
-
 #### Key Management Configuration
 
 | Key                                               | Type   | Default | Description                                                                                                              |
 | ------------------------------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| config.keyManagement.provider                     | string | `""`    | Provider (`"azure_key_vault"`, `"aws_kms"`, or `"gcp_kms"`) (auto-configured from global.secrets.keyManagement.provider) |
+| config.keyManagement.provider                     | string | `""`    | Provider (`"aws_kms"`, `"azure_key_vault"`, or `"gcp_kms"`) (auto-configured from global.secrets.keyManagement.provider) |
 | config.keyManagement.cacheTTLMinutes              | int    | `15`    | DID key cache TTL in minutes                                                                                             |
-| config.keyManagement.azure_key_vault.vaultUrl     | string | `""`    | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)                  |
-| config.keyManagement.azure_key_vault.tenantId     | string | `""`    | Azure tenant ID (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)                      |
-| config.keyManagement.azure_key_vault.clientId     | string | `""`    | Azure client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                             |
-| config.keyManagement.azure_key_vault.clientSecret | string | `""`    | Azure client secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                         |
 | config.keyManagement.aws_kms.region               | string | `""`    | AWS KMS region                                                                                                           |
 | config.keyManagement.aws_kms.endpoint             | string | `""`    | AWS KMS endpoint (optional, for custom endpoints like LocalStack)                                                        |
 | config.keyManagement.aws_kms.aliasPrefix          | string | `""`    | AWS KMS alias prefix (defaults to `alias/eqtylab/did`)                                                                   |
@@ -532,6 +528,10 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.keyManagement.aws_kms.secretAccessKey      | string | `""`    | AWS secret access key (secret - auto-configured from global.secrets.keyManagement.aws_kms)                               |
 | config.keyManagement.aws_kms.sessionToken         | string | `""`    | AWS session token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)                         |
 | config.keyManagement.aws_kms.deletionWindowDays   | int    | `7`     | AWS KMS deletion window in days                                                                                          |
+| config.keyManagement.azure_key_vault.vaultUrl     | string | `""`    | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)                  |
+| config.keyManagement.azure_key_vault.tenantId     | string | `""`    | Azure tenant ID (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)                      |
+| config.keyManagement.azure_key_vault.clientId     | string | `""`    | Azure client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                             |
+| config.keyManagement.azure_key_vault.clientSecret | string | `""`    | Azure client secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                         |
 | config.keyManagement.gcp_kms.projectId            | string | `""`    | GCP project ID                                                                                                           |
 | config.keyManagement.gcp_kms.locationId           | string | `""`    | GCP location (e.g., `us-east1`)                                                                                          |
 | config.keyManagement.gcp_kms.keyRingId            | string | `""`    | GCP KMS key ring ID (defaults to `eqtylab-did`)                                                                          |
@@ -650,38 +650,6 @@ kubectl create secret generic platform-auth0 \
   --namespace governance
 ```
 
-## Keycloak Configuration
-
-### Required Keycloak Setup
-
-1. **Create a Realm** for the governance platform
-2. **Create a Confidential Client** for backend authentication
-3. **Create a Public Client** for frontend authentication
-4. **Configure Token Exchange** (if using federated auth)
-
-### Example Configuration
-
-```yaml
-config:
-  idp:
-    provider: "keycloak"
-    issuer: "https://keycloak.example.com/realms/governance"
-    keycloak:
-      realm: "governance"
-      adminUrl: "https://keycloak.example.com"
-      clientId: "governance-platform-frontend"
-      enableUserManagement: true
-
-  tokenExchange:
-    enabled: true
-    keyId: "auth-service-prod-001"
-
-secrets:
-  auth:
-    keycloak:
-      name: "platform-keycloak"
-```
-
 ## Microsoft Entra ID Configuration
 
 ### Required Entra ID Setup
@@ -721,9 +689,75 @@ kubectl create secret generic platform-entra \
   --namespace governance
 ```
 
+## Keycloak Configuration
+
+### Required Keycloak Setup
+
+1. **Create a Realm** for the governance platform
+2. **Create a Confidential Client** for backend authentication
+3. **Create a Public Client** for frontend authentication
+4. **Configure Token Exchange** (if using federated auth)
+
+### Example Configuration
+
+```yaml
+config:
+  idp:
+    provider: "keycloak"
+    issuer: "https://keycloak.example.com/realms/governance"
+    keycloak:
+      realm: "governance"
+      adminUrl: "https://keycloak.example.com"
+      clientId: "governance-platform-frontend"
+      enableUserManagement: true
+
+  tokenExchange:
+    enabled: true
+    keyId: "auth-service-prod-001"
+
+secrets:
+  auth:
+    keycloak:
+      name: "platform-keycloak"
+```
+
 ## Key Management Configuration
 
-Choose one key management provider for DID credential signing: Azure Key Vault, AWS KMS, or GCP KMS.
+Choose one key management provider for DID credential signing: AWS KMS, Azure Key Vault, or GCP KMS.
+
+### AWS KMS
+
+#### Required AWS Setup
+
+1. **Create an IAM user or role** with KMS permissions
+2. **Grant KMS permissions** (CreateKey, Sign, Verify, GetPublicKey, DescribeKey, CreateAlias, ScheduleKeyDeletion)
+
+#### Example Configuration
+
+```yaml
+config:
+  keyManagement:
+    provider: "aws_kms"
+    aws_kms:
+      region: "us-east-1"
+      # endpoint: ""           # Optional: custom endpoint (e.g., for LocalStack)
+      # aliasPrefix: "alias/eqtylab/did"  # Optional: defaults to alias/eqtylab/did
+
+secrets:
+  keyManagement:
+    aws_kms:
+      name: "platform-aws-kms"
+```
+
+#### Secret Creation
+
+```bash
+kubectl create secret generic platform-aws-kms \
+  --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
+  --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
+  --from-literal=session-token="" \
+  --namespace governance
+```
 
 ### Azure Key Vault
 
@@ -757,40 +791,6 @@ kubectl create secret generic platform-azure-key-vault \
   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
-  --namespace governance
-```
-
-### AWS KMS
-
-#### Required AWS Setup
-
-1. **Create an IAM user or role** with KMS permissions
-2. **Grant KMS permissions** (CreateKey, Sign, Verify, GetPublicKey, DescribeKey, CreateAlias, ScheduleKeyDeletion)
-
-#### Example Configuration
-
-```yaml
-config:
-  keyManagement:
-    provider: "aws_kms"
-    aws_kms:
-      region: "us-east-1"
-      # endpoint: ""           # Optional: custom endpoint (e.g., for LocalStack)
-      # aliasPrefix: "alias/eqtylab/did"  # Optional: defaults to alias/eqtylab/did
-
-secrets:
-  keyManagement:
-    aws_kms:
-      name: "platform-aws-kms"
-```
-
-#### Secret Creation
-
-```bash
-kubectl create secret generic platform-aws-kms \
-  --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
-  --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
-  --from-literal=session-token="" \
   --namespace governance
 ```
 
@@ -851,7 +851,7 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/auth-service -n governance -- env | grep -E 'IDP|AUTH0|KEYCLOAK|ENTRA|VAULT|KMS|GCP|KEY_MANAGEMENT|DATABASE|DB_'
+kubectl exec -it deployment/auth-service -n governance -- env | grep -E 'IDP|AUTH0|ENTRA|KEYCLOAK|VAULT|KMS|GCP|KEY_MANAGEMENT|DATABASE|DB_'
 ```
 
 View all environment variables:
@@ -871,7 +871,7 @@ kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/he
 **Authentication failures**
 
 - Verify `config.idp.provider` matches your identity provider
-- Check the Auth0/Keycloak/Entra domain and client credentials
+- Check the Auth0/Entra/Keycloak domain and client credentials
 - Ensure `config.idp.issuer` is correct
 - For Entra, verify `config.idp.entra.tenantId` is set and the Graph API credentials are correct
 - For development, try `config.idp.skipIssuerVerification: true`

@@ -2,10 +2,10 @@
 # KEYCLOAK BOOTSTRAP - HELM VALUES CONFIGURATION
 # =============================================================================
 # This values file configures the Keycloak Bootstrap job for initializing
-# Keycloak with realms, clients, scopes, and users.
+# Keycloak with realms, clients, scopes, and users
 #
 # The bootstrap job runs as a Kubernetes Job that configures Keycloak via
-# its Admin REST API. It is typically run once during initial deployment.
+# its Admin REST API. It is typically run once during initial deployment
 # =============================================================================
 
 # -- Name Override
@@ -408,8 +408,8 @@ users:
 
   # -- Admin User
   # @default -- See values below
-  # This user is the initial admin account for logging into Governance Studio.
-  # It is created in the Keycloak governance realm (not the Keycloak server admin).
+  # This user is the initial admin account for logging into Governance Studio
+  # It is created in the Keycloak governance realm (not the Keycloak server admin)
   admin:
     # -- Enabled
     # @default -- `true`

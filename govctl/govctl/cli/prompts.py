@@ -82,7 +82,7 @@ def collect_interactive_config(
     else:
         cloud_choice = Prompt.ask(
             "  Cloud Provider",
-            choices=["gcp", "aws", "azure"],
+            choices=["aws", "azure", "gcp"],
             default="gcp",
         )
         cloud_provider = CloudProvider(cloud_choice)
@@ -116,18 +116,40 @@ def collect_interactive_config(
     console.print("[bold]Key Management Configuration (for DID keys):[/bold]")
     km_defaults = {
         CloudProvider.AWS: "aws_kms",
-        CloudProvider.GCP: "gcp_kms",
         CloudProvider.AZURE: "azure_key_vault",
+        CloudProvider.GCP: "gcp_kms",
     }
     km_default = km_defaults[cloud_provider]
     km_choice = Prompt.ask(
         "  Key Management Provider",
-        choices=["azure_key_vault", "aws_kms", "gcp_kms"],
+        choices=["aws_kms", "azure_key_vault", "gcp_kms"],
         default=km_default,
     )
     config.key_management_provider = KeyManagementProvider(km_choice)
 
-    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+    if config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        while True:
+            aws_kms_region = Prompt.ask(
+                "  AWS KMS Region",
+                default=config.cloud_region or "us-east-1",
+            )
+            if is_valid_aws_region(aws_kms_region):
+                break
+            console.print(
+                "[red]Invalid AWS region format. Expected format: us-east-1, eu-west-2, etc.[/red]"
+            )
+        config.aws_kms_region = aws_kms_region
+        aws_kms_endpoint = Prompt.ask(
+            "  AWS KMS Endpoint (optional, for custom endpoints)",
+            default="",
+        )
+        config.aws_kms_endpoint = aws_kms_endpoint
+        aws_kms_alias_prefix = Prompt.ask(
+            "  AWS KMS Alias Prefix",
+            default="alias/eqtylab/did",
+        )
+        config.aws_kms_alias_prefix = aws_kms_alias_prefix
+    elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
         while True:
             keyvault_url = Prompt.ask(
                 "  Azure Key Vault URL",
@@ -150,28 +172,6 @@ def collect_interactive_config(
                 "[red]Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx[/red]"
             )
         config.azure_tenant_id = kv_tenant_id
-    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
-        while True:
-            aws_kms_region = Prompt.ask(
-                "  AWS KMS Region",
-                default=config.cloud_region or "us-east-1",
-            )
-            if is_valid_aws_region(aws_kms_region):
-                break
-            console.print(
-                "[red]Invalid AWS region format. Expected format: us-east-1, eu-west-2, etc.[/red]"
-            )
-        config.aws_kms_region = aws_kms_region
-        aws_kms_endpoint = Prompt.ask(
-            "  AWS KMS Endpoint (optional, for custom endpoints)",
-            default="",
-        )
-        config.aws_kms_endpoint = aws_kms_endpoint
-        aws_kms_alias_prefix = Prompt.ask(
-            "  AWS KMS Alias Prefix",
-            default="alias/eqtylab/did",
-        )
-        config.aws_kms_alias_prefix = aws_kms_alias_prefix
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
         while True:
             gcp_kms_project_id = Prompt.ask(
@@ -215,7 +215,7 @@ def collect_interactive_config(
     else:
         auth_choice = Prompt.ask(
             "  Auth Provider",
-            choices=["auth0", "keycloak", "entra"],
+            choices=["auth0", "entra", "keycloak"],
             default="keycloak",
         )
         auth_provider = AuthProvider(auth_choice)
@@ -246,6 +246,18 @@ def collect_interactive_config(
                 "[red]Invalid Auth0 audience. Expected format: https://your-tenant.us.auth0.com/api/v2/[/red]"
             )
         config.auth0_audience = auth0_audience
+    elif auth_provider == AuthProvider.ENTRA:
+        while True:
+            entra_tenant_id = Prompt.ask(
+                "  Entra Tenant ID",
+                default="",
+            )
+            if not entra_tenant_id or is_valid_uuid(entra_tenant_id):
+                break
+            console.print(
+                "[red]Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx[/red]"
+            )
+        config.entra_tenant_id = entra_tenant_id
     elif auth_provider == AuthProvider.KEYCLOAK:
         keycloak_default = f"https://{domain_value}/keycloak"
         while True:
@@ -270,18 +282,6 @@ def collect_interactive_config(
                 "[red]Invalid realm name. Use only letters, numbers, hyphens, and underscores.[/red]"
             )
         config.keycloak_realm = keycloak_realm
-    elif auth_provider == AuthProvider.ENTRA:
-        while True:
-            entra_tenant_id = Prompt.ask(
-                "  Entra Tenant ID",
-                default="",
-            )
-            if not entra_tenant_id or is_valid_uuid(entra_tenant_id):
-                break
-            console.print(
-                "[red]Invalid UUID format. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx[/red]"
-            )
-        config.entra_tenant_id = entra_tenant_id
 
     # --- Image registry ---
     console.print()

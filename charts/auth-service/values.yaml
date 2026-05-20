@@ -2,10 +2,10 @@
 # AUTH SERVICE - HELM VALUES CONFIGURATION
 # =============================================================================
 # This values file configures the Auth Service for identity provider
-# integration and authentication management.
+# integration and authentication management
 #
 # When deployed via the umbrella chart (governance-platform), most values
-# are auto-configured from global settings.
+# are auto-configured from global settings
 # =============================================================================
 
 # -- Enable Service
@@ -336,19 +336,19 @@ secrets:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.auth.auth0.secretName)
       name: ""
-    # -- Keycloak Secret
-    # @default -- See values below
-    # Only used when provider is "keycloak"
-    keycloak:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
-      name: ""
     # -- Entra Secret
     # @default -- See values below
     # Only used when provider is "entra"
     entra:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+      name: ""
+    # -- Keycloak Secret
+    # @default -- See values below
+    # Only used when provider is "keycloak"
+    keycloak:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
       name: ""
 
   # -- Auth Service Secrets
@@ -362,19 +362,19 @@ secrets:
   # @default -- See values below
   # For DID key signing
   keyManagement:
-    # -- Azure Key Vault Secret
-    # @default -- See values below
-    # Only used when provider is "azure_key_vault"
-    azure_key_vault:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName)
-      name: ""
     # -- AWS KMS Secret
     # @default -- See values below
     # Only used when provider is "aws_kms"
     aws_kms:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.keyManagement.aws_kms.secretName)
+      name: ""
+    # -- Azure Key Vault Secret
+    # @default -- See values below
+    # Only used when provider is "azure_key_vault"
+    azure_key_vault:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName)
       name: ""
     # -- GCP KMS Secret
     # @default -- See values below
@@ -487,7 +487,7 @@ config:
   idp:
     # -- Provider
     # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-    # Options: auth0, keycloak, entra
+    # Options: auth0, entra, keycloak
     provider: ""
     # -- OIDC Issuer URL
     # @default -- `""`
@@ -543,6 +543,35 @@ config:
       # Only used when provider is "auth0"
       managementClientSecret: ""
 
+    # -- Microsoft Entra ID Configuration
+    # @default -- See values below
+    # Only used when provider is "entra"
+    entra:
+      # -- Tenant ID
+      # @default -- `""`
+      # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+      tenantId: ""
+      # -- Client ID
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # OIDC client ID for token validation
+      clientId: ""
+      # -- Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # OIDC client secret
+      clientSecret: ""
+      # -- Graph API Client ID
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # App registration client ID with Graph API permissions
+      graphClientId: ""
+      # -- Graph API Client Secret
+      # @default -- `""` (auto-configured from global.secrets.auth.entra)
+      # Corresponding client secret for Graph API
+      graphClientSecret: ""
+      # -- Default Roles
+      # @default -- `""`
+      # Comma-separated default roles for new users (optional)
+      defaultRoles: ""
+
     # -- Keycloak Configuration
     # @default -- See values below
     # Only used when provider is "keycloak"
@@ -576,35 +605,6 @@ config:
       # Only used when provider is "keycloak"
       serviceAccountClientSecret: ""
 
-    # -- Microsoft Entra ID Configuration
-    # @default -- See values below
-    # Only used when provider is "entra"
-    entra:
-      # -- Tenant ID
-      # @default -- `""`
-      # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
-      tenantId: ""
-      # -- Client ID
-      # @default -- `""` (auto-configured from global.secrets.auth.entra)
-      # OIDC client ID for token validation
-      clientId: ""
-      # -- Client Secret
-      # @default -- `""` (auto-configured from global.secrets.auth.entra)
-      # OIDC client secret
-      clientSecret: ""
-      # -- Graph API Client ID
-      # @default -- `""` (auto-configured from global.secrets.auth.entra)
-      # App registration client ID with Graph API permissions
-      graphClientId: ""
-      # -- Graph API Client Secret
-      # @default -- `""` (auto-configured from global.secrets.auth.entra)
-      # Corresponding client secret for Graph API
-      graphClientSecret: ""
-      # -- Default Roles
-      # @default -- `""`
-      # Comma-separated default roles for new users (optional)
-      defaultRoles: ""
-
   # ---------------------------------------------------------------------------
   # Key Management Configuration
   # ---------------------------------------------------------------------------
@@ -614,29 +614,12 @@ config:
   keyManagement:
     # -- Provider
     # @default -- `""` (auto-configured from global.secrets.keyManagement.provider)
-    # Options: azure_key_vault, aws_kms, gcp_kms
+    # Options: aws_kms, azure_key_vault, gcp_kms
     provider: ""
     # -- Cache TTL Minutes
     # @default -- `15`
     # DID Key cache TTL in minutes
     cacheTTLMinutes: 15
-
-    # -- Azure Key Vault Configuration
-    # @default -- See values below
-    # Only used when provider is "azure_key_vault"
-    azure_key_vault:
-      # -- Vault URL
-      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
-      vaultUrl: ""
-      # -- Tenant ID
-      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
-      tenantId: ""
-      # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
-      # @default -- `""`
-      clientId: ""
-      # -- Client Secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
-      # @default -- `""`
-      clientSecret: ""
 
     # -- AWS KMS Configuration
     # @default -- See values below
@@ -663,6 +646,23 @@ config:
       # -- AWS KMS Deletion Window Days
       # @default -- `7`
       deletionWindowDays: 7
+
+    # -- Azure Key Vault Configuration
+    # @default -- See values below
+    # Only used when provider is "azure_key_vault"
+    azure_key_vault:
+      # -- Vault URL
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
+      vaultUrl: ""
+      # -- Tenant ID
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
+      tenantId: ""
+      # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+      # @default -- `""`
+      clientId: ""
+      # -- Client Secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+      # @default -- `""`
+      clientSecret: ""
 
     # -- GCP KMS Configuration
     # @default -- See values below

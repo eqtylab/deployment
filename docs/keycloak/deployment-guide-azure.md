@@ -57,9 +57,9 @@ flowchart TD
 
 | Service                | Language | Description                                   | Ingress Path          |
 | ---------------------- | -------- | --------------------------------------------- | --------------------- |
-| **governance-studio**  | React    | Web UI for governance workflows               | `/`                   |
-| **governance-service** | Go       | Backend API, workflow engine, worker          | `/governanceService/` |
 | **auth-service**       | Go       | Authentication, authorization, token exchange | `/authService/`       |
+| **governance-service** | Go       | Backend API, workflow engine, worker          | `/governanceService/` |
+| **governance-studio**  | React    | Web UI for governance workflows               | `/`                   |
 | **integrity-service**  | Rust     | Verifiable credentials and lineage tracking   | `/integrityService/`  |
 | **PostgreSQL**         | —        | Shared database (Bitnami Helm chart)          | Internal only         |
 
@@ -88,14 +88,14 @@ charts/
 │   ├── values.yaml          # Default values for all services
 │   ├── templates/           # Shared resources (secrets, config)
 │   └── examples/            # Ready-to-use values files
-│       ├── values-keycloak.yaml    # Keycloak deployment example
 │       ├── values-auth0.yaml       # Auth0 deployment example
 │       ├── values-entra.yaml       # Microsoft Entra ID deployment example
+│       ├── values-keycloak.yaml    # Keycloak deployment example
 │       └── secrets-sample.yaml     # Secrets template
-├── governance-studio/       # Frontend subchart
-├── governance-service/      # Backend API subchart
-├── integrity-service/       # Credentials/lineage subchart
 ├── auth-service/            # Authentication subchart
+├── governance-service/      # Backend API subchart
+├── governance-studio/       # Frontend subchart
+├── integrity-service/       # Credentials/lineage subchart
 └── keycloak-bootstrap/      # Keycloak realm/client configuration (standalone)
 ```
 
@@ -164,10 +164,10 @@ The end-to-end deployment follows this order:
 
 | Component          | CPU Request | Memory Request | Storage  |
 | ------------------ | ----------- | -------------- | -------- |
-| governance-service | 250m        | 256Mi          | —        |
 | auth-service       | 250m        | 256Mi          | —        |
-| integrity-service  | 250m        | 256Mi          | —        |
+| governance-service | 250m        | 256Mi          | —        |
 | governance-studio  | 100m        | 128Mi          | —        |
+| integrity-service  | 250m        | 256Mi          | —        |
 | PostgreSQL         | 500m        | 1Gi            | 10Gi PVC |
 
 ### Keycloak Instance
@@ -207,9 +207,9 @@ The platform uses a **single domain** with path-based routing:
 
 | URL Path                                                | Service                  |
 | ------------------------------------------------------- | ------------------------ |
-| `https://governance.your-domain.com/`                   | governance-studio (UI)   |
-| `https://governance.your-domain.com/governanceService/` | governance-service (API) |
 | `https://governance.your-domain.com/authService/`       | auth-service             |
+| `https://governance.your-domain.com/governanceService/` | governance-service (API) |
+| `https://governance.your-domain.com/`                   | governance-studio (UI)   |
 | `https://governance.your-domain.com/integrityService/`  | integrity-service        |
 
 Keycloak typically runs on a **separate domain** (e.g., `https://keycloak.your-domain.com`) or on the **same domain** under a subpath (e.g., `https://governance.your-domain.com/keycloak`).
@@ -1217,9 +1217,9 @@ Key differences between services:
 
 | Service            | Path Pattern                   | Notes                                                                                                                           |
 | ------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| governance-studio  | `/` (pathType: Prefix)         | No regex or rewrite annotations                                                                                                 |
-| governance-service | `/governanceService(/\|$)(.*)` | Regex rewrite to `/$2`                                                                                                          |
 | auth-service       | `/authService(/\|$)(.*)`       | Regex rewrite + extra buffer size annotations (`proxy-buffer-size`, `client-header-buffer-size`, `large-client-header-buffers`) |
+| governance-service | `/governanceService(/\|$)(.*)` | Regex rewrite to `/$2`                                                                                                          |
+| governance-studio  | `/` (pathType: Prefix)         | No regex or rewrite annotations                                                                                                 |
 | integrity-service  | `/integrityService(/\|$)(.*)`  | Regex rewrite + `proxy-body-size: "0"` (unlimited)                                                                              |
 
 > **Note:** All four services must use the same `tls.secretName` (e.g., `prod-tls-secret`). cert-manager creates this secret automatically when it provisions the TLS certificate.
@@ -1476,14 +1476,14 @@ The hook is idempotent — it runs on every `helm upgrade` and safely skips reco
 ```bash
 # All services should return healthy responses (uses $DOMAIN from environment variables)
 
-# Governance Studio (should return 200)
-curl -s -o /dev/null -w "%{http_code}" https://$DOMAIN/
+# Auth Service health
+curl -s https://$DOMAIN/authService/health | jq .
 
 # Governance Service health
 curl -s https://$DOMAIN/governanceService/health | jq .
 
-# Auth Service health
-curl -s https://$DOMAIN/authService/health | jq .
+# Governance Studio (should return 200)
+curl -s -o /dev/null -w "%{http_code}" https://$DOMAIN/
 
 # Integrity Service health
 curl -s https://$DOMAIN/integrityService/health/v1 | jq .
@@ -1571,9 +1571,9 @@ The user can then log in to Governance Studio with their Keycloak credentials.
 
 | Resource                | URL                                                                                              |
 | ----------------------- | ------------------------------------------------------------------------------------------------ |
-| Governance Studio       | `https://governance.your-domain.com/`                                                            |
-| Governance Service API  | `https://governance.your-domain.com/governanceService/`                                          |
 | Auth Service API        | `https://governance.your-domain.com/authService/`                                                |
+| Governance Service API  | `https://governance.your-domain.com/governanceService/`                                          |
+| Governance Studio       | `https://governance.your-domain.com/`                                                            |
 | Integrity Service API   | `https://governance.your-domain.com/integrityService/`                                           |
 | Keycloak Admin Console  | `https://governance.your-domain.com/keycloak/admin`                                              |
 | Keycloak Realm Settings | `https://governance.your-domain.com/keycloak/admin/governance/console`                           |

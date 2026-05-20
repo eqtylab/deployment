@@ -31,7 +31,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://../integrity-service"
     condition: integrity-service.enabled
-  # PostgreSQL - used by governance-service, auth-service, and integrity services
+  # PostgreSQL - used by auth-service, governance-service, and integrity-service
   - name: postgresql
     version: "~18.1.1" # Bitnami chart version
     repository: "https://charts.bitnami.com/bitnami"

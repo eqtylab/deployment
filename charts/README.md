@@ -4,16 +4,17 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 
 ## Chart Catalog
 
-| Chart                                       | Type     | Description                                           |
-| ------------------------------------------- | -------- | ----------------------------------------------------- |
-| [auth-service](auth-service/)               | Subchart | Go-based authentication and authorization service     |
-| [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job |
+| Chart                                       | Type     | Description                                                  |
+| ------------------------------------------- | -------- | ------------------------------------------------------------ |
+| [auth-service](auth-service/)               | Subchart | Go-based authentication and authorization service            |
+| [auth0-bootstrap](auth0-bootstrap/)         | Utility  | Auth0 application, API, and user configuration job           |
+| [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job        |
 | [governance-ops](governance-ops/)           | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
-| [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)            |
-| [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine              |
-| [governance-studio](governance-studio/)     | Subchart | React-based frontend application                      |
-| [integrity-service](integrity-service/)     | Subchart | Rust-based verifiable credentials and lineage service |
-| [keycloak-bootstrap](keycloak-bootstrap/)   | Utility  | Keycloak realm and client configuration job           |
+| [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)                   |
+| [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine                     |
+| [governance-studio](governance-studio/)     | Subchart | React-based frontend application                             |
+| [integrity-service](integrity-service/)     | Subchart | Rust-based verifiable credentials and lineage service        |
+| [keycloak-bootstrap](keycloak-bootstrap/)   | Utility  | Keycloak realm and client configuration job                  |
 
 ## Architecture
 
@@ -22,6 +23,7 @@ The chart repository is organized using an **umbrella chart pattern**:
 ```
 charts/
 ├── auth-service/            # Authentication subchart
+├── auth0-bootstrap/         # Auth0 configuration utility
 ├── entra-bootstrap/         # Entra ID configuration utility
 ├── governance-ops/          # Operational monitoring (dashboards, alerts)
 ├── governance-platform/     # Umbrella chart (deploy this for full platform)
@@ -60,9 +62,9 @@ The platform requires an identity provider for authentication. Choose one and co
 
 | Provider | What You Need                                                     |
 | -------- | ----------------------------------------------------------------- |
+| Auth0    | An Auth0 tenant with API and SPA applications                     |
 | Entra ID | Azure tenant with admin access to create app registrations        |
 | Keycloak | A running Keycloak instance (can be deployed in the same cluster) |
-| Auth0    | An Auth0 tenant with API and SPA applications                     |
 
 **2. Provision cloud infrastructure**
 
@@ -70,8 +72,8 @@ The platform requires object storage (for artifacts) and a key vault (for DID ke
 
 | Provider | Storage                          | Key Vault       |
 | -------- | -------------------------------- | --------------- |
-| Azure    | Storage Account + Blob Container | Azure Key Vault |
 | AWS      | S3 Bucket                        | Secrets Manager |
+| Azure    | Storage Account + Blob Container | Azure Key Vault |
 | GCP      | GCS Bucket                       | Cloud KMS       |
 
 **3. Configure networking and TLS**
@@ -100,7 +102,7 @@ govctl init
 # Values:
 cp governance-platform/examples/values-<provider>.yaml values.yaml
 
-# Bootstrap (Keycloak or Entra only):
+# Bootstrap (Auth0, Entra, or Keycloak):
 cp <provider>-bootstrap/examples/values.yaml bootstrap-values.yaml
 
 # Secrets:
@@ -113,11 +115,17 @@ Edit each file with your environment-specific settings. See the [deployment guid
 
 Either pass `secrets.yaml` during helm install (`--values secrets.yaml`), or create them manually with `kubectl`. See [governance-platform/README.md](governance-platform/README.md) for the full list of required secrets.
 
-**7. Run IdP bootstrap** (Keycloak or Entra only)
+**7. Run IdP bootstrap**
 
-This creates the required identity provider configuration (app registrations for Entra, realm/clients for Keycloak):
+This creates the required identity provider configuration (apps/API/users for Auth0, app registrations for Entra, realm/clients for Keycloak):
 
 ```bash
+# Auth0
+helm upgrade --install auth0-bootstrap ./auth0-bootstrap \
+  --namespace governance \
+  --values bootstrap-values.yaml \
+  --wait --timeout 10m
+
 # Entra
 helm upgrade --install entra-bootstrap ./entra-bootstrap \
   --namespace governance \
@@ -131,7 +139,7 @@ helm upgrade --install keycloak-bootstrap ./keycloak-bootstrap \
   --wait --timeout 10m
 ```
 
-Helper scripts are also available in `scripts/entra/` and `scripts/keycloak/` — see the [deployment guides](../docs/) for details.
+Helper scripts are also available in `scripts/auth0/`, `scripts/entra/`, and `scripts/keycloak/` — see the [deployment guides](../docs/) for details.
 
 **8. Deploy**
 
@@ -194,21 +202,29 @@ The `governance-platform/examples/` directory contains complete deployment examp
 
 The `docs/` directory contains step-by-step deployment guides organized by auth provider and cloud platform:
 
+**Auth0**
+
+| Guide                                                                | Cloud Platform                          |
+| -------------------------------------------------------------------- | --------------------------------------- |
+| [deployment-guide-aws.md](../docs/auth0/deployment-guide-aws.md)     | Auth0 + AWS (S3, KMS)                   |
+| [deployment-guide-azure.md](../docs/auth0/deployment-guide-azure.md) | Auth0 + Azure (Blob Storage, Key Vault) |
+| [deployment-guide-gcp.md](../docs/auth0/deployment-guide-gcp.md)     | Auth0 + GCP (GCS, GCP KMS)              |
+
 **Entra ID**
 
 | Guide                                                                | Cloud Platform                             |
 | -------------------------------------------------------------------- | ------------------------------------------ |
-| [deployment-guide-azure.md](../docs/entra/deployment-guide-azure.md) | Entra ID + Azure (Blob Storage, Key Vault) |
 | [deployment-guide-aws.md](../docs/entra/deployment-guide-aws.md)     | Entra ID + AWS (S3, KMS)                   |
-| [deployment-guide-gcp.md](../docs/entra/deployment-guide-gcp.md)     | Entra ID + GCP (GCS, Azure Key Vault)      |
+| [deployment-guide-azure.md](../docs/entra/deployment-guide-azure.md) | Entra ID + Azure (Blob Storage, Key Vault) |
+| [deployment-guide-gcp.md](../docs/entra/deployment-guide-gcp.md)     | Entra ID + GCP (GCS, GCP KMS)              |
 
 **Keycloak**
 
 | Guide                                                                   | Cloud Platform                             |
 | ----------------------------------------------------------------------- | ------------------------------------------ |
-| [deployment-guide-azure.md](../docs/keycloak/deployment-guide-azure.md) | Keycloak + Azure (Blob Storage, Key Vault) |
 | [deployment-guide-aws.md](../docs/keycloak/deployment-guide-aws.md)     | Keycloak + AWS (S3, KMS)                   |
-| [deployment-guide-gcp.md](../docs/keycloak/deployment-guide-gcp.md)     | Keycloak + GCP (GCS, Azure Key Vault)      |
+| [deployment-guide-azure.md](../docs/keycloak/deployment-guide-azure.md) | Keycloak + Azure (Blob Storage, Key Vault) |
+| [deployment-guide-gcp.md](../docs/keycloak/deployment-guide-gcp.md)     | Keycloak + GCP (GCS, GCP KMS)              |
 
 ## Development
 
@@ -297,16 +313,17 @@ The umbrella chart (`governance-platform`) version is incremented when:
 
 ## Documentation
 
-| Document                                                       | Description                             |
-| -------------------------------------------------------------- | --------------------------------------- |
-| [auth-service/README.md](auth-service/README.md)               | Authentication service configuration    |
-| [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup         |
-| [governance-ops/README.md](governance-ops/README.md)           | Operational monitoring setup            |
-| [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide      |
-| [governance-service/README.md](governance-service/README.md)   | Backend API configuration               |
-| [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration                  |
-| [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration       |
-| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration     |
+| Document                                                       | Description                          |
+| -------------------------------------------------------------- | ------------------------------------ |
+| [auth-service/README.md](auth-service/README.md)               | Authentication service configuration |
+| [auth0-bootstrap/README.md](auth0-bootstrap/README.md)         | Auth0 application/API/user setup     |
+| [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup      |
+| [governance-ops/README.md](governance-ops/README.md)           | Operational monitoring setup         |
+| [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide   |
+| [governance-service/README.md](governance-service/README.md)   | Backend API configuration            |
+| [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration               |
+| [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration    |
+| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration  |
 
 ## Support
 

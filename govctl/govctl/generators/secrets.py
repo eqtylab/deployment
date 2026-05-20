@@ -123,15 +123,6 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "mgmtClientSecret": _required("Auth0 Management API Client Secret"),
             },
         }
-    elif config.auth_provider == AuthProvider.KEYCLOAK:
-        secrets["auth"]["keycloak"] = {
-            "secretName": "platform-keycloak",
-            "values": {
-                "serviceAccountClientId": "governance-platform-backend",
-                "serviceAccountClientSecret": _required("Keycloak client secret"),
-                "tokenExchangePrivateKey": _generate_rsa_private_key(),
-            },
-        }
     elif config.auth_provider == AuthProvider.ENTRA:
         secrets["auth"]["entra"] = {
             "secretName": "platform-entra",
@@ -141,6 +132,15 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "tenantId": config.entra_tenant_id or _required("Entra Tenant ID"),
                 "graphClientId": _required("Microsoft Graph API Client ID"),
                 "graphClientSecret": _required("Microsoft Graph API Client Secret"),
+            },
+        }
+    elif config.auth_provider == AuthProvider.KEYCLOAK:
+        secrets["auth"]["keycloak"] = {
+            "secretName": "platform-keycloak",
+            "values": {
+                "serviceAccountClientId": "governance-platform-backend",
+                "serviceAccountClientSecret": _required("Keycloak client secret"),
+                "tokenExchangePrivateKey": _generate_rsa_private_key(),
             },
         }
 
@@ -156,16 +156,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
 
     # Storage secrets based on cloud provider
     secrets["storage"] = {}
-    if config.cloud_provider == CloudProvider.GCP:
-        secrets["storage"]["gcs"] = {
-            "secretName": "platform-gcs",
-            "values": {
-                "serviceAccountJson": _required(
-                    "Base64-encoded GCP service account JSON"
-                ),
-            },
-        }
-    elif config.cloud_provider == CloudProvider.AWS:
+    if config.cloud_provider == CloudProvider.AWS:
         secrets["storage"]["aws_s3"] = {
             "secretName": "platform-aws-s3",
             "values": {
@@ -181,13 +172,31 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "connectionString": _required("Azure Storage Connection String"),
             },
         }
+    elif config.cloud_provider == CloudProvider.GCP:
+        secrets["storage"]["gcs"] = {
+            "secretName": "platform-gcs",
+            "values": {
+                "serviceAccountJson": _required(
+                    "Base64-encoded GCP service account JSON"
+                ),
+            },
+        }
 
     # Key Management (required for DID keys)
     secrets["keyManagement"] = {
         "provider": config.key_management_provider.value,
     }
 
-    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+    if config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        secrets["keyManagement"]["aws_kms"] = {
+            "secretName": "platform-aws-kms",
+            "values": {
+                "accessKeyId": _required("AWS Access Key ID for KMS"),
+                "secretAccessKey": _required("AWS Secret Access Key for KMS"),
+                "sessionToken": "",
+            },
+        }
+    elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
         secrets["keyManagement"]["azure_key_vault"] = {
             "secretName": "platform-azure-key-vault",
             "values": {
@@ -196,15 +205,6 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "tenantId": config.azure_tenant_id or _required("Azure Tenant ID"),
                 "vaultUrl": config.azure_key_vault_url
                 or _required("Azure Key Vault URL"),
-            },
-        }
-    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
-        secrets["keyManagement"]["aws_kms"] = {
-            "secretName": "platform-aws-kms",
-            "values": {
-                "accessKeyId": _required("AWS Access Key ID for KMS"),
-                "secretAccessKey": _required("AWS Secret Access Key for KMS"),
-                "sessionToken": "",
             },
         }
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:

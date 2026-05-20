@@ -1,9 +1,9 @@
 # Auth0 Configuration Example
-# Minimal configuration for deploying Auth Service with Auth0.
-# For all available values, see the chart's values.yaml and README.md.
+# Minimal configuration for deploying Auth Service with Auth0
+# For all available values, see the chart's values.yaml and README.md
 #
 # Usage:
-#   Set these values under the `auth-service:` key in your umbrella values file.
+#   Set these values under the `auth-service:` key in your umbrella values file
 
 image:
   tag: ""
@@ -43,17 +43,17 @@ config:
 
   # Key Management Configuration (for DID keys)
   keyManagement:
-    provider: "azure_key_vault"
-    azure_key_vault:
-      vaultUrl: "https://your-keyvault.vault.azure.net/"
-      tenantId: "your-azure-tenant-id"
-
     # Key Management - AWS KMS (uncomment to use instead)
     # provider: "aws_kms"
     # aws_kms:
     #   region: "us-east-1"
     #   endpoint: ""
     #   aliasPrefix: "alias/eqtylab/did"
+
+    provider: "azure_key_vault"
+    azure_key_vault:
+      vaultUrl: "https://your-keyvault.vault.azure.net/"
+      tenantId: "your-azure-tenant-id"
 
     # Key Management - GCP KMS (uncomment to use instead)
     # provider: "gcp_kms"

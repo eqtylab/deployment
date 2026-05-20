@@ -1,9 +1,9 @@
 # Microsoft Entra ID Configuration Example
-# Minimal configuration for deploying Governance Service with Microsoft Entra ID.
-# For all available values, see the chart's values.yaml and README.md.
+# Minimal configuration for deploying Governance Service with Microsoft Entra ID
+# For all available values, see the chart's values.yaml and README.md
 #
 # Usage:
-#   Set these values under the `governance-service:` key in your umbrella values file.
+#   Set these values under the `governance-service:` key in your umbrella values file
 
 image:
   tag: ""
@@ -50,6 +50,11 @@ config:
   appEnv: "production"
   logLevel: "info"
 
+  # Storage Configuration - AWS S3 (uncomment to use instead)
+  # storageProvider: "aws_s3"
+  # awsS3Region: "us-east-1"
+  # awsS3BucketName: "your-governance-artifacts-bucket"
+
   # Storage Configuration - Azure Blob
   storageProvider: "azure_blob"
   azureStorageAccountName: "your-storage-account"
@@ -58,11 +63,6 @@ config:
   # Storage Configuration - GCS (uncomment to use instead)
   # storageProvider: "gcs"
   # gcsBucketName: "your-governance-artifacts-bucket"
-
-  # Storage Configuration - AWS S3 (uncomment to use instead)
-  # storageProvider: "aws_s3"
-  # awsS3Region: "us-east-1"
-  # awsS3BucketName: "your-governance-artifacts-bucket"
 
   # Microsoft Entra ID Configuration
   entraTenantId: "your-tenant-id"

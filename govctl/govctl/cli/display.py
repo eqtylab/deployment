@@ -31,18 +31,18 @@ def show_config_summary(config: PlatformConfig) -> None:
     table.add_row("Database Mode", config.database_mode.value)
 
     table.add_row("Key Management", config.key_management_provider.value)
-    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
-        if config.azure_key_vault_url:
-            table.add_row("Key Vault URL", config.azure_key_vault_url)
-        if config.azure_tenant_id:
-            table.add_row("Key Vault Tenant ID", config.azure_tenant_id)
-    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
+    if config.key_management_provider == KeyManagementProvider.AWS_KMS:
         if config.aws_kms_region:
             table.add_row("AWS KMS Region", config.aws_kms_region)
         if config.aws_kms_endpoint:
             table.add_row("AWS KMS Endpoint", config.aws_kms_endpoint)
         if config.aws_kms_alias_prefix:
             table.add_row("AWS KMS Alias Prefix", config.aws_kms_alias_prefix)
+    elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        if config.azure_key_vault_url:
+            table.add_row("Key Vault URL", config.azure_key_vault_url)
+        if config.azure_tenant_id:
+            table.add_row("Key Vault Tenant ID", config.azure_tenant_id)
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
         if config.gcp_kms_project_id:
             table.add_row("GCP KMS Project ID", config.gcp_kms_project_id)
@@ -53,11 +53,11 @@ def show_config_summary(config: PlatformConfig) -> None:
 
     if config.auth_provider == AuthProvider.AUTH0:
         table.add_row("Auth0 Domain", config.auth0_domain)
+    elif config.auth_provider == AuthProvider.ENTRA:
+        table.add_row("Entra Tenant ID", config.entra_tenant_id)
     elif config.auth_provider == AuthProvider.KEYCLOAK:
         table.add_row("Keycloak URL", config.keycloak_url)
         table.add_row("Keycloak Realm", config.keycloak_realm)
-    elif config.auth_provider == AuthProvider.ENTRA:
-        table.add_row("Entra Tenant ID", config.entra_tenant_id)
 
     # Image registry
     if config.image_registry_url:
@@ -102,12 +102,15 @@ def show_next_steps(
     step += 1
 
     if bootstrap_file:
-        if config.auth_provider == AuthProvider.KEYCLOAK:
-            chart_name = "keycloak-bootstrap"
-            chart_path = "./charts/keycloak-bootstrap"
+        if config.auth_provider == AuthProvider.AUTH0:
+            chart_name = "auth0-bootstrap"
+            chart_path = "./charts/auth0-bootstrap"
         elif config.auth_provider == AuthProvider.ENTRA:
             chart_name = "entra-bootstrap"
             chart_path = "./charts/entra-bootstrap"
+        elif config.auth_provider == AuthProvider.KEYCLOAK:
+            chart_name = "keycloak-bootstrap"
+            chart_path = "./charts/keycloak-bootstrap"
         else:
             chart_name = "bootstrap"
             chart_path = "./charts/bootstrap"

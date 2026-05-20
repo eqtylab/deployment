@@ -1,10 +1,10 @@
 # =============================================================================
 # GOVERNANCE STUDIO - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the Governance Studio frontend application.
+# This values file configures the Governance Studio frontend application
 #
 # When deployed via the umbrella chart (governance-platform), most values
-# are auto-configured from global settings.
+# are auto-configured from global settings
 # =============================================================================
 
 # -- Enable Service
@@ -270,7 +270,7 @@ config:
   # -- Auth Provider
   # @default -- `""` (auto-configured from global.secrets.auth.provider)
   # Authentication provider type
-  # Options: auth0, keycloak, entra
+  # Options: auth0, entra, keycloak
   authProvider: ""
 
   # -- Auth0 Domain
@@ -291,6 +291,31 @@ config:
   # Only used when authProvider is "auth0"
   auth0Audience: ""
 
+  # -- Entra Client ID
+  # @default -- `""`
+  # **REQUIRED for Entra**: Application (client) ID from Azure app registration (public, not a secret)
+  # Only used when authProvider is "entra"
+  entraClientId: ""
+
+  # -- Entra Tenant ID
+  # @default -- `""`
+  # **REQUIRED for Entra**: Directory (tenant) ID from Azure
+  # Only used when authProvider is "entra"
+  entraTenantId: ""
+
+  # -- Entra Scopes
+  # @default -- `"openid profile email offline_access api://<backend-client-id>/access_as_user"`
+  # Space-separated list of OAuth scopes requested during login
+  # **REQUIRED for Entra**: Replace `<backend-client-id>` with the Governance Platform Backend app registration ID
+  # Only used when authProvider is "entra"
+  entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
+
+  # -- Entra Authority
+  # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
+  # Optional override for the Entra authority URL
+  # Only used when authProvider is "entra"
+  entraAuthority: ""
+
   # -- Keycloak URL
   # @default -- `""`
   # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
@@ -308,31 +333,6 @@ config:
   # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
   # Only used when authProvider is "keycloak"
   keycloakRealm: ""
-
-  # -- Entra Client ID
-  # @default -- `""`
-  # **REQUIRED for Entra**: Application (client) ID from Azure app registration (public, not a secret)
-  # Only used when authProvider is "entra"
-  entraClientId: ""
-
-  # -- Entra Tenant ID
-  # @default -- `""`
-  # **REQUIRED for Entra**: Directory (tenant) ID from Azure
-  # Only used when authProvider is "entra"
-  entraTenantId: ""
-
-  # -- Entra Scopes
-  # @default -- `"openid profile email offline_access api://<backend-client-id>/access_as_user"`
-  # Space-separated list of OAuth scopes requested during login.
-  # **REQUIRED for Entra**: Replace `<backend-client-id>` with the Governance Platform Backend app registration ID
-  # Only used when authProvider is "entra"
-  entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
-
-  # -- Entra Authority
-  # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
-  # Optional override for the Entra authority URL
-  # Only used when authProvider is "entra"
-  entraAuthority: ""
 
   # ---------------------------------------------------------------------------
   # Application Settings

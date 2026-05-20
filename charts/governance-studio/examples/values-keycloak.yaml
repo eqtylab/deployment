@@ -1,9 +1,9 @@
 # Keycloak Configuration Example
-# Minimal configuration for deploying Governance Studio with Keycloak.
-# For all available values, see the chart's values.yaml and README.md.
+# Minimal configuration for deploying Governance Studio with Keycloak
+# For all available values, see the chart's values.yaml and README.md
 #
 # Usage:
-#   Set these values under the `governance-studio:` key in your umbrella values file.
+#   Set these values under the `governance-studio:` key in your umbrella values file
 
 image:
   tag: ""

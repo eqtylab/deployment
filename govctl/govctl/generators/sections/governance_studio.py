@@ -48,12 +48,6 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
             config.auth0_audience or f"https://{auth0_domain}/api/v2/"
         )
         section["config"]["auth0ClientId"] = "YOUR_AUTH0_SPA_CLIENT_ID"
-    elif config.auth_provider == AuthProvider.KEYCLOAK:
-        keycloak_url = config.keycloak_url or f"https://{config.domain}/keycloak"
-        section["config"]["authProvider"] = "keycloak"
-        section["config"]["keycloakUrl"] = keycloak_url
-        section["config"]["keycloakRealm"] = config.keycloak_realm
-        section["config"]["keycloakClientId"] = "governance-platform-frontend"
     elif config.auth_provider == AuthProvider.ENTRA:
         tenant_id = config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
         section["config"]["authProvider"] = "entra"
@@ -62,6 +56,12 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
         )
         section["config"]["entraTenantId"] = tenant_id
         section["config"]["entraScopes"] = "openid profile email offline_access api://<backend-client-id>/access_as_user"  # Replace <backend-client-id> with backend app registration ID
+    elif config.auth_provider == AuthProvider.KEYCLOAK:
+        keycloak_url = config.keycloak_url or f"https://{config.domain}/keycloak"
+        section["config"]["authProvider"] = "keycloak"
+        section["config"]["keycloakUrl"] = keycloak_url
+        section["config"]["keycloakRealm"] = config.keycloak_realm
+        section["config"]["keycloakClientId"] = "governance-platform-frontend"
 
     # Application settings
     section["config"][

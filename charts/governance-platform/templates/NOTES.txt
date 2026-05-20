@@ -46,6 +46,35 @@ Revision:         {{ .Release.Revision }}
 🔑 Key API Service Information:
 ---------------------------------------------------------------------------------
 
+{{- $authService := index .Values "auth-service" }}
+{{- if $authService.enabled }}
+  {{- $host := $globalDomain }}
+  {{- $path := "/authService" }}
+  {{- if and $authService.ingress $authService.ingress.enabled }}
+    {{- if $authService.ingress.hosts }}
+      {{- $firstHost := index $authService.ingress.hosts 0 }}
+      {{- if $firstHost.host }}
+        {{- $host = $firstHost.host }}
+      {{- end }}
+      {{- if $firstHost.paths }}
+        {{- $firstPath := index $firstHost.paths 0 }}
+        {{- if $firstPath.path }}
+          {{- $pathStr := $firstPath.path | toString }}
+          {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
+          {{- if $basePath }}
+            {{- $path = $basePath }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+🔸 **Auth Service API:**
+    External: https://{{ $host }}{{ $path }}
+    Internal: http://{{ printf "%s-auth-service" .Release.Name }}:8080
+{{- else }}
+🔸 **Auth Service API:** Disabled
+{{- end }}
+
 {{- $governanceService := index .Values "governance-service" }}
 {{- if $governanceService.enabled }}
   {{- $host := $globalDomain }}
@@ -102,35 +131,6 @@ Revision:         {{ .Release.Revision }}
     Internal: http://{{ printf "%s-integrity-service" .Release.Name }}:3050
 {{- else }}
 🔸 **Integrity Service API:** Disabled
-{{- end }}
-
-{{- $authService := index .Values "auth-service" }}
-{{- if $authService.enabled }}
-  {{- $host := $globalDomain }}
-  {{- $path := "/authService" }}
-  {{- if and $authService.ingress $authService.ingress.enabled }}
-    {{- if $authService.ingress.hosts }}
-      {{- $firstHost := index $authService.ingress.hosts 0 }}
-      {{- if $firstHost.host }}
-        {{- $host = $firstHost.host }}
-      {{- end }}
-      {{- if $firstHost.paths }}
-        {{- $firstPath := index $firstHost.paths 0 }}
-        {{- if $firstPath.path }}
-          {{- $pathStr := $firstPath.path | toString }}
-          {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
-          {{- if $basePath }}
-            {{- $path = $basePath }}
-          {{- end }}
-        {{- end }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-🔸 **Auth Service API:**
-    External: https://{{ $host }}{{ $path }}
-    Internal: http://{{ printf "%s-auth-service" .Release.Name }}:8080
-{{- else }}
-🔸 **Auth Service API:** Disabled
 {{- end }}
 
 ---------------------------------------------------------------------------------

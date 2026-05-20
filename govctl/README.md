@@ -29,7 +29,7 @@ Before running `govctl init`, you'll need the following in place:
 
 ### Infrastructure
 
-- **Kubernetes cluster** — a running cluster on GCP (GKE), AWS (EKS), or Azure (AKS)
+- **Kubernetes cluster** — a running cluster on AWS (EKS), Azure (AKS), or GCP (GKE)
 - **Helm** — installed locally
 - **NGINX Ingress Controller** — deployed to the cluster
 - **cert-manager** — deployed with a `letsencrypt-prod` ClusterIssuer configured
@@ -38,10 +38,10 @@ Before running `govctl init`, you'll need the following in place:
 ### Storage
 
 - **Object storage** — for governance artifacts and integrity data
-  - GCP: GCS bucket
   - AWS: S3 bucket
   - Azure: Blob Storage account and container
-- **Key management** — for DID signing keys (one of: Azure Key Vault, AWS KMS, or GCP KMS)
+  - GCP: GCS bucket
+- **Key management** — for DID signing keys (one of: AWS KMS, Azure Key Vault, or GCP KMS)
 
 ### Auth Provider
 
@@ -73,16 +73,16 @@ Database Configuration:
   Database Mode (bundled = Bitnami PostgreSQL in-cluster; external = cloud-managed PostgreSQL) [bundled/external] (bundled): bundled
 
 Cloud Configuration:
-  Cloud Provider [gcp/aws/azure] (gcp): gcp
+  Cloud Provider [aws/azure/gcp] (gcp): gcp
 
 Key Management Configuration (for DID keys):
-  Key Management Provider [azure_key_vault/aws_kms/gcp_kms] (gcp_kms): gcp_kms
+  Key Management Provider [aws_kms/azure_key_vault/gcp_kms] (gcp_kms): gcp_kms
   GCP Project ID (your-gcp-project-id): my-governance-project
   GCP KMS Location (us-east1): us-east1
   GCP KMS Key Ring ID (eqtylab-did): eqtylab-did
 
 Auth Configuration:
-  Auth Provider [auth0/keycloak/entra] (keycloak): keycloak
+  Auth Provider [auth0/entra/keycloak] (keycloak): keycloak
   Keycloak URL (https://governance.staging.eqtylab.io/keycloak): https://governance.staging.eqtylab.io/keycloak
   Keycloak Realm (governance): governance
 
@@ -145,21 +145,21 @@ Next steps:
 
 The interactive wizard walks you through:
 
-1. **Cloud provider** — GCP, AWS, or Azure
+1. **Cloud provider** — AWS, Azure, or GCP
 2. **Domain** — your deployment domain
 3. **Environment** — freeform (e.g. `dev`, `staging`, `prod`)
 4. **Database mode** — bundled Bitnami PostgreSQL (default for non-prod) or external managed PostgreSQL (default for `production`)
-5. **Auth provider** — Auth0, Keycloak, or Microsoft Entra ID
+5. **Auth provider** — Auth0, Microsoft Entra ID, or Keycloak
 6. **Provider-specific settings** — key management, auth config, etc.
 7. **Image registry** — container registry credentials
 
 Generated files:
 
-| File                   | Contents                                           | When               |
-| ---------------------- | -------------------------------------------------- | ------------------ |
-| `values-{env}.yaml`    | Helm values for your deployment                    | Always             |
-| `secrets-{env}.yaml`   | Secret placeholders to fill in before deploying    | Always             |
-| `bootstrap-{env}.yaml` | Keycloak bootstrap values (realm, clients, scopes) | Keycloak auth only |
+| File                   | Contents                                            | When                      |
+| ---------------------- | --------------------------------------------------- | ------------------------- |
+| `values-{env}.yaml`    | Helm values for your deployment                     | Always                    |
+| `secrets-{env}.yaml`   | Secret placeholders to fill in before deploying     | Always                    |
+| `bootstrap-{env}.yaml` | IdP bootstrap values for the selected auth provider | Auth0, Entra, or Keycloak |
 
 ### Non-Interactive Mode
 
@@ -178,10 +178,10 @@ govctl init -I \
 
 | Flag                             | Short   | Description                                                                                                           |
 | -------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)                                                                                |
+| `--cloud`                        | `-c`    | Cloud provider (`aws`, `azure`, `gcp`)                                                                                |
 | `--domain`                       | `-d`    | Deployment domain                                                                                                     |
 | `--environment`                  | `-e`    | Environment name                                                                                                      |
-| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`)                                                                          |
+| `--auth`                         | `-a`    | Auth provider (`auth0`, `entra`, `keycloak`)                                                                          |
 | `--database`                     | `-D`    | Database mode (`bundled` or `external`). Defaults to `external` when environment is `production`, otherwise `bundled` |
 | `--output`                       | `-o`    | Output directory (default: `output`)                                                                                  |
 | `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                                                                                               |
@@ -201,14 +201,13 @@ Configures all platform services based on your selections:
 
 When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/governance-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
 
-### bootstrap-{env}.yaml _(Keycloak only)_
+### bootstrap-{env}.yaml _(Auth0, Entra, or Keycloak)_
 
-Pre-configured values for the `keycloak-bootstrap` chart with your domain filled in:
+Pre-configured values for the matching `<provider>-bootstrap` chart with your domain filled in:
 
-- **Realm** — governance realm with security settings and token lifespans
-- **Clients** — frontend (public), backend (confidential), and worker OAuth clients
-- **Scopes** — authorization scopes for governance, integrity, organizations, projects, evaluations
-- **Users** — platform-admin user
+- **Auth0** — frontend SPA, backend M2M, worker M2M applications; Governance Platform API (resource server) with scopes; client grants; platform-admin user
+- **Keycloak** — governance realm with security settings and token lifespans; frontend (public), backend (confidential), and worker OAuth clients; authorization scopes; platform-admin user
+- **Entra** — frontend (SPA), backend, and worker app registrations with Graph API permissions and the `access_as_user` scope
 
 ### secrets-{env}.yaml
 
@@ -217,23 +216,29 @@ Only includes secrets relevant to your configuration:
 - **Database** — PostgreSQL credentials
 - **Auth service** — API secret, JWT secret
 - **Encryption** — platform encryption key
-- **Auth provider** — Auth0 _or_ Keycloak _or_ Entra secrets (not all three)
-- **Storage** — GCS _or_ S3 _or_ Azure Blob credentials
+- **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three)
+- **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials
 - **Image registry** — pull secret for container images
-- **Key management** — Azure Key Vault _or_ AWS KMS _or_ GCP KMS credentials for DID keys
+- **Key management** — AWS KMS _or_ Azure Key Vault _or_ GCP KMS credentials for DID keys
 
 ## Next Steps
 
 After generating your files, follow the deployment guide for your auth provider and cloud platform:
 
+**Auth0**
+
+- [Auth0 + AWS](../docs/auth0/deployment-guide-aws.md)
+- [Auth0 + Azure](../docs/auth0/deployment-guide-azure.md)
+- [Auth0 + GCP](../docs/auth0/deployment-guide-gcp.md)
+
 **Entra ID**
 
-- [Entra ID + Azure](../docs/entra/deployment-guide-azure.md)
 - [Entra ID + AWS](../docs/entra/deployment-guide-aws.md)
+- [Entra ID + Azure](../docs/entra/deployment-guide-azure.md)
 - [Entra ID + GCP](../docs/entra/deployment-guide-gcp.md)
 
 **Keycloak**
 
-- [Keycloak + Azure](../docs/keycloak/deployment-guide-azure.md)
 - [Keycloak + AWS](../docs/keycloak/deployment-guide-aws.md)
+- [Keycloak + Azure](../docs/keycloak/deployment-guide-azure.md)
 - [Keycloak + GCP](../docs/keycloak/deployment-guide-gcp.md)

@@ -41,35 +41,6 @@ When deployed via the `governance-platform` umbrella chart, Integrity Service au
 
 Minimum configuration required in your umbrella chart values:
 
-**Azure Blob Storage:**
-
-```yaml
-integrity-service:
-  image:
-    tag: ""
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    hosts:
-      - host: "governance.yourcompany.com"
-        paths:
-          - path: "/integrityService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
-    tls:
-      - secretName: "integrity-service-tls"
-        hosts:
-          - "governance.yourcompany.com"
-  config:
-    integrityAppBlobStoreType: "azure_blob"
-    integrityAppBlobStoreAccount: "your-storage-account"
-    integrityAppBlobStoreContainer: "your-integrity-store-container"
-```
-
 **AWS S3:**
 
 ```yaml
@@ -98,6 +69,35 @@ integrity-service:
     integrityAppBlobStoreAwsRegion: "us-east-1"
     integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
     integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+```
+
+**Azure Blob Storage:**
+
+```yaml
+integrity-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "integrity-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    integrityAppBlobStoreType: "azure_blob"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
 ```
 
 **Google Cloud Storage:**
@@ -157,7 +157,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 From global values:
 
 - Database connection (host, port, credentials from `global.postgresql.*` and `global.secrets.database`)
-- Storage credentials (from `global.secrets.storage.azure_blob`, `global.secrets.storage.aws_s3`, or `global.secrets.storage.gcs`)
+- Storage credentials (from `global.secrets.storage.aws_s3`, `global.secrets.storage.azure_blob`, or `global.secrets.storage.gcs`)
 - Auth service URL (generated as `http://{Release.Name}-auth-service:8080`)
 - Environment type (from `global.environmentType`)
 - Image pull secrets (from `global.secrets.imageRegistry`)

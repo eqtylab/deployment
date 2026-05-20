@@ -2,10 +2,10 @@
 # -----------------------------------------------------------------------------
 # This file is a DATABASE-CONFIG OVERLAY for pointing the Governance Platform
 # at a cloud-managed PostgreSQL instance (AWS RDS, Azure Database for
-# PostgreSQL — Flexible Server, or GCP Cloud SQL for PostgreSQL).
+# PostgreSQL — Flexible Server, or GCP Cloud SQL for PostgreSQL)
 #
 # Combine it with one of the full values files (values-auth0.yaml,
-# values-keycloak.yaml, values-entra.yaml).
+# values-entra.yaml, values-keycloak.yaml)
 #
 # Usage:
 #   helm upgrade --install governance-platform ./charts/governance-platform \
@@ -16,7 +16,7 @@
 #
 # Prerequisites when using the example values files as-is
 # (their default is `global.secrets.create: false`, so secrets must be pre-created):
-#   1. A managed PostgreSQL instance reachable from the cluster.
+#   1. A managed PostgreSQL instance reachable from the cluster
 #   2. The two platform databases pre-created on the instance:
 #        CREATE DATABASE governance;
 #        CREATE DATABASE "IntegrityServiceDB";
@@ -31,7 +31,7 @@
 #          --namespace governance
 #   If you are installing with `global.secrets.create: true` (for example, via
 #   govctl-generated `secrets.yaml`), the chart can create `platform-database`
-#   for you and only the optional CA Secret/ConfigMap must exist ahead of time.
+#   for you and only the optional CA Secret/ConfigMap must exist ahead of time
 # -----------------------------------------------------------------------------
 # Provider-specific notes:
 #
@@ -64,7 +64,7 @@ global:
     username: "postgres"
     # Managed Postgres services all support TLS. Use verify-full when you have
     # the provider's CA bundle mounted; downgrade to "require" if you cannot
-    # provide a CA bundle but still want encryption in transit.
+    # provide a CA bundle but still want encryption in transit
     sslMode: "verify-full"
     sslRootCert:
       secretName: "postgres-ca"

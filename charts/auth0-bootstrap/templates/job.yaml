@@ -1,0 +1,100 @@
+{{- if .Values.bootstrap.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "auth0-bootstrap.fullname" . }}
+  labels:
+    {{- include "auth0-bootstrap.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook-weight": "10"
+spec:
+  backoffLimit: {{ .Values.bootstrap.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.bootstrap.ttlSecondsAfterFinished }}
+  activeDeadlineSeconds: {{ .Values.bootstrap.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "auth0-bootstrap.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: bootstrap
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.bootstrap.securityContext | nindent 8 }}
+      containers:
+        - name: bootstrap
+          image: "{{ .Values.bootstrap.image.repository }}:{{ .Values.bootstrap.image.tag }}"
+          imagePullPolicy: {{ .Values.bootstrap.image.pullPolicy }}
+          {{- if .Values.bootstrap.command }}
+          command: {{ .Values.bootstrap.command | toJson }}
+          {{- else }}
+          command: ["/bin/sh"]
+          {{- end }}
+          {{- if .Values.bootstrap.args }}
+          args: {{ .Values.bootstrap.args | toJson }}
+          {{- else }}
+          args: ["/scripts/bootstrap.sh"]
+          {{- end }}
+          env:
+            - name: AUTH0_DOMAIN
+              value: "{{ .Values.auth0.domain }}"
+            - name: AUTH0_MGMT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth0.managementSecret.name }}
+                  key: {{ .Values.auth0.managementSecret.clientIdKey }}
+            - name: AUTH0_MGMT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth0.managementSecret.name }}
+                  key: {{ .Values.auth0.managementSecret.clientSecretKey }}
+            {{- if and .Values.actions.enabled .Values.actions.postLogin.enabled }}
+            - name: AUTH0_AUTH_SERVICE_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth0.managementSecret.name }}
+                  key: {{ .Values.auth0.managementSecret.authServiceApiSecretKey }}
+                  optional: true
+            {{- end }}
+            {{- if .Values.users.admin.enabled }}
+            - name: ADMIN_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.users.admin.secretName }}
+                  key: {{ .Values.users.admin.secretKey }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.bootstrap.resources | nindent 12 }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            {{- if .Values.actions.enabled }}
+            - name: actions-source
+              mountPath: /actions
+              readOnly: true
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "auth0-bootstrap.fullname" . }}-scripts
+            defaultMode: 0755
+        {{- if .Values.actions.enabled }}
+        - name: actions-source
+          configMap:
+            name: {{ .Values.actions.sourceConfigMap.name }}
+            defaultMode: 0444
+        {{- end }}
+{{- end }}

@@ -1,0 +1,421 @@
+# =============================================================================
+# AUTH0 BOOTSTRAP - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Auth0 Bootstrap job for initializing
+# Auth0 with applications, APIs, permissions, and users
+#
+# The bootstrap job runs as a Kubernetes Job that configures Auth0 via
+# its Management API. It is typically run once during initial deployment
+#
+# PREREQUISITE: You must create a Machine-to-Machine application in the
+# Auth0 Dashboard first with access to the Management API. The bootstrap
+# job uses its credentials to configure everything else
+# =============================================================================
+
+# -- Name Override
+# @default -- `""`
+# Override the chart name used for resource naming
+nameOverride: ""
+
+# -- Full Name Override
+# @default -- `""`
+# Override the full name of the release
+fullnameOverride: ""
+
+# -- Global Configuration
+# @default -- See values below
+global:
+  # -- Image Pull Secrets
+  # @default -- `[]`
+  # Image pull secrets for private registries
+  imagePullSecrets: []
+
+# =============================================================================
+# BOOTSTRAP JOB CONFIGURATION
+# =============================================================================
+
+# -- Bootstrap Job Configuration
+# @default -- See values below
+bootstrap:
+  # -- Enabled
+  # @default -- `true`
+  # Enable the bootstrap job
+  enabled: true
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Uses an image with curl and jq pre-installed (required by bootstrap script)
+  image:
+    # -- Repository
+    # @default -- `dwdraju/alpine-curl-jq`
+    repository: dwdraju/alpine-curl-jq
+    # -- Pull Policy
+    # @default -- `IfNotPresent`
+    pullPolicy: IfNotPresent
+    # -- Tag
+    # @default -- `latest`
+    tag: "latest"
+
+  # -- Args
+  # @default -- See values below
+  # Arguments for the bootstrap command
+  args: ["/scripts/bootstrap.sh"]
+
+  # -- Backoff Limit
+  # @default -- `3`
+  # Job backoff limit
+  backoffLimit: 3
+
+  # -- Active Deadline Seconds
+  # @default -- `600`
+  # Job active deadline in seconds
+  activeDeadlineSeconds: 600
+
+  # -- TTL Seconds After Finished
+  # @default -- `300`
+  # TTL for completed jobs
+  ttlSecondsAfterFinished: 300
+
+  # -- Resources
+  # @default -- See values below
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # -- Security Context
+  # @default -- See values below
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+# =============================================================================
+# AUTH0 CONFIGURATION
+# =============================================================================
+
+# -- Auth0 Configuration
+# @default -- See values below
+auth0:
+  # -- Domain
+  # @default -- `""`
+  # Auth0 tenant domain (e.g., "your-tenant.us.auth0.com")
+  # REQUIRED: Must be set before running bootstrap
+  domain: ""
+
+  # -- Management API Secret
+  # @default -- See values below
+  # Kubernetes secret containing the Management API M2M credentials
+  # This M2M application must be created manually in the Auth0 Dashboard first
+  managementSecret:
+    # -- Secret Name
+    # @default -- `auth0-management`
+    name: "auth0-management"
+    # -- Client ID Key
+    # @default -- `client-id`
+    clientIdKey: "client-id"
+    # -- Client Secret Key
+    # @default -- `client-secret`
+    clientSecretKey: "client-secret"
+    # -- Auth Service API Secret Key
+    # @default -- `auth-service-api-secret`
+    authServiceApiSecretKey: "auth-service-api-secret"
+
+  # -- API Configuration
+  # @default -- See values below
+  # The governance platform API (resource server) to create in Auth0
+  api:
+    # -- Name
+    # @default -- `Governance Platform API`
+    name: "Governance Platform API"
+    # -- Identifier
+    # @default -- `""`
+    # API identifier / audience (e.g., "https://governance.your-domain.com")
+    # REQUIRED: Must be set before running bootstrap
+    identifier: ""
+    # -- Token Lifetime
+    # @default -- `86400`
+    # Access token lifetime in seconds
+    tokenLifetime: 86400
+    # -- Allow Offline Access
+    # @default -- `false`
+    # Allow offline access (refresh tokens)
+    allowOfflineAccess: false
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+# -- Applications Configuration
+# @default -- See values below
+applications:
+  # ---------------------------------------------------------------------------
+  # Frontend Application (SPA)
+  # ---------------------------------------------------------------------------
+
+  # -- Frontend Application
+  # @default -- See values below
+  # Single Page Application for the governance studio frontend
+  frontend:
+    # -- Name
+    # @default -- `Governance Platform Frontend`
+    name: "Governance Platform Frontend"
+    # -- Callbacks
+    # @default -- See values below
+    # Allowed callback URLs after authentication
+    callbacks:
+      - "http://localhost:5173/callback"
+      - "https://governance.example.com/callback"
+    # -- Logout URLs
+    # @default -- See values below
+    # Allowed logout redirect URLs
+    logoutUrls:
+      - "http://localhost:5173"
+      - "https://governance.example.com"
+    # -- Web Origins
+    # @default -- See values below
+    # Allowed web origins for CORS
+    webOrigins:
+      - "http://localhost:5173"
+      - "https://governance.example.com"
+
+  # ---------------------------------------------------------------------------
+  # Backend Application (M2M)
+  # ---------------------------------------------------------------------------
+
+  # -- Backend Application
+  # @default -- See values below
+  # Machine-to-Machine application for the backend service
+  backend:
+    # -- Name
+    # @default -- `Governance Platform Backend`
+    name: "Governance Platform Backend"
+    # -- API Scopes
+    # @default -- See values below
+    # Scopes to grant on the governance platform API
+    apiScopes:
+      - "read:organizations"
+      - "write:organizations"
+      - "read:projects"
+      - "write:projects"
+      - "read:evaluations"
+      - "write:evaluations"
+      - "governance:declarations:create"
+      - "integrity:statements:create"
+    # -- Management API Scopes
+    # @default -- See values below
+    # Scopes to grant on the Auth0 Management API (for user management)
+    managementApiScopes:
+      - "read:users"
+      - "update:users"
+      - "create:users"
+      - "read:roles"
+      - "create:role_members"
+
+  # ---------------------------------------------------------------------------
+  # Worker Application (M2M)
+  # ---------------------------------------------------------------------------
+
+  # -- Worker Application
+  # @default -- See values below
+  # Machine-to-Machine application for background jobs
+  worker:
+    # -- Name
+    # @default -- `Governance Worker`
+    name: "Governance Worker"
+    # -- API Scopes
+    # @default -- See values below
+    # Scopes to grant on the governance platform API
+    apiScopes:
+      - "governance:declarations:create"
+      - "integrity:statements:create"
+
+# =============================================================================
+# AUTH0 ACTIONS CONFIGURATION
+# =============================================================================
+
+# -- Auth0 Actions
+# @default -- See values below
+# Action JS source comes from scripts/auth0/actions/ (loaded into a ConfigMap
+# by bootstrap-auth0.sh). Sensitive values are taken from auth0-management
+actions:
+  # -- Enabled
+  # @default -- `true`
+  enabled: true
+
+  # -- Action Source ConfigMap
+  # @default -- See values below
+  sourceConfigMap:
+    # -- Name
+    # @default -- `auth0-actions-source`
+    name: "auth0-actions-source"
+
+  # ---------------------------------------------------------------------------
+  # Post-Login Action
+  # ---------------------------------------------------------------------------
+
+  # -- Post-Login Action
+  # @default -- See values below
+  # Enriches user tokens via the auth-service claims-enrichment endpoint
+  postLogin:
+    # -- Enabled
+    # @default -- `true`
+    enabled: true
+    # -- Name
+    # @default -- `Governance Platform - Post Login Enrichment`
+    name: "Governance Platform - Post Login Enrichment"
+    # -- Code File
+    # @default -- `post-login-action-with-service-accounts.js`
+    codeFile: "post-login-action-with-service-accounts.js"
+    # -- Trigger
+    # @default -- See values below
+    trigger:
+      id: "post-login"
+      version: "v3"
+    # -- Runtime
+    # @default -- `node22`
+    runtime: "node22"
+    # -- Dependencies
+    # @default -- `[]`
+    dependencies: []
+    # -- Auth Service URLs
+    # @default -- See values below
+    # Forwarded as event.secrets.AUTH_SERVICE_URL_{DEV,STAGING,PRODUCTION,""};
+    # empty entries are omitted at deploy time
+    authService:
+      # -- Dev URL
+      # @default -- `""`
+      urlDev: ""
+      # -- Staging URL
+      # @default -- `""`
+      urlStaging: ""
+      # -- Production URL
+      # @default -- `""`
+      urlProduction: ""
+      # -- Fallback URL
+      # @default -- `""`
+      url: ""
+
+  # ---------------------------------------------------------------------------
+  # Client Credentials Exchange Action
+  # ---------------------------------------------------------------------------
+
+  # -- Client Credentials Exchange Action
+  # @default -- See values below
+  # Enriches M2M tokens with service-account user claims
+  clientCredentialsExchange:
+    # -- Enabled
+    # @default -- `true`
+    enabled: true
+    # -- Name
+    # @default -- `Governance Platform - Service Account Token Enrichment`
+    name: "Governance Platform - Service Account Token Enrichment"
+    # -- Code File
+    # @default -- `client-credentials-exchange-action.js`
+    codeFile: "client-credentials-exchange-action.js"
+    # -- Trigger
+    # @default -- See values below
+    trigger:
+      id: "credentials-exchange"
+      version: "v2"
+    # -- Runtime
+    # @default -- `node22`
+    runtime: "node22"
+    # -- Dependencies
+    # @default -- See values below
+    # Pinned to 3.x because the action uses v3-style management.getUser({...})
+    dependencies:
+      - name: "auth0"
+        version: "3.x"
+
+# =============================================================================
+# CUSTOM SCOPES / PERMISSIONS CONFIGURATION
+# =============================================================================
+
+# -- Custom Scopes
+# @default -- See values below
+# Permissions to create on the governance platform API
+scopes:
+  - name: "governance:declarations:create"
+    description: "Create governance declarations"
+  - name: "integrity:statements:create"
+    description: "Create integrity statements"
+  - name: "read:organizations"
+    description: "Read access to organizations"
+  - name: "write:organizations"
+    description: "Write access to organizations"
+  - name: "read:projects"
+    description: "Read access to projects"
+  - name: "write:projects"
+    description: "Write access to projects"
+  - name: "read:evaluations"
+    description: "Read access to evaluations"
+  - name: "write:evaluations"
+    description: "Write access to evaluations"
+
+# =============================================================================
+# INITIAL USERS CONFIGURATION
+# =============================================================================
+
+# -- Users Configuration
+# @default -- See values below
+users:
+  # ---------------------------------------------------------------------------
+  # Platform Admin User
+  # ---------------------------------------------------------------------------
+
+  # -- Admin User
+  # @default -- See values below
+  # Initial platform administrator account
+  admin:
+    # -- Enabled
+    # @default -- `true`
+    # Enable creation of the platform admin user
+    enabled: true
+    # -- Email
+    # @default -- `admin@governance.local`
+    email: "admin@governance.local"
+    # -- First Name
+    # @default -- `Platform`
+    firstName: "Platform"
+    # -- Last Name
+    # @default -- `Admin`
+    lastName: "Admin"
+    # -- Connection
+    # @default -- `Username-Password-Authentication`
+    # Auth0 database connection name
+    connection: "Username-Password-Authentication"
+    # -- Secret Name
+    # @default -- `platform-admin`
+    # Secret containing the admin user password
+    secretName: "platform-admin"
+    # -- Secret Key
+    # @default -- `password`
+    # Key within the secret for the admin password
+    secretKey: "password"
+
+  # ---------------------------------------------------------------------------
+  # Test Users
+  # ---------------------------------------------------------------------------
+
+  # -- Test Users
+  # @default -- See values below
+  # For development/testing only
+  testUsers:
+    # -- Enabled
+    # @default -- `false`
+    enabled: false
+    # -- Users
+    # @default -- See values below
+    users:
+      - email: "test1@governance.local"
+        firstName: "Test"
+        lastName: "User 1"
+        password: "test123!Test"
+      - email: "test2@governance.local"
+        firstName: "Test"
+        lastName: "User 2"
+        password: "test123!Test"

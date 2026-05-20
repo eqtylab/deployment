@@ -2,7 +2,7 @@
 # GOVERNANCE STUDIO PLATFORM - HELM VALUES CONFIGURATION
 # =============================================================================
 # This values file configures the complete Governance Studio platform including
-# all microservices, databases, and infrastructure components.
+# all microservices, databases, and infrastructure components
 #
 # IMPORTANT: This file contains example values. For production deployments:
 # 1. Copy this file and customize for your environment
@@ -36,11 +36,11 @@ global:
   # - Never: Never pull, use local image only
   imagePullPolicy: "IfNotPresent"
 
-  # -- Replace only the image registry host for EQTY runtime images.
+  # -- Replace only the image registry host for EQTY runtime images
   # Example: registry.customer.example
   imageRegistryOverride: ""
 
-  # -- Replace the full EQTY image repository prefix for mirrored installs.
+  # -- Replace the full EQTY image repository prefix for mirrored installs
   # Example: registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
 
@@ -104,7 +104,7 @@ global:
     auth:
       # -- Auth Provider
       # @default -- `auth0`
-      # Options: auth0, keycloak, entra
+      # Options: auth0, entra, keycloak
       provider: "auth0"
 
       # -- Auth0 Configuration (M2M credentials only)
@@ -132,27 +132,6 @@ global:
           # -- Management API Client Secret (Auth Service Backend M2M app)
           # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
           mgmtClientSecret: ""
-
-      # -- Keycloak Configuration
-      # @default -- See values below
-      # Only used if provider=keycloak
-      keycloak:
-        secretName: "platform-keycloak"
-        keys:
-          serviceAccountClientId: "service-account-client-id"
-          serviceAccountClientSecret: "service-account-client-secret"
-          tokenExchangePrivateKey: "token-exchange-private-key"
-        # Only used if create=true and provider=keycloak
-        values:
-          # -- Service Account Client ID
-          # @default -- `governance-platform-backend`
-          serviceAccountClientId: "governance-platform-backend"
-          # -- Service Account Client Secret
-          # @default -- `""` (REQUIRED if create=true, retrieve from Keycloak admin console)
-          serviceAccountClientSecret: ""
-          # -- Token Exchange Private Key
-          # @default -- `""` (REQUIRED if create=true, generate with: openssl genrsa 2048)
-          tokenExchangePrivateKey: ""
 
       # -- Microsoft Entra ID Configuration
       # @default -- See values below
@@ -183,6 +162,27 @@ global:
           # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
           graphClientSecret: ""
 
+      # -- Keycloak Configuration
+      # @default -- See values below
+      # Only used if provider=keycloak
+      keycloak:
+        secretName: "platform-keycloak"
+        keys:
+          serviceAccountClientId: "service-account-client-id"
+          serviceAccountClientSecret: "service-account-client-secret"
+          tokenExchangePrivateKey: "token-exchange-private-key"
+        # Only used if create=true and provider=keycloak
+        values:
+          # -- Service Account Client ID
+          # @default -- `governance-platform-backend`
+          serviceAccountClientId: "governance-platform-backend"
+          # -- Service Account Client Secret
+          # @default -- `""` (REQUIRED if create=true, retrieve from Keycloak admin console)
+          serviceAccountClientSecret: ""
+          # -- Token Exchange Private Key
+          # @default -- `""` (REQUIRED if create=true, generate with: openssl genrsa 2048)
+          tokenExchangePrivateKey: ""
+
     # -- Auth Service Credentials
     # @default -- See values below
     # Used by: auth-service for application secrets
@@ -202,7 +202,7 @@ global:
 
     # -- Database Credentials
     # @default -- See values below
-    # Used by: governance-service, auth-service, integrity-service
+    # Used by: auth-service, governance-service, integrity-service
     database:
       secretName: "platform-database"
       keys:
@@ -275,8 +275,29 @@ global:
     keyManagement:
       # -- Key Management Provider
       # @default -- `azure`
-      # Options: azure_key_vault, aws_kms, gcp_kms
+      # Options: aws_kms, azure_key_vault, gcp_kms
       provider: "azure_key_vault"
+
+      # -- AWS KMS
+      # @default -- See values below
+      # Only used if provider=aws_kms
+      aws_kms:
+        secretName: "platform-aws-kms"
+        keys:
+          accessKeyId: "access-key-id"
+          secretAccessKey: "secret-access-key"
+          sessionToken: "session-token"
+        # Only used if create=true and provider=aws_kms
+        values:
+          # -- AWS Access Key ID
+          # @default -- `""` (REQUIRED if create=true)
+          accessKeyId: ""
+          # -- AWS Secret Access Key
+          # @default -- `""` (REQUIRED if create=true)
+          secretAccessKey: ""
+          # -- AWS Session Token (optional)
+          # @default -- `""`
+          sessionToken: ""
 
       # -- Azure Key Vault
       # @default -- See values below
@@ -303,27 +324,6 @@ global:
           # @default -- `""` (REQUIRED if create=true)
           vaultUrl: ""
 
-      # -- AWS KMS
-      # @default -- See values below
-      # Only used if provider=aws_kms
-      aws_kms:
-        secretName: "platform-aws-kms"
-        keys:
-          accessKeyId: "access-key-id"
-          secretAccessKey: "secret-access-key"
-          sessionToken: "session-token"
-        # Only used if create=true and provider=aws_kms
-        values:
-          # -- AWS Access Key ID
-          # @default -- `""` (REQUIRED if create=true)
-          accessKeyId: ""
-          # -- AWS Secret Access Key
-          # @default -- `""` (REQUIRED if create=true)
-          secretAccessKey: ""
-          # -- AWS Session Token (optional)
-          # @default -- `""`
-          sessionToken: ""
-
       # -- GCP KMS
       # @default -- See values below
       # Only used if provider=gcp_kms
@@ -342,22 +342,6 @@ global:
     # Used by: governance-service, integrity-service
     # Each service can choose its own storage provider independently
     storage:
-      # -- Azure Blob Storage
-      # @default -- See values below
-      azure_blob:
-        secretName: "platform-azure-blob"
-        keys:
-          accountKey: "account-key"
-          connectionString: "connection-string"
-        # Only used if create=true
-        values:
-          # -- Azure Account Key
-          # @default -- `""` (REQUIRED if create=true)
-          accountKey: ""
-          # -- Azure Connection String
-          # @default -- `""` (REQUIRED if create=true)
-          connectionString: ""
-
       # -- AWS S3
       # @default -- See values below
       aws_s3:
@@ -374,6 +358,22 @@ global:
           # @default -- `""` (REQUIRED if create=true)
           secretAccessKey: ""
 
+      # -- Azure Blob Storage
+      # @default -- See values below
+      azure_blob:
+        secretName: "platform-azure-blob"
+        keys:
+          accountKey: "account-key"
+          connectionString: "connection-string"
+        # Only used if create=true
+        values:
+          # -- Azure Account Key
+          # @default -- `""` (REQUIRED if create=true)
+          accountKey: ""
+          # -- Azure Connection String
+          # @default -- `""` (REQUIRED if create=true)
+          connectionString: ""
+
       # -- Google Cloud Storage
       # @default -- See values below
       gcs:
@@ -389,7 +389,7 @@ global:
 # =============================================================================
 # Auth Service
 # =============================================================================
-# Default values for the auth-service Helm chart.
+# Default values for the auth-service Helm chart
 # ------------------------------------------------------------------------------
 auth-service:
   # -- Enable Service
@@ -709,19 +709,19 @@ auth-service:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.auth.auth0.secretName)
         name: ""
-      # -- Keycloak Secret
-      # @default -- See values below
-      # Only used when provider is "keycloak"
-      keycloak:
-        # -- Secret Name
-        # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
-        name: ""
       # -- Entra Secret
       # @default -- See values below
       # Only used when provider is "entra"
       entra:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+        name: ""
+      # -- Keycloak Secret
+      # @default -- See values below
+      # Only used when provider is "keycloak"
+      keycloak:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
         name: ""
 
     # -- Auth Service Secrets
@@ -735,19 +735,19 @@ auth-service:
     # @default -- See values below
     # For DID key signing
     keyManagement:
-      # -- Azure Key Vault Secret
-      # @default -- See values below
-      # Only used when provider is "azure_key_vault"
-      azure_key_vault:
-        # -- Secret Name
-        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName)
-        name: ""
       # -- AWS KMS Secret
       # @default -- See values below
       # Only used when provider is "aws_kms"
       aws_kms:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.keyManagement.aws_kms.secretName)
+        name: ""
+      # -- Azure Key Vault Secret
+      # @default -- See values below
+      # Only used when provider is "azure_key_vault"
+      azure_key_vault:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName)
         name: ""
       # -- GCP KMS Secret
       # @default -- See values below
@@ -860,7 +860,7 @@ auth-service:
     idp:
       # -- Provider
       # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-      # Options: auth0, keycloak, entra
+      # Options: auth0, entra, keycloak
       provider: ""
       # -- OIDC Issuer URL
       # @default -- `""`
@@ -916,6 +916,35 @@ auth-service:
         # Only used when provider is "auth0"
         managementClientSecret: ""
 
+      # -- Microsoft Entra ID Configuration
+      # @default -- See values below
+      # Only used when provider is "entra"
+      entra:
+        # -- Tenant ID
+        # @default -- `""`
+        # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+        tenantId: ""
+        # -- Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # OIDC client ID for token validation
+        clientId: ""
+        # -- Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # OIDC client secret
+        clientSecret: ""
+        # -- Graph API Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # App registration client ID with Graph API permissions
+        graphClientId: ""
+        # -- Graph API Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # Corresponding client secret for Graph API
+        graphClientSecret: ""
+        # -- Default Roles
+        # @default -- `""`
+        # Comma-separated default roles for new users (optional)
+        defaultRoles: ""
+
       # -- Keycloak Configuration
       # @default -- See values below
       # Only used when provider is "keycloak"
@@ -949,35 +978,6 @@ auth-service:
         # Only used when provider is "keycloak"
         serviceAccountClientSecret: ""
 
-      # -- Microsoft Entra ID Configuration
-      # @default -- See values below
-      # Only used when provider is "entra"
-      entra:
-        # -- Tenant ID
-        # @default -- `""`
-        # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
-        tenantId: ""
-        # -- Client ID
-        # @default -- `""` (auto-configured from global.secrets.auth.entra)
-        # OIDC client ID for token validation
-        clientId: ""
-        # -- Client Secret
-        # @default -- `""` (auto-configured from global.secrets.auth.entra)
-        # OIDC client secret
-        clientSecret: ""
-        # -- Graph API Client ID
-        # @default -- `""` (auto-configured from global.secrets.auth.entra)
-        # App registration client ID with Graph API permissions
-        graphClientId: ""
-        # -- Graph API Client Secret
-        # @default -- `""` (auto-configured from global.secrets.auth.entra)
-        # Corresponding client secret for Graph API
-        graphClientSecret: ""
-        # -- Default Roles
-        # @default -- `""`
-        # Comma-separated default roles for new users (optional)
-        defaultRoles: ""
-
     # ---------------------------------------------------------------------------
     # Key Management Configuration
     # ---------------------------------------------------------------------------
@@ -987,29 +987,12 @@ auth-service:
     keyManagement:
       # -- Provider
       # @default -- `""` (auto-configured from global.secrets.keyManagement.provider)
-      # Options: azure_key_vault, aws_kms, gcp_kms
+      # Options: aws_kms, azure_key_vault, gcp_kms
       provider: ""
       # -- Cache TTL Minutes
       # @default -- `15`
       # DID Key cache TTL in minutes
       cacheTTLMinutes: 15
-
-      # -- Azure Key Vault Configuration
-      # @default -- See values below
-      # Only used when provider is "azure_key_vault"
-      azure_key_vault:
-        # -- Vault URL
-        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
-        vaultUrl: ""
-        # -- Tenant ID
-        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
-        tenantId: ""
-        # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
-        # @default -- `""`
-        clientId: ""
-        # -- Client Secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
-        # @default -- `""`
-        clientSecret: ""
 
       # -- AWS KMS Configuration
       # @default -- See values below
@@ -1036,6 +1019,23 @@ auth-service:
         # -- AWS KMS Deletion Window Days
         # @default -- `7`
         deletionWindowDays: 7
+
+      # -- Azure Key Vault Configuration
+      # @default -- See values below
+      # Only used when provider is "azure_key_vault"
+      azure_key_vault:
+        # -- Vault URL
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
+        vaultUrl: ""
+        # -- Tenant ID
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
+        tenantId: ""
+        # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+        # @default -- `""`
+        clientId: ""
+        # -- Client Secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+        # @default -- `""`
+        clientSecret: ""
 
       # -- GCP KMS Configuration
       # @default -- See values below
@@ -1272,7 +1272,7 @@ auth-service:
 # =============================================================================
 # Governance Service
 # =============================================================================
-# Default values for the governance-service Helm chart.
+# Default values for the governance-service Helm chart
 # ------------------------------------------------------------------------------
 governance-service:
   # -- Enable Service
@@ -1582,13 +1582,6 @@ governance-service:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.auth.auth0.secretName)
         name: ""
-      # -- Keycloak Secret
-      # @default -- See values below
-      # Only used when auth provider is "keycloak"
-      keycloak:
-        # -- Secret Name
-        # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
-        name: ""
       # -- Entra Secret
       # @default -- See values below
       # Only used when auth provider is "entra"
@@ -1596,25 +1589,32 @@ governance-service:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
         name: ""
+      # -- Keycloak Secret
+      # @default -- See values below
+      # Only used when auth provider is "keycloak"
+      keycloak:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
+        name: ""
 
     # -- Storage Secrets
     # @default -- See values below
     # Only configure the section matching your storage provider
     storage:
-      # -- Azure Blob Storage Secret
-      # @default -- See values below
-      # Only used when storageProvider is "azure_blob"
-      azure_blob:
-        # -- Secret Name
-        # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
-        name: ""
-
       # -- AWS S3 Secret
       # @default -- See values below
       # Only used when storageProvider is "aws_s3"
       aws_s3:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
+        name: ""
+
+      # -- Azure Blob Storage Secret
+      # @default -- See values below
+      # Only used when storageProvider is "azure_blob"
+      azure_blob:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
         name: ""
 
       # -- GCS Secret
@@ -1696,14 +1696,8 @@ governance-service:
     # -- Storage Provider
     # @default -- `""`
     # **REQUIRED**: Cloud storage provider
-    # Options: gcs, azure_blob, aws_s3
+    # Options: aws_s3, azure_blob, gcs
     storageProvider: ""
-
-    # -- GCS Bucket Name
-    # @default -- `""`
-    # **REQUIRED for GCS**: Bucket name
-    # Only used when storageProvider is "gcs"
-    gcsBucketName: ""
 
     # -- AWS S3 Region
     # @default -- `""`
@@ -1755,13 +1749,19 @@ governance-service:
     # Only used when storageProvider is "azure_blob"
     azureUseManagedIdentity: false
 
+    # -- GCS Bucket Name
+    # @default -- `""`
+    # **REQUIRED for GCS**: Bucket name
+    # Only used when storageProvider is "gcs"
+    gcsBucketName: ""
+
     # ---------------------------------------------------------------------------
     # Authentication Provider Configuration
     # ---------------------------------------------------------------------------
 
     # -- Auth Provider
     # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
-    # Options: auth0, keycloak, entra
+    # Options: auth0, entra, keycloak
     authProvider: ""
 
     # -- Auth0 Domain
@@ -1792,6 +1792,22 @@ governance-service:
     # Only used when auth provider is "auth0"
     auth0SyncPageSize: 100
 
+    # -- Entra Tenant ID
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+    # Only used when auth provider is "entra"
+    entraTenantId: ""
+
+    # -- Entra Client ID
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # Only used when auth provider is "entra"
+    entraClientId: ""
+
+    # -- Entra Client Secret
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # Only used when auth provider is "entra"
+    entraClientSecret: ""
+
     # -- Keycloak URL
     # @default -- `""`
     # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
@@ -1813,22 +1829,6 @@ governance-service:
     # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
     # Only used when auth provider is "keycloak"
     keycloakClientSecret: ""
-
-    # -- Entra Tenant ID
-    # @default -- `""` (auto-configured from global.secrets.auth.entra)
-    # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
-    # Only used when auth provider is "entra"
-    entraTenantId: ""
-
-    # -- Entra Client ID
-    # @default -- `""` (auto-configured from global.secrets.auth.entra)
-    # Only used when auth provider is "entra"
-    entraClientId: ""
-
-    # -- Entra Client Secret
-    # @default -- `""` (auto-configured from global.secrets.auth.entra)
-    # Only used when auth provider is "entra"
-    entraClientSecret: ""
 
     # ---------------------------------------------------------------------------
     # Service Integration URLs
@@ -1879,7 +1879,7 @@ governance-service:
 # =============================================================================
 # Governance Studio
 # =============================================================================
-# Default values for the governance-studio Helm chart.
+# Default values for the governance-studio Helm chart
 # ------------------------------------------------------------------------------
 governance-studio:
   # -- Enable Service
@@ -2131,7 +2131,7 @@ governance-studio:
     # -- Auth Provider
     # @default -- `""` (auto-configured from global.secrets.auth.provider)
     # Authentication provider type
-    # Options: auth0, keycloak, entra
+    # Options: auth0, entra, keycloak
     authProvider: ""
 
     # -- Auth0 Domain
@@ -2152,6 +2152,31 @@ governance-studio:
     # Only used when authProvider is "auth0"
     auth0Audience: ""
 
+    # -- Entra Client ID
+    # @default -- `""`
+    # **REQUIRED for Entra**: Application (client) ID from Azure app registration (public, not a secret)
+    # Only used when authProvider is "entra"
+    entraClientId: ""
+
+    # -- Entra Tenant ID
+    # @default -- `""`
+    # **REQUIRED for Entra**: Directory (tenant) ID from Azure
+    # Only used when authProvider is "entra"
+    entraTenantId: ""
+
+    # -- Entra Scopes
+    # @default -- `"openid profile email offline_access api://<backend-client-id>/access_as_user"`
+    # Space-separated list of OAuth scopes requested during login
+    # **REQUIRED for Entra**: Replace `<backend-client-id>` with the Governance Platform Backend app registration ID
+    # Only used when authProvider is "entra"
+    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
+
+    # -- Entra Authority
+    # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
+    # Optional override for the Entra authority URL
+    # Only used when authProvider is "entra"
+    entraAuthority: ""
+
     # -- Keycloak URL
     # @default -- `""`
     # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
@@ -2169,31 +2194,6 @@ governance-studio:
     # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
     # Only used when authProvider is "keycloak"
     keycloakRealm: ""
-
-    # -- Entra Client ID
-    # @default -- `""`
-    # **REQUIRED for Entra**: Application (client) ID from Azure app registration (public, not a secret)
-    # Only used when authProvider is "entra"
-    entraClientId: ""
-
-    # -- Entra Tenant ID
-    # @default -- `""`
-    # **REQUIRED for Entra**: Directory (tenant) ID from Azure
-    # Only used when authProvider is "entra"
-    entraTenantId: ""
-
-    # -- Entra Scopes
-    # @default -- `"openid profile email offline_access api://<backend-client-id>/access_as_user"`
-    # Space-separated list of OAuth scopes requested during login.
-    # **REQUIRED for Entra**: Replace `<backend-client-id>` with the Governance Platform Backend app registration ID
-    # Only used when authProvider is "entra"
-    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
-
-    # -- Entra Authority
-    # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
-    # Optional override for the Entra authority URL
-    # Only used when authProvider is "entra"
-    entraAuthority: ""
 
     # ---------------------------------------------------------------------------
     # Application Settings
@@ -2234,7 +2234,7 @@ governance-studio:
 # =============================================================================
 # Integrity Service
 # =============================================================================
-# Default values for the integrity-service Helm chart.
+# Default values for the integrity-service Helm chart
 # ------------------------------------------------------------------------------
 integrity-service:
   # -- Enable Service
@@ -2645,20 +2645,20 @@ integrity-service:
     # @default -- See values below
     # Only configure the section matching your storage provider
     storage:
-      # -- Azure Blob Storage Secret
-      # @default -- See values below
-      # Only used when integrityAppBlobStoreType is "azure_blob"
-      azure_blob:
-        # -- Secret Name
-        # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
-        name: ""
-
       # -- AWS S3 Secret
       # @default -- See values below
       # Only used when integrityAppBlobStoreType is "aws_s3"
       aws_s3:
         # -- Secret Name
         # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
+        name: ""
+
+      # -- Azure Blob Storage Secret
+      # @default -- See values below
+      # Only used when integrityAppBlobStoreType is "azure_blob"
+      azure_blob:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
         name: ""
 
       # -- GCS Secret
@@ -2686,8 +2686,8 @@ postgresql:
   global:
     # -- Storage Class
     # @default -- `""` (uses cluster default)
-    # Uses cluster default StorageClass when set to "".
-    # Override per CSP if needed: GKE="standard", AKS="managed-csi", EKS="gp3", etc.
+    # Uses cluster default StorageClass when set to ""
+    # Override per CSP if needed: EKS="gp3", AKS="managed-csi", GKE="standard", etc
     defaultStorageClass: ""
 
     postgresql:
@@ -2704,8 +2704,8 @@ postgresql:
 
         # -- Postgres Password
         # @default -- `"placeholder"` (overridden by existingSecret at runtime)
-        # This placeholder satisfies Bitnami chart validation during upgrades.
-        # The actual password is read from existingSecret at runtime.
+        # This placeholder satisfies Bitnami chart validation during upgrades
+        # The actual password is read from existingSecret at runtime
         postgresPassword: "placeholder-overridden-by-secret"
 
         # -- Existing Secret
@@ -2804,50 +2804,50 @@ postgresql:
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
 
 # =============================================================================
-# Keycloak Post-Install Configuration
+# Auth0 Post-Install Configuration
 # =============================================================================
-# Configuration for Keycloak identity provider integration
+# Configuration for Auth0 identity provider integration
 # Creates the necessary organization and admin user in the governance database
-# Only used when global.secrets.auth.provider is set to "keycloak"
+# Only used when global.secrets.auth.provider is set to "auth0"
 # ------------------------------------------------------------------------------
-keycloak:
+auth0:
   # -- Create Organization
   # @default -- `false`
-  # Enable automatic organization creation for Keycloak realm
+  # Enable automatic organization creation for the Auth0 tenant
   # Set to true to create organization in database on install/upgrade
-  # Organization name will match the Keycloak realm name
   createOrganization: false
 
-  # -- Realm Name
+  # -- Organization Name
   # @default -- `governance`
-  # Keycloak realm name for the platform
-  # Must match auth-service config.idp.keycloak.realm and governance-studio config.keycloakRealm
-  # This name is used as the organization identifier in the database
-  realmName: "governance"
+  # Organization identifier in the database
+  organizationName: "governance"
 
   # -- Display Name
   # @default -- `Governance Studio`
   # Human-readable display name for the organization
-  # Shown in UI and organization management interfaces
   displayName: "Governance Studio"
 
   # -- Create Platform Admin
   # @default -- `false`
   # Create platform-admin user in auth service tables
   # Set to true to create an initial platform administrator
-  # The Keycloak user ID is automatically resolved by looking up the user by email
+  # The Auth0 user ID is automatically resolved by looking up the user by email via the Management API
   createPlatformAdmin: false
 
   # -- Platform Admin Email
-  # @default -- `""` (defaults to admin@<global.domain>)
-  # Email address of the platform administrator in Keycloak created during bootstrap
-  # Used to look up the Keycloak user ID automatically
+  # @default -- `""`
+  # **REQUIRED** when createPlatformAdmin is true
+  # Must be an email address that exists in your Auth0 tenant
+  # (typically created during the auth0-bootstrap job)
+  # Used to look up the Auth0 user_id automatically via the Management API
   platformAdminEmail: ""
 
-  # -- Keycloak Internal URL
-  # @default -- `http://keycloak:8080/keycloak`
-  # Internal cluster URL for the Keycloak Admin REST API
-  url: "http://keycloak:8080/keycloak"
+  # -- Domain
+  # @default -- `""`
+  # **REQUIRED** when createPlatformAdmin is true
+  # Auth0 tenant domain (e.g., "yourcompany.us.auth0.com")
+  # Used to call the Auth0 Management API for user lookup
+  domain: ""
 
 # ------------------------------------------------------------------------------
 # Microsoft Entra ID Post-Install Configuration
@@ -2892,3 +2892,49 @@ entra:
   # @default -- `""`
   # Microsoft Entra tenant ID (required for Graph API user lookup)
   tenantId: ""
+
+# ------------------------------------------------------------------------------
+# Keycloak Post-Install Configuration
+# ------------------------------------------------------------------------------
+# Configuration for Keycloak identity provider integration
+# Creates the necessary organization and admin user in the governance database
+# Only used when global.secrets.auth.provider is set to "keycloak"
+# ------------------------------------------------------------------------------
+keycloak:
+  # -- Create Organization
+  # @default -- `false`
+  # Enable automatic organization creation for Keycloak realm
+  # Set to true to create organization in database on install/upgrade
+  # Organization name will match the Keycloak realm name
+  createOrganization: false
+
+  # -- Realm Name
+  # @default -- `governance`
+  # Keycloak realm name for the platform
+  # Must match auth-service config.idp.keycloak.realm and governance-studio config.keycloakRealm
+  # This name is used as the organization identifier in the database
+  realmName: "governance"
+
+  # -- Display Name
+  # @default -- `Governance Studio`
+  # Human-readable display name for the organization
+  # Shown in UI and organization management interfaces
+  displayName: "Governance Studio"
+
+  # -- Create Platform Admin
+  # @default -- `false`
+  # Create platform-admin user in auth service tables
+  # Set to true to create an initial platform administrator
+  # The Keycloak user ID is automatically resolved by looking up the user by email
+  createPlatformAdmin: false
+
+  # -- Platform Admin Email
+  # @default -- `""` (defaults to admin@<global.domain>)
+  # Email address of the platform administrator in Keycloak created during bootstrap
+  # Used to look up the Keycloak user ID automatically
+  platformAdminEmail: ""
+
+  # -- Keycloak Internal URL
+  # @default -- `http://keycloak:8080/keycloak`
+  # Internal cluster URL for the Keycloak Admin REST API
+  url: "http://keycloak:8080/keycloak"

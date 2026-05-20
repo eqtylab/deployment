@@ -2,10 +2,10 @@
 # GOVERNANCE OPS - MONITORING & OBSERVABILITY
 # =============================================================================
 # This chart provides monitoring and observability resources for Governance
-# Platform deployments, including Grafana dashboards and Prometheus alerts.
+# Platform deployments, including Grafana dashboards and Prometheus alerts
 #
 # Deploy this chart alongside your governance-platform deployment to enable
-# comprehensive monitoring capabilities.
+# comprehensive monitoring capabilities
 # =============================================================================
 
 # -- Target Release Name

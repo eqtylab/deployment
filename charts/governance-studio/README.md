@@ -10,7 +10,7 @@ Key capabilities:
 
 - **Governance Management**: Create, review, and manage governance policies and workflows
 - **Data Lineage**: Visualize provenance and transformation history of data assets
-- **Multi-Provider Auth**: Native support for Auth0, Keycloak, and Microsoft Entra ID authentication
+- **Multi-Provider Auth**: Native support for Auth0, Microsoft Entra ID, and Keycloak authentication
 - **Feature Flags**: Configurable feature toggles for governance and lineage
 - **Runtime Configuration**: Single immutable image with environment-driven configuration
 
@@ -29,7 +29,7 @@ This allows:
 
 - Kubernetes 1.21+
 - Helm 3.8+
-- Authentication provider (Auth0, Keycloak, or Microsoft Entra ID)
+- Authentication provider (Auth0, Microsoft Entra ID, or Keycloak)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
@@ -69,34 +69,6 @@ governance-studio:
     auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
 ```
 
-**Keycloak:**
-
-```yaml
-governance-studio:
-  image:
-    tag: ""
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-    hosts:
-      - host: "governance.yourcompany.com"
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: "governance-studio-tls"
-        hosts:
-          - "governance.yourcompany.com"
-  config:
-    authProvider: "keycloak"
-    keycloakUrl: "https://keycloak.yourcompany.com"
-    keycloakRealm: "governance"
-    keycloakClientId: "governance-platform-frontend"
-```
-
 **Microsoft Entra ID:**
 
 ```yaml
@@ -126,6 +98,34 @@ governance-studio:
     # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional
 ```
 
+**Keycloak:**
+
+```yaml
+governance-studio:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: "governance-studio-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    authProvider: "keycloak"
+    keycloakUrl: "https://keycloak.yourcompany.com"
+    keycloakRealm: "governance"
+    keycloakClientId: "governance-platform-frontend"
+```
+
 ### Required Configuration
 
 Beyond what is auto-configured, these values **must** be explicitly set:
@@ -136,18 +136,18 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 - `config.auth0ClientId` - Auth0 SPA client ID (public, not a secret)
 - `config.auth0Audience` - Auth0 API audience (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
 
-**Keycloak:**
-
-- `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
-- `config.keycloakClientId` - Keycloak SPA client ID (public, e.g., `governance-platform-frontend`)
-- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
-
 **Microsoft Entra ID:**
 
 - `config.entraClientId` - Application (client) ID from Azure app registration (public, not a secret)
 - `config.entraTenantId` - Directory (tenant) ID from Azure
 - `config.entraScopes` - OAuth scopes including `api://<backend-client-id>/access_as_user` (replace with Governance Platform Backend app registration ID)
 - `config.entraAuthority` - (Optional) Authority URL override, defaults to `https://login.microsoftonline.com/<tenantId>`
+
+**Keycloak:**
+
+- `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
+- `config.keycloakClientId` - Keycloak SPA client ID (public, e.g., `governance-platform-frontend`)
+- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
 
 **What gets auto-configured:**
 
@@ -176,10 +176,10 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.domain                           | string | Base domain for all services                      |
 | global.environmentType                  | string | Environment type (development/staging/production) |
 | global.secrets.imageRegistry.secretName | string | Name of image pull secret                         |
-| global.secrets.auth.provider            | string | Auth provider (auth0, keycloak, or entra)         |
+| global.secrets.auth.provider            | string | Auth provider (auth0, entra, or keycloak)         |
 | global.secrets.auth.auth0.secretName    | string | Auth0 credentials secret name                     |
-| global.secrets.auth.keycloak.secretName | string | Keycloak credentials secret name                  |
 | global.secrets.auth.entra.secretName    | string | Entra ID credentials secret name                  |
+| global.secrets.auth.keycloak.secretName | string | Keycloak credentials secret name                  |
 
 ### Chart-Specific Parameters
 
@@ -302,18 +302,18 @@ Authentication is automatically configured from global values in umbrella deploy
 - `config.auth0ClientId` - Auth0 SPA client ID (public, not a secret)
 - `config.auth0Audience` - Auth0 API audience (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
 
-**Keycloak:**
-
-- `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
-- `config.keycloakClientId` - Keycloak SPA client ID (public, e.g., `governance-platform-frontend`)
-- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
-
 **Microsoft Entra ID:**
 
 - `config.entraClientId` - Application (client) ID from Azure app registration (public, not a secret)
 - `config.entraTenantId` - Directory (tenant) ID from Azure
 - `config.entraScopes` - OAuth scopes including `api://<backend-client-id>/access_as_user` (replace with Governance Platform Backend app registration ID)
 - `config.entraAuthority` - (Optional) Authority URL override, defaults to `https://login.microsoftonline.com/<tenantId>`
+
+**Keycloak:**
+
+- `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
+- `config.keycloakClientId` - Keycloak SPA client ID (public, e.g., `governance-platform-frontend`)
+- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
 
 #### All Authentication Values
 
@@ -323,13 +323,13 @@ Authentication is automatically configured from global values in umbrella deploy
 | config.auth0Domain      | string | `""`    | Auth0 tenant domain (**must be set**)                                                                                |
 | config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public)                                                                        |
 | config.auth0Audience    | string | `""`    | Auth0 API audience (**must be set**)                                                                                 |
-| config.keycloakUrl      | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                                          |
-| config.keycloakClientId | string | `""`    | Keycloak SPA client ID (**must be set**, public, e.g., "governance-platform-frontend")                               |
-| config.keycloakRealm    | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                                                            |
 | config.entraClientId    | string | `""`    | Entra application (client) ID (**must be set**, public)                                                              |
 | config.entraTenantId    | string | `""`    | Entra directory (tenant) ID (**must be set**)                                                                        |
 | config.entraScopes      | string | `""`    | OAuth scopes (**must be set**, e.g., `openid profile email offline_access api://<backend-client-id>/access_as_user`) |
 | config.entraAuthority   | string | `""`    | Entra authority URL (optional, defaults to `https://login.microsoftonline.com/<tenantId>`)                           |
+| config.keycloakUrl      | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                                          |
+| config.keycloakClientId | string | `""`    | Keycloak SPA client ID (**must be set**, public, e.g., "governance-platform-frontend")                               |
+| config.keycloakRealm    | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                                                            |
 
 ### Feature Flags
 
@@ -393,7 +393,7 @@ kubectl exec -it deployment/governance-studio -n governance -- curl -s localhost
 **Authentication fails**
 
 - Verify `global.domain` matches ingress hosts
-- Check Auth0/Keycloak/Entra redirect URIs include your domain
+- Check Auth0/Entra/Keycloak redirect URIs include your domain
 - Ensure auth provider credentials are correct in `global.secrets.auth`
 - Verify `config.authProvider` matches configured auth system
 

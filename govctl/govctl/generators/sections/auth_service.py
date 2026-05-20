@@ -63,6 +63,16 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "managementAudience": f"https://{auth0_domain}/api/v2/",
             "apiIdentifier": config.auth0_audience or f"https://{auth0_domain}/api/v2/",
         }
+    elif config.auth_provider == AuthProvider.ENTRA:
+        tenant_id = config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
+        section["config"]["idp"][
+            "issuer"
+        ] = f"https://login.microsoftonline.com/{tenant_id}/v2.0"
+        section["config"]["idp"]["skipIssuerVerification"] = False
+        section["config"]["idp"]["entra"] = {
+            "tenantId": tenant_id,
+            "defaultRoles": "user",
+        }
     elif config.auth_provider == AuthProvider.KEYCLOAK:
         keycloak_url = config.keycloak_url or f"https://{config.domain}/keycloak"
         section["config"]["idp"][
@@ -80,28 +90,13 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "enabled": True,
             "keyId": f"auth-service-{config.environment}-001",
         }
-    elif config.auth_provider == AuthProvider.ENTRA:
-        tenant_id = config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
-        section["config"]["idp"][
-            "issuer"
-        ] = f"https://login.microsoftonline.com/{tenant_id}/v2.0"
-        section["config"]["idp"]["skipIssuerVerification"] = False
-        section["config"]["idp"]["entra"] = {
-            "tenantId": tenant_id,
-            "defaultRoles": "user",
-        }
 
     # Key management config (required for DID keys)
     section["config"]["keyManagement"] = {
         "provider": config.key_management_provider.value,
     }
 
-    if config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
-        section["config"]["keyManagement"]["azure_key_vault"] = {
-            "vaultUrl": config.azure_key_vault_url,
-            "tenantId": config.azure_tenant_id,
-        }
-    elif config.key_management_provider == KeyManagementProvider.AWS_KMS:
+    if config.key_management_provider == KeyManagementProvider.AWS_KMS:
         aws_kms_config: dict[str, Any] = {}
         if config.aws_kms_region:
             aws_kms_config["region"] = config.aws_kms_region
@@ -113,6 +108,11 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             aws_kms_config["deletionWindowDays"] = config.aws_kms_deletion_window_days
         if aws_kms_config:
             section["config"]["keyManagement"]["aws_kms"] = aws_kms_config
+    elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        section["config"]["keyManagement"]["azure_key_vault"] = {
+            "vaultUrl": config.azure_key_vault_url,
+            "tenantId": config.azure_tenant_id,
+        }
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
         gcp_kms_config: dict[str, Any] = {
             "projectId": config.gcp_kms_project_id,
@@ -120,7 +120,9 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "keyRingId": config.gcp_kms_key_ring_id,
         }
         if config.gcp_kms_scheduled_destroy_days != 24:
-            gcp_kms_config["scheduledDestroyDays"] = config.gcp_kms_scheduled_destroy_days
+            gcp_kms_config["scheduledDestroyDays"] = (
+                config.gcp_kms_scheduled_destroy_days
+            )
         section["config"]["keyManagement"]["gcp_kms"] = gcp_kms_config
 
     return section

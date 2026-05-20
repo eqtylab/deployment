@@ -2,10 +2,10 @@
 # INTEGRITY SERVICE - HELM VALUES CONFIGURATION
 # =============================================================================
 # This values file configures the Integrity Service for lineage tracking
-# and verifiable credentials management.
+# and verifiable credentials management
 #
 # When deployed via the umbrella chart (governance-platform), most values
-# are auto-configured from global settings.
+# are auto-configured from global settings
 # =============================================================================
 
 # -- Enable Service
@@ -423,20 +423,20 @@ secrets:
   # @default -- See values below
   # Only configure the section matching your storage provider
   storage:
-    # -- Azure Blob Storage Secret
-    # @default -- See values below
-    # Only used when integrityAppBlobStoreType is "azure_blob"
-    azure_blob:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
-      name: ""
-
     # -- AWS S3 Secret
     # @default -- See values below
     # Only used when integrityAppBlobStoreType is "aws_s3"
     aws_s3:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
+      name: ""
+
+    # -- Azure Blob Storage Secret
+    # @default -- See values below
+    # Only used when integrityAppBlobStoreType is "azure_blob"
+    azure_blob:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
       name: ""
 
     # -- GCS Secret

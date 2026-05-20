@@ -5,20 +5,20 @@ from enum import Enum
 
 
 class CloudProvider(str, Enum):
-    GCP = "gcp"
     AWS = "aws"
     AZURE = "azure"
+    GCP = "gcp"
 
 
 class AuthProvider(str, Enum):
     AUTH0 = "auth0"
-    KEYCLOAK = "keycloak"
     ENTRA = "entra"
+    KEYCLOAK = "keycloak"
 
 
 class KeyManagementProvider(str, Enum):
-    AZURE_KEY_VAULT = "azure_key_vault"
     AWS_KMS = "aws_kms"
+    AZURE_KEY_VAULT = "azure_key_vault"
     GCP_KMS = "gcp_kms"
 
 
@@ -29,9 +29,9 @@ class DatabaseMode(str, Enum):
 
 # Mapping of cloud provider to storage provider
 CLOUD_TO_STORAGE = {
-    CloudProvider.GCP: "gcs",
     CloudProvider.AWS: "aws_s3",
     CloudProvider.AZURE: "azure_blob",
+    CloudProvider.GCP: "gcs",
 }
 
 
@@ -69,15 +69,15 @@ class PlatformConfig:
         KeyManagementProvider.AZURE_KEY_VAULT
     )
 
-    # Azure Key Vault-specific
-    azure_key_vault_url: str = ""
-    azure_tenant_id: str = ""
-
     # AWS KMS-specific
     aws_kms_region: str = ""
     aws_kms_endpoint: str = ""
     aws_kms_alias_prefix: str = ""
     aws_kms_deletion_window_days: int = 7
+
+    # Azure Key Vault-specific
+    azure_key_vault_url: str = ""
+    azure_tenant_id: str = ""
 
     # GCP KMS-specific
     gcp_kms_project_id: str = ""
@@ -89,13 +89,13 @@ class PlatformConfig:
     auth0_domain: str = ""
     auth0_audience: str = ""
 
-    # Keycloak-specific
-    keycloak_url: str = ""
-    keycloak_realm: str = "governance"
-
     # Entra-specific
     entra_tenant_id: str = ""
     entra_client_id: str = ""
+
+    # Keycloak-specific
+    keycloak_url: str = ""
+    keycloak_realm: str = "governance"
 
     # Image registry
     image_registry_url: str = "ghcr.io"

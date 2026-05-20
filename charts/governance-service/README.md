@@ -11,7 +11,7 @@ Key capabilities:
 - **Governance Workflows**: Validation, analysis, and processing of governance policies
 - **Storage Integration**: Multi-provider support for GCS, Azure Blob, and AWS S3
 - **Worker Service**: Background processing with service account authentication
-- **Multi-Provider Auth**: Backend support for Auth0, Keycloak, and Microsoft Entra ID identity providers
+- **Multi-Provider Auth**: Backend support for Auth0, Microsoft Entra ID, and Keycloak identity providers
 
 ## Configuration Model
 
@@ -30,7 +30,7 @@ This allows:
 - Helm 3.8+
 - PostgreSQL database (provided by umbrella chart or external)
 - Storage provider (GCS, Azure Blob Storage, or AWS S3)
-- Authentication provider (Auth0, Keycloak, or Entra ID)
+- Authentication provider (Auth0, Entra ID, or Keycloak)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
 
@@ -72,6 +72,52 @@ governance-service:
           - "governance.yourcompany.com"
   config:
     auth0Domain: "your-tenant.us.auth0.com"
+
+    # Storage Configuration - GCS
+    storageProvider: "gcs"
+    gcsBucketName: "your-governance-artifacts-bucket"
+
+    # Storage Configuration - Azure Blob (uncomment to use instead)
+    # storageProvider: "azure_blob"
+    # azureStorageAccountName: "your-storage-account"
+    # azureStorageContainerName: "your-governance-artifacts-container"
+
+    # Storage Configuration - AWS S3 (uncomment to use instead)
+    # storageProvider: "aws_s3"
+    # awsS3Region: "us-east-1"
+    # awsS3BucketName: "your-governance-artifacts-bucket"
+```
+
+**Microsoft Entra ID:**
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "entra"
+
+governance-service:
+  image:
+    tag: ""
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: "governance.yourcompany.com"
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: "ImplementationSpecific"
+    tls:
+      - secretName: "governance-service-tls"
+        hosts:
+          - "governance.yourcompany.com"
+  config:
+    entraTenantId: "your-tenant-id"
 
     # Storage Configuration - GCS
     storageProvider: "gcs"
@@ -135,78 +181,32 @@ governance-service:
     # awsS3BucketName: "your-governance-artifacts-bucket"
 ```
 
-**Microsoft Entra ID:**
-
-```yaml
-global:
-  secrets:
-    auth:
-      provider: "entra"
-
-governance-service:
-  image:
-    tag: ""
-  ingress:
-    enabled: true
-    className: "nginx"
-    annotations:
-      cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-    hosts:
-      - host: "governance.yourcompany.com"
-        paths:
-          - path: "/governanceService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
-    tls:
-      - secretName: "governance-service-tls"
-        hosts:
-          - "governance.yourcompany.com"
-  config:
-    entraTenantId: "your-tenant-id"
-
-    # Storage Configuration - GCS
-    storageProvider: "gcs"
-    gcsBucketName: "your-governance-artifacts-bucket"
-
-    # Storage Configuration - Azure Blob (uncomment to use instead)
-    # storageProvider: "azure_blob"
-    # azureStorageAccountName: "your-storage-account"
-    # azureStorageContainerName: "your-governance-artifacts-container"
-
-    # Storage Configuration - AWS S3 (uncomment to use instead)
-    # storageProvider: "aws_s3"
-    # awsS3Region: "us-east-1"
-    # awsS3BucketName: "your-governance-artifacts-bucket"
-```
-
 ### Required Configuration
 
 Beyond what is auto-configured, these values **must** be explicitly set:
 
 **Storage (exactly one provider must be configured):**
 
-- `config.storageProvider` - Storage provider type (`gcs`, `azure_blob`, or `aws_s3`)
-- GCS: `config.gcsBucketName` - GCS bucket name
-- Azure Blob: `config.azureStorageAccountName` - Storage account name, `config.azureStorageContainerName` - Azure container name
+- `config.storageProvider` - Storage provider type (`aws_s3`, `azure_blob`, or `gcs`)
 - AWS S3: `config.awsS3Region` - AWS region, `config.awsS3BucketName` - S3 bucket name
+- Azure Blob: `config.azureStorageAccountName` - Storage account name, `config.azureStorageContainerName` - Azure container name
+- GCS: `config.gcsBucketName` - GCS bucket name
 
 **Auth0:**
 
 - `config.auth0Domain` - Auth0 tenant domain (e.g., `yourcompany.auth0.com`)
 - Client ID and secret are auto-configured from the `global.secrets.auth.auth0` secret
 
+**Microsoft Entra ID:**
+
+- `config.entraTenantId` - Microsoft Entra ID tenant ID (can also be auto-configured from `global.secrets.auth.entra` secret)
+- Client ID and secret are auto-configured from the `global.secrets.auth.entra` secret
+
 **Keycloak:**
 
 - `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
 - `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
 - Service account client ID and secret are auto-configured from the `global.secrets.auth.keycloak` secret
-
-**Microsoft Entra ID:**
-
-- `config.entraTenantId` - Microsoft Entra ID tenant ID (can also be auto-configured from `global.secrets.auth.entra` secret)
-- Client ID and secret are auto-configured from the `global.secrets.auth.entra` secret
 
 Only one authentication provider should be configured at a time, set via `global.secrets.auth.provider` in the umbrella chart.
 
@@ -245,10 +245,10 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.postgresql.username                   | string | PostgreSQL username                               |
 | global.secrets.database.secretName           | string | Name of database credentials secret               |
 | global.secrets.encryption.secretName         | string | Name of encryption key secret                     |
-| global.secrets.auth.provider                 | string | Auth provider (auth0, keycloak, or entra)         |
+| global.secrets.auth.provider                 | string | Auth provider (auth0, entra, or keycloak)         |
 | global.secrets.auth.auth0.secretName         | string | Auth0 credentials secret name                     |
-| global.secrets.auth.keycloak.secretName      | string | Keycloak credentials secret name                  |
 | global.secrets.auth.entra.secretName         | string | Entra ID credentials secret name                  |
+| global.secrets.auth.keycloak.secretName      | string | Keycloak credentials secret name                  |
 | global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                       |
 | global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                |
 | global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                    |
@@ -384,31 +384,31 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | ----------------------- | ------ | ----------------------------------------------------------------------- |
 | secrets.auth.auth0.name | string | Secret name (auto-configured from global.secrets.auth.auth0.secretName) |
 
-#### Keycloak Secret (only used when auth provider is Keycloak)
-
-| Key                        | Type   | Description                                                                |
-| -------------------------- | ------ | -------------------------------------------------------------------------- |
-| secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
-
 #### Entra ID Secret (only used when auth provider is Entra ID)
 
 | Key                     | Type   | Description                                                             |
 | ----------------------- | ------ | ----------------------------------------------------------------------- |
 | secrets.auth.entra.name | string | Secret name (auto-configured from global.secrets.auth.entra.secretName) |
 
+#### Keycloak Secret (only used when auth provider is Keycloak)
+
+| Key                        | Type   | Description                                                                |
+| -------------------------- | ------ | -------------------------------------------------------------------------- |
+| secrets.auth.keycloak.name | string | Secret name (auto-configured from global.secrets.auth.keycloak.secretName) |
+
 #### Storage Secrets
-
-**Azure Blob Storage (only used when storage provider is azure_blob):**
-
-| Key                             | Type   | Description                                                                     |
-| ------------------------------- | ------ | ------------------------------------------------------------------------------- |
-| secrets.storage.azure_blob.name | string | Secret name (auto-configured from global.secrets.storage.azure_blob.secretName) |
 
 **AWS S3 (only used when storage provider is aws_s3):**
 
 | Key                         | Type   | Description                                                                 |
 | --------------------------- | ------ | --------------------------------------------------------------------------- |
 | secrets.storage.aws_s3.name | string | Secret name (auto-configured from global.secrets.storage.aws_s3.secretName) |
+
+**Azure Blob Storage (only used when storage provider is azure_blob):**
+
+| Key                             | Type   | Description                                                                     |
+| ------------------------------- | ------ | ------------------------------------------------------------------------------- |
+| secrets.storage.azure_blob.name | string | Secret name (auto-configured from global.secrets.storage.azure_blob.secretName) |
 
 **Google Cloud Storage (only used when storage provider is gcs):**
 
@@ -450,13 +450,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 | Key                    | Type   | Default | Description                                             |
 | ---------------------- | ------ | ------- | ------------------------------------------------------- |
-| config.storageProvider | string | `""`    | Storage provider (gcs/azure_blob/aws_s3) - **REQUIRED** |
-
-**Google Cloud Storage (only used when storageProvider is "gcs"):**
-
-| Key                  | Type   | Default | Description                    |
-| -------------------- | ------ | ------- | ------------------------------ |
-| config.gcsBucketName | string | `""`    | GCS bucket name (**REQUIRED**) |
+| config.storageProvider | string | `""`    | Storage provider (aws_s3/azure_blob/gcs) - **REQUIRED** |
 
 **AWS S3 (only used when storageProvider is "aws_s3"):**
 
@@ -477,11 +471,17 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.azureStorageContainerName    | string | `""`    | Azure container name (**REQUIRED**)                                                      |
 | config.azureUseManagedIdentity      | bool   | `false` | Use Azure managed identity for authentication                                            |
 
+**Google Cloud Storage (only used when storageProvider is "gcs"):**
+
+| Key                  | Type   | Default | Description                    |
+| -------------------- | ------ | ------- | ------------------------------ |
+| config.gcsBucketName | string | `""`    | GCS bucket name (**REQUIRED**) |
+
 #### Authentication Provider Configuration
 
 | Key                 | Type   | Default | Description                                                                              |
 | ------------------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
-| config.authProvider | string | `""`    | Auth provider (auth0/keycloak/entra) - auto-configured from global.secrets.auth.provider |
+| config.authProvider | string | `""`    | Auth provider (auth0/entra/keycloak) - auto-configured from global.secrets.auth.provider |
 
 #### Auth0 Configuration (only used when auth provider is Auth0)
 
@@ -493,6 +493,14 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.auth0SyncAtStartup | bool   | `true`  | Sync Auth0 users at application startup                              |
 | config.auth0SyncPageSize  | int    | `100`   | Number of users to sync per page                                     |
 
+#### Microsoft Entra ID Configuration (only used when auth provider is Entra ID)
+
+| Key                      | Type   | Default | Description                                                                   |
+| ------------------------ | ------ | ------- | ----------------------------------------------------------------------------- |
+| config.entraTenantId     | string | `""`    | Microsoft Entra ID tenant ID (auto-configured from global.secrets.auth.entra) |
+| config.entraClientId     | string | `""`    | Entra client ID (auto-configured from global.secrets.auth.entra)              |
+| config.entraClientSecret | string | `""`    | Entra client secret (auto-configured from global.secrets.auth.entra)          |
+
 #### Keycloak Configuration (only used when auth provider is Keycloak)
 
 | Key                         | Type   | Default | Description                                                                                |
@@ -501,14 +509,6 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.keycloakRealm        | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                                  |
 | config.keycloakClientId     | string | `""`    | Keycloak service account client ID (auto-configured from global.secrets.auth.keycloak)     |
 | config.keycloakClientSecret | string | `""`    | Keycloak service account client secret (auto-configured from global.secrets.auth.keycloak) |
-
-#### Microsoft Entra ID Configuration (only used when auth provider is Entra ID)
-
-| Key                      | Type   | Default | Description                                                                   |
-| ------------------------ | ------ | ------- | ----------------------------------------------------------------------------- |
-| config.entraTenantId     | string | `""`    | Microsoft Entra ID tenant ID (auto-configured from global.secrets.auth.entra) |
-| config.entraClientId     | string | `""`    | Entra client ID (auto-configured from global.secrets.auth.entra)              |
-| config.entraClientSecret | string | `""`    | Entra client secret (auto-configured from global.secrets.auth.entra)          |
 
 #### Integration URLs
 
@@ -652,8 +652,8 @@ kubectl exec -it deployment/governance-service -n governance -- curl localhost:1
 
 - Verify auth provider matches `global.secrets.auth.provider`
 - For Auth0: check domain, client ID, and client secret are correct
-- For Keycloak: check URL, realm, client ID, and client secret are correct
 - For Entra: check tenant ID, client ID, and client secret are correct
+- For Keycloak: check URL, realm, client ID, and client secret are correct
 - Ensure auth service is running and accessible
 - Check worker credentials are properly configured
 

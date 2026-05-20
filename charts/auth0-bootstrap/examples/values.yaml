@@ -1,0 +1,147 @@
+# Auth0 Bootstrap values example
+# This configures the bootstrap job to set up Auth0 for the Governance Platform
+#
+# PREREQUISITE: Before running this chart, you must:
+# 1. Create an Auth0 tenant (if you don't have one)
+# 2. Create a Machine-to-Machine application in the Auth0 Dashboard
+#    with access to the Auth0 Management API (all scopes)
+# 3. Create a Kubernetes secret with the M2M credentials, the auth-service
+#    shared bearer token used by the post-login action (only required when
+#    actions.postLogin.enabled is true):
+#    kubectl create secret generic auth0-management \
+#      --from-literal=client-id=YOUR_MGMT_CLIENT_ID \
+#      --from-literal=client-secret=YOUR_MGMT_CLIENT_SECRET \
+#      --from-literal=auth-service-api-secret="$(openssl rand -base64 32)" \
+#      --namespace governance
+# 4. Create a Kubernetes secret for the platform admin password:
+#    kubectl create secret generic platform-admin \
+#      --from-literal=password="$(openssl rand -base64 16)" \
+#      --namespace governance
+
+# Bootstrap job configuration
+bootstrap:
+  enabled: true
+
+  image:
+    repository: dwdraju/alpine-curl-jq
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  args: ["/scripts/bootstrap.sh"]
+
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 600
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Auth0 connection
+auth0:
+  # Your Auth0 tenant domain
+  domain: "CHANGE_ME_TENANT.us.auth0.com"
+
+  # Secret containing the Management API M2M credentials
+  managementSecret:
+    name: "auth0-management"
+    clientIdKey: "client-id"
+    clientSecretKey: "client-secret"
+
+  # Governance Platform API
+  api:
+    name: "Governance Platform API"
+    identifier: "https://CHANGE_ME_DOMAIN_HERE"
+    tokenLifetime: 86400
+    allowOfflineAccess: false
+
+# Application configuration
+applications:
+  # Frontend SPA
+  frontend:
+    name: "Governance Platform Frontend"
+    callbacks:
+      - "https://CHANGE_ME_DOMAIN_HERE/callback"
+      - "http://localhost:5173/callback"
+    logoutUrls:
+      - "https://CHANGE_ME_DOMAIN_HERE"
+      - "http://localhost:5173"
+    webOrigins:
+      - "https://CHANGE_ME_DOMAIN_HERE"
+      - "http://localhost:5173"
+
+  # Backend M2M
+  backend:
+    name: "Governance Platform Backend"
+    apiScopes:
+      - "read:organizations"
+      - "write:organizations"
+      - "read:projects"
+      - "write:projects"
+      - "read:evaluations"
+      - "write:evaluations"
+      - "governance:declarations:create"
+      - "integrity:statements:create"
+    managementApiScopes:
+      - "read:users"
+      - "update:users"
+      - "create:users"
+      - "read:roles"
+      - "create:role_members"
+
+  # Worker M2M
+  worker:
+    name: "Governance Worker"
+    apiScopes:
+      - "governance:declarations:create"
+      - "integrity:statements:create"
+
+# Auth0 Actions
+actions:
+  enabled: true
+  postLogin:
+    enabled: true
+    authService:
+      urlDev: "https://auth.dev.CHANGE_ME"
+      urlStaging: "https://auth.stag.CHANGE_ME"
+      urlProduction: "https://auth.CHANGE_ME"
+  clientCredentialsExchange:
+    enabled: true
+
+# API permissions
+scopes:
+  - name: "governance:declarations:create"
+    description: "Create governance declarations"
+  - name: "integrity:statements:create"
+    description: "Create integrity statements"
+  - name: "read:organizations"
+    description: "Read access to organizations"
+  - name: "write:organizations"
+    description: "Write access to organizations"
+  - name: "read:projects"
+    description: "Read access to projects"
+  - name: "write:projects"
+    description: "Write access to projects"
+  - name: "read:evaluations"
+    description: "Read access to evaluations"
+  - name: "write:evaluations"
+    description: "Write access to evaluations"
+
+# Initial users
+users:
+  admin:
+    enabled: true
+    email: "admin@CHANGE_ME_DOMAIN_HERE"
+    firstName: "Platform"
+    lastName: "Admin"
+    connection: "Username-Password-Authentication"
+    secretName: "platform-admin"
+    secretKey: "password"
+
+  testUsers:
+    enabled: false
+    users: []

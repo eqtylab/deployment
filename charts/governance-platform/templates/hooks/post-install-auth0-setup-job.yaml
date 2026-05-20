@@ -1,0 +1,304 @@
+{{- if .Values.auth0.createOrganization }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "governance-platform.fullname" . }}-post-install-auth0-setup
+  labels:
+    {{- include "governance-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth0-org-setup
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "20"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "governance-platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: auth0-org-setup
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: create-org
+          image: postgres:17-alpine
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              set -e
+              echo "Waiting for database to be ready..."
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
+                echo "Database not ready yet..."
+                sleep 5
+              done
+
+              echo "Creating Auth0 organization..."
+
+              ORG_NAME="{{ .Values.auth0.organizationName }}"
+
+              # Check if organization already exists
+              EXISTS=$(psql \
+                -t -c "SELECT COUNT(*) FROM organization WHERE name = '${ORG_NAME}';" | tr -d ' ')
+
+              if [ "$EXISTS" = "1" ]; then
+                echo "Organization '${ORG_NAME}' already exists"
+                # Update to ensure idp_provider is set correctly
+                psql -c "UPDATE organization SET idp_provider = 'auth0', display_name = '{{ .Values.auth0.displayName | default .Values.auth0.organizationName }}', updated_at = NOW() WHERE name = '${ORG_NAME}';"
+                echo "Updated organization to use Auth0 IDP"
+              else
+                # Create new organization
+                psql -c "INSERT INTO organization (name, description, display_name, idp_provider, settings, created_at, updated_at) \
+                      VALUES ('${ORG_NAME}', '${ORG_NAME}', '{{ .Values.auth0.displayName | default .Values.auth0.organizationName }}', 'auth0', '{}', NOW(), NOW());"
+                echo "Created organization '${ORG_NAME}'"
+              fi
+
+              # Show the organization
+              psql \
+                -c "SELECT id, name, display_name, idp_provider FROM organization WHERE name = '${ORG_NAME}';"
+
+              {{- if .Values.auth0.createPlatformAdmin }}
+              {{- if not .Values.auth0.platformAdminEmail }}
+              {{- fail "auth0.platformAdminEmail is required when auth0.createPlatformAdmin is true. Must be an email that exists in your Auth0 tenant." }}
+              {{- end }}
+              {{- if not .Values.auth0.domain }}
+              {{- fail "auth0.domain is required when auth0.createPlatformAdmin is true." }}
+              {{- end }}
+              {{- $adminEmail := .Values.auth0.platformAdminEmail }}
+              echo "Creating platform-admin user..."
+
+              # Install curl and jq for Management API calls
+              apk add --no-cache curl jq > /dev/null 2>&1
+
+              ADMIN_EMAIL="{{ $adminEmail }}"
+              echo "Looking up Auth0 user by email: $ADMIN_EMAIL"
+
+              # Get Management API access token using client credentials flow
+              TOKEN_RESPONSE=$(curl -s -X POST \
+                "https://${AUTH0_DOMAIN}/oauth/token" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"client_id\": \"${AUTH0_MGMT_CLIENT_ID}\",
+                  \"client_secret\": \"${AUTH0_MGMT_CLIENT_SECRET}\",
+                  \"audience\": \"https://${AUTH0_DOMAIN}/api/v2/\",
+                  \"grant_type\": \"client_credentials\"
+                }") || true
+
+              MGMT_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+
+              if [ -z "$MGMT_TOKEN" ] || [ "$MGMT_TOKEN" = "null" ]; then
+                echo "ERROR: Failed to get Auth0 Management API access token"
+                echo "Response: $TOKEN_RESPONSE"
+                exit 1
+              fi
+
+              # URL-encode the email for the query string
+              ENCODED_EMAIL=$(echo "$ADMIN_EMAIL" | jq -Rr @uri)
+
+              # Look up user by email via Auth0 Management API
+              AUTH0_USER=$(curl -s \
+                -H "Authorization: Bearer $MGMT_TOKEN" \
+                "https://${AUTH0_DOMAIN}/api/v2/users-by-email?email=${ENCODED_EMAIL}") || true
+
+              AUTH0_USER_ID=$(echo "$AUTH0_USER" | jq -r '.[0].user_id // empty')
+              AUTH0_DISPLAY_NAME=$(echo "$AUTH0_USER" | jq -r '.[0].name // "Platform Admin"')
+              AUTH0_GIVEN_NAME=$(echo "$AUTH0_USER" | jq -r '.[0].given_name // "Platform"')
+              AUTH0_FAMILY_NAME=$(echo "$AUTH0_USER" | jq -r '.[0].family_name // "Admin"')
+
+              if [ -z "$AUTH0_USER_ID" ]; then
+                echo "ERROR: Could not find user with email $ADMIN_EMAIL in Auth0 tenant ${AUTH0_DOMAIN}"
+                echo "Make sure the user exists in Auth0 (e.g., created by the auth0-bootstrap job)"
+                exit 1
+              fi
+
+              echo "Found Auth0 user ID: $AUTH0_USER_ID"
+
+              # Generate UUIDs using PostgreSQL
+              USER_ID=$(psql -t -c "SELECT gen_random_uuid();" | tr -d ' ')
+
+              # Check if user exists (by email or by idp composite key)
+              USER_EXISTS=$(psql \
+                -t -c "SELECT COUNT(*) FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'auth0' AND idp_user_id = '$AUTH0_USER_ID');" | tr -d ' ')
+
+              if [ "$USER_EXISTS" != "0" ]; then
+                echo "Platform admin user already exists"
+                USER_ID=$(psql -t -c "SELECT id FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'auth0' AND idp_user_id = '$AUTH0_USER_ID') LIMIT 1;" | tr -d ' ')
+              else
+                # Create user
+                psql -c "INSERT INTO users (id, idp_provider, idp_user_id, email, email_verified, display_name, given_name, family_name, active, app_metadata, created_at, updated_at, is_service_account, service_config) \
+                      VALUES ('$USER_ID', 'auth0', '$AUTH0_USER_ID', '$ADMIN_EMAIL', true, '$AUTH0_DISPLAY_NAME', '$AUTH0_GIVEN_NAME', '$AUTH0_FAMILY_NAME', true, '{}', NOW(), NOW(), false, '{}');"
+                echo "Created platform admin user"
+              fi
+
+              # Get organization ID
+              ORG_ID=$(psql \
+                -t -c "SELECT id FROM organization WHERE name = '${ORG_NAME}';" | tr -d ' ')
+
+              # Check if membership exists
+              MEMBERSHIP_EXISTS=$(psql \
+                -t -c "SELECT COUNT(*) FROM user_organization_memberships WHERE user_id = '$USER_ID' AND organization_id = '$ORG_ID';" | tr -d ' ')
+
+              if [ "$MEMBERSHIP_EXISTS" = "1" ]; then
+                echo "Membership already exists, updating to ensure owner role"
+                psql -c "UPDATE user_organization_memberships SET roles = '{organization_owner}', status = 'active' WHERE user_id = '$USER_ID' AND organization_id = '$ORG_ID';"
+              else
+                # Create membership
+                MEMBERSHIP_ID=$(psql -t -c "SELECT gen_random_uuid();" | tr -d ' ')
+                psql -c "INSERT INTO user_organization_memberships (id, user_id, organization_id, roles, invited_at, joined_at, status) \
+                      VALUES ('$MEMBERSHIP_ID', '$USER_ID', '$ORG_ID', '{organization_owner}', NOW(), NOW(), 'active');"
+                echo "Created organization membership"
+              fi
+
+              # Show created user and membership
+              echo "Platform admin user:"
+              psql \
+                -c "SELECT id, email, display_name, idp_provider FROM users WHERE email = '$ADMIN_EMAIL';"
+              {{- end }}
+
+              echo "Setup complete!"
+          {{- $bundledPgAuth := (((.Values.postgresql).auth) | default dict) }}
+          {{- $bundledPgSecretKeys := (($bundledPgAuth.secretKeys) | default dict) }}
+          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
+          env:
+            - name: PGHOST
+              value: {{ ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
+            - name: PGPORT
+              value: {{ ((.Values.global).postgresql).port | default 5432 | quote }}
+            - name: PGUSER
+              value: {{ ((.Values.global).postgresql).username | default ($bundledPgAuth.username | default "postgres") | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ (((.Values.global).secrets).database).secretName | default ($bundledPgAuth.existingSecret | default "platform-database") | quote }}
+                  key: {{ ((((.Values.global).secrets).database).keys).password | default ($bundledPgSecretKeys.userPasswordKey | default "password") | quote }}
+            - name: PGDATABASE
+              value: {{ ((.Values.global).postgresql).database | default ($bundledPgAuth.database | default "governance") | quote }}
+            - name: PGSSLMODE
+              value: {{ ((.Values.global).postgresql).sslMode | default "disable" | quote }}
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+            {{- end }}
+            {{- if .Values.auth0.createPlatformAdmin }}
+            {{- $auth0SecretName := (((.Values.global).secrets).auth).auth0.secretName | default "platform-auth0" }}
+            - name: AUTH0_DOMAIN
+              value: {{ .Values.auth0.domain | quote }}
+            - name: AUTH0_MGMT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $auth0SecretName | quote }}
+                  key: "mgmt-client-id"
+            - name: AUTH0_MGMT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $auth0SecretName | quote }}
+                  key: "mgmt-client-secret"
+            {{- end }}
+          {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+          volumeMounts:
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+          {{- end }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      # This job should run after the application starts and runs migrations
+      initContainers:
+        - name: wait-for-schema
+          image: postgres:17-alpine
+          command: ['sh', '-c']
+          args:
+            - |
+              echo "Waiting for database schema to be ready..."
+
+              # Wait for database to be reachable
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
+                echo "Waiting for database to be ready..."
+                sleep 5
+              done
+
+              # Wait for required tables to exist (migrations run on app startup)
+              echo "Checking for required tables..."
+              REQUIRED_TABLES="organization users user_organization_memberships"
+              MAX_ATTEMPTS=30
+              ATTEMPT=1
+
+              while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+                ALL_EXIST=true
+                for TABLE in $REQUIRED_TABLES; do
+                  EXISTS=$(psql -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '$TABLE');" | tr -d ' ')
+
+                  if [ "$EXISTS" != "t" ]; then
+                    ALL_EXIST=false
+                    echo "Table $TABLE does not exist yet..."
+                    break
+                  fi
+                done
+
+                if [ "$ALL_EXIST" = "true" ]; then
+                  echo "All required tables exist!"
+                  exit 0
+                fi
+
+                echo "Attempt $ATTEMPT/$MAX_ATTEMPTS - Waiting 10 seconds for migrations..."
+                sleep 10
+                ATTEMPT=$((ATTEMPT + 1))
+              done
+
+              echo "Warning: Some tables may not exist, but proceeding..."
+              exit 0
+          {{- $bundledPgAuth := (((.Values.postgresql).auth) | default dict) }}
+          {{- $bundledPgSecretKeys := (($bundledPgAuth.secretKeys) | default dict) }}
+          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
+          env:
+            - name: PGHOST
+              value: {{ ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
+            - name: PGPORT
+              value: {{ ((.Values.global).postgresql).port | default 5432 | quote }}
+            - name: PGUSER
+              value: {{ ((.Values.global).postgresql).username | default ($bundledPgAuth.username | default "postgres") | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ (((.Values.global).secrets).database).secretName | default ($bundledPgAuth.existingSecret | default "platform-database") | quote }}
+                  key: {{ ((((.Values.global).secrets).database).keys).password | default ($bundledPgSecretKeys.userPasswordKey | default "password") | quote }}
+            - name: PGDATABASE
+              value: {{ ((.Values.global).postgresql).database | default ($bundledPgAuth.database | default "governance") | quote }}
+            - name: PGSSLMODE
+              value: {{ ((.Values.global).postgresql).sslMode | default "disable" | quote }}
+            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+            - name: PGSSLROOTCERT
+              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
+          volumeMounts:
+            - name: postgres-ca
+              mountPath: /etc/ssl/postgres
+              readOnly: true
+            {{- end }}
+      {{- if $pgSslRootCert.secretName }}
+      volumes:
+        - name: postgres-ca
+          secret:
+            secretName: {{ $pgSslRootCert.secretName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+      {{- else if $pgSslRootCert.configMapName }}
+      volumes:
+        - name: postgres-ca
+          configMap:
+            name: {{ $pgSslRootCert.configMapName | quote }}
+            items:
+              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+      {{- end }}
+{{- end }}

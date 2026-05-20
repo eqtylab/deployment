@@ -17,6 +17,7 @@ from govctl.generators.sections.integrity_service import (
 from govctl.generators.sections.postgresql import generate_postgresql_section
 from govctl.generators.sections.keycloak import generate_keycloak_section
 from govctl.generators.sections.entra import generate_entra_section
+from govctl.generators.sections.auth0 import generate_auth0_section
 
 
 def generate_values(config: PlatformConfig) -> str:
@@ -72,13 +73,13 @@ def generate_values(config: PlatformConfig) -> str:
         ),
     ]
 
-    if config.auth_provider == AuthProvider.KEYCLOAK:
+    if config.auth_provider == AuthProvider.AUTH0:
         sections.append(
             (
-                "keycloak",
-                "Keycloak",
-                "Override values for the keycloak Helm chart.",
-                generate_keycloak_section(config),
+                "auth0",
+                "Auth0",
+                "Post-install organization and admin-user setup for Auth0.",
+                generate_auth0_section(config),
             )
         )
     elif config.auth_provider == AuthProvider.ENTRA:
@@ -88,6 +89,15 @@ def generate_values(config: PlatformConfig) -> str:
                 "Entra",
                 "Override values for the entra Helm chart.",
                 generate_entra_section(config),
+            )
+        )
+    elif config.auth_provider == AuthProvider.KEYCLOAK:
+        sections.append(
+            (
+                "keycloak",
+                "Keycloak",
+                "Override values for the keycloak Helm chart.",
+                generate_keycloak_section(config),
             )
         )
 

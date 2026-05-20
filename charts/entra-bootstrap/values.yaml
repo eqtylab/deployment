@@ -2,11 +2,11 @@
 # ENTRA BOOTSTRAP - HELM VALUES CONFIGURATION
 # =============================================================================
 # This values file configures the Entra ID Bootstrap job for creating
-# app registrations and configuring OAuth for the Governance Platform.
+# app registrations and configuring OAuth for the Governance Platform
 #
 # The bootstrap job runs as a Kubernetes Job that configures Microsoft Entra ID
 # via the Azure CLI and Microsoft Graph API. It is typically run once during
-# initial deployment.
+# initial deployment
 # =============================================================================
 
 # -- Name Override
@@ -104,15 +104,15 @@ entra:
 
   # -- Service Principal Secret
   # @default -- See values below
-  # Secret containing bootstrap service principal credentials for Graph API access.
+  # Secret containing bootstrap service principal credentials for Graph API access
   # This is a dedicated secret for the bootstrap job, separate from `platform-entra`
-  # which stores the created app registration credentials for the platform services.
+  # which stores the created app registration credentials for the platform services
   #
   # The service principal must have the following Microsoft Graph API permissions:
   #   - Application.ReadWrite.All (Application) — create/update app registrations
   #   - DelegatedPermissionGrant.ReadWrite.All (Application) — grant admin consent
   #
-  # See README.md for instructions on creating the service principal.
+  # See README.md for instructions on creating the service principal
   servicePrincipalSecret:
     # -- Secret Name
     # @default -- `entra-bootstrap-sp`

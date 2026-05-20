@@ -52,27 +52,27 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
     }
 
     # Provider-specific storage config
-    if config.cloud_provider == CloudProvider.GCP:
-        section["config"]["gcsBucketName"] = "YOUR_GCS_BUCKET"
-    elif config.cloud_provider == CloudProvider.AWS:
+    if config.cloud_provider == CloudProvider.AWS:
         section["config"]["awsS3Region"] = config.cloud_region or "us-east-1"
         section["config"]["awsS3BucketName"] = "YOUR_S3_BUCKET"
     elif config.cloud_provider == CloudProvider.AZURE:
         section["config"]["azureStorageAccountName"] = "YOUR_STORAGE_ACCOUNT"
         section["config"]["azureStorageContainerName"] = "YOUR_CONTAINER"
+    elif config.cloud_provider == CloudProvider.GCP:
+        section["config"]["gcsBucketName"] = "YOUR_GCS_BUCKET"
 
     # Auth provider config
     if config.auth_provider == AuthProvider.AUTH0:
         section["config"]["auth0Domain"] = (
             config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com"
         )
-    elif config.auth_provider == AuthProvider.KEYCLOAK:
-        keycloak_url = config.keycloak_url or f"https://{config.domain}/keycloak"
-        section["config"]["keycloakUrl"] = keycloak_url
-        section["config"]["keycloakRealm"] = config.keycloak_realm
     elif config.auth_provider == AuthProvider.ENTRA:
         section["config"]["entraTenantId"] = (
             config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
         )
+    elif config.auth_provider == AuthProvider.KEYCLOAK:
+        keycloak_url = config.keycloak_url or f"https://{config.domain}/keycloak"
+        section["config"]["keycloakUrl"] = keycloak_url
+        section["config"]["keycloakRealm"] = config.keycloak_realm
 
     return section
