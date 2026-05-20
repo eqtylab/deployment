@@ -280,14 +280,15 @@ When deployed via the umbrella chart, these global values are automatically used
 
 All config values support global fallbacks when deployed via umbrella chart.
 
-| Key                        | Type   | Default               | Description                                               |
-| -------------------------- | ------ | --------------------- | --------------------------------------------------------- |
-| config.basePath            | string | `"/"`                 | Base path for application routing                         |
-| config.apiUrl              | string | `""`                  | Backend API URL (auto-generated from global.domain)       |
-| config.authServiceUrl      | string | `""`                  | Auth service URL (auto-generated from global.domain)      |
-| config.integrityServiceUrl | string | `""`                  | Integrity service URL (auto-generated from global.domain) |
-| config.environment         | string | `""`                  | Environment (auto-configured from global.environmentType) |
-| config.appTitle            | string | `"Governance Studio"` | Application title displayed in browser                    |
+| Key                        | Type   | Default               | Description                                                                                                                        |
+| -------------------------- | ------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| config.basePath            | string | `"/"`                 | Base path for application routing                                                                                                  |
+| config.apiUrl              | string | `""`                  | Backend API URL (auto-generated from global.domain)                                                                                |
+| config.authServiceUrl      | string | `""`                  | Auth service URL (auto-generated from global.domain)                                                                               |
+| config.integrityServiceUrl | string | `""`                  | Integrity service URL (auto-generated from global.domain)                                                                          |
+| config.environment         | string | `""`                  | Environment (auto-configured from global.environmentType)                                                                          |
+| config.appTitle            | string | `"Governance Studio"` | Application title displayed in browser                                                                                             |
+| config.displayTimezone     | string | `"UTC"`               | Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London) |
 
 ### Authentication
 

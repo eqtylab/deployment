@@ -2209,6 +2209,11 @@ governance-studio:
     # Application title displayed in browser and UI
     appTitle: "Governance Studio"
 
+    # -- Display Timezone
+    # @default -- `UTC`
+    # Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London)
+    displayTimezone: "UTC"
+
     # ---------------------------------------------------------------------------
     # Feature Flags
     # ---------------------------------------------------------------------------

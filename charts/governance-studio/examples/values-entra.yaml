@@ -34,6 +34,7 @@ config:
 
   # Application Settings
   appTitle: "Governance Studio"
+  displayTimezone: "UTC"
 
   # Feature Flags
   features:

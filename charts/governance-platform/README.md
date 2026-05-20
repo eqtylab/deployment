@@ -353,14 +353,15 @@ Shared PostgreSQL connection settings:
 
 Frontend application settings. See [governance-studio/README.md](../governance-studio/README.md) for complete documentation.
 
-| Key                                   | Type   | Default               | Description                                                       |
-| ------------------------------------- | ------ | --------------------- | ----------------------------------------------------------------- |
-| governance-studio.enabled             | bool   | `true`                | Enable Governance Studio                                          |
-| governance-studio.replicaCount        | int    | `1`                   | Number of replicas                                                |
-| governance-studio.ingress.enabled     | bool   | `false`               | Enable ingress                                                    |
-| governance-studio.config.authProvider | string | `""`                  | Auth provider (auto-configured from global.secrets.auth.provider) |
-| governance-studio.config.appTitle     | string | `"Governance Studio"` | Application title                                                 |
-| governance-studio.autoscaling.enabled | bool   | `false`               | Enable horizontal pod autoscaling                                 |
+| Key                                      | Type   | Default               | Description                                                               |
+| ---------------------------------------- | ------ | --------------------- | ------------------------------------------------------------------------- |
+| governance-studio.enabled                | bool   | `true`                | Enable Governance Studio                                                  |
+| governance-studio.replicaCount           | int    | `1`                   | Number of replicas                                                        |
+| governance-studio.ingress.enabled        | bool   | `false`               | Enable ingress                                                            |
+| governance-studio.config.authProvider    | string | `""`                  | Auth provider (auto-configured from global.secrets.auth.provider)         |
+| governance-studio.config.appTitle        | string | `"Governance Studio"` | Application title                                                         |
+| governance-studio.config.displayTimezone | string | `"UTC"`               | Timezone used for displayed timestamps (IANA name, e.g. America/New_York) |
+| governance-studio.autoscaling.enabled    | bool   | `false`               | Enable horizontal pod autoscaling                                         |
 
 ### Governance Service Configuration
 
