@@ -21,13 +21,13 @@ Usage: $0 [options]
 
 Examples:
   $0
-  $0 --namespace cert-manager
+  $0 --namespace somewhere-else
 "
 }
 
 # Install cert-manager
 install() {
-  print_info "Installing cert-manager"
+  print_info "Installing cert-manager to $NAMESPACE namespace"
 
   # Add the Jetstack Helm repository
   helm repo add jetstack https://charts.jetstack.io
@@ -46,7 +46,7 @@ install() {
 }
 
 # Default values
-NAMESPACE="ingress-nginx"
+NAMESPACE="cert-manager"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do

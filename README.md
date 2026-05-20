@@ -1,18 +1,19 @@
 # Governance Platform Deployment
 
-> Helm charts, deployment guides, and helper tooling for deploying the **EQTY Lab Governance Platform** on Kubernetes. Supports Microsoft Entra ID, Keycloak, and Auth0 as identity providers, with cloud-agnostic storage and key vault integration (Azure, AWS, GCP).
+> Helm charts, deployment guides, and helper tooling for deploying the **EQTY Lab Governance Platform** on Kubernetes. Supports Auth0, Microsoft Entra ID, and Keycloak as identity providers, with cloud-agnostic storage and key vault integration (AWS, Azure, GCP).
 
 ## 📁 Repository Structure
 
 - **`charts/`**
-  Umbrella chart (`governance-platform`) and subcharts for each service (auth, governance, integrity, studio), plus bootstrap charts for Entra ID and Keycloak identity provider setup.
+  Helm charts for the Governance Platform services (auth, governance, integrity, studio) plus per-IdP bootstrap charts.
   ➡️ [View Charts README](./charts/README.md)
 
 - **`docs/`**
-  Step-by-step deployment guides for each identity provider ([Entra ID](./docs/deployment-guide-entra.md), [Keycloak](./docs/deployment-guide-keycloak.md)).
+  Step-by-step deployment guides for each identity provider (Auth0, Entra ID, Keycloak).
+  ➡️ [View Docs](./docs/)
 
 - **`govctl/`**
-  CLI tool that interactively generates bootstrap, values, and secrets files for your environment.
+  CLI tool for generating Helm values, bootstrap configs, and secrets files interactively.
   ➡️ [View govctl README](./govctl/README.md)
 
 - **`scripts/`**
