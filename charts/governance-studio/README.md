@@ -290,6 +290,8 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.appTitle            | string | `"Governance Studio"` | Application title displayed in browser                                                                                             |
 | config.displayTimezone     | string | `"UTC"`               | Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London) |
 
+The container also receives an `APP_VERSION` environment variable, auto-populated from `Chart.Version`. This is intended for display purposes (e.g. an app footer) and is not user-configurable.
+
 ### Authentication
 
 Authentication is automatically configured from global values in umbrella deployments. Only one authentication provider should be configured at a time, set via `global.secrets.auth.provider` in the umbrella chart.

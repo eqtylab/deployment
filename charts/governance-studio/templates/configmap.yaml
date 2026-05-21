@@ -20,6 +20,7 @@ data:
   # ==========================================================================
   ENVIRONMENT: {{ .Values.config.environment | default ((.Values.global).environmentType | default "") | quote }}
   APP_TITLE: {{ .Values.config.appTitle | quote }}
+  APP_VERSION: {{ .Chart.Version | quote }}
   BASE_PATH: {{ .Values.config.basePath | quote }}
   DISPLAY_TIMEZONE: {{ .Values.config.displayTimezone | quote }}
 

@@ -15,6 +15,7 @@ To access the application, you need to enable ingress or use port-forwarding:
 {{- end }}
 
 Configuration:
+  Version: {{ .Chart.Version }}
   Environment: {{ .Values.config.environment | default ((.Values.global).environmentType | default "not set") }}
   Auth Provider: {{ .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "not set" }}
 
