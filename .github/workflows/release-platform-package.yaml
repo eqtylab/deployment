@@ -164,6 +164,8 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
           PUBLISH: ${{ steps.release.outputs.publish }}
         run: |
+          set -o pipefail
+
           mkdir -p dist/charts
           chart_digest_file="dist/chart-digests.yaml"
           echo "charts:" > "$chart_digest_file"
@@ -182,15 +184,19 @@ jobs:
 
             if [ "$PUBLISH" = "true" ] && helm show chart "$oci_ref" --version "$VERSION" >/dev/null 2>&1; then
               echo "${oci_ref}:${VERSION} already exists; pulling for package assembly."
-              helm pull "$oci_ref" --version "$VERSION" --destination dist/charts
+              helm pull "$oci_ref" --version "$VERSION" --destination dist/charts 2>&1 | tee "dist/charts/${chart}-pull.log"
               package_path="dist/charts/${chart}-${VERSION}.tgz"
-              digest="existing"
+              digest="$(awk '/Digest:/ {print $2; exit}' "dist/charts/${chart}-pull.log")"
+              if [ -z "$digest" ]; then
+                echo "::error::Could not parse OCI digest for existing ${chart}."
+                exit 1
+              fi
             else
               helm package "$chart_dir" --destination dist/charts
               package_path="dist/charts/${chart}-${VERSION}.tgz"
 
               if [ "$PUBLISH" = "true" ]; then
-                helm push "$package_path" oci://ghcr.io/eqtylab/charts | tee "dist/charts/${chart}-push.log"
+                helm push "$package_path" oci://ghcr.io/eqtylab/charts 2>&1 | tee "dist/charts/${chart}-push.log"
                 digest="$(awk '/Digest:/ {print $2; exit}' "dist/charts/${chart}-push.log")"
                 if [ -z "$digest" ]; then
                   echo "::error::Could not parse OCI digest for ${chart}."
