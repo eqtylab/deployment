@@ -265,11 +265,11 @@ actions:
     # @default -- `true`
     enabled: true
     # -- Name
-    # @default -- `Governance Platform - Post Login Enrichment`
-    name: "Governance Platform - Post Login Enrichment"
+    # @default -- `Post Login Users & Service Accounts`
+    name: "Post Login Users & Service Accounts"
     # -- Code File
-    # @default -- `post-login-action-with-service-accounts.js`
-    codeFile: "post-login-action-with-service-accounts.js"
+    # @default -- `post-login-users-and-service-accounts.js`
+    codeFile: "post-login-users-and-service-accounts.js"
     # -- Trigger
     # @default -- See values below
     trigger:
@@ -311,11 +311,11 @@ actions:
     # @default -- `true`
     enabled: true
     # -- Name
-    # @default -- `Governance Platform - Service Account Token Enrichment`
-    name: "Governance Platform - Service Account Token Enrichment"
+    # @default -- `Service Account Credentials`
+    name: "Service Account Credentials"
     # -- Code File
-    # @default -- `client-credentials-exchange-action.js`
-    codeFile: "client-credentials-exchange-action.js"
+    # @default -- `service-account-credentials.js`
+    codeFile: "service-account-credentials.js"
     # -- Trigger
     # @default -- See values below
     trigger:

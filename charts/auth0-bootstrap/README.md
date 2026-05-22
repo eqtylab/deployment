@@ -227,28 +227,28 @@ Each scope is an object with `name` and `description`.
 
 The chart deploys two Auth0 Actions during bootstrap, configured under `actions`:
 
-| Key                                               | Type   | Default                                                    | Description                                                                                     |
-| ------------------------------------------------- | ------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| actions.enabled                                   | bool   | `true`                                                     | Master switch for creating / deploying / binding actions                                        |
-| actions.sourceConfigMap.name                      | string | `"auth0-actions-source"`                                   | ConfigMap holding the action JS (created by `bootstrap-auth0.sh` from `scripts/auth0/actions/`) |
-| actions.postLogin.enabled                         | bool   | `true`                                                     | Enable the post-login token-enrichment action                                                   |
-| actions.postLogin.name                            | string | `"Governance Platform - Post Login Enrichment"`            | Action display name in the Auth0 Dashboard                                                      |
-| actions.postLogin.codeFile                        | string | `"post-login-action-with-service-accounts.js"`             | File inside the action source ConfigMap                                                         |
-| actions.postLogin.trigger.id                      | string | `"post-login"`                                             | Auth0 trigger identifier                                                                        |
-| actions.postLogin.trigger.version                 | string | `"v3"`                                                     | Trigger version                                                                                 |
-| actions.postLogin.runtime                         | string | `"node22"`                                                 | Node runtime for the action                                                                     |
-| actions.postLogin.dependencies                    | list   | `[]`                                                       | npm dependencies (`{ name, version }`)                                                          |
-| actions.postLogin.authService.urlDev              | string | `""`                                                       | Dev auth-service URL — forwarded as `event.secrets.AUTH_SERVICE_URL_DEV`                        |
-| actions.postLogin.authService.urlStaging          | string | `""`                                                       | Staging URL — forwarded as `event.secrets.AUTH_SERVICE_URL_STAGING`                             |
-| actions.postLogin.authService.urlProduction       | string | `""`                                                       | Production URL — forwarded as `event.secrets.AUTH_SERVICE_URL_PRODUCTION`                       |
-| actions.postLogin.authService.url                 | string | `""`                                                       | Fallback URL — forwarded as `event.secrets.AUTH_SERVICE_URL`                                    |
-| actions.clientCredentialsExchange.enabled         | bool   | `true`                                                     | Enable the client-credentials-exchange service-account enrichment action                        |
-| actions.clientCredentialsExchange.name            | string | `"Governance Platform - Service Account Token Enrichment"` | Action display name in the Auth0 Dashboard                                                      |
-| actions.clientCredentialsExchange.codeFile        | string | `"client-credentials-exchange-action.js"`                  | File inside the action source ConfigMap                                                         |
-| actions.clientCredentialsExchange.trigger.id      | string | `"credentials-exchange"`                                   | Auth0 trigger identifier                                                                        |
-| actions.clientCredentialsExchange.trigger.version | string | `"v2"`                                                     | Trigger version                                                                                 |
-| actions.clientCredentialsExchange.runtime         | string | `"node22"`                                                 | Node runtime for the action                                                                     |
-| actions.clientCredentialsExchange.dependencies    | list   | `[{ name: "auth0", version: "3.x" }]`                      | npm dependencies — the action uses v3-style `management.getUser({...})`                         |
+| Key                                               | Type   | Default                                      | Description                                                                                     |
+| ------------------------------------------------- | ------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| actions.enabled                                   | bool   | `true`                                       | Master switch for creating / deploying / binding actions                                        |
+| actions.sourceConfigMap.name                      | string | `"auth0-actions-source"`                     | ConfigMap holding the action JS (created by `bootstrap-auth0.sh` from `scripts/auth0/actions/`) |
+| actions.postLogin.enabled                         | bool   | `true`                                       | Enable the post-login token-enrichment action                                                   |
+| actions.postLogin.name                            | string | `"Post Login Users & Service Accounts"`      | Action display name in the Auth0 Dashboard                                                      |
+| actions.postLogin.codeFile                        | string | `"post-login-users-and-service-accounts.js"` | File inside the action source ConfigMap                                                         |
+| actions.postLogin.trigger.id                      | string | `"post-login"`                               | Auth0 trigger identifier                                                                        |
+| actions.postLogin.trigger.version                 | string | `"v3"`                                       | Trigger version                                                                                 |
+| actions.postLogin.runtime                         | string | `"node22"`                                   | Node runtime for the action                                                                     |
+| actions.postLogin.dependencies                    | list   | `[]`                                         | npm dependencies (`{ name, version }`)                                                          |
+| actions.postLogin.authService.urlDev              | string | `""`                                         | Dev auth-service URL — forwarded as `event.secrets.AUTH_SERVICE_URL_DEV`                        |
+| actions.postLogin.authService.urlStaging          | string | `""`                                         | Staging URL — forwarded as `event.secrets.AUTH_SERVICE_URL_STAGING`                             |
+| actions.postLogin.authService.urlProduction       | string | `""`                                         | Production URL — forwarded as `event.secrets.AUTH_SERVICE_URL_PRODUCTION`                       |
+| actions.postLogin.authService.url                 | string | `""`                                         | Fallback URL — forwarded as `event.secrets.AUTH_SERVICE_URL`                                    |
+| actions.clientCredentialsExchange.enabled         | bool   | `true`                                       | Enable the client-credentials-exchange service-account enrichment action                        |
+| actions.clientCredentialsExchange.name            | string | `"Service Account Credentials"`              | Action display name in the Auth0 Dashboard                                                      |
+| actions.clientCredentialsExchange.codeFile        | string | `"service-account-credentials.js"`           | File inside the action source ConfigMap                                                         |
+| actions.clientCredentialsExchange.trigger.id      | string | `"credentials-exchange"`                     | Auth0 trigger identifier                                                                        |
+| actions.clientCredentialsExchange.trigger.version | string | `"v2"`                                       | Trigger version                                                                                 |
+| actions.clientCredentialsExchange.runtime         | string | `"node22"`                                   | Node runtime for the action                                                                     |
+| actions.clientCredentialsExchange.dependencies    | list   | `[{ name: "auth0", version: "3.x" }]`        | npm dependencies — the action uses v3-style `management.getUser({...})`                         |
 
 Empty URL fields under `actions.postLogin.authService` are omitted from the action's secrets at deploy time, so dev-only tenants can leave the staging/prod URLs blank.
 

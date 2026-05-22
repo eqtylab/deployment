@@ -1,9 +1,12 @@
 /**
- * Auth0 Action: Service Account Token Enrichment
+ * Auth0 Action: Service Account Credentials
  * Trigger: Client Credentials Exchange
  *
  * This action enriches M2M tokens with service account user information
  * when the governance-worker M2M application requests a token.
+ *
+ * @param {Event} event - Details about the client requesting the token.
+ * @param {CredentialsExchangeAPI} api - Interface whose methods can be used to change the behavior of the credentials exchange.
  */
 
 exports.onExecuteCredentialsExchange = async (event, api) => {
@@ -11,32 +14,24 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
     "Client Credentials Exchange - Client:",
     event.client.name,
     event.client.client_id,
+    "Audience:",
+    event.request.audience,
+    "Scope:",
+    event.request.scope,
   );
-  console.log("Client metadata:", JSON.stringify(event.client.metadata));
-  console.log("Requested audience:", event.request.audience);
-  console.log("Requested scope:", event.request.scope);
 
-  // Check if this is a service account M2M application
-  // We identify service accounts by checking client metadata
+  // Service accounts are identified via client metadata set during bootstrap
   const serviceAccountUserId = event.client.metadata?.service_account_user_id;
   const isServiceAccount = event.client.metadata?.is_service_account === "true";
 
-  console.log(
-    "Service account check - isServiceAccount:",
-    isServiceAccount,
-    "userId:",
-    serviceAccountUserId,
-  );
-
   if (!isServiceAccount || !serviceAccountUserId) {
-    // Not a service account, skip enrichment
     console.log("Not a service account, skipping enrichment");
     return;
   }
 
   console.log("Starting enrichment for service account:", serviceAccountUserId);
 
-  // Initialize Management API client
+  // Management API client is needed to look up the underlying service-account user
   const ManagementClient = require("auth0").ManagementClient;
   const management = new ManagementClient({
     domain: event.secrets.domain,
@@ -46,35 +41,18 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
   });
 
   try {
-    console.log("Initializing Management API client...");
-    console.log("Management API domain:", event.secrets.domain);
-    console.log("Management API clientId:", event.secrets.clientId);
-    console.log(
-      "Management API has clientSecret:",
-      !!event.secrets.clientSecret,
-    );
-
-    // Fetch the service account user
-    console.log("Fetching user:", serviceAccountUserId);
+    // Fetch the service-account user record so we can read its metadata
     const user = await management.getUser({ id: serviceAccountUserId });
-
-    console.log("User fetch result:", user ? "User found" : "User not found");
 
     if (!user) {
       console.error("Service account user not found:", serviceAccountUserId);
       return;
     }
 
-    console.log("User details - email:", user.email, "user_id:", user.user_id);
-    console.log("User user_metadata:", JSON.stringify(user.user_metadata));
-    console.log("User app_metadata:", JSON.stringify(user.app_metadata));
-
-    // Extract service account metadata
+    // Note: is_service_account lives on user_metadata; roles & org binding live on app_metadata
     const userMetadata = user.user_metadata || {};
     const appMetadata = user.app_metadata || {};
     const isServiceAccountUser = userMetadata.is_service_account === true;
-
-    console.log("Is service account user check:", isServiceAccountUser);
 
     if (!isServiceAccountUser) {
       console.error(
@@ -84,13 +62,9 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
       return;
     }
 
-    // Define namespace for custom claims
     const namespace = "https://governance.eqtylab.io/";
-    console.log("Using namespace:", namespace);
 
-    // Add custom claims to the access token
-    // User identification
-    console.log("Setting user claims...");
+    // Identity claims
     api.accessToken.setCustomClaim(namespace + "user_id", user.user_id);
     api.accessToken.setCustomClaim(namespace + "auth0_user_id", user.user_id);
     api.accessToken.setCustomClaim(namespace + "email", user.email);
@@ -99,8 +73,7 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
       user.name || "Service Account",
     );
 
-    // Service account specific claims
-    console.log("Setting service account claims...");
+    // Service-account marker and service descriptors (from client metadata)
     api.accessToken.setCustomClaim(namespace + "is_service_account", true);
     api.accessToken.setCustomClaim(
       namespace + "service_name",
@@ -111,7 +84,7 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
       event.client.metadata?.service_type || "unknown",
     );
 
-    // Platform access for governance-worker
+    // governance-worker is platform-wide; other service accounts are org-scoped
     if (event.client.metadata?.service_name === "governance-worker") {
       api.accessToken.setCustomClaim(namespace + "platform_access", true);
       api.accessToken.setCustomClaim(namespace + "organizations", ["*"]);
@@ -121,7 +94,6 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
         "integrity:statements:create",
       ]);
     } else {
-      // For other service accounts, use their specific metadata
       const organizationId = appMetadata.organization_id;
       if (organizationId) {
         api.accessToken.setCustomClaim(
@@ -133,12 +105,11 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
         ]);
       }
 
-      // Add roles from user metadata
       const roles = appMetadata.roles || ["service_account"];
       api.accessToken.setCustomClaim(namespace + "roles", roles);
     }
 
-    // DID key information
+    // DID key claims
     if (appMetadata.did_key_id) {
       api.accessToken.setCustomClaim(
         namespace + "did_key_id",
@@ -150,23 +121,16 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
       );
     }
 
-    // Add created_at timestamp
+    // Audit timestamp + override sub for downstream DID key lookup
     api.accessToken.setCustomClaim(namespace + "created_at", user.created_at);
     api.accessToken.setCustomClaim("sub", user.user_id);
 
-    console.log("All claims set successfully");
     console.log(
       "Token enrichment completed for service account:",
       serviceAccountUserId,
     );
-    console.log("Action execution finished successfully");
   } catch (error) {
-    console.error("ERROR in action execution:", error);
-    console.error("Error type:", error.constructor.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
     // Don't fail the token request, just log the error
+    console.error("Service account enrichment failed:", error);
   }
-
-  console.log("Action onExecuteCredentialsExchange completed");
 };
