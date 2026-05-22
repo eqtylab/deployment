@@ -2,8 +2,8 @@ apiVersion: v2
 name: governance-platform
 description: A Helm chart for the complete Governance Studio platform.
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0
+appVersion: "0.2.0"
 home: https://github.com/eqtylab/governance-studio-infrastructure
 sources:
   - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/governance-platform
@@ -13,22 +13,22 @@ maintainers:
 dependencies:
   # Auth Service
   - name: auth-service
-    version: "0.1.0"
+    version: "0.2.0"
     repository: "file://../auth-service"
     condition: auth-service.enabled
   # Governance Service API
   - name: governance-service
-    version: "0.1.0"
+    version: "0.2.0"
     repository: "file://../governance-service"
     condition: governance-service.enabled
   # Governance Studio UI
   - name: governance-studio
-    version: "0.1.0"
+    version: "0.2.0"
     repository: "file://../governance-studio"
     condition: governance-studio.enabled
   # Integrity Service
   - name: integrity-service
-    version: "0.1.0"
+    version: "0.2.0"
     repository: "file://../integrity-service"
     condition: integrity-service.enabled
   # PostgreSQL - used by auth-service, governance-service, and integrity-service

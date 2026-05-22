@@ -1,0 +1,85 @@
+platform:
+  name: governance-platform
+  version: 0.2.0
+  releaseType: prerelease
+  releaseDate: "2026-05-22"
+  kubernetesMinimumVersion: "1.29"
+  architecture: linux/amd64
+sources:
+  governanceStudio:
+    repository: eqtylab/governance-studio
+    ref: b2449717e1fef8943d98f6f369d9d0aeb95a6f9d
+  governanceBackend:
+    repository: eqtylab/governance-backend
+    ref: 408156b7b497e02541ac42c648f7f8f432b19cd8
+  integrityMonorepo:
+    repository: eqtylab/integrity-monorepo
+    ref: 0d1d76e36550da7b564d224bdbf42fae536ac384
+  infrastructure:
+    repository: eqtylab/governance-studio-infrastructure
+    ref: "aea00ce5a3b4b3cc842558425bdb5b57a2d4e9ba"
+images:
+  authService:
+    repository: ghcr.io/eqtylab/auth-service
+    tag: 0.2.0
+    digest: "sha256:1adc477d4670846dad7dbc5b6b301e8407ec8ce9a6a62de87d8fce6e33b653c1"
+    sourceSha: "408156b7b497e02541ac42c648f7f8f432b19cd8"
+    metadataArtifact: image-metadata-auth-service
+  governanceService:
+    repository: ghcr.io/eqtylab/governance-service
+    tag: 0.2.0
+    digest: "sha256:144c14a6028ae65cf0a406c5be452e7a8ebc62b9105ddd15d3064ecb2a7ac58d"
+    sourceSha: "408156b7b497e02541ac42c648f7f8f432b19cd8"
+    metadataArtifact: image-metadata-governance-service
+  governanceStudio:
+    repository: ghcr.io/eqtylab/governance-studio
+    tag: 0.2.0
+    digest: "sha256:c432d56d3d841ec8c2a2613d7225b6db619b3b5e0b360f1d9836008adad1f973"
+    sourceSha: "b2449717e1fef8943d98f6f369d9d0aeb95a6f9d"
+    metadataArtifact: image-metadata-governance-studio
+  integrityService:
+    repository: ghcr.io/eqtylab/integrity-service
+    tag: 0.2.0
+    digest: "sha256:d78dc3b68a346bd191f84b8a29cdbaab0783a197c29aad389a58bac89cbf8917"
+    sourceSha: "0d1d76e36550da7b564d224bdbf42fae536ac384"
+    metadataArtifact: image-metadata-integrity-service
+charts:
+  authService:
+    name: auth-service
+    version: 0.2.0
+    oci: oci://ghcr.io/eqtylab/charts/auth-service
+  governanceService:
+    name: governance-service
+    version: 0.2.0
+    oci: oci://ghcr.io/eqtylab/charts/governance-service
+  governanceStudio:
+    name: governance-studio
+    version: 0.2.0
+    oci: oci://ghcr.io/eqtylab/charts/governance-studio
+  integrityService:
+    name: integrity-service
+    version: 0.2.0
+    oci: oci://ghcr.io/eqtylab/charts/integrity-service
+  governancePlatform:
+    name: governance-platform
+    version: 0.2.0
+    oci: oci://ghcr.io/eqtylab/charts/governance-platform
+validation:
+  required: true
+  mode: manual
+  identityProvider: keycloak
+  database: external-postgres
+  evidence:
+    status: approved
+    recordedIn: infrastructure-release-pr
+    reviewer: "tmccoy14"
+    reviewedAt: "2026-05-22T17:40:33Z"
+    notes:
+      "Validated governance-platform v0.2.0 in a customer-like environment with Keycloak and external
+      Postgres. Confirmed pod readiness, service health, Studio load, login flow, and image pulls."
+docs:
+  provider: readme
+  version: v0.2.0
+  state: beta
+  default: false
+  sourceRepository: eqtylab/deployment

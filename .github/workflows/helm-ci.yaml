@@ -98,6 +98,10 @@ jobs:
       - name: Validate release manifests
         run: |
           shopt -s nullglob
+
+          current_chart_version="$(yq '.version' charts/governance-platform/Chart.yaml)"
+          matched_manifest=""
+
           for manifest in releases/v*/release-manifest.yaml; do
             version="$(yq '.platform.version' "$manifest")"
             release_type="$(yq '.platform.releaseType' "$manifest")"
@@ -131,14 +135,6 @@ jobs:
                 ;;
             esac
 
-            for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
-              chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"
-              if [ "$chart_version" != "$version" ]; then
-                echo "::error file=charts/${chart}/Chart.yaml::Expected chart version ${version}; found ${chart_version}"
-                exit 1
-              fi
-            done
-
             for image in authService governanceService governanceStudio integrityService; do
               tag="$(yq ".images.${image}.tag" "$manifest")"
               digest="$(yq ".images.${image}.digest" "$manifest")"
@@ -151,7 +147,23 @@ jobs:
                 exit 1
               fi
             done
+
+            if [ "$version" = "$current_chart_version" ]; then
+              matched_manifest="$manifest"
+              for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
+                chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"
+                if [ "$chart_version" != "$version" ]; then
+                  echo "::error file=charts/${chart}/Chart.yaml::Expected chart version ${version}; found ${chart_version}"
+                  exit 1
+                fi
+              done
+            fi
           done
+
+          if [ -z "$matched_manifest" ]; then
+            echo "::error::No release manifest found for current chart version ${current_chart_version} (expected releases/v${current_chart_version}/release-manifest.yaml)"
+            exit 1
+          fi
 
       - name: Prevent latest image tags in release-facing files
         run: |
