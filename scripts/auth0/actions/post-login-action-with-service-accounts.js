@@ -300,6 +300,7 @@ exports.onExecutePostLogin = async (event, api) => {
       api.accessToken.setCustomClaim(`${namespace}email`, event.user.email);
       api.accessToken.setCustomClaim(`${namespace}name`, name);
       api.idToken.setCustomClaim(`${namespace}picture`, picture);
+      api.accessToken.setCustomClaim(`${namespace}picture`, picture);
 
       console.log("Name", name);
       console.log("Picture", picture);
