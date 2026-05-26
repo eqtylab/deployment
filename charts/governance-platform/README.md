@@ -42,8 +42,8 @@ This allows:
 
 ## Prerequisites
 
-- Kubernetes 1.21+
-- Helm 3.8+
+- Kubernetes 1.29+
+- Helm 4.0+
 - Persistent Volume Provisioner for database storage
 - Container Registry Access (GitHub Container Registry credentials)
 - Ingress controller (NGINX, Traefik, etc.)

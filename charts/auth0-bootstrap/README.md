@@ -19,8 +19,8 @@ Key capabilities:
 
 ## Prerequisites
 
-- Kubernetes 1.21+
-- Helm 3.8+
+- Kubernetes 1.29+
+- Helm 4.0+
 - An Auth0 tenant
 - A Machine-to-Machine (M2M) application in the Auth0 Dashboard authorized for the **Auth0 Management API** with at least the following scopes:
   - `read:clients`, `create:clients`, `update:clients`

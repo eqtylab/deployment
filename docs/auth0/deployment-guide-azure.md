@@ -151,8 +151,8 @@ The end-to-end deployment follows this order:
 
 | Tool        | Minimum Version | Purpose                                                     |
 | ----------- | --------------- | ----------------------------------------------------------- |
-| **kubectl** | 1.21+           | Kubernetes cluster management                               |
-| **Helm**    | 3.8+            | Chart deployment                                            |
+| **kubectl** | 1.29+           | Kubernetes cluster management                               |
+| **Helm**    | 4.0+            | Chart deployment                                            |
 | **az**      | 2.50+           | Azure CLI (for Blob Storage, Key Vault, and DNS setup only) |
 | **jq**      | 1.6+            | JSON processing (used by helper scripts)                    |
 | **openssl** | —               | Generating random secrets                                   |
@@ -161,7 +161,7 @@ The end-to-end deployment follows this order:
 
 ### Kubernetes Cluster
 
-- Kubernetes **1.21+** with RBAC enabled
+- Kubernetes **1.29+** with RBAC enabled
 - **NGINX Ingress Controller** installed and configured as the default ingress class (see [`scripts/nginx.sh`](../../scripts/nginx.sh))
 - **cert-manager** installed with a ClusterIssuer or Issuer configured for TLS (see [`scripts/cert-issuer.sh`](../../scripts/cert-issuer.sh))
 - Sufficient resources for the platform (recommended minimums):
@@ -237,7 +237,7 @@ Before proceeding, confirm:
 - [ ] Azure Key Vault is provisioned with a service principal that has key + secret permissions
 - [ ] DNS domain is available and you can create records
 - [ ] GitHub PAT with `read:packages` scope is available
-- [ ] Helm 3.8+ and kubectl 1.21+ are installed locally
+- [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
 - [ ] Azure CLI (`az`) is installed locally
 
 ---

@@ -18,8 +18,9 @@ Key capabilities:
 ## Prerequisites
 
 **Required:**
-- Kubernetes 1.21+
-- Helm 3.8+
+
+- Kubernetes 1.29+
+- Helm 4.0+
 - kube-prometheus-stack deployed with:
   - Prometheus for metrics collection
   - Grafana with sidecar enabled for dashboard auto-discovery
@@ -28,6 +29,7 @@ Key capabilities:
 - nginx-ingress-controller with metrics enabled (for request/error rate panels)
 
 **Optional:**
+
 - prometheus-blackbox-exporter (for HTTP/HTTPS endpoint probes and endpoint down alerts)
 
 ## Deployment
@@ -45,6 +47,7 @@ helm install governance-ops ./charts/governance-ops \
 ```
 
 This creates:
+
 - Grafana dashboard ConfigMap (auto-discovered by Grafana sidecar)
 - Prometheus alert rules (discovered by Prometheus Operator)
 - Blackbox exporter probes (if prometheus-blackbox-exporter is installed)
@@ -75,12 +78,12 @@ alerts:
   rules:
     highMemoryUsage:
       enabled: true
-      warningThreshold: 0.80   # Alert at 80% instead of 75%
-      criticalThreshold: 0.95  # Critical at 95% instead of 90%
+      warningThreshold: 0.80 # Alert at 80% instead of 75%
+      criticalThreshold: 0.95 # Critical at 95% instead of 90%
 
     highErrorRate:
-      warningThreshold: 0.02   # 2% error rate
-      criticalThreshold: 0.10  # 10% error rate
+      warningThreshold: 0.02 # 2% error rate
+      criticalThreshold: 0.10 # 10% error rate
 
     # Disable specific alerts
     memorySpike:
@@ -88,8 +91,8 @@ alerts:
 
 probes:
   enabled: true
-  interval: 30s          # Probe frequency
-  staticProbes:          # Add custom endpoints
+  interval: 30s # Probe frequency
+  staticProbes: # Add custom endpoints
     - name: external-api
       url: https://api.example.com/health
 ```
@@ -128,20 +131,21 @@ This removes all monitoring resources (ConfigMaps and PrometheusRules) but does 
 
 ### Target Release Configuration
 
-| Key           | Type   | Default                 | Description                                                    |
-| ------------- | ------ | ----------------------- | -------------------------------------------------------------- |
+| Key           | Type   | Default                 | Description                                                        |
+| ------------- | ------ | ----------------------- | ------------------------------------------------------------------ |
 | targetRelease | string | `"governance-platform"` | Helm release name of the governance-platform deployment to monitor |
 
 ### Dashboard Configuration
 
-| Key                                | Type | Default | Description                                                      |
-| ---------------------------------- | ---- | ------- | ---------------------------------------------------------------- |
-| dashboards.enabled                 | bool | `true`  | Enable dashboard provisioning                                    |
-| dashboards.labels                  | map  | `{}`    | Additional labels for dashboard ConfigMaps                       |
-| dashboards.annotations             | map  | `{}`    | Additional annotations for dashboard ConfigMaps                  |
-| dashboards.platformOverview.enabled | bool | `true`  | Enable Governance Platform Overview dashboard                    |
+| Key                                 | Type | Default | Description                                     |
+| ----------------------------------- | ---- | ------- | ----------------------------------------------- |
+| dashboards.enabled                  | bool | `true`  | Enable dashboard provisioning                   |
+| dashboards.labels                   | map  | `{}`    | Additional labels for dashboard ConfigMaps      |
+| dashboards.annotations              | map  | `{}`    | Additional annotations for dashboard ConfigMaps |
+| dashboards.platformOverview.enabled | bool | `true`  | Enable Governance Platform Overview dashboard   |
 
 **Governance Platform Dashboard** includes:
+
 - Platform Health: Service uptime gauges and replica counts
 - Service Readiness Timeline: Real-time readiness status
 - Request Traffic: Request rates per service from nginx ingress
@@ -166,25 +170,25 @@ All alert rules can be individually enabled/disabled and have configurable thres
 
 **Service Availability Alerts:**
 
-| Alert              | Default Enabled | Default Threshold | Description                     |
-| ------------------ | --------------- | ----------------- | ------------------------------- |
-| serviceDown        | `true`          | 5m                | Service has no available replicas |
-| podNotReady        | `true`          | 10m               | Pods not ready for extended period |
-| podCrashLooping    | `true`          | 5m                | Pods crash looping              |
+| Alert           | Default Enabled | Default Threshold | Description                        |
+| --------------- | --------------- | ----------------- | ---------------------------------- |
+| serviceDown     | `true`          | 5m                | Service has no available replicas  |
+| podNotReady     | `true`          | 10m               | Pods not ready for extended period |
+| podCrashLooping | `true`          | 5m                | Pods crash looping                 |
 
 **Resource Usage Alerts (Tiered):**
 
-| Alert           | Warning Threshold | Warning Duration | Critical Threshold | Critical Duration |
-| --------------- | ----------------- | ---------------- | ------------------ | ----------------- |
-| highMemoryUsage | 75%               | 10m              | 90%                | 5m                |
-| highCpuUsage    | 75%               | 10m              | 90%                | 5m                |
-| highErrorRate   | 1%                | 5m               | 5%                 | 2m                |
-| persistentVolumeUsage | 75%         | 15m              | 90%                | 5m                |
+| Alert                 | Warning Threshold | Warning Duration | Critical Threshold | Critical Duration |
+| --------------------- | ----------------- | ---------------- | ------------------ | ----------------- |
+| highMemoryUsage       | 75%               | 10m              | 90%                | 5m                |
+| highCpuUsage          | 75%               | 10m              | 90%                | 5m                |
+| highErrorRate         | 1%                | 5m               | 5%                 | 2m                |
+| persistentVolumeUsage | 75%               | 15m              | 90%                | 5m                |
 
 **Memory Leak Detection:**
 
-| Alert       | Default Threshold | Description                              |
-| ----------- | ----------------- | ---------------------------------------- |
+| Alert       | Default Threshold | Description                                  |
+| ----------- | ----------------- | -------------------------------------------- |
 | memorySpike | 30% in 5min       | Detects rapid memory growth (potential leak) |
 
 All thresholds can be customized via values. See [Customizing Alert Thresholds](#customizing-alert-thresholds) above.
@@ -302,7 +306,7 @@ If needed, add matching labels:
 ```yaml
 alerts:
   labels:
-    release: kube-prometheus-stack  # Match your Prometheus ruleSelector
+    release: kube-prometheus-stack # Match your Prometheus ruleSelector
 ```
 
 ### Metrics Not Showing in Dashboard
