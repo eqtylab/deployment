@@ -49,8 +49,8 @@ charts/
 
 ### Prerequisites
 
-- Kubernetes 1.21+
-- Helm 3.8+
+- Kubernetes 1.29+
+- Helm 4.0+
 - kubectl configured for your cluster
 - Container registry access (GitHub Container Registry)
 

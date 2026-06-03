@@ -47,7 +47,7 @@ resources:
 
 config:
   # Application Settings
-  appEnv: "production"
+  environment: "production"
   logLevel: "info"
 
   # Storage Configuration - AWS S3 (uncomment to use instead)

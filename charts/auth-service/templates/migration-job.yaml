@@ -53,14 +53,14 @@ spec:
                   name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default ((.Values.global.secrets).database).secretName | quote }}
                   key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((.Values.global.secrets).database).keys.password | default "password" | quote }}
               {{- end }}
-            - name: DB_SSL_MODE
+            - name: DB_SSLMODE
               value: {{ .Values.externalDatabase.sslMode | default ((.Values.global).postgresql).sslMode | default "disable" | quote }}
             {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
             {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
             - name: PGSSLROOTCERT
               value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
             {{- end }}
-            - name: DATABASE_MIGRATIONS_PATH
+            - name: MIGRATIONS_PATH
               value: {{ .Values.migrations.path | quote }}
           {{- with .Values.migration.resources }}
           resources:

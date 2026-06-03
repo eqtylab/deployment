@@ -17,6 +17,8 @@ Key capabilities:
 
 Governance Service uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
+The container also receives a `SERVICE_VERSION` environment variable, auto-populated from `Chart.Version`. This is intended for display and observability purposes and is not user-configurable.
+
 This allows:
 
 - A single immutable container image across environments
@@ -26,8 +28,8 @@ This allows:
 
 ## Prerequisites
 
-- Kubernetes 1.21+
-- Helm 3.8+
+- Kubernetes 1.29+
+- Helm 4.0+
 - PostgreSQL database (provided by umbrella chart or external)
 - Storage provider (GCS, Azure Blob Storage, or AWS S3)
 - Authentication provider (Auth0, Entra ID, or Keycloak)
@@ -431,8 +433,9 @@ All config values support global fallbacks when deployed via umbrella chart.
 | Key                            | Type   | Default     | Description                                                           |
 | ------------------------------ | ------ | ----------- | --------------------------------------------------------------------- |
 | config.healthPath              | string | `"/health"` | Health check endpoint path                                            |
-| config.appEnv                  | string | `""`        | Application environment (auto-configured from global.environmentType) |
+| config.environment             | string | `""`        | Application environment (auto-configured from global.environmentType) |
 | config.logLevel                | string | `"info"`    | Logging level (debug/info/warn/error)                                 |
+| config.logFormat               | string | `"json"`    | Log output format (json/text/console/pretty)                          |
 | config.credentialEncryptionKey | string | `""`        | Encryption key (auto-configured from global.secrets.encryption)       |
 
 #### HTTP Server Configuration

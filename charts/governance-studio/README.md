@@ -27,8 +27,8 @@ This allows:
 
 ## Prerequisites
 
-- Kubernetes 1.21+
-- Helm 3.8+
+- Kubernetes 1.29+
+- Helm 4.0+
 - Authentication provider (Auth0, Microsoft Entra ID, or Keycloak)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)

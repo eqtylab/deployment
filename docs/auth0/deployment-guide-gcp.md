@@ -149,8 +149,8 @@ The end-to-end deployment follows this order:
 
 | Tool        | Minimum Version | Purpose                                  |
 | ----------- | --------------- | ---------------------------------------- |
-| **kubectl** | 1.21+           | Kubernetes cluster management            |
-| **Helm**    | 3.8+            | Chart deployment                         |
+| **kubectl** | 1.29+           | Kubernetes cluster management            |
+| **Helm**    | 4.0+            | Chart deployment                         |
 | **gcloud**  | 400.0+          | Google Cloud SDK (for GCS and KMS setup) |
 | **jq**      | 1.6+            | JSON processing (used by helper scripts) |
 | **openssl** | —               | Generating random secrets                |
@@ -159,7 +159,7 @@ The end-to-end deployment follows this order:
 
 ### Kubernetes Cluster
 
-- Kubernetes **1.21+** with RBAC enabled
+- Kubernetes **1.29+** with RBAC enabled
 - **NGINX Ingress Controller** installed and configured as the default ingress class (see [`scripts/nginx.sh`](../../scripts/nginx.sh))
 - **cert-manager** installed with a ClusterIssuer or Issuer configured for TLS (see [`scripts/cert-issuer.sh`](../../scripts/cert-issuer.sh))
 - Sufficient resources for the platform (recommended minimums):
@@ -235,7 +235,7 @@ Before proceeding, confirm:
 - [ ] GCP KMS key ring is provisioned and the platform service account has KMS permissions
 - [ ] DNS domain is available and you can create records
 - [ ] GitHub PAT with `read:packages` scope is available
-- [ ] Helm 3.8+ and kubectl 1.21+ are installed locally
+- [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
 - [ ] Google Cloud CLI (`gcloud`) is installed locally
 
 ---

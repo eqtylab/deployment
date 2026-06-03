@@ -18,6 +18,8 @@ Key capabilities:
 
 Auth Service uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
+The container also receives a `SERVICE_VERSION` environment variable, auto-populated from `Chart.Version`. This is intended for display and observability purposes and is not user-configurable.
+
 This allows:
 
 - A single immutable container image across environments
@@ -27,8 +29,8 @@ This allows:
 
 ## Prerequisites
 
-- Kubernetes 1.21+
-- Helm 3.8+
+- Kubernetes 1.29+
+- Helm 4.0+
 - PostgreSQL database (provided by umbrella chart or external)
 - Authentication provider (Auth0, Entra ID, or Keycloak)
 - Key management provider: AWS KMS, Azure Key Vault, or GCP KMS (for DID key signing)
@@ -378,18 +380,18 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Database Configuration
 
-| Key                                        | Type   | Default                           | Description                                                                                                                         |
-| ------------------------------------------ | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| externalDatabase.host                      | string | `""`                              | Database host (auto-configured from global.postgresql.host or generated as {Release.Name}-postgresql)                               |
-| externalDatabase.port                      | string | `""`                              | Database port (auto-configured from global.postgresql.port; defaults to `5432` when empty)                                          |
-| externalDatabase.name                      | string | `""`                              | Database name (auto-configured from global.postgresql.database, default "governance")                                               |
-| externalDatabase.user                      | string | `""`                              | Database user (auto-configured from global.postgresql.username, default "postgres")                                                 |
-| externalDatabase.password                  | string | `""`                              | Database password (auto-configured from global.secrets.database)                                                                    |
-| externalDatabase.sslMode                   | string | `""`                              | SSL mode (auto-configured from global.postgresql.sslMode, defaults to "disable"). Options: disable, require, verify-ca, verify-full |
-| externalDatabase.passwordSecretKeyRef.name | string | `""`                              | Secret name containing database password                                                                                            |
-| externalDatabase.passwordSecretKeyRef.key  | string | `""`                              | Secret key name for password                                                                                                        |
-| migrations.runAtStartup                    | bool   | `true`                            | Run database migrations automatically at startup                                                                                    |
-| migrations.path                            | string | `"/internal/database/migrations"` | Path to migration files                                                                                                             |
+| Key                                        | Type   | Default                      | Description                                                                                                                         |
+| ------------------------------------------ | ------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| externalDatabase.host                      | string | `""`                         | Database host (auto-configured from global.postgresql.host or generated as {Release.Name}-postgresql)                               |
+| externalDatabase.port                      | string | `""`                         | Database port (auto-configured from global.postgresql.port; defaults to `5432` when empty)                                          |
+| externalDatabase.name                      | string | `""`                         | Database name (auto-configured from global.postgresql.database, default "governance")                                               |
+| externalDatabase.user                      | string | `""`                         | Database user (auto-configured from global.postgresql.username, default "postgres")                                                 |
+| externalDatabase.password                  | string | `""`                         | Database password (auto-configured from global.secrets.database)                                                                    |
+| externalDatabase.sslMode                   | string | `""`                         | SSL mode (auto-configured from global.postgresql.sslMode, defaults to "disable"). Options: disable, require, verify-ca, verify-full |
+| externalDatabase.passwordSecretKeyRef.name | string | `""`                         | Secret name containing database password                                                                                            |
+| externalDatabase.passwordSecretKeyRef.key  | string | `""`                         | Secret key name for password                                                                                                        |
+| migrations.runAtStartup                    | bool   | `true`                       | Run database migrations automatically at startup                                                                                    |
+| migrations.path                            | string | `"/pkg/database/migrations"` | Path to migration files                                                                                                             |
 
 ### Secret Configuration
 
@@ -456,11 +458,11 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Logging Configuration
 
-| Key                      | Type   | Default                                         | Description                       |
-| ------------------------ | ------ | ----------------------------------------------- | --------------------------------- |
-| config.logging.level     | string | `"info"`                                        | Log level (debug/info/warn/error) |
-| config.logging.format    | string | `"json"`                                        | Log format (json/text)            |
-| config.logging.skipPaths | string | `"/health,/health/live,/health/ready,/metrics"` | Paths to skip in logs             |
+| Key                      | Type   | Default                                | Description                       |
+| ------------------------ | ------ | -------------------------------------- | --------------------------------- |
+| config.logging.level     | string | `"info"`                               | Log level (debug/info/warn/error) |
+| config.logging.format    | string | `"json"`                               | Log format (json/text)            |
+| config.logging.skipPaths | string | `"/health,/health/live,/health/ready"` | Paths to skip in logs             |
 
 #### CORS Configuration
 
@@ -486,7 +488,6 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.idp.auth0.apiIdentifier          | string | `""`                                 | API identifier (**must be set**)                                              |
 | config.idp.auth0.defaultConnection      | string | `"Username-Password-Authentication"` | Default connection                                                            |
 | config.idp.auth0.defaultRoles           | list   | `["user"]`                           | Default roles for new users                                                   |
-| config.idp.auth0.sendInvitationEmail    | bool   | `true`                               | Send invitation email on user creation                                        |
 | config.idp.auth0.clientId               | string | `""`                                 | Auth0 client ID (auto-configured from global.secrets.auth.auth0)              |
 | config.idp.auth0.clientSecret           | string | `""`                                 | Auth0 client secret (auto-configured from global.secrets.auth.auth0)          |
 | config.idp.auth0.managementClientId     | string | `""`                                 | Management API client ID (auto-configured from global.secrets.auth.auth0)     |
@@ -558,18 +559,6 @@ Token exchange is only relevant for Keycloak deployments using federated authent
 | config.tokenExchange.enabled    | bool   | `false`                   | Enable token exchange (Keycloak only)                                          |
 | config.tokenExchange.keyId      | string | `"auth-service-prod-001"` | Key identifier for signing key                                                 |
 | config.tokenExchange.privateKey | string | `""`                      | Token exchange private key (auto-configured from global.secrets.auth.keycloak) |
-
-### Metrics Configuration
-
-| Key                                  | Type   | Default      | Description                      |
-| ------------------------------------ | ------ | ------------ | -------------------------------- |
-| metrics.enabled                      | bool   | `false`      | Enable Prometheus metrics        |
-| metrics.port                         | int    | `9090`       | Metrics port                     |
-| metrics.path                         | string | `"/metrics"` | Metrics path                     |
-| metrics.serviceMonitor.enabled       | bool   | `false`      | Enable ServiceMonitor            |
-| metrics.serviceMonitor.interval      | string | `"30s"`      | Scrape interval                  |
-| metrics.serviceMonitor.scrapeTimeout | string | `"10s"`      | Scrape timeout                   |
-| metrics.serviceMonitor.labels        | object | `{}`         | Additional ServiceMonitor labels |
 
 ### Advanced: Network Policy Configuration
 

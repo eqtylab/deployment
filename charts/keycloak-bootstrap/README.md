@@ -16,8 +16,8 @@ Key capabilities:
 
 ## Prerequisites
 
-- Kubernetes 1.21+
-- Helm 3.8+
+- Kubernetes 1.29+
+- Helm 4.0+
 - A running Keycloak instance
 - Admin credentials for Keycloak
 

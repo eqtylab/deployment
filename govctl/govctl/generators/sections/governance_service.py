@@ -46,7 +46,7 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
 
     # Application configuration
     section["config"] = {
-        "appEnv": config.environment,
+        "environment": config.environment,
         "logLevel": "debug",
         "storageProvider": config.storage_provider,
     }

@@ -100,6 +100,8 @@ spec:
             # ========================================================================
             - name: INTEGRITY_APP__server__port
               value: {{ .Values.service.port | default 3050 | quote }}
+            - name: SERVICE_VERSION
+              value: {{ .Chart.Version | quote }}
             - name: RUST_ENVIRONMENT
               value: {{ .Values.config.rustEnv | default ((.Values.global).environmentType | default "") | quote }}
             - name: INTEGRITY_SERVICE_URL
