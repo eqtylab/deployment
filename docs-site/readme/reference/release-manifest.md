@@ -18,6 +18,14 @@ Each runtime image entry must include:
 - digest
 - source SHA
 
+Current release candidates include these runtime image entries:
+
+- `authService`
+- `governanceService`
+- `governanceStudio`
+- `integrityService`
+- `eqtyPdfgen`
+
 Each chart entry must include:
 
 - chart name

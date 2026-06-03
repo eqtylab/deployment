@@ -20,6 +20,18 @@
     "images": {
       "type": "object",
       "required": ["authService", "governanceService", "governanceStudio", "integrityService"],
+      "properties": {
+        "eqtyPdfgen": {
+          "type": "object",
+          "required": ["repository", "tag", "digest", "sourceSha"],
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "digest": { "type": "string" },
+            "sourceSha": { "type": "string" }
+          }
+        }
+      },
       "additionalProperties": {
         "type": "object",
         "required": ["repository", "tag", "digest", "sourceSha"],

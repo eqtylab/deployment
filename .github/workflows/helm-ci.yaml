@@ -68,6 +68,11 @@ jobs:
       - name: Template supported install paths
         run: |
           helm template governance-platform charts/governance-platform >/dev/null
+          if [ -d charts/eqty-pdfgen ]; then
+            helm template governance-platform charts/governance-platform \
+              --set 'eqty-pdfgen.enabled=true' \
+              >/dev/null
+          fi
           helm template governance-platform charts/governance-platform \
             --values charts/governance-platform/examples/values-keycloak.yaml \
             --values charts/governance-platform/examples/values-external-postgres.yaml \
@@ -83,10 +88,17 @@ jobs:
 
       - name: Template registry override paths
         run: |
+          template_args=()
+          if [ -d charts/eqty-pdfgen ]; then
+            template_args+=(--set 'eqty-pdfgen.enabled=true')
+          fi
+
           helm template governance-platform charts/governance-platform \
+            "${template_args[@]}" \
             --set global.imageRegistryOverride=registry.customer.example \
             >/tmp/registry-override.yaml
           helm template governance-platform charts/governance-platform \
+            "${template_args[@]}" \
             --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
             >/tmp/repository-prefix-override.yaml
 
@@ -94,6 +106,9 @@ jobs:
           grep -q 'registry.customer.example/eqtylab/governance-service' /tmp/repository-prefix-override.yaml
           grep -q 'registry.customer.example/eqtylab/auth-service' /tmp/repository-prefix-override.yaml
           grep -q 'registry.customer.example/eqtylab/integrity-service' /tmp/repository-prefix-override.yaml
+          if [ -d charts/eqty-pdfgen ]; then
+            grep -q 'registry.customer.example/eqtylab/eqty-pdfgen' /tmp/repository-prefix-override.yaml
+          fi
 
       - name: Validate release manifests
         run: |
@@ -135,7 +150,12 @@ jobs:
                 ;;
             esac
 
-            for image in authService governanceService governanceStudio integrityService; do
+            images=(authService governanceService governanceStudio integrityService)
+            if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$manifest")" = "eqty-pdfgen" ]; then
+              images+=(eqtyPdfgen)
+            fi
+
+            for image in "${images[@]}"; do
               tag="$(yq ".images.${image}.tag" "$manifest")"
               digest="$(yq ".images.${image}.digest" "$manifest")"
               if [ "$tag" != "$version" ]; then
@@ -150,7 +170,14 @@ jobs:
 
             if [ "$version" = "$current_chart_version" ]; then
               matched_manifest="$manifest"
-              for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
+              charts=(auth-service)
+              if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$manifest")" = "eqty-pdfgen" ]; then
+                charts+=(eqty-pdfgen)
+              fi
+              charts+=(governance-service governance-studio integrity-service)
+              charts+=(governance-platform)
+
+              for chart in "${charts[@]}"; do
                 chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"
                 if [ "$chart_version" != "$version" ]; then
                   echo "::error file=charts/${chart}/Chart.yaml::Expected chart version ${version}; found ${chart_version}"
