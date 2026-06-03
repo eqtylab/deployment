@@ -102,8 +102,8 @@ spec:
           # ========================================================================
           - name: LOG_LEVEL
             value: {{ .Values.config.logLevel | quote }}
-          - name: APP_ENV
-            value: {{ .Values.config.appEnv | default ((.Values.global).environmentType | default "") | quote }}
+          - name: ENVIRONMENT
+            value: {{ .Values.config.environment | default ((.Values.global).environmentType | default "") | quote }}
 
           # ========================================================================
           # Database Configuration

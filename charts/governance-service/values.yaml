@@ -385,12 +385,17 @@ config:
 
   # -- Application Environment
   # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
-  appEnv: ""
+  environment: ""
 
   # -- Log Level
   # @default -- `info`
   # Options: debug, info, warn, error
   logLevel: "info"
+
+  # -- Log Format
+  # @default -- `json`
+  # Options: json, text, console, pretty
+  logFormat: "json"
 
   # -- Credential Encryption Key
   # @default -- `""` (auto-configured from global.secrets.encryption)

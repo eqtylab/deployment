@@ -100,11 +100,6 @@ spec:
             - name: http
               containerPort: {{ .Values.config.server.port }}
               protocol: TCP
-            {{- if .Values.metrics.enabled }}
-            - name: metrics
-              containerPort: {{ .Values.metrics.port }}
-              protocol: TCP
-            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "auth-service.fullname" . }}

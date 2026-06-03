@@ -520,7 +520,7 @@ governance-studio:
 
 governance-service:
   enabled: true
-  # config.appEnv automatically becomes: production
+  # config.environment automatically becomes: production
   # Database credentials auto-configured from global.secrets.database
   # Storage credentials auto-configured from global.secrets.storage
 

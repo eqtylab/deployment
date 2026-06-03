@@ -832,9 +832,9 @@ auth-service:
       # Options: json, text
       format: "json"
       # -- Skip Paths
-      # @default -- `/health,/health/live,/health/ready,/metrics`
+      # @default -- `/health,/health/live,/health/ready`
       # Paths to skip in access logs
-      skipPaths: "/health,/health/live,/health/ready,/metrics"
+      skipPaths: "/health,/health/live,/health/ready"
 
     # ---------------------------------------------------------------------------
     # CORS Configuration
@@ -895,10 +895,6 @@ auth-service:
         # Default roles for new users
         defaultRoles:
           - user
-        # -- Send Invitation Email
-        # @default -- `true`
-        # Send invitation email on user creation
-        sendInvitationEmail: true
         # -- Client ID
         # @default -- `""` (auto-configured from global.secrets.auth.auth0)
         # Only used when provider is "auth0"
@@ -1112,43 +1108,6 @@ auth-service:
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
       # Only used when tokenExchange is enabled
       privateKey: ""
-
-  # =============================================================================
-  # METRICS CONFIGURATION
-  # =============================================================================
-
-  # -- Metrics Configuration
-  # @default -- See values below
-  metrics:
-    # -- Enabled
-    # @default -- `false`
-    # Enable Prometheus metrics
-    enabled: false
-    # -- Port
-    # @default -- `9090`
-    port: 9090
-    # -- Path
-    # @default -- `/metrics`
-    path: "/metrics"
-
-    # -- Service Monitor
-    # @default -- See values below
-    serviceMonitor:
-      # -- Enabled
-      # @default -- `false`
-      # Enable ServiceMonitor for Prometheus Operator
-      enabled: false
-      # -- Interval
-      # @default -- `30s`
-      # Scrape interval
-      interval: "30s"
-      # -- Scrape Timeout
-      # @default -- `10s`
-      scrapeTimeout: "10s"
-      # -- Labels
-      # @default -- `{}`
-      # Additional labels for ServiceMonitor
-      labels: {}
 
   # =============================================================================
   # NETWORK POLICY CONFIGURATION
@@ -1646,12 +1605,17 @@ governance-service:
 
     # -- Application Environment
     # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
-    appEnv: ""
+    environment: ""
 
     # -- Log Level
     # @default -- `info`
     # Options: debug, info, warn, error
     logLevel: "info"
+
+    # -- Log Format
+    # @default -- `json`
+    # Options: json, text, console, pretty
+    logFormat: "json"
 
     # -- Credential Encryption Key
     # @default -- `""` (auto-configured from global.secrets.encryption)

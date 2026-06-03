@@ -15,7 +15,7 @@ To access the service, you need to enable ingress or use port-forwarding:
 {{- end }}
 
 Configuration:
-  Environment: {{ .Values.config.appEnv | default ((.Values.global).environmentType | default "not set") }}
+  Environment: {{ .Values.config.environment | default ((.Values.global).environmentType | default "not set") }}
   Storage Provider: {{ .Values.config.storageProvider | default "not set" }}
   Log Level: {{ .Values.config.logLevel }}
 
