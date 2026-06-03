@@ -113,7 +113,12 @@ jobs:
             exit 1
           fi
 
-          for service in authService governanceService governanceStudio integrityService; do
+          services=(authService governanceService governanceStudio integrityService)
+          if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
+            services+=(eqtyPdfgen)
+          fi
+
+          for service in "${services[@]}"; do
             tag="$(yq ".images.${service}.tag" "$MANIFEST")"
             digest="$(yq ".images.${service}.digest" "$MANIFEST")"
             if [ "$tag" != "$VERSION" ]; then
@@ -126,7 +131,14 @@ jobs:
             fi
           done
 
-          for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
+          charts=(auth-service)
+          if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
+            charts+=(eqty-pdfgen)
+          fi
+          charts+=(governance-service governance-studio integrity-service)
+          charts+=(governance-platform)
+
+          for chart in "${charts[@]}"; do
             chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"
             app_version="$(yq '.appVersion' "charts/${chart}/Chart.yaml")"
             if [ "$chart_version" != "$VERSION" ]; then
@@ -140,17 +152,36 @@ jobs:
           done
 
       - name: Helm validation
+        env:
+          MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
           helm dependency build charts/governance-platform
-          for chart in charts/auth-service charts/governance-service charts/governance-studio charts/integrity-service charts/governance-platform; do
+          charts=(charts/auth-service)
+          if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
+            charts+=(charts/eqty-pdfgen)
+          fi
+          charts+=(charts/governance-service charts/governance-studio charts/integrity-service)
+          charts+=(charts/governance-platform)
+
+          for chart in "${charts[@]}"; do
             helm lint "$chart"
           done
-          helm template governance-platform charts/governance-platform >/dev/null
+
+          template_args=()
+          if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
+            template_args+=(--set 'eqty-pdfgen.enabled=true')
+          fi
+
           helm template governance-platform charts/governance-platform \
+            "${template_args[@]}" \
+            >/dev/null
+          helm template governance-platform charts/governance-platform \
+            "${template_args[@]}" \
             --values charts/governance-platform/examples/values-keycloak.yaml \
             --values charts/governance-platform/examples/values-external-postgres.yaml \
             >/dev/null
           helm template governance-platform charts/governance-platform \
+            "${template_args[@]}" \
             --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
             >/dev/null
 
@@ -163,6 +194,7 @@ jobs:
         env:
           VERSION: ${{ steps.release.outputs.version }}
           PUBLISH: ${{ steps.release.outputs.publish }}
+          MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
           set -o pipefail
 
@@ -220,7 +252,14 @@ jobs:
           EOF
           }
 
-          for chart in auth-service governance-service governance-studio integrity-service governance-platform; do
+          charts=(auth-service)
+          if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
+            charts+=(eqty-pdfgen)
+          fi
+          charts+=(governance-service governance-studio integrity-service)
+          charts+=(governance-platform)
+
+          for chart in "${charts[@]}"; do
             publish_chart "$chart"
           done
 
