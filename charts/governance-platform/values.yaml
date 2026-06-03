@@ -1229,6 +1229,253 @@ auth-service:
   extraManifests: []
 
 # =============================================================================
+# EQTY PDFGen
+# =============================================================================
+# Default values for the eqty-pdfgen Helm chart
+# ------------------------------------------------------------------------------
+eqty-pdfgen:
+  # -- Enable Service
+  # @default -- `false`
+  # Enable the EQTY PDF generation service
+  enabled: false
+
+  # -- Replica Count
+  # @default -- `2`
+  # Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 2
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Container image settings for EQTY PDFGen
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/eqty-pdfgen`
+    repository: ghcr.io/eqtylab/eqty-pdfgen
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+
+  # -- Image Pull Secrets
+  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+  # Additional secrets for pulling images from private registries
+  imagePullSecrets: []
+
+  # -- Name Override
+  # @default -- `""`
+  # Override the chart name used for resource naming
+  nameOverride: ""
+
+  # -- Full Name Override
+  # @default -- `""`
+  # Override the full name used for resource naming
+  fullnameOverride: ""
+
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `false`
+    create: false
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Annotations
+    # @default -- `{}`
+    annotations: {}
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+
+  # -- Pod Annotations
+  # @default -- `{}`
+  # Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Pod Labels
+  # @default -- `{}`
+  # Additional labels to add to pods
+  podLabels: {}
+
+  # -- Pod Security Context
+  # @default -- See values below
+  # Security context applied at the pod level
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 0
+    fsGroup: 0
+    fsGroupChangePolicy: OnRootMismatch
+
+  # -- Container Security Context
+  # @default -- See values below
+  # Security context applied at the container level
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `8080`
+    port: 8080
+
+  # -- Resource Configuration
+  # @default -- `{}`
+  # CPU and memory resource requests and limits
+  resources: {}
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `10`
+    maxReplicas: 10
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `true`
+    enabled: true
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    maxUnavailable: 1
+
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Startup Probe
+  # @default -- See values below
+  startupProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness Probe
+  # @default -- See values below
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness Probe
+  # @default -- See values below
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+  config:
+    # -- Bind Host
+    # @default -- `0.0.0.0`
+    host: 0.0.0.0
+    # -- Bind Port
+    # @default -- `8080`
+    port: 8080
+    # -- Writable temporary directory under the app working directory
+    # @default -- `tmp`
+    tmpDir: tmp
+    # -- Typst font search paths
+    # @default -- `/usr/share/fonts`
+    typstFontPaths: /usr/share/fonts
+    # -- Typst package cache path baked into the runtime image
+    # @default -- `/opt/app-root/src/.cache/typst/packages`
+    typstPackageCachePath: /opt/app-root/src/.cache/typst/packages
+    # -- RFC 3161 timestamp authority URL used during PDF signing
+    # @default -- `http://timestamp.digicert.com`
+    timestampUrl: http://timestamp.digicert.com
+    # -- Auth-service signing endpoint
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080/api/v1/protected/sign-pdf")
+    signingUrl: ""
+
+  # -- NetworkPolicy Configuration
+  # @default -- See values below
+  networkPolicy:
+    # -- Enable NetworkPolicy
+    # @default -- `false`
+    enabled: false
+    # -- Ingress policy rules
+    # @default -- `[]`
+    ingress: []
+    # -- Egress policy rules
+    # @default -- `[]`
+    egress: []
+
+  # -- Extra Environment Variables
+  # @default -- `[]`
+  extraEnvVars: []
+
+  # -- Extra Environment Variables from Secret
+  # @default -- `""`
+  extraEnvVarsSecret: ""
+
+  # -- Extra Environment Variables from ConfigMap
+  # @default -- `""`
+  extraEnvVarsConfigMap: ""
+
+# =============================================================================
 # Governance Service
 # =============================================================================
 # Default values for the governance-service Helm chart

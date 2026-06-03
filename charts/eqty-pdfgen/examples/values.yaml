@@ -1,0 +1,36 @@
+# EQTY PDFGen Configuration Example
+# Minimal configuration for deploying the EQTY PDF generation service
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `eqty-pdfgen:` key in your umbrella values file
+
+# EQTY PDFGen is disabled by default in the umbrella chart; enable it per environment
+enabled: true
+
+image:
+  tag: ""
+  pullPolicy: Always
+
+# EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
+# It is reached over the internal ClusterIP service by other platform services.
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Signing config is optional — the signing URL is auto-generated from the release
+# name, and signing only happens when a request carries an authorization bearer
+# token. Uncomment to override the auto-generated defaults.
+# config:
+#   # Override only if Auth Service is exposed under a different internal address
+#   signingUrl: "http://my-auth-service:8080/api/v1/protected/sign-pdf"
+#   # RFC 3161 timestamp authority used during PDF signing
+#   timestampUrl: "http://timestamp.digicert.com"

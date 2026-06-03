@@ -16,6 +16,11 @@ dependencies:
     version: "0.2.0"
     repository: "file://../auth-service"
     condition: auth-service.enabled
+  # EQTY PDFGen
+  - name: eqty-pdfgen
+    version: "0.2.0"
+    repository: "file://../eqty-pdfgen"
+    condition: eqty-pdfgen.enabled
   # Governance Service API
   - name: governance-service
     version: "0.2.0"

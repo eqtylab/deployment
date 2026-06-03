@@ -1,0 +1,17 @@
+{{- if and .Values.enabled .Values.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "eqty-pdfgen.fullname" . }}
+  labels:
+    {{- include "eqty-pdfgen.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "eqty-pdfgen.selectorLabels" . | nindent 4 }}
+{{- end }}

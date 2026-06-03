@@ -194,6 +194,7 @@ Configures all platform services based on your selections:
 
 - **global** — environment name, domain. Also `global.postgresql.{host, port, database, username, sslMode, sslRootCert}` placeholders when database mode is `external`
 - **auth-service** — IDP provider config, token exchange, ingress
+- **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: false` by default, image tag/pull policy; no ingress)
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **governance-studio** — frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, persistence, ingress

@@ -1,0 +1,17 @@
+{{- if and .Values.enabled .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "eqty-pdfgen.fullname" . }}
+  labels:
+    {{- include "eqty-pdfgen.labels" . | nindent 4 }}
+spec:
+  {{- if gt (int .Values.replicaCount) 1 }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "eqty-pdfgen.selectorLabels" . | nindent 6 }}
+{{- end }}

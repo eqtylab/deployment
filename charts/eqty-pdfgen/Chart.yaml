@@ -1,0 +1,12 @@
+apiVersion: v2
+name: eqty-pdfgen
+description: Render EQTY governance manifests into PDF and ZIP bundles.
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+home: https://github.com/eqtylab/governance-studio-infrastructure
+sources:
+  - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/eqty-pdfgen
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io

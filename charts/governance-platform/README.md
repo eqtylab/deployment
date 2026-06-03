@@ -22,6 +22,7 @@ The platform uses a microservices architecture with the following components:
 - **Governance Service** - Go-based backend API with governance logic and workflow engine
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
+- **EQTY PDFGen** - Optional PDF and ZIP rendering service for governance manifests
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
 
@@ -361,6 +362,20 @@ Authentication and authorization service settings. See [auth-service/README.md](
 | auth-service.config.keyManagement.provider | string | `""`    | Key management provider (auto-configured from global.secrets.keyManagement.provider) |
 | auth-service.ingress.enabled               | bool   | `false` | Enable ingress                                                                       |
 | auth-service.autoscaling.enabled           | bool   | `false` | Enable horizontal pod autoscaling                                                    |
+
+### EQTY PDFGen Configuration
+
+Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdfgen/README.md) for complete documentation.
+
+| Key                             | Type   | Default | Description                                                                      |
+| ------------------------------- | ------ | ------- | -------------------------------------------------------------------------------- |
+| eqty-pdfgen.enabled             | bool   | `false` | Enable EQTY PDFGen. Disabled by default and currently enabled only in dev values |
+| eqty-pdfgen.replicaCount        | int    | `2`     | Number of replicas                                                               |
+| eqty-pdfgen.service.port        | int    | `8080`  | Internal ClusterIP service port                                                  |
+| eqty-pdfgen.config.signingUrl   | string | `""`    | Signing endpoint (auto-generated as auth-service internal signing URL)           |
+| eqty-pdfgen.autoscaling.enabled | bool   | `false` | Enable horizontal pod autoscaling                                                |
+
+EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
 
 ### Governance Service Configuration
 
@@ -1030,6 +1045,8 @@ kubectl get pods -n governance -w
 kubectl rollout status deployment/governance-platform-governance-service -n governance
 kubectl rollout status deployment/governance-platform-governance-studio -n governance
 kubectl rollout status deployment/governance-platform-integrity-service -n governance
+# If EQTY PDFGen is enabled
+kubectl rollout status deployment/governance-platform-eqty-pdfgen -n governance
 ```
 
 ### Rolling Back
@@ -1061,6 +1078,9 @@ kubectl logs -f deployment/governance-platform-governance-studio -n governance
 
 # Integrity Service
 kubectl logs -f deployment/governance-platform-integrity-service -n governance
+
+# EQTY PDFGen, if enabled
+kubectl logs -f deployment/governance-platform-eqty-pdfgen -n governance
 ```
 
 ### Checking Pod Status
@@ -1138,12 +1158,13 @@ integrity-service:
 
 ## Health Endpoints
 
-| Service            | Endpoint                          |
-| ------------------ | --------------------------------- |
-| Auth Service       | `GET /authService/health`         |
-| Governance Service | `GET /governanceService/health`   |
-| Governance Studio  | `GET /`                           |
-| Integrity Service  | `GET /integrityService/health/v1` |
+| Service            | Endpoint                                    |
+| ------------------ | ------------------------------------------- |
+| Auth Service       | `GET /authService/health`                   |
+| EQTY PDFGen        | `GET /health/ready` on the internal service |
+| Governance Service | `GET /governanceService/health`             |
+| Governance Studio  | `GET /`                                     |
+| Integrity Service  | `GET /integrityService/health/v1`           |
 
 ### API Documentation
 
@@ -1152,6 +1173,7 @@ Each backend service exposes Swagger/OpenAPI documentation:
 | Service            | Swagger UI                                  |
 | ------------------ | ------------------------------------------- |
 | Auth Service       | `GET /authService/swagger/index.html`       |
+| EQTY PDFGen        | `GET /docs` on the internal service         |
 | Governance Service | `GET /governanceService/swagger/index.html` |
 | Integrity Service  | `GET /integrityService/swagger/index.html`  |
 

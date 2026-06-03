@@ -1,0 +1,34 @@
+{{- if .Values.enabled }}
+EQTY PDFGen has been deployed!
+
+Service URL (internal): http://{{ include "eqty-pdfgen.fullname" . }}:{{ .Values.service.port }}
+
+This chart exposes an internal ClusterIP service only and does not render an
+Ingress. To reach it from outside the cluster, use port-forwarding:
+  kubectl port-forward svc/{{ include "eqty-pdfgen.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:8080/docs
+
+Configuration:
+  Image: {{ include "eqty-pdfgen.image" . }}
+  Signing URL: {{ include "eqty-pdfgen.signingUrl" . }}
+  Timestamp Authority: {{ .Values.config.timestampUrl }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "eqty-pdfgen.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "eqty-pdfgen.fullname" . }} -n {{ .Release.Namespace }}
+
+To check health:
+  kubectl exec -it deployment/{{ include "eqty-pdfgen.fullname" . }} -n {{ .Release.Namespace }} -- curl -s localhost:{{ .Values.service.port }}/health/ready
+
+To render a manifest:
+  POST http://{{ include "eqty-pdfgen.fullname" . }}:{{ .Values.service.port }}/manifest            (ZIP bundle)
+  POST http://{{ include "eqty-pdfgen.fullname" . }}:{{ .Values.service.port }}/manifest?format=pdf  (plain PDF)
+
+Note: PDF signing is delegated to Auth Service and only happens when a request
+carries an authorization bearer token. The default signing URL above points at
+the co-deployed Auth Service; override config.signingUrl if it is exposed under
+a different internal address.
+{{- end }}
+</content>

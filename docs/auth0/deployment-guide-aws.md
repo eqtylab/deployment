@@ -39,6 +39,9 @@ flowchart TD
     GS --> AUTH[🔐 Auth Service]
     GS --> INT[🛡️ Integrity Service]
 
+    GSV -.-> PDF[📄 EQTY PDFGen - optional]
+    PDF -.-> AUTH
+
     GSV --> DB[🗄️ PostgreSQL]
     AUTH --> DB
     INT --> DB
@@ -58,6 +61,7 @@ flowchart TD
 | Service                | Language | Description                                   | Ingress Path          |
 | ---------------------- | -------- | --------------------------------------------- | --------------------- |
 | **auth-service**       | Go       | Authentication, authorization, token exchange | `/authService/`       |
+| **eqty-pdfgen**        | Python   | Optional manifest → PDF/ZIP rendering         | Internal only         |
 | **governance-service** | Go       | Backend API, workflow engine, worker          | `/governanceService/` |
 | **governance-studio**  | React    | Web UI for governance workflows               | `/`                   |
 | **integrity-service**  | Rust     | Verifiable credentials and lineage tracking   | `/integrityService/`  |
@@ -167,6 +171,7 @@ The end-to-end deployment follows this order:
 | Component          | CPU Request | Memory Request | Storage  |
 | ------------------ | ----------- | -------------- | -------- |
 | auth-service       | 250m        | 256Mi          | —        |
+| eqty-pdfgen        | 100m        | 256Mi          | —        |
 | governance-service | 250m        | 256Mi          | —        |
 | governance-studio  | 100m        | 128Mi          | —        |
 | integrity-service  | 250m        | 256Mi          | —        |

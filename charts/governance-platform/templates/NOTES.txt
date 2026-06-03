@@ -133,6 +133,14 @@ Revision:         {{ .Release.Revision }}
 🔸 **Integrity Service API:** Disabled
 {{- end }}
 
+{{- $eqtyPdfgen := index .Values "eqty-pdfgen" }}
+{{- if $eqtyPdfgen.enabled }}
+🔸 **EQTY PDFGen API:**
+    Internal: http://{{ printf "%s-eqty-pdfgen" .Release.Name }}:8080
+{{- else }}
+🔸 **EQTY PDFGen API:** Disabled
+{{- end }}
+
 ---------------------------------------------------------------------------------
 ⚙️ Important Configuration & Secrets:
 ---------------------------------------------------------------------------------

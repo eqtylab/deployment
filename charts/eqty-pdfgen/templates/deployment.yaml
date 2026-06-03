@@ -1,0 +1,121 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "eqty-pdfgen.fullname" . }}
+  labels:
+    {{- include "eqty-pdfgen.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "eqty-pdfgen.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "eqty-pdfgen.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if and .Values.global (((.Values.global).secrets).imageRegistry).secretName }}
+      imagePullSecrets:
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
+      {{- else if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name | default (include "eqty-pdfgen.fullname" .) }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "eqty-pdfgen.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default ((.Values.global).imagePullPolicy | default "IfNotPresent") }}
+          env:
+            - name: HOST
+              value: {{ .Values.config.host | quote }}
+            - name: PORT
+              value: {{ (.Values.config.port | default .Values.service.port) | quote }}
+            - name: PDFGEN_TMP_DIR
+              value: {{ .Values.config.tmpDir | quote }}
+            - name: TYPST_FONT_PATHS
+              value: {{ .Values.config.typstFontPaths | quote }}
+            - name: TYPST_PACKAGE_CACHE_PATH
+              value: {{ .Values.config.typstPackageCachePath | quote }}
+            - name: EQTY_TIMESTAMP_URL
+              value: {{ .Values.config.timestampUrl | quote }}
+            - name: EQTY_SIGNING_URL
+              value: {{ include "eqty-pdfgen.signingUrl" . | quote }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.extraEnvVarsSecret .Values.extraEnvVarsConfigMap }}
+          envFrom:
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.extraEnvVarsSecret | quote }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsConfigMap }}
+            - configMapRef:
+                name: {{ .Values.extraEnvVarsConfigMap | quote }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.port | default .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: render-tmp
+              mountPath: {{ include "eqty-pdfgen.renderTmpPath" . }}
+            - name: os-tmp
+              mountPath: /tmp
+      volumes:
+        - name: render-tmp
+          emptyDir: {}
+        - name: os-tmp
+          emptyDir: {}
+{{- end }}

@@ -5,6 +5,7 @@ from typing import Any
 from govctl.core.models import AuthProvider, DatabaseMode, PlatformConfig
 from govctl.utils.yaml import dump_yaml_with_header, dump_yaml_sections
 from govctl.generators.sections.auth_service import generate_auth_service_section
+from govctl.generators.sections.eqty_pdfgen import generate_eqty_pdfgen_section
 from govctl.generators.sections.governance_service import (
     generate_governance_service_section,
 )
@@ -46,6 +47,12 @@ def generate_values(config: PlatformConfig) -> str:
             "Auth Service",
             "Override values for the auth-service Helm chart.",
             generate_auth_service_section(config),
+        ),
+        (
+            "eqty-pdfgen",
+            "EQTY PDFGen",
+            "Override values for the eqty-pdfgen Helm chart.",
+            generate_eqty_pdfgen_section(config),
         ),
         (
             "governance-service",

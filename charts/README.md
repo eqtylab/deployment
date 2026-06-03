@@ -9,6 +9,7 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 | [auth-service](auth-service/)               | Subchart | Go-based authentication and authorization service            |
 | [auth0-bootstrap](auth0-bootstrap/)         | Utility  | Auth0 application, API, and user configuration job           |
 | [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job        |
+| [eqty-pdfgen](eqty-pdfgen/)                 | Subchart | PDF and ZIP rendering service for governance manifests       |
 | [governance-ops](governance-ops/)           | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
 | [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)                   |
 | [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine                     |
@@ -25,6 +26,7 @@ charts/
 ├── auth-service/            # Authentication subchart
 ├── auth0-bootstrap/         # Auth0 configuration utility
 ├── entra-bootstrap/         # Entra ID configuration utility
+├── eqty-pdfgen/             # Manifest PDF rendering subchart
 ├── governance-ops/          # Operational monitoring (dashboards, alerts)
 ├── governance-platform/     # Umbrella chart (deploy this for full platform)
 │   ├── Chart.yaml           # Dependencies on all subcharts
@@ -318,6 +320,7 @@ The umbrella chart (`governance-platform`) version is incremented when:
 | [auth-service/README.md](auth-service/README.md)               | Authentication service configuration |
 | [auth0-bootstrap/README.md](auth0-bootstrap/README.md)         | Auth0 application/API/user setup     |
 | [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup      |
+| [eqty-pdfgen/README.md](eqty-pdfgen/README.md)                 | PDF generation service configuration |
 | [governance-ops/README.md](governance-ops/README.md)           | Operational monitoring setup         |
 | [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide   |
 | [governance-service/README.md](governance-service/README.md)   | Backend API configuration            |
