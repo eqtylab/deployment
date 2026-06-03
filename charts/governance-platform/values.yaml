@@ -687,9 +687,9 @@ auth-service:
     # Run database migrations automatically at startup
     runAtStartup: true
     # -- Migration Path
-    # @default -- `/internal/database/migrations`
+    # @default -- `/pkg/database/migrations`
     # Path to migration files within the container
-    path: "/internal/database/migrations"
+    path: "/pkg/database/migrations"
 
   # =============================================================================
   # SECRETS CONFIGURATION

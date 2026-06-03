@@ -378,18 +378,18 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Database Configuration
 
-| Key                                        | Type   | Default                           | Description                                                                                                                         |
-| ------------------------------------------ | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| externalDatabase.host                      | string | `""`                              | Database host (auto-configured from global.postgresql.host or generated as {Release.Name}-postgresql)                               |
-| externalDatabase.port                      | string | `""`                              | Database port (auto-configured from global.postgresql.port; defaults to `5432` when empty)                                          |
-| externalDatabase.name                      | string | `""`                              | Database name (auto-configured from global.postgresql.database, default "governance")                                               |
-| externalDatabase.user                      | string | `""`                              | Database user (auto-configured from global.postgresql.username, default "postgres")                                                 |
-| externalDatabase.password                  | string | `""`                              | Database password (auto-configured from global.secrets.database)                                                                    |
-| externalDatabase.sslMode                   | string | `""`                              | SSL mode (auto-configured from global.postgresql.sslMode, defaults to "disable"). Options: disable, require, verify-ca, verify-full |
-| externalDatabase.passwordSecretKeyRef.name | string | `""`                              | Secret name containing database password                                                                                            |
-| externalDatabase.passwordSecretKeyRef.key  | string | `""`                              | Secret key name for password                                                                                                        |
-| migrations.runAtStartup                    | bool   | `true`                            | Run database migrations automatically at startup                                                                                    |
-| migrations.path                            | string | `"/internal/database/migrations"` | Path to migration files                                                                                                             |
+| Key                                        | Type   | Default                      | Description                                                                                                                         |
+| ------------------------------------------ | ------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| externalDatabase.host                      | string | `""`                         | Database host (auto-configured from global.postgresql.host or generated as {Release.Name}-postgresql)                               |
+| externalDatabase.port                      | string | `""`                         | Database port (auto-configured from global.postgresql.port; defaults to `5432` when empty)                                          |
+| externalDatabase.name                      | string | `""`                         | Database name (auto-configured from global.postgresql.database, default "governance")                                               |
+| externalDatabase.user                      | string | `""`                         | Database user (auto-configured from global.postgresql.username, default "postgres")                                                 |
+| externalDatabase.password                  | string | `""`                         | Database password (auto-configured from global.secrets.database)                                                                    |
+| externalDatabase.sslMode                   | string | `""`                         | SSL mode (auto-configured from global.postgresql.sslMode, defaults to "disable"). Options: disable, require, verify-ca, verify-full |
+| externalDatabase.passwordSecretKeyRef.name | string | `""`                         | Secret name containing database password                                                                                            |
+| externalDatabase.passwordSecretKeyRef.key  | string | `""`                         | Secret key name for password                                                                                                        |
+| migrations.runAtStartup                    | bool   | `true`                       | Run database migrations automatically at startup                                                                                    |
+| migrations.path                            | string | `"/pkg/database/migrations"` | Path to migration files                                                                                                             |
 
 ### Secret Configuration
 
