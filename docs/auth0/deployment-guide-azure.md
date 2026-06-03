@@ -1509,8 +1509,14 @@ The script waits for the governance platform to be running, verifies database mi
 # Auth Service health
 curl -s https://$DOMAIN/authService/health | jq .
 
+# Auth Service readiness
+curl -s https://$DOMAIN/authService/health/ready | jq .
+
 # Governance Service health
 curl -s https://$DOMAIN/governanceService/health | jq .
+
+# Governance Service readiness
+curl -s https://$DOMAIN/governanceService/health/ready | jq .
 
 # Governance Studio (should return 200)
 curl -s -o /dev/null -w "%{http_code}" https://$DOMAIN/

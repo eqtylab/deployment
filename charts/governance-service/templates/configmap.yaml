@@ -25,4 +25,5 @@ data:
   # ==========================================================================
   LOG_LEVEL: "{{ .Values.config.logLevel }}"
   LOG_FORMAT: "{{ .Values.config.logFormat }}"
+  LOGGER_SKIP_PATHS: "{{ .Values.config.skipPaths }}"
 {{- end }}

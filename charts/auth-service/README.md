@@ -357,26 +357,26 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Health Checks
 
-| Key                                | Type   | Default     | Description                   |
-| ---------------------------------- | ------ | ----------- | ----------------------------- |
-| startupProbe.httpGet.path          | string | `"/health"` | Startup probe HTTP path       |
-| startupProbe.httpGet.port          | string | `"http"`    | Startup probe port            |
-| startupProbe.periodSeconds         | int    | `10`        | Startup probe period          |
-| startupProbe.failureThreshold      | int    | `30`        | Startup failure threshold     |
-| livenessProbe.httpGet.path         | string | `"/health"` | Liveness probe HTTP path      |
-| livenessProbe.httpGet.port         | string | `"http"`    | Liveness probe port           |
-| livenessProbe.initialDelaySeconds  | int    | `30`        | Liveness probe initial delay  |
-| livenessProbe.periodSeconds        | int    | `10`        | Liveness probe period         |
-| livenessProbe.timeoutSeconds       | int    | `5`         | Liveness probe timeout        |
-| livenessProbe.failureThreshold     | int    | `3`         | Liveness failure threshold    |
-| livenessProbe.successThreshold     | int    | `1`         | Liveness success threshold    |
-| readinessProbe.httpGet.path        | string | `"/health"` | Readiness probe HTTP path     |
-| readinessProbe.httpGet.port        | string | `"http"`    | Readiness probe port          |
-| readinessProbe.initialDelaySeconds | int    | `10`        | Readiness probe initial delay |
-| readinessProbe.periodSeconds       | int    | `5`         | Readiness probe period        |
-| readinessProbe.timeoutSeconds      | int    | `3`         | Readiness probe timeout       |
-| readinessProbe.failureThreshold    | int    | `3`         | Readiness failure threshold   |
-| readinessProbe.successThreshold    | int    | `1`         | Readiness success threshold   |
+| Key                                | Type   | Default           | Description                   |
+| ---------------------------------- | ------ | ----------------- | ----------------------------- |
+| startupProbe.httpGet.path          | string | `"/health/ready"` | Startup probe HTTP path       |
+| startupProbe.httpGet.port          | string | `"http"`          | Startup probe port            |
+| startupProbe.periodSeconds         | int    | `10`              | Startup probe period          |
+| startupProbe.failureThreshold      | int    | `30`              | Startup failure threshold     |
+| livenessProbe.httpGet.path         | string | `"/health"`       | Liveness probe HTTP path      |
+| livenessProbe.httpGet.port         | string | `"http"`          | Liveness probe port           |
+| livenessProbe.initialDelaySeconds  | int    | `30`              | Liveness probe initial delay  |
+| livenessProbe.periodSeconds        | int    | `10`              | Liveness probe period         |
+| livenessProbe.timeoutSeconds       | int    | `5`               | Liveness probe timeout        |
+| livenessProbe.failureThreshold     | int    | `3`               | Liveness failure threshold    |
+| livenessProbe.successThreshold     | int    | `1`               | Liveness success threshold    |
+| readinessProbe.httpGet.path        | string | `"/health/ready"` | Readiness probe HTTP path     |
+| readinessProbe.httpGet.port        | string | `"http"`          | Readiness probe port          |
+| readinessProbe.initialDelaySeconds | int    | `10`              | Readiness probe initial delay |
+| readinessProbe.periodSeconds       | int    | `5`               | Readiness probe period        |
+| readinessProbe.timeoutSeconds      | int    | `3`               | Readiness probe timeout       |
+| readinessProbe.failureThreshold    | int    | `3`               | Readiness failure threshold   |
+| readinessProbe.successThreshold    | int    | `1`               | Readiness success threshold   |
 
 ### Database Configuration
 
@@ -458,11 +458,11 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Logging Configuration
 
-| Key                      | Type   | Default                                | Description                       |
-| ------------------------ | ------ | -------------------------------------- | --------------------------------- |
-| config.logging.level     | string | `"info"`                               | Log level (debug/info/warn/error) |
-| config.logging.format    | string | `"json"`                               | Log format (json/text)            |
-| config.logging.skipPaths | string | `"/health,/health/live,/health/ready"` | Paths to skip in logs             |
+| Key                      | Type   | Default     | Description                           |
+| ------------------------ | ------ | ----------- | ------------------------------------- |
+| config.logging.level     | string | `"info"`    | Log level (debug/info/warn/error)     |
+| config.logging.format    | string | `"json"`    | Log format (json/text/console/pretty) |
+| config.logging.skipPaths | string | `"/health"` | Paths to skip in logs (prefix match)  |
 
 #### CORS Configuration
 
@@ -849,10 +849,16 @@ View all environment variables:
 kubectl exec -it deployment/auth-service -n governance -- env | sort
 ```
 
-Test health endpoint:
+Test health endpoint (liveness):
 
 ```bash
 kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/health
+```
+
+Test readiness endpoint:
+
+```bash
+kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/health/ready
 ```
 
 ### Common Issues
@@ -907,9 +913,11 @@ kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/he
 
 ## Health Endpoints
 
-| Endpoint      | Description          |
-| ------------- | -------------------- |
-| `GET /health` | Overall health check |
+| Endpoint            | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `GET /health`       | Overall health check (used by livenessProbe)       |
+| `GET /health/ready` | Readiness check (used by readiness/startup probes) |
+| `GET /health/auth`  | Identity provider health check                     |
 
 ### API Documentation
 

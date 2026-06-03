@@ -1466,8 +1466,14 @@ The hook is idempotent — it runs on every `helm upgrade` and safely skips reco
 # Auth Service health
 curl -s https://$DOMAIN/authService/health | jq .
 
+# Auth Service readiness
+curl -s https://$DOMAIN/authService/health/ready | jq .
+
 # Governance Service health
 curl -s https://$DOMAIN/governanceService/health | jq .
+
+# Governance Service readiness
+curl -s https://$DOMAIN/governanceService/health/ready | jq .
 
 # Governance Studio (should return 200)
 curl -s -o /dev/null -w "%{http_code}" https://$DOMAIN/

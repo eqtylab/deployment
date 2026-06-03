@@ -1158,6 +1158,13 @@ integrity-service:
 
 ## Health Endpoints
 
+| Service            | Health (Liveness)                           | Readiness                              | Identity Provider                    |
+| ------------------ | ------------------------------------------- | -------------------------------------- | ------------------------------------ |
+| Auth Service       | `GET /authService/health`                   | `GET /authService/health/ready`        | `GET /authService/health/auth`       |
+| EQTY PDFGen        | `GET /health/ready` (internal service)      | `GET /health/ready` (internal service) | -                                    |
+| Governance Service | `GET /governanceService/health`             | `GET /governanceService/health/ready`  | `GET /governanceService/health/auth` |
+| Governance Studio  | `GET /`                                     | `GET /`                                | —                                    |
+| Integrity Service  | `GET /integrityService/health/v1`           | `GET /integrityService/health/v1`      | —                                    |
 | Service            | Endpoint                                    |
 | ------------------ | ------------------------------------------- |
 | Auth Service       | `GET /authService/health`                   |

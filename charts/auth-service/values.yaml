@@ -226,7 +226,7 @@ initContainers: []
 # @default -- See values below
 startupProbe:
   httpGet:
-    path: /health
+    path: /health/ready
     port: http
   failureThreshold: 30
   periodSeconds: 10
@@ -247,7 +247,7 @@ livenessProbe:
 # @default -- See values below
 readinessProbe:
   httpGet:
-    path: /health
+    path: /health/ready
     port: http
   initialDelaySeconds: 10
   periodSeconds: 5
@@ -456,12 +456,12 @@ config:
     level: "info"
     # -- Log Format
     # @default -- `json`
-    # Options: json, text
+    # Options: json, text, console, pretty
     format: "json"
     # -- Skip Paths
-    # @default -- `/health,/health/live,/health/ready`
-    # Paths to skip in access logs
-    skipPaths: "/health,/health/live,/health/ready"
+    # @default -- `/health`
+    # Paths to skip in logs (prefix match)
+    skipPaths: "/health"
 
   # ---------------------------------------------------------------------------
   # CORS Configuration
