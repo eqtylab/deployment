@@ -329,6 +329,8 @@ spec:
             value: {{ .Values.config.integrityServiceUrl | default (printf "http://%s-integrity-service:3050" .Release.Name) | quote }}
           - name: AUTH_SERVICE_URL
             value: {{ .Values.config.authServiceUrl | default (printf "http://%s-auth-service:8080" .Release.Name) | quote }}
+          - name: PDFGEN_SERVICE_URL
+            value: {{ .Values.config.pdfgenServiceUrl | default (printf "http://%s-eqty-pdfgen:8080" .Release.Name) | quote }}
 
           {{- if .Values.config.serviceAccount.enabled }}
 

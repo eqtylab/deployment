@@ -2058,6 +2058,11 @@ governance-service:
     # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
     authServiceUrl: ""
 
+    # -- PDF Generation Service URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-eqty-pdfgen:8080")
+    # PDF generation service base URL for policy report rendering
+    pdfgenServiceUrl: ""
+
     # ---------------------------------------------------------------------------
     # Service Account Configuration
     # ---------------------------------------------------------------------------

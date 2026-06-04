@@ -520,6 +520,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 | -------------------------- | ------ | ------- | -------------------------------------------------------------------------------------- |
 | config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated as http://{Release.Name}-integrity-service:3050) |
 | config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080)           |
+| config.pdfgenServiceUrl    | string | `""`    | PDF Generation Service URL (auto-generated as http://{Release.Name}-eqty-pdfgen:8080)  |
 
 #### Worker Service Account Configuration
 
