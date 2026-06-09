@@ -111,6 +111,21 @@ def collect_interactive_config(
     if cloud_provider == CloudProvider.AWS:
         config.cloud_region = aws_region
 
+        # S3 access mode: static keys (default) or IAM role (IRSA / instance profile)
+        s3_iam_choice = Prompt.ask(
+            "  AWS S3 access via IAM role (IRSA / instance profile) instead of static access keys?",
+            choices=["yes", "no"],
+            default="no",
+        )
+        config.aws_s3_use_iam_role = s3_iam_choice == "yes"
+        if config.aws_s3_use_iam_role:
+            console.print(
+                "  [dim]For IRSA, a service account with an eks.amazonaws.com/role-arn "
+                "annotation will be scaffolded (replace YOUR_IAM_ROLE_ARN); drop the "
+                "annotation if you use an instance profile. No platform-aws-s3 secret "
+                "will be generated.[/dim]"
+            )
+
     # --- Key Management (required for DID keys) ---
     console.print()
     console.print("[bold]Key Management Configuration (for DID keys):[/bold]")

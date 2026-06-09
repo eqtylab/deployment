@@ -47,7 +47,7 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
     # Persistence
     section["persistence"] = {"enabled": True}
 
-    # Storage configuration - integrity-service supports aws_s3 and azure_blob
+    # Storage configuration - integrity-service supports aws_s3, azure_blob, and gcs
     section["config"] = {}
 
     if config.cloud_provider == CloudProvider.AWS:
@@ -57,14 +57,26 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
         )
         section["config"]["integrityAppBlobStoreAwsBucket"] = "YOUR_S3_BUCKET"
         section["config"]["integrityAppBlobStoreAwsFolder"] = "rootstore"
+        section["config"][
+            "integrityAppBlobStoreAwsUseIamRole"
+        ] = config.aws_s3_use_iam_role
+        if config.aws_s3_use_iam_role:
+            # IRSA requires a dedicated service account annotated with the IAM role
+            # ARN; without this the pod runs under the namespace default SA and the
+            # role is never assumed
+            section["serviceAccount"] = {
+                "create": True,
+                "annotations": {
+                    "eks.amazonaws.com/role-arn": "YOUR_IAM_ROLE_ARN",
+                },
+            }
     elif config.cloud_provider == CloudProvider.AZURE:
         section["config"]["integrityAppBlobStoreType"] = "azure_blob"
         section["config"]["integrityAppBlobStoreAccount"] = "YOUR_STORAGE_ACCOUNT"
         section["config"]["integrityAppBlobStoreContainer"] = "rootstore"
     elif config.cloud_provider == CloudProvider.GCP:
-        # GCP deployments use Azure blob storage for integrity-service
-        section["config"]["integrityAppBlobStoreType"] = "azure_blob"
-        section["config"]["integrityAppBlobStoreAccount"] = "YOUR_AZURE_STORAGE_ACCOUNT"
-        section["config"]["integrityAppBlobStoreContainer"] = "rootstore"
+        section["config"]["integrityAppBlobStoreType"] = "gcs"
+        section["config"]["integrityAppBlobStoreGcsBucket"] = "YOUR_GCS_BUCKET"
+        section["config"]["integrityAppBlobStoreGcsFolder"] = "rootstore"
 
     return section

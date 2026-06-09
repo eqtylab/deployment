@@ -343,19 +343,20 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Blob Storage Configuration
 
-| Key                                            | Type   | Default | Description                                                                |
-| ---------------------------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
-| config.integrityAppBlobStoreType               | string | `""`    | Storage provider (**must be set**; `aws_s3`, `azure_blob`, or `gcs`)       |
-| config.integrityAppBlobStoreAwsRegion          | string | `""`    | AWS region (**must be set** when using S3)                                 |
-| config.integrityAppBlobStoreAwsBucket          | string | `""`    | AWS S3 bucket name (**must be set** when using S3)                         |
-| config.integrityAppBlobStoreAwsFolder          | string | `""`    | AWS S3 folder/prefix (**must be set** when using S3)                       |
-| config.integrityAppBlobStoreAwsAccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)     |
-| config.integrityAppBlobStoreAwsSecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3) |
-| config.integrityAppBlobStoreAccount            | string | `""`    | Azure storage account name (**must be set** when using Azure Blob)         |
-| config.integrityAppBlobStoreContainer          | string | `""`    | Azure blob container name (**must be set** when using Azure Blob)          |
-| config.integrityAppBlobStoreKey                | string | `""`    | Azure storage key (auto-configured from global.secrets.storage.azure_blob) |
-| config.integrityAppBlobStoreGcsBucket          | string | `""`    | GCS bucket name (**must be set** when using GCS)                           |
-| config.integrityAppBlobStoreGcsFolder          | string | `""`    | GCS folder/prefix (**must be set** when using GCS)                         |
+| Key                                            | Type   | Default | Description                                                                                                                                              |
+| ---------------------------------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| config.integrityAppBlobStoreType               | string | `""`    | Storage provider (**must be set**; `aws_s3`, `azure_blob`, or `gcs`)                                                                                     |
+| config.integrityAppBlobStoreAwsRegion          | string | `""`    | AWS region (**must be set** when using S3)                                                                                                               |
+| config.integrityAppBlobStoreAwsBucket          | string | `""`    | AWS S3 bucket name (**must be set** when using S3)                                                                                                       |
+| config.integrityAppBlobStoreAwsFolder          | string | `""`    | AWS S3 folder/prefix (**must be set** when using S3)                                                                                                     |
+| config.integrityAppBlobStoreAwsAccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)                                                                                   |
+| config.integrityAppBlobStoreAwsSecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3)                                                                               |
+| config.integrityAppBlobStoreAwsUseIamRole      | bool   | `false` | Use the IAM role credential chain (IRSA/instance profile) instead of static keys; omits the credential env vars and the platform-aws-s3 secret reference |
+| config.integrityAppBlobStoreAccount            | string | `""`    | Azure storage account name (**must be set** when using Azure Blob)                                                                                       |
+| config.integrityAppBlobStoreContainer          | string | `""`    | Azure blob container name (**must be set** when using Azure Blob)                                                                                        |
+| config.integrityAppBlobStoreKey                | string | `""`    | Azure storage key (auto-configured from global.secrets.storage.azure_blob)                                                                               |
+| config.integrityAppBlobStoreGcsBucket          | string | `""`    | GCS bucket name (**must be set** when using GCS)                                                                                                         |
+| config.integrityAppBlobStoreGcsFolder          | string | `""`    | GCS folder/prefix (**must be set** when using GCS)                                                                                                       |
 
 #### Logging Configuration
 

@@ -44,6 +44,9 @@ config:
   # integrityAppBlobStoreAwsRegion: "us-east-1"
   # integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
   # integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+  # # IAM role access (IRSA): set true to skip static keys and use the IAM role
+  # # credential chain. Requires the service account annotated with the role ARN
+  # integrityAppBlobStoreAwsUseIamRole: true
 
   # Storage Configuration - Azure Blob
   integrityAppBlobStoreType: "azure_blob"

@@ -186,11 +186,12 @@ spec:
           {{- if eq $storageProvider "aws_s3" }}
           
           # AWS S3 Configuration
-          {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | default "" }}
           - name: AWS_REGION
             value: {{ .Values.config.awsS3Region | quote }}
           - name: AWS_S3_BUCKET_NAME
             value: {{ .Values.config.awsS3BucketName | quote }}
+          {{- if not .Values.config.awsS3UseIamRole }}
+          {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | default "" }}
           - name: AWS_ACCESS_KEY_ID
             {{- if .Values.config.awsS3AccessKeyId }}
             value: {{ .Values.config.awsS3AccessKeyId | quote }}
@@ -209,6 +210,7 @@ spec:
                 name: {{ $s3SecretName | quote }}
                 key: {{ (((((.Values.global).secrets).storage).aws_s3).keys).secretAccessKey | default "secret-access-key" | quote }}
             {{- end }}
+          {{- end }}
           {{- end }}
 
           # ========================================================================

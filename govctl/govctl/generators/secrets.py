@@ -157,13 +157,16 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
     # Storage secrets based on cloud provider
     secrets["storage"] = {}
     if config.cloud_provider == CloudProvider.AWS:
-        secrets["storage"]["aws_s3"] = {
-            "secretName": "platform-aws-s3",
-            "values": {
-                "accessKeyId": _required("AWS Access Key ID"),
-                "secretAccessKey": _required("AWS Secret Access Key"),
-            },
-        }
+        # Skip the static-credentials secret when using IAM role access (IRSA);
+        # the AWS SDK resolves credentials from the role's default chain instead
+        if not config.aws_s3_use_iam_role:
+            secrets["storage"]["aws_s3"] = {
+                "secretName": "platform-aws-s3",
+                "values": {
+                    "accessKeyId": _required("AWS Access Key ID"),
+                    "secretAccessKey": _required("AWS Secret Access Key"),
+                },
+            }
     elif config.cloud_provider == CloudProvider.AZURE:
         secrets["storage"]["azure_blob"] = {
             "secretName": "platform-azure-blob",

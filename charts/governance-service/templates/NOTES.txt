@@ -24,6 +24,7 @@ Configuration:
 {{- else if eq .Values.config.storageProvider "aws_s3" }}
   AWS Region: {{ .Values.config.awsS3Region | default "not set" }}
   AWS Bucket: {{ .Values.config.awsS3BucketName | default "not set" }}
+  AWS Credentials: {{ if .Values.config.awsS3UseIamRole }}IAM role (IRSA / default credential chain){{ else }}static keys (platform-aws-s3 secret){{ end }}
 {{- else if eq .Values.config.storageProvider "gcs" }}
   GCS Bucket: {{ .Values.config.gcsBucketName | default "not set" }}
 {{- end }}

@@ -148,15 +148,16 @@ spec:
             {{- end }}
             
             {{- if eq $storageProvider "aws_s3" }}
-            
+
             # AWS S3 Configuration
-            {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
             - name: INTEGRITY_APP__blob_store__region
               value: {{ .Values.config.integrityAppBlobStoreAwsRegion | quote }}
             - name: INTEGRITY_APP__blob_store__bucket
               value: {{ .Values.config.integrityAppBlobStoreAwsBucket | quote }}
             - name: INTEGRITY_APP__blob_store__folder
               value: {{ .Values.config.integrityAppBlobStoreAwsFolder | quote }}
+            {{- if not .Values.config.integrityAppBlobStoreAwsUseIamRole }}
+            {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
             - name: AWS_ACCESS_KEY_ID
               {{- if .Values.config.integrityAppBlobStoreAwsAccessKeyId }}
               value: {{ .Values.config.integrityAppBlobStoreAwsAccessKeyId | quote }}
@@ -175,6 +176,7 @@ spec:
                   name: {{ $s3SecretName | quote }}
                   key: {{ (((((.Values.global).secrets).storage).aws_s3).keys).secretAccessKey | default "secret-access-key" | quote }}
               {{- end }}
+            {{- end }}
             {{- end }}
 
             {{- if eq $storageProvider "azure_blob" }}

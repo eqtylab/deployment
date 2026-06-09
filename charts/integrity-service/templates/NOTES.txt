@@ -23,6 +23,7 @@ Configuration:
 {{- else if eq .Values.config.integrityAppBlobStoreType "aws_s3" }}
   AWS Region: {{ .Values.config.integrityAppBlobStoreAwsRegion | default "not set" }}
   AWS Bucket: {{ .Values.config.integrityAppBlobStoreAwsBucket | default "not set" }}
+  AWS Credentials: {{ if .Values.config.integrityAppBlobStoreAwsUseIamRole }}IAM role (IRSA / default credential chain){{ else }}static keys (platform-aws-s3 secret){{ end }}
 {{- else if eq .Values.config.integrityAppBlobStoreType "gcs" }}
   GCS Bucket: {{ .Values.config.integrityAppBlobStoreGcsBucket | default "not set" }}
   GCS Folder: {{ .Values.config.integrityAppBlobStoreGcsFolder | default "not set" }}

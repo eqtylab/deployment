@@ -315,25 +315,25 @@ These global values are automatically inherited by all subcharts:
 
 Centralized secret configuration for all platform components:
 
-| Key                                                     | Type   | Default                        | Description                                                                           |
-| ------------------------------------------------------- | ------ | ------------------------------ | ------------------------------------------------------------------------------------- |
-| global.secrets.create                                   | bool   | `false`                        | Auto-create secrets from values (dev only)                                            |
-| global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name                                                      |
-| global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, entra, or keycloak)                                             |
-| global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`             | Auth0 credentials secret name                                                         |
-| global.secrets.auth.entra.secretName                    | string | `"platform-entra"`             | Microsoft Entra ID credentials secret name                                            |
-| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`          | Keycloak credentials secret name                                                      |
-| global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`            | AWS S3 credentials secret name                                                        |
-| global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`        | Azure Blob credentials secret name                                                    |
-| global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`               | GCS credentials secret name                                                           |
-| global.secrets.keyManagement.provider                   | string | `"azure_key_vault"`            | Key management provider for credential signing (aws_kms, azure_key_vault, or gcp_kms) |
-| global.secrets.keyManagement.aws_kms.secretName         | string | `"platform-aws-kms"`           | AWS KMS credentials secret name                                                       |
-| global.secrets.keyManagement.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name                                               |
-| global.secrets.keyManagement.gcp_kms.secretName         | string | `"platform-gcp-kms"`           | GCP KMS credentials secret name                                                       |
-| global.secrets.encryption.secretName                    | string | `"platform-encryption-key"`    | Platform encryption key secret name                                                   |
-| global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth service secrets (session, JWT, API keys)                                         |
-| global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"` | Governance worker credentials secret name                                             |
-| global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"` | Container registry credentials secret name                                            |
+| Key                                                     | Type   | Default                        | Description                                                                                                          |
+| ------------------------------------------------------- | ------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| global.secrets.create                                   | bool   | `false`                        | Auto-create secrets from values (dev only)                                                                           |
+| global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name                                                                                     |
+| global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, entra, or keycloak)                                                                            |
+| global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`             | Auth0 credentials secret name                                                                                        |
+| global.secrets.auth.entra.secretName                    | string | `"platform-entra"`             | Microsoft Entra ID credentials secret name                                                                           |
+| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`          | Keycloak credentials secret name                                                                                     |
+| global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`            | AWS S3 credentials secret name (not required when services use IAM role access — see Storage Provider Configuration) |
+| global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`        | Azure Blob credentials secret name                                                                                   |
+| global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`               | GCS credentials secret name                                                                                          |
+| global.secrets.keyManagement.provider                   | string | `"azure_key_vault"`            | Key management provider for credential signing (aws_kms, azure_key_vault, or gcp_kms)                                |
+| global.secrets.keyManagement.aws_kms.secretName         | string | `"platform-aws-kms"`           | AWS KMS credentials secret name                                                                                      |
+| global.secrets.keyManagement.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name                                                                              |
+| global.secrets.keyManagement.gcp_kms.secretName         | string | `"platform-gcp-kms"`           | GCP KMS credentials secret name                                                                                      |
+| global.secrets.encryption.secretName                    | string | `"platform-encryption-key"`    | Platform encryption key secret name                                                                                  |
+| global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth service secrets (session, JWT, API keys)                                                                        |
+| global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"` | Governance worker credentials secret name                                                                            |
+| global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"` | Container registry credentials secret name                                                                           |
 
 ### Global Database Configuration
 
@@ -651,6 +651,39 @@ integrity-service:
     integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
     integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
 ```
+
+#### Using IAM roles instead of static credentials (IRSA)
+
+If you run on EKS and authenticate via IAM Roles for Service Accounts (IRSA) — or any other IAM identity-based mechanism such as an instance profile — you do not need to provide an access key / secret access key, and the `platform-aws-s3` secret is not required.
+
+Set `awsS3UseIamRole` (governance-service) and/or `integrityAppBlobStoreAwsUseIamRole` (integrity-service) to `true`. This omits the `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` env vars and the secret reference entirely, so the AWS SDK falls back to its default credential chain. Annotate each service's service account with the role ARN:
+
+```yaml
+governance-service:
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<governance-s3-role>
+  config:
+    storageProvider: "aws_s3"
+    awsS3Region: "us-east-1"
+    awsS3BucketName: "your-governance-artifacts-bucket"
+    awsS3UseIamRole: true
+
+integrity-service:
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<integrity-s3-role>
+  config:
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreAwsRegion: "us-east-1"
+    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+    integrityAppBlobStoreAwsUseIamRole: true
+```
+
+With IAM roles in use, leave `global.secrets.storage.aws_s3` unset (or `global.secrets.create: false`) — no S3 credentials secret will be created or referenced.
 
 ### Azure Blob Storage
 

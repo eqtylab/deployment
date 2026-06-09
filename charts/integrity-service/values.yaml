@@ -341,6 +341,12 @@ config:
   # Only used when integrityAppBlobStoreType is "aws_s3"
   integrityAppBlobStoreAwsSecretAccessKey: ""
 
+  # -- Use AWS IAM role for S3 access instead of static credentials
+  # @default -- `false`
+  # Omits the credential env vars so the AWS SDK uses its default chain (IRSA, instance profile)
+  # Only used when integrityAppBlobStoreType is "aws_s3"
+  integrityAppBlobStoreAwsUseIamRole: false
+
   # -- Azure Storage Account
   # @default -- `""`
   # **REQUIRED for Azure**: Storage account name

@@ -55,6 +55,17 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
     if config.cloud_provider == CloudProvider.AWS:
         section["config"]["awsS3Region"] = config.cloud_region or "us-east-1"
         section["config"]["awsS3BucketName"] = "YOUR_S3_BUCKET"
+        section["config"]["awsS3UseIamRole"] = config.aws_s3_use_iam_role
+        if config.aws_s3_use_iam_role:
+            # IRSA requires a dedicated service account annotated with the IAM role
+            # ARN; without this the pod runs under the namespace default SA and the
+            # role is never assumed
+            section["serviceAccount"] = {
+                "create": True,
+                "annotations": {
+                    "eks.amazonaws.com/role-arn": "YOUR_IAM_ROLE_ARN",
+                },
+            }
     elif config.cloud_provider == CloudProvider.AZURE:
         section["config"]["azureStorageAccountName"] = "YOUR_STORAGE_ACCOUNT"
         section["config"]["azureStorageContainerName"] = "YOUR_CONTAINER"

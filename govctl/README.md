@@ -38,7 +38,7 @@ Before running `govctl init`, you'll need the following in place:
 ### Storage
 
 - **Object storage** — for governance artifacts and integrity data
-  - AWS: S3 bucket
+  - AWS: S3 bucket (access via static keys, or an IAM role / IRSA — `govctl` will ask which)
   - Azure: Blob Storage account and container
   - GCP: GCS bucket
 - **Key management** — for DID signing keys (one of: AWS KMS, Azure Key Vault, or GCP KMS)
@@ -218,7 +218,7 @@ Only includes secrets relevant to your configuration:
 - **Auth service** — API secret, JWT secret
 - **Encryption** — platform encryption key
 - **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three)
-- **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials
+- **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials (S3 credentials are omitted when using IAM role / IRSA access)
 - **Image registry** — pull secret for container images
 - **Key management** — AWS KMS _or_ Azure Key Vault _or_ GCP KMS credentials for DID keys
 

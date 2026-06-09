@@ -60,6 +60,10 @@ class PlatformConfig:
     # Cloud region
     cloud_region: str = ""
 
+    # AWS S3 access mode: when True, use the IAM role credential chain (IRSA /
+    # instance profile) instead of static access keys, and skip the platform-aws-s3 secret
+    aws_s3_use_iam_role: bool = False
+
     # Optional overrides
     release_name: str = "governance-platform"
     namespace: str = "governance"

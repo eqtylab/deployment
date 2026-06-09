@@ -54,6 +54,9 @@ config:
   # storageProvider: "aws_s3"
   # awsS3Region: "us-east-1"
   # awsS3BucketName: "your-governance-artifacts-bucket"
+  # # IAM role access (IRSA): set true to skip static keys and use the IAM role
+  # # credential chain. Requires the service account annotated with the role ARN
+  # awsS3UseIamRole: true
 
   # Storage Configuration - Azure Blob
   storageProvider: "azure_blob"

@@ -130,6 +130,9 @@ governance-service:
     # storageProvider: "aws_s3"
     # awsS3Region: "us-east-1"
     # awsS3BucketName: "your-governance-artifacts-bucket"
+    # # IAM role access (IRSA): set true to skip static keys and use the IAM role
+    # # credential chain. Requires serviceAccount below annotated with the role ARN
+    # awsS3UseIamRole: true
 
     # Storage Configuration - Azure Blob
     storageProvider: "azure_blob"
@@ -227,6 +230,9 @@ integrity-service:
     # integrityAppBlobStoreAwsRegion: "us-east-1"
     # integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
     # integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+    # # IAM role access (IRSA): set true to skip static keys and use the IAM role
+    # # credential chain. Requires serviceAccount below annotated with the role ARN
+    # integrityAppBlobStoreAwsUseIamRole: true
 
     # Storage Configuration - GCS (uncomment to use instead)
     # integrityAppBlobStoreType: "gcs"

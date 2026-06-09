@@ -983,6 +983,8 @@ kubectl create secret generic platform-governance-worker \
 
 #### AWS S3 Credentials
 
+> **Skip this secret if you use IAM role access (IRSA).** When `awsS3UseIamRole` / `integrityAppBlobStoreAwsUseIamRole` are enabled (see [Service configuration](#governance-service)), the services authenticate through the IAM role attached to their service account and this secret is not required.
+
 ```bash
 kubectl create secret generic platform-aws-s3 \
   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
@@ -1158,6 +1160,7 @@ governance-service:
     storageProvider: "aws_s3"
     awsS3Region: "us-east-1"
     awsS3BucketName: "your-governance-artifacts-bucket"
+    # awsS3UseIamRole: true   # use an IAM role (IRSA) instead of static keys; see note below
 
     # Keycloak — must match auth-service config
     keycloakUrl: "https://governance.your-domain.com/keycloak"
@@ -1194,7 +1197,23 @@ integrity-service:
     integrityAppBlobStoreAwsRegion: "us-east-1"
     integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
     integrityAppBlobStoreAwsFolder: "" # Optional subfolder
+    # integrityAppBlobStoreAwsUseIamRole: true   # use an IAM role (IRSA) instead of static keys; see note below
 ```
+
+> **Using IAM roles (IRSA) instead of static credentials:** If your pods authenticate to S3 through an IAM role (EKS IRSA, or an instance profile) rather than an access key, set `awsS3UseIamRole: true` (governance-service) and `integrityAppBlobStoreAwsUseIamRole: true` (integrity-service). The credential env vars are then omitted, the AWS SDK uses the role's default credential chain, and the `platform-aws-s3` secret is **not** required. Annotate each service's account with the role ARN:
+>
+> ```yaml
+> governance-service:
+>   serviceAccount:
+>     create: true
+>     annotations:
+>       eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<governance-s3-role>
+> integrity-service:
+>   serviceAccount:
+>     create: true
+>     annotations:
+>       eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<integrity-s3-role>
+> ```
 
 ### Ingress Configuration
 

@@ -458,12 +458,13 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 **AWS S3 (only used when storageProvider is "aws_s3"):**
 
-| Key                         | Type   | Default | Description                                                                |
-| --------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
-| config.awsS3Region          | string | `""`    | AWS region (**REQUIRED**)                                                  |
-| config.awsS3BucketName      | string | `""`    | AWS S3 bucket name (**REQUIRED**)                                          |
-| config.awsS3AccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)     |
-| config.awsS3SecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3) |
+| Key                         | Type   | Default | Description                                                                                                                                              |
+| --------------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| config.awsS3Region          | string | `""`    | AWS region (**REQUIRED**)                                                                                                                                |
+| config.awsS3BucketName      | string | `""`    | AWS S3 bucket name (**REQUIRED**)                                                                                                                        |
+| config.awsS3AccessKeyId     | string | `""`    | AWS access key ID (auto-configured from global.secrets.storage.aws_s3)                                                                                   |
+| config.awsS3SecretAccessKey | string | `""`    | AWS secret access key (auto-configured from global.secrets.storage.aws_s3)                                                                               |
+| config.awsS3UseIamRole      | bool   | `false` | Use the IAM role credential chain (IRSA/instance profile) instead of static keys; omits the credential env vars and the platform-aws-s3 secret reference |
 
 **Azure Blob Storage (only used when storageProvider is "azure_blob"):**
 
