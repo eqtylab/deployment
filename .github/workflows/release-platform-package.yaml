@@ -151,6 +151,55 @@ jobs:
             fi
           done
 
+          docs_provider="$(yq '.docs.provider // ""' "$MANIFEST")"
+          docs_version="$(yq '.docs.version // ""' "$MANIFEST")"
+          docs_state="$(yq '.docs.state // ""' "$MANIFEST")"
+
+          case "$docs_provider" in
+            readme|self-hosted) ;;
+            *)
+              echo "::error file=${MANIFEST}::docs.provider must be readme or self-hosted."
+              exit 1
+              ;;
+          esac
+
+          if [ -z "$docs_version" ] || [ "$docs_version" = "null" ]; then
+            echo "::error file=${MANIFEST}::docs.version is required."
+            exit 1
+          fi
+
+          case "$docs_state" in
+            beta|public|hidden|deprecated) ;;
+            *)
+              echo "::error file=${MANIFEST}::docs.state must be beta, public, hidden, or deprecated."
+              exit 1
+              ;;
+          esac
+
+          if [ "$docs_provider" = "self-hosted" ]; then
+            docs_source_repo="$(yq '.docs.sourceRepository // ""' "$MANIFEST")"
+            docs_source_commit="$(yq '.docs.sourceCommit // ""' "$MANIFEST")"
+            docs_source_format="$(yq '.docs.sourceFormat // ""' "$MANIFEST")"
+            docs_workflow_run_url="$(yq '.docs.workflowRunUrl // ""' "$MANIFEST")"
+
+            if [ "$docs_source_repo" != "eqtylab/governance-platform-docs" ]; then
+              echo "::error file=${MANIFEST}::self-hosted docs must set docs.sourceRepository=eqtylab/governance-platform-docs."
+              exit 1
+            fi
+            if [ "$docs_source_format" != "mdx" ]; then
+              echo "::error file=${MANIFEST}::self-hosted docs must set docs.sourceFormat=mdx."
+              exit 1
+            fi
+            if [ -z "$docs_source_commit" ] || [ "$docs_source_commit" = "null" ]; then
+              echo "::error file=${MANIFEST}::self-hosted docs must set docs.sourceCommit."
+              exit 1
+            fi
+            if [ -z "$docs_workflow_run_url" ] || [ "$docs_workflow_run_url" = "null" ]; then
+              echo "::error file=${MANIFEST}::self-hosted docs must set docs.workflowRunUrl."
+              exit 1
+            fi
+          fi
+
       - name: Helm validation
         env:
           MANIFEST: ${{ steps.release.outputs.manifest }}
@@ -269,17 +318,13 @@ jobs:
           MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
           package_root="dist/governance-platform-v${VERSION}"
-          mkdir -p "$package_root/charts" "$package_root/docs" "$package_root/examples"
+          mkdir -p "$package_root/charts" "$package_root/examples"
 
           cp "$MANIFEST" "$package_root/release-manifest.yaml"
           cp dist/chart-digests.yaml "$package_root/chart-digests.yaml"
           cp dist/charts/*.tgz "$package_root/charts/"
           cp dist/charts/*.sha256 "$package_root/charts/"
           cp -R charts/governance-platform/examples "$package_root/examples/governance-platform"
-
-          if [ -d docs-site ]; then
-            cp -R docs-site "$package_root/docs/docs-site"
-          fi
 
           cat > "$package_root/INSTALL.md" <<EOF
           # Governance Platform v${VERSION}
