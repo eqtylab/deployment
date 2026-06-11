@@ -7,7 +7,6 @@ on:
       - ".github/workflows/helm-ci.yaml"
       - "charts/**"
       - "releases/**"
-      - "docs-site/**"
       - "schemas/**"
   push:
     branches:
@@ -16,7 +15,6 @@ on:
       - ".github/workflows/helm-ci.yaml"
       - "charts/**"
       - "releases/**"
-      - "docs-site/**"
       - "schemas/**"
   workflow_dispatch:
 
@@ -136,6 +134,9 @@ jobs:
 
             validation_mode="$(yq '.validation.mode' "$manifest")"
             validation_status="$(yq '.validation.evidence.status' "$manifest")"
+            docs_provider="$(yq '.docs.provider // ""' "$manifest")"
+            docs_version="$(yq '.docs.version // ""' "$manifest")"
+            docs_state="$(yq '.docs.state // ""' "$manifest")"
 
             if [ "$validation_mode" != "manual" ]; then
               echo "::error file=${manifest}::validation.mode must be manual"
@@ -149,6 +150,51 @@ jobs:
                 exit 1
                 ;;
             esac
+
+            case "$docs_provider" in
+              readme|self-hosted) ;;
+              *)
+                echo "::error file=${manifest}::docs.provider must be readme or self-hosted"
+                exit 1
+                ;;
+            esac
+
+            if [ -z "$docs_version" ] || [ "$docs_version" = "null" ]; then
+              echo "::error file=${manifest}::docs.version is required"
+              exit 1
+            fi
+
+            case "$docs_state" in
+              beta|public|hidden|deprecated) ;;
+              *)
+                echo "::error file=${manifest}::docs.state must be beta, public, hidden, or deprecated"
+                exit 1
+                ;;
+            esac
+
+            if [ "$docs_provider" = "self-hosted" ]; then
+              docs_source_repo="$(yq '.docs.sourceRepository // ""' "$manifest")"
+              docs_source_commit="$(yq '.docs.sourceCommit // ""' "$manifest")"
+              docs_source_format="$(yq '.docs.sourceFormat // ""' "$manifest")"
+              docs_workflow_run_url="$(yq '.docs.workflowRunUrl // ""' "$manifest")"
+
+              if [ "$docs_source_repo" != "eqtylab/governance-platform-docs" ]; then
+                echo "::error file=${manifest}::self-hosted docs must set docs.sourceRepository=eqtylab/governance-platform-docs"
+                exit 1
+              fi
+              if [ "$docs_source_format" != "mdx" ]; then
+                echo "::error file=${manifest}::self-hosted docs must set docs.sourceFormat=mdx"
+                exit 1
+              fi
+              if [ -z "$docs_source_commit" ] || [ "$docs_source_commit" = "null" ]; then
+                echo "::error file=${manifest}::self-hosted docs must set docs.sourceCommit"
+                exit 1
+              fi
+              if [ -z "$docs_workflow_run_url" ] || [ "$docs_workflow_run_url" = "null" ]; then
+                echo "::error file=${manifest}::self-hosted docs must set docs.workflowRunUrl"
+                exit 1
+              fi
+            fi
 
             images=(authService governanceService governanceStudio integrityService)
             if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$manifest")" = "eqty-pdfgen" ]; then
@@ -194,7 +240,7 @@ jobs:
 
       - name: Prevent latest image tags in release-facing files
         run: |
-          if grep -RIn --include='*.yaml' --include='*.yml' --include='*.md' ':latest' charts releases docs-site 2>/dev/null; then
+          if grep -RIn --include='*.yaml' --include='*.yml' --include='*.md' ':latest' charts releases 2>/dev/null; then
             echo "::error::Customer release files must not reference latest image tags."
             exit 1
           fi

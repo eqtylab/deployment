@@ -70,11 +70,15 @@
       "type": "object",
       "required": ["provider", "version", "state"],
       "properties": {
-        "provider": { "const": "readme" },
+        "provider": { "enum": ["self-hosted", "readme"] },
         "version": { "type": "string" },
         "state": { "enum": ["beta", "public", "hidden", "deprecated"] },
         "default": { "type": "boolean" },
-        "sourceRepository": { "type": "string" }
+        "url": { "type": "string" },
+        "sourceRepository": { "type": "string" },
+        "sourceCommit": { "type": "string" },
+        "sourceFormat": { "enum": ["md", "mdx"] },
+        "workflowRunUrl": { "type": "string" }
       }
     }
   }

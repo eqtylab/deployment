@@ -1,6 +1,5 @@
 # Governance Platform Deployment
 
-[![Docsite CI](https://github.com/eqtylab/deployment/actions/workflows/docsite-ci.yaml/badge.svg)](https://github.com/eqtylab/deployment/actions/workflows/docsite-ci.yaml)
 [![Helm CI](https://github.com/eqtylab/deployment/actions/workflows/helm-ci.yaml/badge.svg)](https://github.com/eqtylab/deployment/actions/workflows/helm-ci.yaml)
 [![Release Platform Package](https://github.com/eqtylab/deployment/actions/workflows/release-platform-package.yaml/badge.svg)](https://github.com/eqtylab/deployment/actions/workflows/release-platform-package.yaml)
 
@@ -31,7 +30,6 @@
 - **[`releases/`](./releases/)** — Per-version release manifests pinning chart versions, image digests, and source refs for each platform release.
 - **[`containers/`](./containers/)** — Custom container image builds (e.g. patched PostgreSQL) used by the platform.
 - **[`schemas/`](./schemas/)** — JSON schemas for release manifests and other structured artifacts in this repo.
-- **[`docs-site/`](./docs-site/)** — Source for the hosted customer documentation site.
 
 ## 📦 Versioning
 
