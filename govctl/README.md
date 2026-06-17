@@ -216,7 +216,6 @@ Only includes secrets relevant to your configuration:
 
 - **Database** — PostgreSQL credentials
 - **Auth service** — API secret, JWT secret
-- **Encryption** — platform encryption key
 - **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three)
 - **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials (S3 credentials are omitted when using IAM role / IRSA access)
 - **Image registry** — pull secret for container images

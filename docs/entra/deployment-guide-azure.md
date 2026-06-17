@@ -844,7 +844,6 @@ The governance-platform chart requires several Kubernetes secrets to be availabl
 | `platform-database`          | governance-service, auth-service, integrity-service | `username`, `password`                                                              |
 | `platform-entra`             | auth-service, governance-service                    | `client-id`, `client-secret`, `tenant-id`, `graph-client-id`, `graph-client-secret` |
 | `platform-auth-service`      | auth-service                                        | `api-secret`, `jwt-secret`                                                          |
-| `platform-encryption-key`    | governance-service, auth-service                    | `encryption-key`                                                                    |
 | `platform-governance-worker` | governance-service worker                           | `encryption-key`, `client-id`, `client-secret`                                      |
 | `platform-azure-blob`        | governance-service, integrity-service               | `account-key`, `connection-string`                                                  |
 | `platform-azure-key-vault`   | auth-service                                        | `client-id`, `client-secret`, `tenant-id`, `vault-url`                              |
@@ -887,14 +886,6 @@ kubectl create secret generic platform-entra \
 kubectl create secret generic platform-auth-service \
   --from-literal=api-secret="$(openssl rand -base64 32)" \
   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
-  --namespace $NS
-```
-
-#### Encryption Key
-
-```bash
-kubectl create secret generic platform-encryption-key \
-  --from-literal=encryption-key="$(openssl rand -base64 32)" \
   --namespace $NS
 ```
 
@@ -1355,7 +1346,7 @@ helm uninstall governance-platform -n $NS
 > # Delete manually-created secrets (Option A only)
 > kubectl delete secrets -l app.kubernetes.io/part-of=governance-platform -n $NS 2>/dev/null
 > kubectl delete secret platform-database platform-entra platform-auth-service \
->   platform-encryption-key platform-governance-worker platform-azure-blob \
+>   platform-governance-worker platform-azure-blob \
 >   platform-azure-key-vault platform-image-pull-secret entra-bootstrap-sp -n $NS 2>/dev/null
 >
 > # Delete the namespace (optional)

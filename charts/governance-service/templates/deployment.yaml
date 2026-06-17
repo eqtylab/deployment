@@ -312,19 +312,6 @@ spec:
           {{- end }}
 
           # ========================================================================
-          # Encryption Configuration
-          # ========================================================================
-          - name: CREDENTIAL_ENCRYPTION_KEY
-            {{- if .Values.config.credentialEncryptionKey }}
-            value: {{ .Values.config.credentialEncryptionKey | quote }}
-            {{- else }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.secrets.encryption.name | default (((.Values.global).secrets).encryption).secretName | default "" | quote }}
-                key: {{ ((((.Values.global).secrets).encryption).keys).key | default "encryption-key" | quote }}
-            {{- end }}
-
-          # ========================================================================
           # Integration URLs
           # ========================================================================
           - name: INTEGRITY_SERVICE_URL

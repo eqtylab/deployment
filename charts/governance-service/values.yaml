@@ -303,13 +303,6 @@ migrations:
 # -- Secrets Configuration
 # @default -- See values below
 secrets:
-  # -- Encryption Secret
-  # @default -- See values below
-  encryption:
-    # -- Secret Name
-    # @default -- `""` (auto-configured from global.secrets.encryption.secretName)
-    name: ""
-
   # -- Auth Provider Secrets
   # @default -- See values below
   # Only configure the section matching your auth provider
@@ -401,10 +394,6 @@ config:
   # @default -- `/health`
   # Paths to skip in logs (prefix match)
   skipPaths: "/health"
-
-  # -- Credential Encryption Key
-  # @default -- `""` (auto-configured from global.secrets.encryption)
-  credentialEncryptionKey: ""
 
   # ---------------------------------------------------------------------------
   # HTTP Server Configuration

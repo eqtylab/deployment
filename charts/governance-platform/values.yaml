@@ -217,19 +217,6 @@ global:
         # @default -- `""` (REQUIRED if create=true)
         password: ""
 
-    # -- Platform Encryption
-    # @default -- See values below
-    # Used by: governance-service for encrypting credential data in the database
-    encryption:
-      secretName: "platform-encryption-key"
-      keys:
-        key: "encryption-key"
-      # Only used if create=true
-      values:
-        # -- Encryption Key
-        # @default -- `""` (REQUIRED if create=true, generate with: openssl rand -base64 32)
-        key: ""
-
     # -- Governance Worker Credentials
     # @default -- See values below
     # Used by: auth-service for managing the governance worker's service account credentials
@@ -1770,13 +1757,6 @@ governance-service:
   # -- Secrets Configuration
   # @default -- See values below
   secrets:
-    # -- Encryption Secret
-    # @default -- See values below
-    encryption:
-      # -- Secret Name
-      # @default -- `""` (auto-configured from global.secrets.encryption.secretName)
-      name: ""
-
     # -- Auth Provider Secrets
     # @default -- See values below
     # Only configure the section matching your auth provider
@@ -1868,10 +1848,6 @@ governance-service:
     # @default -- `/health`
     # Paths to skip in logs (prefix match)
     skipPaths: "/health"
-
-    # -- Credential Encryption Key
-    # @default -- `""` (auto-configured from global.secrets.encryption)
-    credentialEncryptionKey: ""
 
     # ---------------------------------------------------------------------------
     # HTTP Server Configuration

@@ -174,7 +174,6 @@ Revision:         {{ .Release.Revision }}
     ✓ Secrets automatically created by this chart:
       - platform-database (PostgreSQL credentials)
       - platform-auth0 (Auth0 credentials)
-      - platform-encryption-key (Platform encryption key)
       - platform-gcs (Google Cloud Storage credentials)
       - platform-image-pull-secret (Container registry credentials)
       - platform-auth-service (Auth service application secrets)

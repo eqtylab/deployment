@@ -93,13 +93,6 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "jwtSecret": _generate_secret(),
             },
         },
-        # Encryption key (always required)
-        "encryption": {
-            "secretName": "platform-encryption-key",
-            "values": {
-                "key": _generate_secret(),
-            },
-        },
         # Image registry (always required)
         "imageRegistry": {
             "secretName": "platform-image-pull-secret",

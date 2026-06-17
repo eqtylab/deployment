@@ -218,7 +218,6 @@ From global values:
 
 - Database connection (host, port, credentials from `global.postgresql.*` and `global.secrets.database`)
 - Auth provider configuration (from `global.secrets.auth.provider`)
-- Encryption keys (from `global.secrets.encryption`)
 - Storage credentials (from `global.secrets.storage.*`)
 - Auth service credentials for worker authentication (from `global.secrets.authService`)
 - Environment type (from `global.environmentType`)
@@ -246,7 +245,6 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.postgresql.database                   | string | PostgreSQL database name                          |
 | global.postgresql.username                   | string | PostgreSQL username                               |
 | global.secrets.database.secretName           | string | Name of database credentials secret               |
-| global.secrets.encryption.secretName         | string | Name of encryption key secret                     |
 | global.secrets.auth.provider                 | string | Auth provider (auth0, entra, or keycloak)         |
 | global.secrets.auth.auth0.secretName         | string | Auth0 credentials secret name                     |
 | global.secrets.auth.entra.secretName         | string | Entra ID credentials secret name                  |
@@ -374,12 +372,6 @@ When deployed via the umbrella chart, these global values are automatically used
 
 All secret references support global fallbacks when deployed via umbrella chart.
 
-#### Encryption Secret
-
-| Key                     | Type   | Description                                                             |
-| ----------------------- | ------ | ----------------------------------------------------------------------- |
-| secrets.encryption.name | string | Secret name (auto-configured from global.secrets.encryption.secretName) |
-
 #### Auth0 Secret (only used when auth provider is Auth0)
 
 | Key                     | Type   | Description                                                             |
@@ -437,7 +429,6 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.logLevel                | string | `"info"`    | Logging level (debug/info/warn/error)                                 |
 | config.logFormat               | string | `"json"`    | Log output format (json/text/console/pretty)                          |
 | config.skipPaths               | string | `"/health"` | Paths to skip in logs (prefix match)                                  |
-| config.credentialEncryptionKey | string | `""`        | Encryption key (auto-configured from global.secrets.encryption)       |
 
 #### HTTP Server Configuration
 
