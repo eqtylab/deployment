@@ -80,7 +80,7 @@ validation:
 docs:
   provider: readme
   version: v0.1.0
-  state: beta
+  state: historical
   default: false
   sourceRepository: eqtylab/deployment
   sourceFormat: readme
