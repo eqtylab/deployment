@@ -83,3 +83,7 @@ docs:
   state: beta
   default: false
   sourceRepository: eqtylab/deployment
+  sourceFormat: readme
+  sourceCommit: unavailable
+  workflowRunUrl: unavailable
+  notes: Historical release predates the self-hosted Governance Platform docs automation.

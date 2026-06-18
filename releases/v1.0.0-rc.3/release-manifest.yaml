@@ -1,0 +1,99 @@
+platform:
+  name: governance-platform
+  version: 1.0.0-rc.3
+  releaseType: prerelease
+  releaseDate: "2026-06-17"
+  kubernetesMinimumVersion: "1.29"
+  architecture: linux/amd64
+sources:
+  governanceStudio:
+    repository: eqtylab/governance-studio
+    ref: d950d33e7ace9017834c5c8718cb8e0adfc57d91
+  governanceBackend:
+    repository: eqtylab/governance-backend
+    ref: ffdaf7dc8d49498af01587752167c05aa2b44c6c
+  integrityMonorepo:
+    repository: eqtylab/integrity-monorepo
+    ref: a341047a4dacd880dda304dcc6ae97de42b94e63
+  eqtyPdfgen:
+    repository: eqtylab/eqty-pdfgen
+    ref: 8de0fe1975ac6bef3497ad52eef47162d1f6ea32
+  infrastructure:
+    repository: eqtylab/governance-studio-infrastructure
+    ref: "496603706796bd9c7ba6e654e8cbd5f741eb4090"
+images:
+  authService:
+    repository: ghcr.io/eqtylab/auth-service
+    tag: 1.0.0-rc.3
+    digest: "sha256:711cc1091c0892205161726b23dd5ff1c4159bb66dd311ed35fca016b3c96049"
+    sourceSha: "ffdaf7dc8d49498af01587752167c05aa2b44c6c"
+    metadataArtifact: image-metadata-auth-service
+  governanceService:
+    repository: ghcr.io/eqtylab/governance-service
+    tag: 1.0.0-rc.3
+    digest: "sha256:fa6ee039a14e149279a4a5d480533a3a979d018a7da96ffa2d0bef35c9ec9ded"
+    sourceSha: "ffdaf7dc8d49498af01587752167c05aa2b44c6c"
+    metadataArtifact: image-metadata-governance-service
+  governanceStudio:
+    repository: ghcr.io/eqtylab/governance-studio
+    tag: 1.0.0-rc.3
+    digest: "sha256:a6d06295612b927b5e89c80d708b34f5b395a6b52494a654b0c2b2a094a8b99e"
+    sourceSha: "d950d33e7ace9017834c5c8718cb8e0adfc57d91"
+    metadataArtifact: image-metadata-governance-studio
+  integrityService:
+    repository: ghcr.io/eqtylab/integrity-service
+    tag: 1.0.0-rc.3
+    digest: "sha256:d05b2dd68011ecb164c78019d85a044dc01e968b34f26d3b0b4eb108b1238935"
+    sourceSha: "a341047a4dacd880dda304dcc6ae97de42b94e63"
+    metadataArtifact: image-metadata-integrity-service
+  eqtyPdfgen:
+    repository: ghcr.io/eqtylab/eqty-pdfgen
+    tag: 1.0.0-rc.3
+    digest: "sha256:1e7c68e2687e9f13b0595f0158865ba20fcbae5032b07c03e8eed3befca983cc"
+    sourceSha: "8de0fe1975ac6bef3497ad52eef47162d1f6ea32"
+    metadataArtifact: image-metadata-eqty-pdfgen
+charts:
+  authService:
+    name: auth-service
+    version: 1.0.0-rc.3
+    oci: oci://ghcr.io/eqtylab/charts/auth-service
+  governanceService:
+    name: governance-service
+    version: 1.0.0-rc.3
+    oci: oci://ghcr.io/eqtylab/charts/governance-service
+  governanceStudio:
+    name: governance-studio
+    version: 1.0.0-rc.3
+    oci: oci://ghcr.io/eqtylab/charts/governance-studio
+  integrityService:
+    name: integrity-service
+    version: 1.0.0-rc.3
+    oci: oci://ghcr.io/eqtylab/charts/integrity-service
+  eqtyPdfgen:
+    name: eqty-pdfgen
+    version: 1.0.0-rc.3
+    oci: oci://ghcr.io/eqtylab/charts/eqty-pdfgen
+  governancePlatform:
+    name: governance-platform
+    version: 1.0.0-rc.3
+    oci: oci://ghcr.io/eqtylab/charts/governance-platform
+validation:
+  required: true
+  mode: manual
+  identityProvider: keycloak
+  database: external-postgres
+  evidence:
+    status: approved
+    recordedIn: infrastructure-release-pr
+    reviewer: "captjt"
+    reviewedAt: "2026-06-18T15:09:04Z"
+    notes: "Validated governance-platform v1.0.0-rc.3 in the GCP staging environment with Keycloak, external PostgreSQL, and eqty-pdfgen enabled. Staging deployment completed successfully and the release candidate is approved for rc3 release PR merge."
+docs:
+  provider: self-hosted
+  version: v1.0.0-rc.3
+  state: beta
+  default: false
+  sourceRepository: eqtylab/governance-platform-docs
+  sourceCommit: 62ee399b716f1dd34f57c96db09d4cc5433fb549
+  sourceFormat: mdx
+  workflowRunUrl: https://github.com/eqtylab/governance-platform-docs/actions/runs/27770815398
