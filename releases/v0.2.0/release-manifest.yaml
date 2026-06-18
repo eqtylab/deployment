@@ -78,8 +78,11 @@ validation:
       "Validated governance-platform v0.2.0 in a customer-like environment with Keycloak and external
       Postgres. Confirmed pod readiness, service health, Studio load, login flow, and image pulls."
 docs:
-  provider: readme
+  provider: self-hosted
   version: v0.2.0
   state: beta
   default: false
-  sourceRepository: eqtylab/deployment
+  sourceRepository: eqtylab/governance-platform-docs
+  sourceCommit: 4ad61385197c1a099d608585766858a3e1cd7a2a
+  sourceFormat: mdx
+  workflowRunUrl: https://github.com/eqtylab/governance-platform-docs/actions/runs/27289359604
