@@ -1,21 +1,21 @@
 dependencies:
 - name: auth-service
   repository: file://../auth-service
-  version: 1.0.0
+  version: 1.0.1
 - name: eqty-pdfgen
   repository: file://../eqty-pdfgen
-  version: 1.0.0
+  version: 1.0.1
 - name: governance-service
   repository: file://../governance-service
-  version: 1.0.0
+  version: 1.0.1
 - name: governance-studio
   repository: file://../governance-studio
-  version: 1.0.0
+  version: 1.0.1
 - name: integrity-service
   repository: file://../integrity-service
-  version: 1.0.0
+  version: 1.0.1
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.1.15
-digest: sha256:dbc6952c9165fda7793b38ed124e67adcda1910746dbdfc2a09d6b5e60ce96a8
-generated: "2026-06-18T20:01:55.858828529Z"
+digest: sha256:fc923b3fe03943ff224327ed2672be9f8846de838ca687833431ca9da6a30938
+generated: "2026-07-02T21:33:44.637469927Z"
