@@ -312,6 +312,41 @@ jobs:
             publish_chart "$chart"
           done
 
+      - name: Create docs app token
+        id: docs-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: eqtylab
+          repositories: governance-platform-docs
+
+      - name: Fetch documentation snapshot
+        env:
+          GH_TOKEN: ${{ steps.docs-token.outputs.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          MANIFEST: ${{ steps.release.outputs.manifest }}
+          PUBLISH: ${{ steps.release.outputs.publish }}
+        run: |
+          snapshot_tag="$(yq '.docs.snapshotTag // ""' "$MANIFEST")"
+          if [ -z "$snapshot_tag" ]; then
+            snapshot_tag="docs/v${VERSION}"
+          fi
+
+          mkdir -p dist/docs
+          if gh release download "$snapshot_tag" \
+            --repo eqtylab/governance-platform-docs \
+            --pattern "docs-v${VERSION}.tar.gz" \
+            --dir dist/docs; then
+            sha256sum "dist/docs/docs-v${VERSION}.tar.gz" > "dist/docs/docs-v${VERSION}.tar.gz.sha256"
+            echo "Fetched documentation snapshot ${snapshot_tag}."
+          elif [ "$PUBLISH" = "true" ]; then
+            echo "::error::Documentation snapshot ${snapshot_tag} not found in eqtylab/governance-platform-docs; the docs gate must run before publication."
+            exit 1
+          else
+            echo "::warning::Documentation snapshot ${snapshot_tag} not found; continuing dry-run without docs."
+          fi
+
       - name: Build connected customer package
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -319,6 +354,11 @@ jobs:
         run: |
           package_root="dist/governance-platform-v${VERSION}"
           mkdir -p "$package_root/charts" "$package_root/examples"
+
+          if [ -f "dist/docs/docs-v${VERSION}.tar.gz" ]; then
+            mkdir -p "$package_root/docs"
+            tar -xzf "dist/docs/docs-v${VERSION}.tar.gz" -C "$package_root/docs"
+          fi
 
           cp "$MANIFEST" "$package_root/release-manifest.yaml"
           cp dist/chart-digests.yaml "$package_root/chart-digests.yaml"
@@ -340,6 +380,8 @@ jobs:
           \`\`\`
 
           Runtime images are private. Configure image pull credentials or mirror the images to a customer registry before installing.
+
+          Product documentation for this release is included under \`docs/\` — open \`docs/index.html\` in a browser (works offline).
           EOF
 
           (cd dist && tar -czf "governance-platform-v${VERSION}.tar.gz" "governance-platform-v${VERSION}")
@@ -381,6 +423,9 @@ jobs:
           tar -xzf "dist/governance-platform-v${VERSION}.tar.gz" -C /tmp/package-check
           test -f "/tmp/package-check/governance-platform-v${VERSION}/release-manifest.yaml"
           test -f "/tmp/package-check/governance-platform-v${VERSION}/chart-digests.yaml"
+          if [ -d "/tmp/package-check/governance-platform-v${VERSION}/docs" ]; then
+            test -f "/tmp/package-check/governance-platform-v${VERSION}/docs/index.html"
+          fi
           helm template governance-platform "dist/charts/governance-platform-${VERSION}.tgz" >/dev/null
 
       - name: Attest release packages
@@ -415,6 +460,7 @@ jobs:
           ### Artifacts
 
           - Connected package: \`governance-platform-v${VERSION}.tar.gz\`
+          - Documentation snapshot: \`docs-v${VERSION}.tar.gz\` (also included in the package under \`docs/\`; works offline)
           - Release manifest: \`release-manifest.yaml\`
           - Chart digests: \`chart-digests.yaml\`
           - Runtime image tags: \`${VERSION}\`
@@ -441,6 +487,11 @@ jobs:
           if [ -f "dist/governance-platform-v${VERSION}-airgap.tar.gz" ]; then
             assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz")
             assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz.sha256")
+          fi
+
+          if [ -f "dist/docs/docs-v${VERSION}.tar.gz" ]; then
+            assets+=("dist/docs/docs-v${VERSION}.tar.gz")
+            assets+=("dist/docs/docs-v${VERSION}.tar.gz.sha256")
           fi
 
           flags=()
