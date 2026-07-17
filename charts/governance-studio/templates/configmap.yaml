@@ -14,6 +14,9 @@ data:
   {{- if .Values.config.features.lineage }}
   INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" (((.Values.global).domain) | default "")) | quote }}
   {{- end }}
+  {{- if .Values.config.features.gateway }}
+  GATEWAY_API_URL: {{ .Values.config.gatewayApiUrl | quote }}
+  {{- end }}
 
   # ==========================================================================
   # Application Configuration
@@ -29,6 +32,7 @@ data:
   # ==========================================================================
   FEATURE_GOVERNANCE: {{ .Values.config.features.governance | quote }}
   FEATURE_LINEAGE: {{ .Values.config.features.lineage | quote }}
+  FEATURE_GATEWAY: {{ .Values.config.features.gateway | quote }}
 
   # ==========================================================================
   # Authentication Configuration

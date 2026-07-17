@@ -263,6 +263,13 @@ config:
   # @default -- `""` (auto-generated: "https://{global.domain}/integrityService")
   integrityServiceUrl: ""
 
+  # -- Gateway API URL
+  # @default -- `""`
+  # **REQUIRED for Gateway**: Base URL for the Gateway control-plane API
+  # (e.g., "https://guardian.example.com/api")
+  # Only used when features.gateway is enabled
+  gatewayApiUrl: ""
+
   # ---------------------------------------------------------------------------
   # Authentication Provider Configuration
   # ---------------------------------------------------------------------------
@@ -369,3 +376,8 @@ config:
     # @default -- `true`
     # Enable lineage and integrity features (requires integrity-service)
     lineage: true
+
+    # -- Gateway Features
+    # @default -- `false`
+    # Enable Gateway features (requires config.gatewayApiUrl)
+    gateway: false
