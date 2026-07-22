@@ -151,55 +151,6 @@ jobs:
             fi
           done
 
-          docs_provider="$(yq '.docs.provider // ""' "$MANIFEST")"
-          docs_version="$(yq '.docs.version // ""' "$MANIFEST")"
-          docs_state="$(yq '.docs.state // ""' "$MANIFEST")"
-
-          case "$docs_provider" in
-            readme|self-hosted) ;;
-            *)
-              echo "::error file=${MANIFEST}::docs.provider must be readme or self-hosted."
-              exit 1
-              ;;
-          esac
-
-          if [ -z "$docs_version" ] || [ "$docs_version" = "null" ]; then
-            echo "::error file=${MANIFEST}::docs.version is required."
-            exit 1
-          fi
-
-          case "$docs_state" in
-            beta|public|hidden|deprecated) ;;
-            *)
-              echo "::error file=${MANIFEST}::docs.state must be beta, public, hidden, or deprecated."
-              exit 1
-              ;;
-          esac
-
-          if [ "$docs_provider" = "self-hosted" ]; then
-            docs_source_repo="$(yq '.docs.sourceRepository // ""' "$MANIFEST")"
-            docs_source_commit="$(yq '.docs.sourceCommit // ""' "$MANIFEST")"
-            docs_source_format="$(yq '.docs.sourceFormat // ""' "$MANIFEST")"
-            docs_workflow_run_url="$(yq '.docs.workflowRunUrl // ""' "$MANIFEST")"
-
-            if [ "$docs_source_repo" != "eqtylab/governance-platform-docs" ]; then
-              echo "::error file=${MANIFEST}::self-hosted docs must set docs.sourceRepository=eqtylab/governance-platform-docs."
-              exit 1
-            fi
-            if [ "$docs_source_format" != "mdx" ]; then
-              echo "::error file=${MANIFEST}::self-hosted docs must set docs.sourceFormat=mdx."
-              exit 1
-            fi
-            if [ -z "$docs_source_commit" ] || [ "$docs_source_commit" = "null" ]; then
-              echo "::error file=${MANIFEST}::self-hosted docs must set docs.sourceCommit."
-              exit 1
-            fi
-            if [ -z "$docs_workflow_run_url" ] || [ "$docs_workflow_run_url" = "null" ]; then
-              echo "::error file=${MANIFEST}::self-hosted docs must set docs.workflowRunUrl."
-              exit 1
-            fi
-          fi
-
       - name: Helm validation
         env:
           MANIFEST: ${{ steps.release.outputs.manifest }}
@@ -312,41 +263,6 @@ jobs:
             publish_chart "$chart"
           done
 
-      - name: Create docs app token
-        id: docs-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          owner: eqtylab
-          repositories: governance-platform-docs
-
-      - name: Fetch documentation snapshot
-        env:
-          GH_TOKEN: ${{ steps.docs-token.outputs.token }}
-          VERSION: ${{ steps.release.outputs.version }}
-          MANIFEST: ${{ steps.release.outputs.manifest }}
-          PUBLISH: ${{ steps.release.outputs.publish }}
-        run: |
-          snapshot_tag="$(yq '.docs.snapshotTag // ""' "$MANIFEST")"
-          if [ -z "$snapshot_tag" ]; then
-            snapshot_tag="docs/v${VERSION}"
-          fi
-
-          mkdir -p dist/docs
-          if gh release download "$snapshot_tag" \
-            --repo eqtylab/governance-platform-docs \
-            --pattern "docs-v${VERSION}.tar.gz" \
-            --dir dist/docs; then
-            sha256sum "dist/docs/docs-v${VERSION}.tar.gz" > "dist/docs/docs-v${VERSION}.tar.gz.sha256"
-            echo "Fetched documentation snapshot ${snapshot_tag}."
-          elif [ "$PUBLISH" = "true" ]; then
-            echo "::error::Documentation snapshot ${snapshot_tag} not found in eqtylab/governance-platform-docs; the docs gate must run before publication."
-            exit 1
-          else
-            echo "::warning::Documentation snapshot ${snapshot_tag} not found; continuing dry-run without docs."
-          fi
-
       - name: Build connected customer package
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -354,11 +270,6 @@ jobs:
         run: |
           package_root="dist/governance-platform-v${VERSION}"
           mkdir -p "$package_root/charts" "$package_root/examples"
-
-          if [ -f "dist/docs/docs-v${VERSION}.tar.gz" ]; then
-            mkdir -p "$package_root/docs"
-            tar -xzf "dist/docs/docs-v${VERSION}.tar.gz" -C "$package_root/docs"
-          fi
 
           cp "$MANIFEST" "$package_root/release-manifest.yaml"
           cp dist/chart-digests.yaml "$package_root/chart-digests.yaml"
@@ -380,8 +291,6 @@ jobs:
           \`\`\`
 
           Runtime images are private. Configure image pull credentials or mirror the images to a customer registry before installing.
-
-          Product documentation for this release is included under \`docs/\` — open \`docs/index.html\` in a browser (works offline).
           EOF
 
           (cd dist && tar -czf "governance-platform-v${VERSION}.tar.gz" "governance-platform-v${VERSION}")
@@ -423,9 +332,6 @@ jobs:
           tar -xzf "dist/governance-platform-v${VERSION}.tar.gz" -C /tmp/package-check
           test -f "/tmp/package-check/governance-platform-v${VERSION}/release-manifest.yaml"
           test -f "/tmp/package-check/governance-platform-v${VERSION}/chart-digests.yaml"
-          if [ -d "/tmp/package-check/governance-platform-v${VERSION}/docs" ]; then
-            test -f "/tmp/package-check/governance-platform-v${VERSION}/docs/index.html"
-          fi
           helm template governance-platform "dist/charts/governance-platform-${VERSION}.tgz" >/dev/null
 
       - name: Attest release packages
