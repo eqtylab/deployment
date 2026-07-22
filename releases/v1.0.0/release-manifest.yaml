@@ -95,5 +95,3 @@ docs:
   default: true
   sourceRepository: eqtylab/governance-platform-docs
   sourceFormat: mdx
-  sourceCommit: 5b447e7bb88b802f0400f9c10cf35fbf60f349d2
-  workflowRunUrl: https://github.com/eqtylab/governance-platform-docs/actions/runs/27787579563

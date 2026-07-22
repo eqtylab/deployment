@@ -1,81 +1,81 @@
 platform:
   name: governance-platform
-  version: 1.0.1
+  version: 1.0.2
   releaseType: stable
-  releaseDate: "2026-07-02"
+  releaseDate: "2026-07-22"
   kubernetesMinimumVersion: "1.29"
   architecture: linux/amd64
 sources:
   governanceStudio:
     repository: eqtylab/governance-studio
-    ref: ead3fa8e0e00c585f8330781e8ae95cf427d9f37
+    ref: 6c2932fe4297ea72f140795c1161018b2bb7d0e1
   governanceBackend:
     repository: eqtylab/governance-backend
-    ref: e0478ef842a8d471fb0b964fdb584593fd373ba7
+    ref: c8ea2d3ec38766ae8cd4e941f73fb0b82824652e
   integrityMonorepo:
     repository: eqtylab/integrity-monorepo
-    ref: b97a9d001a2a98ca7dce60da41fb4760d4d29271
+    ref: a56f2e86e2bd31ab06befb45d3512704ffaceaef
   eqtyPdfgen:
     repository: eqtylab/eqty-pdfgen
     ref: db3e2e9d1a3850358f387be9eb118e58b9ba7b67
   infrastructure:
     repository: eqtylab/governance-studio-infrastructure
-    ref: "3f21f3744eae41b926a5ff9d63b2f6b6f64f66bd"
+    ref: "6f2af52f7d1699d5bf6edc6f06819f0148d09081"
 images:
   authService:
     repository: ghcr.io/eqtylab/auth-service
-    tag: 1.0.1
-    digest: "sha256:95ea4036a119d85ef635d050a2bac439d5079c662fb9b62e2785eb4d5e96ebb9"
-    sourceSha: "e0478ef842a8d471fb0b964fdb584593fd373ba7"
+    tag: 1.0.2
+    digest: "sha256:4d2feb8c069059fa4ce2cfe979ff4c4f55c27c9d70a5ce1278ccb47ba23789ae"
+    sourceSha: "c8ea2d3ec38766ae8cd4e941f73fb0b82824652e"
     metadataArtifact: image-metadata-auth-service
   governanceService:
     repository: ghcr.io/eqtylab/governance-service
-    tag: 1.0.1
-    digest: "sha256:e35ff80f9f906e7f8bc32c1fd0ef4bfddb30be6c92c12b01c8d36712dae38921"
-    sourceSha: "e0478ef842a8d471fb0b964fdb584593fd373ba7"
+    tag: 1.0.2
+    digest: "sha256:9d36edb5f74921ab9228fc506cae747a8102583a3ae5b33cb44692e5b0027d1c"
+    sourceSha: "c8ea2d3ec38766ae8cd4e941f73fb0b82824652e"
     metadataArtifact: image-metadata-governance-service
   governanceStudio:
     repository: ghcr.io/eqtylab/governance-studio
-    tag: 1.0.1
-    digest: "sha256:0ed466642a3cc64c3c18da9f4d207a9ed67e0167230f25b620302f4fadb40fc8"
-    sourceSha: "ead3fa8e0e00c585f8330781e8ae95cf427d9f37"
+    tag: 1.0.2
+    digest: "sha256:268df462f14e7d2e7fecca0c4b31f2420a6f16c9837ab35be367eee31f69a33b"
+    sourceSha: "6c2932fe4297ea72f140795c1161018b2bb7d0e1"
     metadataArtifact: image-metadata-governance-studio
   integrityService:
     repository: ghcr.io/eqtylab/integrity-service
-    tag: 1.0.1
-    digest: "sha256:d7b059e96ce121cea682b440169de61394f28734a69d67d266513c85018640bd"
-    sourceSha: "b97a9d001a2a98ca7dce60da41fb4760d4d29271"
+    tag: 1.0.2
+    digest: "sha256:0cd9218b5b8424e82b7a88bcd98f556d09ebcf0cfc4ab46b83c8971566f24d9f"
+    sourceSha: "a56f2e86e2bd31ab06befb45d3512704ffaceaef"
     metadataArtifact: image-metadata-integrity-service
   eqtyPdfgen:
     repository: ghcr.io/eqtylab/eqty-pdfgen
-    tag: 1.0.1
-    digest: "sha256:96f32f60ece6af803a4a1200a583b3a415ca323bf6d4de823c2bd76d767cc602"
+    tag: 1.0.2
+    digest: "sha256:b5f277f280c112010dc15a36e313c505c75888c99561bdec83dc5ebedd119176"
     sourceSha: "db3e2e9d1a3850358f387be9eb118e58b9ba7b67"
     metadataArtifact: image-metadata-eqty-pdfgen
 charts:
   authService:
     name: auth-service
-    version: 1.0.1
+    version: 1.0.2
     oci: oci://ghcr.io/eqtylab/charts/auth-service
   governanceService:
     name: governance-service
-    version: 1.0.1
+    version: 1.0.2
     oci: oci://ghcr.io/eqtylab/charts/governance-service
   governanceStudio:
     name: governance-studio
-    version: 1.0.1
+    version: 1.0.2
     oci: oci://ghcr.io/eqtylab/charts/governance-studio
   integrityService:
     name: integrity-service
-    version: 1.0.1
+    version: 1.0.2
     oci: oci://ghcr.io/eqtylab/charts/integrity-service
   eqtyPdfgen:
     name: eqty-pdfgen
-    version: 1.0.1
+    version: 1.0.2
     oci: oci://ghcr.io/eqtylab/charts/eqty-pdfgen
   governancePlatform:
     name: governance-platform
-    version: 1.0.1
+    version: 1.0.2
     oci: oci://ghcr.io/eqtylab/charts/governance-platform
 validation:
   required: true
@@ -86,12 +86,15 @@ validation:
     status: approved
     recordedIn: infrastructure-release-pr
     reviewer: "captjt"
-    reviewedAt: "2026-07-02T17:38:40Z"
+    reviewedAt: "2026-07-22T17:25:28Z"
     notes: "Staging rollout completed and validated with Keycloak identity provider and external Postgres; expected platform services and customer-facing workflows passed."
 docs:
   provider: self-hosted
-  version: v1.0.1
-  state: public
-  default: true
+  version: v1.0.2
+  state: beta
+  default: false
   sourceRepository: eqtylab/governance-platform-docs
-  sourceFormat: mdx
+  sourceFormat: static-site
+  sourceCommit: 4a5a4b44d8efae25ba9e4d582b78d94c3da127e1
+  snapshotTag: docs/v1.0.2
+  workflowRunUrl: https://github.com/eqtylab/governance-platform-docs/actions/runs/29944666059
