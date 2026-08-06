@@ -6,6 +6,7 @@ from govctl.core.models import AuthProvider, DatabaseMode, PlatformConfig
 from govctl.utils.yaml import dump_yaml_with_header, dump_yaml_sections
 from govctl.generators.sections.auth_service import generate_auth_service_section
 from govctl.generators.sections.eqty_pdfgen import generate_eqty_pdfgen_section
+from govctl.generators.sections.gateway_stack import generate_gateway_stack_section
 from govctl.generators.sections.governance_service import (
     generate_governance_service_section,
 )
@@ -53,6 +54,12 @@ def generate_values(config: PlatformConfig) -> str:
             "EQTY PDFGen",
             "Override values for the eqty-pdfgen Helm chart.",
             generate_eqty_pdfgen_section(config),
+        ),
+        (
+            "gateway-stack",
+            "Gateway Stack",
+            "Override values for the gateway-stack Helm chart.",
+            generate_gateway_stack_section(config),
         ),
         (
             "governance-service",

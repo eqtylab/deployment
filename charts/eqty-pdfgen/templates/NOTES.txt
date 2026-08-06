@@ -31,4 +31,3 @@ carries an authorization bearer token. The default signing URL above points at
 the co-deployed Auth Service; override config.signingUrl if it is exposed under
 a different internal address.
 {{- end }}
-</content>

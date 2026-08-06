@@ -1,0 +1,83 @@
+{{- if .Values.enabled }}
+Gateway Stack has been deployed!
+
+Service URL (internal): http://{{ include "gateway-stack.fullname" . }}-llm-gateway:{{ .Values.llmGateway.service.port }}
+Control Plane URL (internal): http://{{ include "gateway-stack.fullname" . }}-control-plane:{{ .Values.controlPlane.service.port }}
+{{- if .Values.guardianUI.enabled }}
+Guardian Console URL (internal): http://{{ include "gateway-stack.uiServiceName" . }}:{{ .Values.guardianUI.service.port }}
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+External URL: https://{{ .Values.ingress.hosts.llmGateway }}
+External URL: https://{{ .Values.ingress.hosts.controlPlane }}{{ .Values.ingress.controlPlanePath }}
+{{- if and .Values.guardianUI.enabled (ne (default "/" .Values.ingress.controlPlanePath) "/") }}
+External URL: https://{{ .Values.ingress.hosts.controlPlane }}
+{{- end }}
+{{- else }}
+
+To access the services, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "gateway-stack.fullname" . }}-llm-gateway 10000:{{ .Values.llmGateway.service.port }} -n {{ .Release.Namespace }}
+  kubectl port-forward svc/{{ include "gateway-stack.fullname" . }}-control-plane 10010:{{ .Values.controlPlane.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:10000/health
+{{- end }}
+
+Configuration:
+  Version: {{ .Chart.Version }}
+  Environment: {{ .Values.llmGateway.deploymentEnvironment | default "not set" }}
+  Database Host: {{ include "gateway-stack.dbHost" . }}
+  Bundled PostgreSQL: {{ if .Values.postgresql.enabled }}enabled{{ else }}disabled{{ end }}
+  Agent Registration: {{ if .Values.llmGateway.registration.enabled }}enabled{{ else }}disabled{{ end }}
+  Plugin Runtime: {{ if .Values.llmGateway.plugins.enabled }}enabled{{ else }}disabled{{ end }}
+  Control Plane Auth: {{ if .Values.controlPlane.auth.enabled }}enabled{{ else }}disabled{{ end }}
+  Guardian Console: {{ if .Values.guardianUI.enabled }}enabled{{ else }}disabled{{ end }}
+{{- if .Values.ingress.certManager.enabled }}
+  cert-manager ClusterIssuer: {{ .Values.ingress.certManager.clusterIssuer | default "not set" }}
+{{- end }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "gateway-stack.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "gateway-stack.fullname" . }}-llm-gateway -n {{ .Release.Namespace }}
+  kubectl logs -f deployment/{{ include "gateway-stack.fullname" . }}-control-plane -n {{ .Release.Namespace }}
+
+To check health:
+  kubectl exec -it deployment/{{ include "gateway-stack.fullname" . }}-llm-gateway -n {{ .Release.Namespace }} -- curl -s localhost:{{ .Values.llmGateway.service.port }}/health
+  kubectl exec -it deployment/{{ include "gateway-stack.fullname" . }}-control-plane -n {{ .Release.Namespace }} -- curl -s localhost:{{ .Values.controlPlane.service.port }}{{ printf "%s/health" (trimSuffix "/" (default "" .Values.controlPlane.apiBasePath)) | replace "//" "/" }}
+
+{{- if .Values.guardianUI.enabled }}
+{{- $cpPath := default "/" .Values.ingress.controlPlanePath }}
+{{- if and .Values.ingress.enabled (eq $cpPath "/") }}
+
+WARNING: guardianUI.enabled=true but ingress.controlPlanePath is "/", so the
+console has NO Ingress route -- the control-plane API occupies the host root.
+Set ingress.controlPlanePath and controlPlane.apiBasePath to a prefix such as
+/api, or reach the console directly with:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "gateway-stack.uiServiceName" . }} 8080:{{ .Values.guardianUI.service.port }}
+{{- else if not .Values.ingress.enabled }}
+
+The Guardian console has no external route while ingress is disabled. Reach it
+with:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "gateway-stack.uiServiceName" . }} 8080:{{ .Values.guardianUI.service.port }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.ingress.enabled .Values.ingress.tls.enabled }}
+{{- $issuer := and .Values.ingress.certManager.enabled .Values.ingress.certManager.clusterIssuer }}
+{{- $annotated := or .Values.ingress.annotations .Values.ingress.llmGatewayAnnotations .Values.ingress.controlPlaneAnnotations }}
+{{- $secrets := and .Values.ingress.tls.llmGatewaySecretName .Values.ingress.tls.controlPlaneSecretName }}
+{{- if not (or $issuer $annotated $secrets) }}
+
+WARNING: ingress.tls.enabled=true but no certificate source is configured. The
+Ingress resources reference TLS Secrets that nothing will create:
+  {{ include "gateway-stack.llmGatewayTLSSecretName" . }}
+  {{ include "gateway-stack.controlPlaneTLSSecretName" . }}
+Set one of:
+  - ingress.certManager.clusterIssuer, to have cert-manager issue them
+  - ingress.tls.llmGatewaySecretName and ingress.tls.controlPlaneSecretName, to
+    point at Secrets you created yourself
+  - ingress.annotations, if a namespaced Issuer or another controller supplies
+    the certificates
+{{- end }}
+{{- end }}
+{{- end }}

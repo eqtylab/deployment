@@ -5,6 +5,9 @@ dependencies:
 - name: eqty-pdfgen
   repository: file://../eqty-pdfgen
   version: 1.0.2
+- name: gateway-stack
+  repository: file://../gateway-stack
+  version: 1.0.2
 - name: governance-service
   repository: file://../governance-service
   version: 1.0.2
@@ -17,5 +20,5 @@ dependencies:
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.1.15
-digest: sha256:2fecb2631c75a8a5c1b32fb0431f17f630ba386a23d0a9df5f9afcd32b504a45
-generated: "2026-07-22T17:13:56.833206115Z"
+digest: sha256:9c08d6f2ae743e1dec2629cb54ea9cdcc8c6483b9f32da96c01b2cbf2f2497e6
+generated: "2026-08-05T20:07:53.466489-04:00"

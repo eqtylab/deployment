@@ -17,12 +17,15 @@
 # Prerequisites when using the example values files as-is
 # (their default is `global.secrets.create: false`, so secrets must be pre-created):
 #   1. A managed PostgreSQL instance reachable from the cluster
-#   2. The two platform databases pre-created on the instance:
+#   2. The platform databases pre-created on the instance (guardian_gateway is
+#      required only when gateway-stack is enabled):
 #        CREATE DATABASE governance;
 #        CREATE DATABASE "IntegrityServiceDB";
+#        CREATE DATABASE guardian_gateway;
 #   3. A Kubernetes Secret holding the DB password:
 #        kubectl create secret generic platform-database \
 #          --from-literal=password='<your-db-password>' \
+#          --from-literal=gateway-dsn='postgres://postgres:<url-encoded-password>@<host>:5432/guardian_gateway?sslmode=verify-full' \
 #          --namespace governance
 #   4. (Only if using sslMode verify-ca/verify-full) A Secret or ConfigMap
 #      with the provider's CA bundle (see per-provider notes below):
@@ -77,3 +80,4 @@ global:
       secretName: "platform-database"
       keys:
         password: "password"
+        gatewayDsn: "gateway-dsn"

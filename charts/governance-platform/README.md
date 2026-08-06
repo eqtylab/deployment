@@ -23,10 +23,17 @@ The platform uses a microservices architecture with the following components:
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
 - **EQTY PDFGen** - Optional PDF and ZIP rendering service for governance manifests
+- **Gateway Stack** - Optional LLM gateway, control plane, and operator console
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
 
 All services communicate via REST APIs and share authentication through the Auth Service.
+
+The Gateway stack is disabled by default for upgrade compatibility. Enable it
+with `examples/values-gateway.yaml`; its control-plane adapter then resolves the
+umbrella Auth, Governance, and Integrity services automatically. The gateway
+reuses `platform-database` and expects a `gateway-dsn` key for the
+`guardian_gateway` database.
 
 ## Configuration Model
 

@@ -1,0 +1,9 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 16.7.27
+- name: kubernetes-ingress
+  repository: https://haproxytech.github.io/helm-charts
+  version: 1.52.1
+digest: sha256:3b9c18208774022d914cf6816f0c9e5a95d73207f917c7dd4400540926e03369
+generated: "2026-07-31T15:20:48.081707-04:00"

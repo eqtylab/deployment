@@ -1,0 +1,35 @@
+# Guardian gateway overlay
+#
+# Use with a complete provider values file, for example:
+#   helm upgrade --install governance-platform ./charts/governance-platform \
+#     --namespace governance \
+#     --values examples/values-auth0.yaml \
+#     --values examples/values-gateway.yaml
+#
+# The umbrella chart's gateway-stack defaults already wire the platform database
+# Secret, the control-plane adapter, and auth-service bearer verification, so
+# this overlay only turns the stack on and exposes the console
+#
+# If global.secrets.create=true, also set
+# global.secrets.database.values.gatewayDsn to the guardian_gateway DSN
+
+gateway-stack:
+  enabled: true
+
+  # Operator console. It is served at the host root, so the control-plane API
+  # moves to /api to avoid colliding with it
+  guardianUI:
+    enabled: true
+
+  controlPlane:
+    apiBasePath: "/api"
+
+  # Public routes stay off until hostnames and TLS are chosen. Replace both
+  # hosts, then set enabled: true
+  ingress:
+    enabled: false
+    className: "nginx"
+    controlPlanePath: "/api"
+    hosts:
+      llmGateway: "gateway.example.com"
+      controlPlane: "guardian.example.com"

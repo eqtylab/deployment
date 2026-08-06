@@ -1,0 +1,42 @@
+{{- if and .Values.enabled .Values.ingress.enabled .Values.ingress.hosts.llmGateway }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "gateway-stack.fullname" . }}-llm-gateway
+  labels:
+    {{- include "gateway-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: llm-gateway
+  {{- if or .Values.ingress.annotations .Values.ingress.llmGatewayAnnotations (and .Values.ingress.certManager.enabled .Values.ingress.certManager.clusterIssuer) }}
+  annotations:
+    {{- if and .Values.ingress.certManager.enabled .Values.ingress.certManager.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.certManager.clusterIssuer | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.ingress.llmGatewayAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.llmGateway | quote }}
+      secretName: {{ include "gateway-stack.llmGatewayTLSSecretName" . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hosts.llmGateway | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "gateway-stack.fullname" . }}-llm-gateway
+                port:
+                  number: {{ .Values.llmGateway.service.port }}
+{{- end }}

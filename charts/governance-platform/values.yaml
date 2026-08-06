@@ -208,6 +208,8 @@ global:
       keys:
         username: "username"
         password: "password"
+        # DSN consumed by Guardian gateway services when gateway-stack is enabled
+        gatewayDsn: "gateway-dsn"
       # Only used if create=true
       values:
         # -- Database Username
@@ -216,6 +218,10 @@ global:
         # -- Database Password
         # @default -- `""` (REQUIRED if create=true)
         password: ""
+        # -- Guardian database DSN
+        # @default -- `""` (REQUIRED if create=true and gateway-stack.enabled=true)
+        # URL-encode credentials that contain reserved URI characters
+        gatewayDsn: ""
 
     # -- Governance Worker Credentials
     # @default -- See values below
@@ -1461,6 +1467,53 @@ eqty-pdfgen:
   # -- Extra Environment Variables from ConfigMap
   # @default -- `""`
   extraEnvVarsConfigMap: ""
+
+# =============================================================================
+# Guardian Gateway
+# =============================================================================
+# The gateway remains opt-in for the first consolidated release so existing
+# Governance Platform installations are not changed by an upgrade. The example
+# overlay in examples/values-gateway.yaml enables the complete integration
+# ------------------------------------------------------------------------------
+gateway-stack:
+  enabled: false
+
+  # Reuse the platform database Secret. When global.secrets.create=true, the
+  # umbrella chart writes the DSN key below; external-secret users must provide it
+  database:
+    existingSecret: "platform-database"
+    secretKeys:
+      dsn: "gateway-dsn"
+    name: "guardian_gateway"
+
+  # The bundled platform PostgreSQL is authoritative for the umbrella chart
+  postgresql:
+    enabled: false
+
+  # The platform already installs an ingress controller separately
+  haproxyIngress:
+    enabled: false
+
+  llmGateway:
+    deploymentEnvironment: "production"
+    registration:
+      # Enabling registration requires a credential signer seed Secret
+      enabled: false
+
+  controlPlane:
+    adapter:
+      enabled: true
+    auth:
+      bearer:
+        enabled: true
+        mode: "auth_service"
+
+  # Keep public routes and the console opt-in until their hostnames and auth
+  # policy have been selected for an environment
+  ingress:
+    enabled: false
+  guardianUI:
+    enabled: false
 
 # =============================================================================
 # Governance Service
@@ -3004,13 +3057,16 @@ postgresql:
       # @default -- See values below
       scripts:
         # -- Create Additional Databases
-        # @default -- Creates governance and IntegrityServiceDB databases
+        # @default -- Creates governance, IntegrityServiceDB, and guardian_gateway databases
         create-additional-dbs.sql: |
           CREATE DATABASE governance;
           GRANT ALL PRIVILEGES ON DATABASE governance TO postgres;
 
           CREATE DATABASE "IntegrityServiceDB";
           GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
+
+          CREATE DATABASE guardian_gateway;
+          GRANT ALL PRIVILEGES ON DATABASE guardian_gateway TO postgres;
 
 # =============================================================================
 # Auth0 Post-Install Configuration

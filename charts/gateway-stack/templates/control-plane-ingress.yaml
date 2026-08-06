@@ -1,0 +1,52 @@
+{{- if and .Values.enabled .Values.ingress.enabled .Values.ingress.hosts.controlPlane }}
+{{- $controlPlanePath := default "/" .Values.ingress.controlPlanePath }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "gateway-stack.fullname" . }}-control-plane
+  labels:
+    {{- include "gateway-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+  {{- if or .Values.ingress.annotations .Values.ingress.controlPlaneAnnotations (and .Values.ingress.certManager.enabled .Values.ingress.certManager.clusterIssuer) }}
+  annotations:
+    {{- if and .Values.ingress.certManager.enabled .Values.ingress.certManager.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.certManager.clusterIssuer | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.ingress.controlPlaneAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.controlPlane | quote }}
+      secretName: {{ include "gateway-stack.controlPlaneTLSSecretName" . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hosts.controlPlane | quote }}
+      http:
+        paths:
+          - path: {{ $controlPlanePath | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "gateway-stack.fullname" . }}-control-plane
+                port:
+                  number: {{ .Values.controlPlane.service.port }}
+          {{- if and .Values.guardianUI.enabled (ne $controlPlanePath "/") }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "gateway-stack.uiServiceName" . }}
+                port:
+                  number: {{ .Values.guardianUI.service.port }}
+          {{- end }}
+{{- end }}
