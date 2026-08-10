@@ -385,7 +385,6 @@ jobs:
           ### Artifacts
 
           - Connected package: \`governance-platform-v${VERSION}.tar.gz\`
-          - Documentation snapshot: \`docs-v${VERSION}.tar.gz\` (also included in the package under \`docs/\`; works offline)
           - Release manifest: \`release-manifest.yaml\`
           - Chart digests: \`chart-digests.yaml\`
           - Runtime image tags: \`${VERSION}\`
@@ -412,11 +411,6 @@ jobs:
           if [ -f "dist/governance-platform-v${VERSION}-airgap.tar.gz" ]; then
             assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz")
             assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz.sha256")
-          fi
-
-          if [ -f "dist/docs/docs-v${VERSION}.tar.gz" ]; then
-            assets+=("dist/docs/docs-v${VERSION}.tar.gz")
-            assets+=("dist/docs/docs-v${VERSION}.tar.gz.sha256")
           fi
 
           flags=()
