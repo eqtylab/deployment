@@ -131,6 +131,14 @@ jobs:
             grep -q 'registry.customer.example/eqtylab/guardian-console' /tmp/repository-prefix-override.yaml
           fi
 
+      - name: Validate release manifests against schema
+        run: |
+          python3 -m venv /tmp/schema-venv
+          /tmp/schema-venv/bin/pip install --quiet check-jsonschema
+          /tmp/schema-venv/bin/check-jsonschema \
+            --schemafile schemas/release-manifest.schema.json \
+            releases/v*/release-manifest.yaml
+
       - name: Validate release manifests
         run: |
           shopt -s nullglob

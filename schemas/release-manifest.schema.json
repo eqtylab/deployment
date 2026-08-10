@@ -77,7 +77,8 @@
         "url": { "type": "string" },
         "sourceRepository": { "type": "string" },
         "sourceCommit": { "type": "string" },
-        "sourceFormat": { "enum": ["md", "mdx"] },
+        "sourceFormat": { "enum": ["md", "mdx", "static-site", "readme"] },
+        "snapshotTag": { "type": "string" },
         "workflowRunUrl": { "type": "string" }
       }
     }
