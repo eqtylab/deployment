@@ -162,7 +162,7 @@ jobs:
         env:
           MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
-          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
+          if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
           fi
           helm dependency build charts/governance-platform

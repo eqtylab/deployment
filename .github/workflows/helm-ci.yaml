@@ -70,29 +70,34 @@ jobs:
 
       - name: Template supported install paths
         run: |
-          helm template governance-platform charts/governance-platform >/dev/null
+          optional_args=()
           if [ -d charts/eqty-pdfgen ]; then
-            helm template governance-platform charts/governance-platform \
-              --set 'eqty-pdfgen.enabled=true' \
-              >/dev/null
+            optional_args+=(--set 'eqty-pdfgen.enabled=true')
           fi
           if [ -f charts/governance-platform/examples/values-gateway.yaml ]; then
+            optional_args+=(--values charts/governance-platform/examples/values-gateway.yaml)
+          fi
+
+          helm template governance-platform charts/governance-platform >/dev/null
+          if [ "${#optional_args[@]}" -gt 0 ]; then
             helm template governance-platform charts/governance-platform \
-              --values charts/governance-platform/examples/values-gateway.yaml \
+              "${optional_args[@]}" \
               >/dev/null
           fi
-          helm template governance-platform charts/governance-platform \
-            --values charts/governance-platform/examples/values-keycloak.yaml \
-            --values charts/governance-platform/examples/values-external-postgres.yaml \
-            >/dev/null
-          helm template governance-platform charts/governance-platform \
-            --values charts/governance-platform/examples/values-auth0.yaml \
-            --values charts/governance-platform/examples/values-external-postgres.yaml \
-            >/dev/null
-          helm template governance-platform charts/governance-platform \
-            --values charts/governance-platform/examples/values-entra.yaml \
-            --values charts/governance-platform/examples/values-external-postgres.yaml \
-            >/dev/null
+
+          for idp in keycloak auth0 entra; do
+            helm template governance-platform charts/governance-platform \
+              --values "charts/governance-platform/examples/values-${idp}.yaml" \
+              --values charts/governance-platform/examples/values-external-postgres.yaml \
+              >/dev/null
+            if [ "${#optional_args[@]}" -gt 0 ]; then
+              helm template governance-platform charts/governance-platform \
+                "${optional_args[@]}" \
+                --values "charts/governance-platform/examples/values-${idp}.yaml" \
+                --values charts/governance-platform/examples/values-external-postgres.yaml \
+                >/dev/null
+            fi
+          done
 
       - name: Template registry override paths
         run: |
@@ -190,7 +195,7 @@ jobs:
               matched_manifest="$manifest"
               charts=(auth-service)
               if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$manifest")" = "eqty-pdfgen" ]; then
-              charts+=(eqty-pdfgen)
+                charts+=(eqty-pdfgen)
               fi
               charts+=(governance-service governance-studio integrity-service)
               if [ "$(yq '.charts.gatewayStack.name // ""' "$manifest")" = "gateway-stack" ]; then
