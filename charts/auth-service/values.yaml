@@ -709,6 +709,10 @@ config:
       # @default -- `""`
       # **REQUIRED for Auth0**: API audience for worker (e.g., "https://governance.yourcompany.com")
       audience: ""
+      # -- Scope
+      # @default -- `""` (auth-service falls back to `api://<clientId>/.default`)
+      # **Entra only**: OAuth scope requested for worker tokens
+      scope: ""
       # -- Client ID
       # @default -- `""` (auto-configured from global.secrets.governanceWorker)
       clientId: ""

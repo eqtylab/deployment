@@ -1,0 +1,113 @@
+platform:
+  name: governance-platform
+  version: 1.1.0
+  releaseType: stable
+  releaseDate: "2026-08-07"
+  kubernetesMinimumVersion: "1.29"
+  architecture: linux/amd64
+sources:
+  guardian:
+    repository: eqtylab/guardian
+    ref: 00cdab4c16ccac9d2972e434006f72ea499affc9
+  infrastructure:
+    repository: eqtylab/guardian-infrastructure
+    ref: "c75d576372ecf0abdc4597a21c64dd622be9cb39"
+images:
+  authService:
+    repository: ghcr.io/eqtylab/auth-service
+    tag: 1.1.0
+    digest: "sha256:e162fbacd109abde4cbcca89cfa01df5a9186c2a44744097f73421e858ed6035"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-auth-service
+  governanceService:
+    repository: ghcr.io/eqtylab/governance-service
+    tag: 1.1.0
+    digest: "sha256:b5207daa8cfa6068ba254d31224b0d2c7934d2951af07e954d70583fb487f7a9"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-governance-service
+  governanceStudio:
+    repository: ghcr.io/eqtylab/governance-studio
+    tag: 1.1.0
+    digest: "sha256:cb73bee25143ef9718d6f54a3b053c39893aa0f160f4f4afaaad66e5bd2ceefb"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-governance-studio
+  integrityService:
+    repository: ghcr.io/eqtylab/integrity-service
+    tag: 1.1.0
+    digest: "sha256:9b8642366564305169b0b7cd7ea0b3e3bed634e92027395ed8d93e994611c731"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-integrity-service
+  eqtyPdfgen:
+    repository: ghcr.io/eqtylab/eqty-pdfgen
+    tag: 1.1.0
+    digest: "sha256:1942596e3b9b6e6a33947aeb641b9d6c0b92922e1c044bd197d6b211fcf14b75"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-pdfgen
+  llmGateway:
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    tag: 1.1.0
+    digest: "sha256:18dff27f8e5f547ac8391bf77e36deb1a4c884cf8db787bde5be346fdd23cd47"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-llm-gateway
+  controlPlane:
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    tag: 1.1.0
+    digest: "sha256:739dda5c2ecd96b16b57ec24cc5910aa2e0f2fd8662b47742de09738061ddf9f"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-control-plane
+  guardianConsole:
+    repository: ghcr.io/eqtylab/guardian-console
+    tag: 1.1.0
+    digest: "sha256:25777bfbff3c038bc107646f5851801c3b53fb865edd03d28de19488cd57eb64"
+    sourceSha: "00cdab4c16ccac9d2972e434006f72ea499affc9"
+    metadataArtifact: image-metadata-console
+charts:
+  authService:
+    name: auth-service
+    version: 1.1.0
+    oci: oci://ghcr.io/eqtylab/charts/auth-service
+  governanceService:
+    name: governance-service
+    version: 1.1.0
+    oci: oci://ghcr.io/eqtylab/charts/governance-service
+  governanceStudio:
+    name: governance-studio
+    version: 1.1.0
+    oci: oci://ghcr.io/eqtylab/charts/governance-studio
+  integrityService:
+    name: integrity-service
+    version: 1.1.0
+    oci: oci://ghcr.io/eqtylab/charts/integrity-service
+  eqtyPdfgen:
+    name: eqty-pdfgen
+    version: 1.1.0
+    oci: oci://ghcr.io/eqtylab/charts/eqty-pdfgen
+  gatewayStack:
+    name: gateway-stack
+    version: 1.1.0
+    oci: oci://ghcr.io/eqtylab/charts/gateway-stack
+  governancePlatform:
+    name: governance-platform
+    version: 1.1.0
+    oci: oci://ghcr.io/eqtylab/charts/governance-platform
+validation:
+  required: true
+  mode: manual
+  identityProvider: keycloak
+  database: external-postgres
+  evidence:
+    status: approved
+    recordedIn: infrastructure-release-pr
+    reviewer: "tmccoy14"
+    reviewedAt: "2026-08-07T21:34:53Z"
+    notes: "Staging rollout completed and validated with Keycloak identity provider and external Postgres; expected platform services and customer-facing workflows passed."
+docs:
+  provider: self-hosted
+  version: v1.1.0
+  state: beta
+  default: false
+  sourceRepository: eqtylab/governance-platform-docs
+  sourceFormat: static-site
+  sourceCommit: 3ac090b3ffbe816d5c503f4e8e535e8a6b2d698c
+  snapshotTag: docs/v1.1.0
+  workflowRunUrl: https://github.com/eqtylab/governance-platform-docs/actions/runs/31389674807

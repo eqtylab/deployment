@@ -568,4 +568,4 @@ For issues and questions:
 
 - Email: support@eqtylab.io
 - Documentation: https://docs.eqtylab.io
-- GitHub: https://github.com/eqtylab/governance-studio-infrastructure
+- GitHub: https://github.com/eqtylab/guardian-infrastructure

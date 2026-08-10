@@ -4,9 +4,9 @@ description: A Helm chart for deploying the EQTY Lab Auth0 Bootstrap - automated
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
-home: https://github.com/eqtylab/governance-studio-infrastructure
+home: https://github.com/eqtylab/guardian-infrastructure
 sources:
-  - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/auth0-bootstrap
+  - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/auth0-bootstrap
 maintainers:
   - name: EQTY Lab
     email: support@eqtylab.io

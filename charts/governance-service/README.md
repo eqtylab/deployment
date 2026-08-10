@@ -422,13 +422,13 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Application Settings
 
-| Key                            | Type   | Default     | Description                                                           |
-| ------------------------------ | ------ | ----------- | --------------------------------------------------------------------- |
-| config.healthPath              | string | `"/health"` | Health check endpoint path                                            |
-| config.environment             | string | `""`        | Application environment (auto-configured from global.environmentType) |
-| config.logLevel                | string | `"info"`    | Logging level (debug/info/warn/error)                                 |
-| config.logFormat               | string | `"json"`    | Log output format (json/text/console/pretty)                          |
-| config.skipPaths               | string | `"/health"` | Paths to skip in logs (prefix match)                                  |
+| Key                | Type   | Default     | Description                                                           |
+| ------------------ | ------ | ----------- | --------------------------------------------------------------------- |
+| config.healthPath  | string | `"/health"` | Health check endpoint path                                            |
+| config.environment | string | `""`        | Application environment (auto-configured from global.environmentType) |
+| config.logLevel    | string | `"info"`    | Logging level (debug/info/warn/error)                                 |
+| config.logFormat   | string | `"json"`    | Log output format (json/text/console/pretty)                          |
+| config.skipPaths   | string | `"/health"` | Paths to skip in logs (prefix match)                                  |
 
 #### HTTP Server Configuration
 
@@ -696,4 +696,4 @@ For issues and questions:
 
 - Email: support@eqtylab.io
 - Documentation: https://docs.eqtylab.io
-- GitHub: https://github.com/eqtylab/governance-studio-infrastructure
+- GitHub: https://github.com/eqtylab/guardian-infrastructure

@@ -88,3 +88,10 @@ validation:
     reviewer: "captjt"
     reviewedAt: "2026-07-22T17:25:28Z"
     notes: "Staging rollout completed and validated with Keycloak identity provider and external Postgres; expected platform services and customer-facing workflows passed."
+docs:
+  provider: self-hosted
+  version: v1.0.2
+  state: beta
+  default: false
+  sourceRepository: eqtylab/governance-platform-docs
+  sourceFormat: static-site

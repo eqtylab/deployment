@@ -22,7 +22,7 @@ Revision:         {{ .Release.Revision }}
 {{- $globalDomain := .Values.global.domain | default "PLEASE_CONFIGURE_GLOBAL_DOMAIN" }}
 
 ---------------------------------------------------------------------------------
-➡️ Accessing Your Governance Studio Platform:
+➡️ Accessing Your Governance Platform:
 ---------------------------------------------------------------------------------
 
 {{- $governanceStudio := index .Values "governance-studio" }}
