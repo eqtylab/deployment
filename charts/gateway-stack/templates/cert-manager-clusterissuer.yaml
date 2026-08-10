@@ -1,0 +1,30 @@
+{{- if and .Values.enabled .Values.ingress.certManager.enabled .Values.ingress.certManager.createClusterIssuer }}
+{{- $solver := default "dns01" .Values.ingress.certManager.acme.solver -}}
+{{- if and (eq $solver "dns01") (not .Values.ingress.certManager.acme.dns01) -}}
+{{- fail "ingress.certManager.acme.dns01 must be configured when ingress.certManager.acme.solver=dns01" -}}
+{{- end }}
+{{- if and (ne $solver "dns01") (ne $solver "http01") -}}
+{{- fail "ingress.certManager.acme.solver must be either dns01 or http01" -}}
+{{- end }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ required "ingress.certManager.clusterIssuer is required when createClusterIssuer=true" .Values.ingress.certManager.clusterIssuer | quote }}
+  labels:
+    {{- include "gateway-stack.labels" . | nindent 4 }}
+spec:
+  acme:
+    email: {{ required "ingress.certManager.acme.email is required when createClusterIssuer=true" .Values.ingress.certManager.acme.email | quote }}
+    server: {{ .Values.ingress.certManager.acme.server | quote }}
+    privateKeySecretRef:
+      name: {{ default (printf "%s-acme-account-key" (include "gateway-stack.fullname" .)) .Values.ingress.certManager.acme.privateKeySecretName | quote }}
+    solvers:
+{{- if eq $solver "dns01" }}
+      - dns01:
+{{ toYaml .Values.ingress.certManager.acme.dns01 | nindent 10 }}
+{{- else }}
+      - http01:
+          ingress:
+            ingressClassName: {{ default .Values.ingress.className .Values.ingress.certManager.acme.http01.ingressClass | quote }}
+{{- end }}
+{{- end }}

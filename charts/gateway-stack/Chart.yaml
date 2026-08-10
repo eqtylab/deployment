@@ -1,0 +1,24 @@
+apiVersion: v2
+name: gateway-stack
+description: A Helm chart for deploying the EQTY Lab Guardian Gateway Stack - LLM gateway, control plane, and operator console
+type: application
+version: 1.0.2
+appVersion: "1.0.2"
+home: https://github.com/eqtylab/governance-studio-infrastructure
+sources:
+  - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/gateway-stack
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io
+dependencies:
+  # PostgreSQL - registry and audit store for llm-gateway and control-plane
+  - name: postgresql
+    repository: https://charts.bitnami.com/bitnami
+    version: ">=16.0.0 <17.0.0"
+    condition: postgresql.enabled
+  # HAProxy ingress controller - opt-in, for installs without an existing controller
+  - name: kubernetes-ingress
+    alias: haproxyIngress
+    repository: https://haproxytech.github.io/helm-charts
+    version: ">=1.0.0 <2.0.0"
+    condition: haproxyIngress.enabled

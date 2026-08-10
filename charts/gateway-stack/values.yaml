@@ -1,0 +1,1242 @@
+# =============================================================================
+# GATEWAY STACK - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Guardian gateway stack: the LLM gateway,
+# the control plane, the operator console, and the bundled PostgreSQL and
+# HAProxy ingress dependencies
+#
+# When deployed via the umbrella chart (governance-platform), the database and
+# control-plane adapter values are auto-configured from the platform release
+# =============================================================================
+
+# -- Enable Gateway Stack
+# @default -- `true`
+# Enable the LLM gateway, control plane, and operator console
+enabled: true
+
+# -- Global values shared by umbrella and standalone installs
+global:
+  # -- Image Pull Secrets
+  # @default -- `[]` (set to the platform pull secret by the umbrella chart)
+  imagePullSecrets: []
+  # -- Replace only the image registry host, for example registry.customer.example
+  imageRegistryOverride: ""
+  # -- Replace the full EQTY image repository prefix, for example registry.customer.example/eqtylab
+  imageRepositoryPrefixOverride: ""
+
+# -- Image Pull Secrets
+# @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+# Additional secrets for pulling images from private registries
+imagePullSecrets: []
+
+# -- Name Override
+# @default -- `""`
+# Override the chart name used for resource naming
+nameOverride: ""
+
+# -- Full Name Override
+# @default -- `""`
+# Override the full name prefix for every resource this chart creates. Setting
+# it to "guardian" yields guardian-llm-gateway and guardian-control-plane
+# instead of <release>-gateway-stack-*. Changing it on an existing release
+# renames the workloads, so treat it as install-time configuration
+fullnameOverride: ""
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+# -- Database Configuration
+# @default -- See values below
+# Connection settings for the registry and audit store shared by llm-gateway
+# and control-plane
+database:
+  # -- Database Host
+  # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
+  host: ""
+  # -- Database Port
+  # @default -- `5432`
+  port: 5432
+  # -- Database SSL Mode
+  # @default -- `disable`
+  # Options: disable, require, verify-ca, verify-full
+  sslMode: disable
+  # -- Existing Database Secret
+  # @default -- `""` (the chart generates a Secret when unset)
+  # Name of a pre-created Secret holding the connection DSN. Set by the umbrella
+  # chart to reuse the platform database Secret
+  existingSecret: ""
+  # -- Database Secret Keys
+  # @default -- See values below
+  # Key names read from the generated or existing database Secret
+  secretKeys:
+    # -- DSN Key
+    # @default -- `dsn`
+    dsn: dsn
+    # -- Username Key
+    # @default -- `username`
+    username: username
+    # -- Password Key
+    # @default -- `password`
+    password: password
+    # -- Database Name Key
+    # @default -- `database`
+    database: database
+  # -- Database User
+  # @default -- `guardian`
+  user: guardian
+  # -- Database Password
+  # @default -- `change-me` (REQUIRED to change when existingSecret is unset)
+  # Rejected at render time while left at "change-me". Set a strong password, or
+  # supply database.existingSecret and leave this untouched. When the bundled
+  # postgresql dependency is enabled, keep this in sync with postgresql.auth.password
+  password: change-me
+  # -- Database Name
+  # @default -- `guardian_gateway`
+  name: guardian_gateway
+
+# =============================================================================
+# LLM GATEWAY
+# =============================================================================
+
+# -- LLM Gateway Configuration
+# @default -- See values below
+# The signing proxy that fronts upstream model providers and records audit events
+llmGateway:
+  # -- Replica Count
+  # @default -- `1`
+  replicaCount: 1
+  # -- Image Configuration
+  # @default -- See values below
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/guardian-llm-gateway`
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+  # -- Listen Address
+  # @default -- `":10000"`
+  listenAddr: ":10000"
+  # -- Deployment Environment
+  # @default -- `""`
+  # Reported on audit events and used by gateway runtime policy
+  deploymentEnvironment: ""
+  # -- Pod Annotations
+  # @default -- `{}`
+  podAnnotations: {}
+  # -- Pod Labels
+  # @default -- `{}`
+  podLabels: {}
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `true`
+    create: true
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+    # -- Service Account Annotations
+    # @default -- `{}`
+    # Bind a cloud IAM identity here for plugin artifact storage access
+    annotations: {}
+  # -- Pod Security Context
+  # @default -- See values below
+  # The audit and plugin queues are emptyDir volumes, which kubelet creates
+  # world-writable, so no fsGroup is needed
+  podSecurityContext:
+    runAsNonRoot: true
+  # -- Container Security Context
+  # @default -- See values below
+  # The image must declare a non-root USER
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  # -- Resource Requests and Limits
+  # @default -- `{}`
+  resources: {}
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    # Replaces replicaCount when enabled
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `10`
+    maxReplicas: 10
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+  # -- Extra Container Arguments
+  # @default -- `[]`
+  extraArgs: []
+  # -- Extra Environment Variables
+  # @default -- `[]`
+  # Standard OTEL_* variables are read by the gateway OTEL bootstrap
+  extraEnv: []
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `10000`
+    port: 10000
+  # -- Upstream Provider URLs
+  # @default -- See values below
+  upstreams:
+    # -- Anthropic Upstream URL
+    # @default -- `https://api.anthropic.com`
+    anthropicURL: https://api.anthropic.com
+    # -- OpenAI Upstream URL
+    # @default -- `https://api.openai.com`
+    openaiURL: https://api.openai.com
+  # -- Request Signature Configuration
+  # @default -- See values below
+  # RFC 9421 message signature verification settings
+  signature:
+    # -- Signature Label
+    # @default -- `sig1`
+    label: sig1
+    # -- Default Signature Max Age
+    # @default -- `60s`
+    defaultSigMaxAge: 60s
+    # -- Default Clock Skew Allowance
+    # @default -- `120s`
+    defaultClockSkew: 120s
+  # -- Agent Registration Configuration
+  # @default -- See values below
+  registration:
+    # -- Enable Agent Registration
+    # @default -- `false`
+    # Requires a credential signer seed and a control-plane registration token
+    enabled: false
+    # -- Registration Credential Signer
+    # @default -- See values below
+    credentialSigner:
+      # -- Credential Signer Seed
+      # @default -- `""`
+      # Base64/base64url/hex Ed25519 seed used to issue registration VCs
+      # Prefer existingSecret outside local/dev-only installs so the seed is not
+      # stored in Helm release values
+      seed: ""
+      # -- Existing Credential Signer Secret
+      # @default -- `""` (the chart generates a Secret when seed is set)
+      existingSecret: ""
+      # -- Credential Signer Secret Key
+      # @default -- `seed`
+      secretKey: seed
+  # -- Audit Configuration
+  # @default -- See values below
+  audit:
+    # -- Enable Audit Logging
+    # @default -- `true`
+    enabled: true
+    # -- Audit Queue Directory
+    # @default -- `/var/lib/guardian/audit-queue`
+    # Backed by an emptyDir volume
+    queueDir: /var/lib/guardian/audit-queue
+    # -- Audit Queue Max Bytes
+    # @default -- `10737418240` (10 GiB)
+    queueMaxBytes: 10737418240
+    # -- Audit Batch Size
+    # @default -- `100`
+    batchSize: 100
+    # -- Audit Flush Interval
+    # @default -- `1s`
+    flushInterval: 1s
+    # -- Audit Retention Days
+    # @default -- `90`
+    retentionDays: 90
+  # -- Hook/Plugin Runtime Configuration
+  # @default -- See values below
+  # See docs/plugin-runtime-bootstrap.md for the full bootstrap procedure
+  plugins:
+    # -- Enable Plugin Runtime
+    # @default -- `false`
+    enabled: false
+    # -- Plugin Poll Interval
+    # @default -- `15s`
+    pollInterval: 15s
+    # -- Authorizer Shadow Mode
+    # @default -- `false`
+    # Evaluates authorizer plugins without enforcing their decisions
+    authorizerShadowEnabled: false
+    # -- Plugin End Queue Directory
+    # @default -- `/var/lib/guardian/plugin-end-queue`
+    endQueueDir: /var/lib/guardian/plugin-end-queue
+    # -- Plugin End Queue Max Bytes
+    # @default -- `134217728` (128 MiB)
+    endQueueMaxBytes: 134217728
+    # -- Plugin Artifact Cache Directory
+    # @default -- `/var/lib/guardian/plugin-artifacts`
+    artifactCacheDir: /var/lib/guardian/plugin-artifacts
+    # -- Plugin Artifact Storage
+    # @default -- See values below
+    artifactStorage:
+      # -- Storage Provider
+      # @default -- `""`
+      # Options: gcs, s3
+      provider: ""
+      # -- Storage Bucket
+      # @default -- `""`
+      bucket: ""
+      # -- Storage Key Prefix
+      # @default -- `""`
+      prefix: ""
+      # -- GCS Settings
+      # @default -- See values below
+      gcs:
+        # -- GCS Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+      # -- S3 Settings
+      # @default -- See values below
+      s3:
+        # -- S3 Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- S3 Region
+        # @default -- `""` (REQUIRED when provider is s3)
+        region: ""
+        # -- Force Path Style Addressing
+        # @default -- `false`
+        forcePathStyle: false
+        # -- S3 Access Key ID
+        # @default -- `""` (REQUIRED when provider is s3 and existingSecret is unset)
+        accessKeyID: ""
+        # -- S3 Secret Access Key
+        # @default -- `""` (REQUIRED when provider is s3 and existingSecret is unset)
+        secretAccessKey: ""
+        # -- Existing S3 Credentials Secret
+        # @default -- `""`
+        existingSecret: ""
+        # -- S3 Secret Keys
+        # @default -- See values below
+        secretKeys:
+          # -- Access Key ID Key
+          # @default -- `accessKeyID`
+          accessKeyID: accessKeyID
+          # -- Secret Access Key Key
+          # @default -- `secretAccessKey`
+          secretAccessKey: secretAccessKey
+    # -- Trusted Plugin Signer Keys
+    # @default -- `{}`
+    # Map of signer key ID to did:key public key
+    trustedSignerKeys: {}
+    # -- Plugin Secrets Configuration
+    # @default -- See values below
+    secrets:
+      # -- Secret Resolution Order
+      # @default -- `[]`
+      # Prefer ["store"] for shared deployments. Use ["env"] only for local/dev
+      # fallback secrets injected through secretEnvs or secretEnvsSecret
+      resolutionOrder: []
+      # -- Plugin Secret Encryption Key
+      # @default -- See values below
+      encryptionKey:
+        # -- Existing Encryption Key Secret
+        # @default -- `""`
+        existingSecret: ""
+        # -- Encryption Key Secret Key
+        # @default -- `encryption-key`
+        secretKey: encryption-key
+    # -- Inline Plugin Secret Environment Variables
+    # @default -- `{}`
+    # Local/dev fallback only; values land in Helm release history
+    secretEnvs: {}
+    # -- Plugin Secret Environment Secret
+    # @default -- See values below
+    secretEnvsSecret:
+      # -- Secret Name
+      # @default -- `""`
+      name: ""
+  # -- Health Probe Configuration
+  # @default -- See values below
+  probes:
+    # -- Startup Probe
+    # @default -- See values below
+    # Allows long-running concurrent index migrations to finish before liveness
+    # checks can restart the pod
+    startup:
+      # -- Failure Threshold
+      # @default -- `180`
+      failureThreshold: 180
+      # -- Period Seconds
+      # @default -- `5`
+      periodSeconds: 5
+    # -- Liveness Probe
+    # @default -- See values below
+    liveness:
+      # -- Initial Delay Seconds
+      # @default -- `5`
+      initialDelaySeconds: 5
+      # -- Period Seconds
+      # @default -- `10`
+      periodSeconds: 10
+    # -- Readiness Probe
+    # @default -- See values below
+    readiness:
+      # -- Initial Delay Seconds
+      # @default -- `3`
+      initialDelaySeconds: 3
+      # -- Period Seconds
+      # @default -- `10`
+      periodSeconds: 10
+
+# =============================================================================
+# CONTROL PLANE
+# =============================================================================
+
+# -- Control Plane Configuration
+# @default -- See values below
+# The management API behind the operator console and the CLI onboarding flows
+controlPlane:
+  # -- Replica Count
+  # @default -- `1`
+  replicaCount: 1
+  # -- Image Configuration
+  # @default -- See values below
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/guardian-control-plane`
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+  # -- Listen Address
+  # @default -- `":10010"`
+  listenAddr: ":10010"
+  # -- API Base Path
+  # @default -- `""`
+  # Set together with ingress.controlPlanePath when serving behind a path prefix
+  apiBasePath: ""
+  # -- Allow All CORS Origins
+  # @default -- `true`
+  corsAllowAll: true
+  # -- Pod Annotations
+  # @default -- `{}`
+  podAnnotations: {}
+  # -- Pod Labels
+  # @default -- `{}`
+  podLabels: {}
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `true`
+    create: true
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+    # -- Service Account Annotations
+    # @default -- `{}`
+    # Bind a cloud IAM identity here for plugin artifact storage access
+    annotations: {}
+  # -- Pod Security Context
+  # @default -- See values below
+  # Also applies to the waitForRegistryViews init container, which sets its own
+  # non-root UID below
+  podSecurityContext:
+    runAsNonRoot: true
+  # -- Container Security Context
+  # @default -- See values below
+  # The image must declare a non-root USER
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  # -- Resource Requests and Limits
+  # @default -- `{}`
+  resources: {}
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    # Replaces replicaCount when enabled
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `10`
+    maxReplicas: 10
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+  # -- Extra Container Arguments
+  # @default -- `[]`
+  extraArgs: []
+  # -- Extra Environment Variables
+  # @default -- `[]`
+  extraEnv: []
+  # -- Authentication Configuration
+  # @default -- See values below
+  # See docs/google-workspace-sso.md for the full SSO setup guide
+  auth:
+    # -- Enable Authentication
+    # @default -- `false`
+    enabled: false
+    # -- Existing Auth Secret
+    # @default -- `""` (the chart generates a Secret from the inline values below)
+    existingSecret: ""
+    # -- Auth Secret Keys
+    # @default -- See values below
+    secretKeys:
+      # -- State Secret Key
+      # @default -- `stateSecret`
+      stateSecret: stateSecret
+      # -- Registration Token Secret Key
+      # @default -- `registrationTokenSecret`
+      registrationTokenSecret: registrationTokenSecret
+      # -- Google Client ID Key
+      # @default -- `googleClientID`
+      googleClientID: googleClientID
+      # -- Google Client Secret Key
+      # @default -- `googleClientSecret`
+      googleClientSecret: googleClientSecret
+    # -- Session Cookie Domain
+    # @default -- `""`
+    cookieDomain: ""
+    # -- Secure Session Cookies
+    # @default -- `true`
+    cookieSecure: true
+    # -- Allowed Email Domains
+    # @default -- `[]`
+    # Restricts console sign-in to these email domains
+    allowedEmailDomains: []
+    # -- Bootstrap Admin Email
+    # @default -- `""`
+    # Granted admin on first boot
+    bootstrapAdminEmail: ""
+    # -- OAuth State Secret
+    # @default -- `""` (REQUIRED when google.enabled and existingSecret is unset)
+    stateSecret: ""
+    # -- Registration Token Secret
+    # @default -- `change-me` (REQUIRED to change when auth or registration is enabled)
+    # Rejected at render time while left at "change-me"
+    registrationTokenSecret: change-me
+    # -- Registration Token Issuer
+    # @default -- `control-plane`
+    registrationTokenIssuer: control-plane
+    # -- Bearer Token Verification
+    # @default -- See values below
+    bearer:
+      # -- Enable Bearer Token Verification
+      # @default -- `false`
+      enabled: false
+      # -- Bearer Verification Mode
+      # @default -- `""` (treated as "oidc")
+      # "oidc" verifies bearer tokens locally against issuerURL/clientID;
+      # "auth_service" delegates verification to the Governance Studio
+      # auth-service validate endpoint (authServiceBaseURL, falling back to
+      # adapter CONTROL_PLANE_ADAPTER_AUTH_SERVICE_BASE_URL)
+      mode: ""
+      # -- Bearer Issuer URL
+      # @default -- `""`
+      issuerURL: ""
+      # -- Bearer Client ID
+      # @default -- `""`
+      clientID: ""
+      # -- Auth Service Base URL
+      # @default -- `""` (falls back to the adapter auth-service URL)
+      authServiceBaseURL: ""
+      # -- Bearer Scopes
+      # @default -- `["openid", "profile", "email"]`
+      scopes:
+        - openid
+        - profile
+        - email
+    # -- Console Base URL
+    # @default -- `""`
+    uiBaseURL: ""
+    # -- Local Development Mode
+    # @default -- `false`
+    # Set to true only in dev to route OAuth callbacks through the local Vite
+    # dev server. Never true in production
+    localDevEnabled: false
+    # -- Session Max Age
+    # @default -- `12h`
+    sessionMaxAge: 12h
+    # -- Session Idle Timeout
+    # @default -- `2h`
+    sessionIdleTimeout: 2h
+    # -- Google OIDC Configuration
+    # @default -- See values below
+    google:
+      # -- Enable Google Sign-In
+      # @default -- `false`
+      enabled: false
+      # -- Google Issuer URL
+      # @default -- `https://accounts.google.com`
+      issuerURL: https://accounts.google.com
+      # -- Google Client ID
+      # @default -- `""` (REQUIRED when enabled and existingSecret is unset)
+      clientID: ""
+      # -- Google Client Secret
+      # @default -- `""` (REQUIRED when enabled and existingSecret is unset)
+      clientSecret: ""
+      # -- Google Redirect URL
+      # @default -- `""`
+      redirectURL: ""
+      # -- Google Scopes
+      # @default -- `["openid", "profile", "email"]`
+      scopes:
+        - openid
+        - profile
+        - email
+  # -- Governance Studio Adapter Configuration
+  # @default -- See values below
+  # Resolves platform identity, project, and integrity data for the console
+  adapter:
+    # -- Enable Adapter
+    # @default -- `false` (set to true by the umbrella chart)
+    enabled: false
+    # -- Auth Service Base URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
+    authServiceBaseURL: ""
+    # -- Governance Service Base URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-governance-service:10001")
+    governanceServiceBaseURL: ""
+    # -- Adapter HTTP Timeout
+    # @default -- `5s`
+    httpTimeout: 5s
+    # -- Project Runtime Read Timeout
+    # @default -- `5s`
+    projectRuntimeReadTimeout: 5s
+    # -- Integrity Service Base URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-integrity-service:3050")
+    integrityBaseURL: ""
+    # -- Integrity HTTP Timeout
+    # @default -- `5s`
+    integrityHTTPTimeout: 5s
+    # -- Integrity Status Cache TTL
+    # @default -- `5m`
+    integrityStatusCacheTTL: 5m
+    # -- Trusted Membership Issuer DIDs
+    # @default -- `[]`
+    trustedMembershipIssuerDIDs: []
+    # -- Trusted Compliance Issuer DIDs
+    # @default -- `[]`
+    trustedComplianceIssuerDIDs: []
+    # -- Allow Embedded Credential Bootstrap
+    # @default -- `false`
+    allowEmbeddedCredentialBootstrap: false
+  # -- VirusTotal Configuration
+  # @default -- See values below
+  # Optional upload scanning for plugin artifacts
+  virusTotal:
+    # -- Enable VirusTotal Scanning
+    # @default -- `false`
+    enabled: false
+    # -- Existing VirusTotal Secret
+    # @default -- `""`
+    # Name of a Secret containing the VirusTotal API key
+    existingSecret: ""
+    # -- VirusTotal Secret Key
+    # @default -- `api-key`
+    secretKey: api-key
+  # -- Plugin Management Configuration
+  # @default -- See values below
+  plugins:
+    # -- Plugin Publisher Signer
+    # @default -- See values below
+    # Pre-created Secret containing the encoded Ed25519 seed used to sign plugin
+    # artifacts and project configuration manifests server-side
+    publisherSigner:
+      # -- Signer Key ID
+      # @default -- `""` (REQUIRED when existingSecret is set)
+      keyID: ""
+      # -- Existing Publisher Signer Secret
+      # @default -- `""`
+      existingSecret: ""
+      # -- Publisher Signer Secret Key
+      # @default -- `seed`
+      secretKey: seed
+      # -- Publisher Signer Mount Path
+      # @default -- `/run/secrets/guardian-plugin-publisher`
+      mountPath: /run/secrets/guardian-plugin-publisher
+    # -- Plugin Artifact Storage
+    # @default -- See values below
+    artifactStorage:
+      # -- Storage Provider
+      # @default -- `""`
+      # Options: gcs, s3
+      provider: ""
+      # -- Storage Bucket
+      # @default -- `""`
+      bucket: ""
+      # -- Storage Key Prefix
+      # @default -- `""`
+      prefix: ""
+      # -- Max Upload Bytes
+      # @default -- `536870912` (512 MiB)
+      maxUploadBytes: 536870912
+      # -- GCS Settings
+      # @default -- See values below
+      gcs:
+        # -- GCS Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- GCS KMS Key Name
+        # @default -- `""`
+        kmsKeyName: ""
+      # -- S3 Settings
+      # @default -- See values below
+      s3:
+        # -- S3 Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- S3 Region
+        # @default -- `""` (REQUIRED when provider is s3)
+        region: ""
+        # -- Force Path Style Addressing
+        # @default -- `false`
+        forcePathStyle: false
+        # -- S3 Access Key ID
+        # @default -- `""` (REQUIRED when provider is s3 and existingSecret is unset)
+        accessKeyID: ""
+        # -- S3 Secret Access Key
+        # @default -- `""` (REQUIRED when provider is s3 and existingSecret is unset)
+        secretAccessKey: ""
+        # -- Existing S3 Credentials Secret
+        # @default -- `""`
+        existingSecret: ""
+        # -- S3 Secret Keys
+        # @default -- See values below
+        secretKeys:
+          # -- Access Key ID Key
+          # @default -- `accessKeyID`
+          accessKeyID: accessKeyID
+          # -- Secret Access Key Key
+          # @default -- `secretAccessKey`
+          secretAccessKey: secretAccessKey
+    # -- Trusted Plugin Signer Keys
+    # @default -- `{}`
+    # Map of signer key ID to did:key public key
+    trustedSignerKeys: {}
+    # -- Plugin Secrets Configuration
+    # @default -- See values below
+    secrets:
+      # -- Plugin Secret Encryption Key
+      # @default -- See values below
+      # Use the same Secret here and on llmGateway.plugins.secrets.encryptionKey
+      encryptionKey:
+        # -- Existing Encryption Key Secret
+        # @default -- `""`
+        existingSecret: ""
+        # -- Encryption Key Secret Key
+        # @default -- `encryption-key`
+        secretKey: encryption-key
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `10010`
+    port: 10010
+  # -- Registry View Wait Configuration
+  # @default -- See values below
+  # Init container that waits for the registry views created by llm-gateway
+  # migrations, which avoids a control-plane startup race
+  waitForRegistryViews:
+    # -- Enable Wait Init Container
+    # @default -- `true`
+    enabled: true
+    # -- Wait Container Image
+    # @default -- See values below
+    # Supplies psql; fully qualified so the global registry overrides apply
+    image:
+      # -- Image Repository
+      # @default -- `docker.io/library/postgres`
+      repository: docker.io/library/postgres
+      # -- Image Pull Policy
+      # @default -- `IfNotPresent`
+      # Options: IfNotPresent, Always, Never
+      pullPolicy: IfNotPresent
+      # -- Image Tag
+      # @default -- `17.6`
+      # Debian variant; alpine images use UID 70, not the 999 pinned below
+      tag: "17.6"
+    # -- Poll Interval Seconds
+    # @default -- `2`
+    intervalSeconds: 2
+    # -- Init Container Security Context
+    # @default -- See values below
+    # UID 999 is the postgres account; the image declares no USER
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 999
+      runAsGroup: 999
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+  # -- Health Probe Configuration
+  # @default -- See values below
+  probes:
+    # -- Liveness Probe
+    # @default -- See values below
+    liveness:
+      # -- Initial Delay Seconds
+      # @default -- `5`
+      initialDelaySeconds: 5
+      # -- Period Seconds
+      # @default -- `10`
+      periodSeconds: 10
+    # -- Readiness Probe
+    # @default -- See values below
+    readiness:
+      # -- Initial Delay Seconds
+      # @default -- `3`
+      initialDelaySeconds: 3
+      # -- Period Seconds
+      # @default -- `10`
+      periodSeconds: 10
+
+# =============================================================================
+# INGRESS CONFIGURATION
+# =============================================================================
+
+# -- Ingress Configuration
+# @default -- See values below
+# Creates separate Ingress resources for the gateway and the control plane
+ingress:
+  # -- Enable Ingress
+  # @default -- `false`
+  # A default install stays cluster-internal and allocates no LoadBalancer
+  enabled: false
+  # -- Ingress Class Name
+  # @default -- `haproxy`
+  className: haproxy
+  # -- Shared Ingress Annotations
+  # @default -- `{}`
+  # Applied to both the gateway and control-plane Ingress resources
+  annotations: {}
+  # -- LLM Gateway Ingress Annotations
+  # @default -- `{}`
+  llmGatewayAnnotations: {}
+  # -- Control Plane Ingress Annotations
+  # @default -- `{}`
+  controlPlaneAnnotations: {}
+  # -- Control Plane Path
+  # @default -- `/`
+  # Set together with controlPlane.apiBasePath. The console is only routed when
+  # this is not "/", since it otherwise collides with the control-plane API
+  controlPlanePath: /
+  # -- Ingress Hosts
+  # @default -- See values below
+  hosts:
+    # -- LLM Gateway Host
+    # @default -- `gateway.example.com`
+    llmGateway: gateway.example.com
+    # -- Control Plane Host
+    # @default -- `control.example.com`
+    controlPlane: control.example.com
+  # -- TLS Configuration
+  # @default -- See values below
+  tls:
+    # -- Enable TLS
+    # @default -- `true`
+    enabled: true
+    # -- LLM Gateway TLS Secret Name
+    # @default -- `""` (auto-generated: "{fullname}-llm-gateway-tls")
+    llmGatewaySecretName: ""
+    # -- Control Plane TLS Secret Name
+    # @default -- `""` (auto-generated: "{fullname}-control-plane-tls")
+    controlPlaneSecretName: ""
+  # -- cert-manager Configuration
+  # @default -- See values below
+  certManager:
+    # -- Enable cert-manager Annotations
+    # @default -- `true`
+    # Adds the cluster-issuer annotation once clusterIssuer is set
+    enabled: true
+    # -- Cluster Issuer Name
+    # @default -- `""`
+    clusterIssuer: ""
+    # -- Create Cluster Issuer
+    # @default -- `false`
+    # Creates a cluster-scoped resource; leave false in shared clusters
+    createClusterIssuer: false
+    # -- ACME Configuration
+    # @default -- See values below
+    acme:
+      # -- ACME Registration Email
+      # @default -- `""` (REQUIRED when createClusterIssuer is true)
+      email: ""
+      # -- ACME Directory Server
+      # @default -- `https://acme-v02.api.letsencrypt.org/directory`
+      server: https://acme-v02.api.letsencrypt.org/directory
+      # -- ACME Account Private Key Secret Name
+      # @default -- `""` (auto-generated: "{fullname}-acme-account-key")
+      privateKeySecretName: ""
+      # -- ACME Solver
+      # @default -- `dns01`
+      # Options: dns01, http01
+      solver: dns01
+      # -- HTTP-01 Solver Settings
+      # @default -- See values below
+      http01:
+        # -- Solver Ingress Class
+        # @default -- `""` (falls back to ingress.className)
+        ingressClass: ""
+      # -- DNS-01 Solver Settings
+      # @default -- `{}` (REQUIRED when solver is dns01)
+      # Passed through verbatim to the ClusterIssuer dns01 solver
+      dns01: {}
+
+# =============================================================================
+# GUARDIAN CONSOLE
+# =============================================================================
+
+# -- Guardian Console Configuration
+# @default -- See values below
+# Operator console served alongside the control-plane API
+guardianUI:
+  # -- Enable Guardian Console
+  # @default -- `false`
+  enabled: false
+  # -- Replica Count
+  # @default -- `1`
+  replicaCount: 1
+  # -- Image Configuration
+  # @default -- See values below
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/guardian-console`
+    repository: ghcr.io/eqtylab/guardian-console
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+  # -- Pod Annotations
+  # @default -- `{}`
+  podAnnotations: {}
+  # -- Pod Labels
+  # @default -- `{}`
+  podLabels: {}
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `true`
+    create: true
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+    # -- Service Account Annotations
+    # @default -- `{}`
+    annotations: {}
+  # -- Pod Security Context
+  # @default -- `{}`
+  podSecurityContext: {}
+  # -- Container Security Context
+  # @default -- See values below
+  # The console image serves on privileged port 80, so it cannot run non-root
+  # without NET_BIND_SERVICE. Once the image serves on a port above 1024, match
+  # governance-studio: runAsNonRoot, readOnlyRootFilesystem, and drop ALL with
+  # no added capability
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+      add:
+        - NET_BIND_SERVICE
+  # -- Resource Requests and Limits
+  # @default -- `{}`
+  resources: {}
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    # Replaces replicaCount when enabled
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `10`
+    maxReplicas: 10
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+  # -- Container Port
+  # @default -- `80`
+  containerPort: 80
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `80`
+    port: 80
+  # -- Console Runtime Configuration
+  # @default -- See values below
+  # Injected into the console container as ENVIRONMENT, APP_TITLE,
+  # APP_HOSTNAME, API_URL, and BASE_PATH
+  runtime:
+    # -- Runtime Environment
+    # @default -- `production`
+    environment: production
+    # -- Application Title
+    # @default -- `Gateway Guardian`
+    appTitle: Gateway Guardian
+    # -- Application Hostname
+    # @default -- `""`
+    appHostname: ""
+    # -- Control Plane API URL
+    # @default -- `""`
+    apiURL: ""
+    # -- Base Path
+    # @default -- `/`
+    basePath: /
+  # -- Extra Environment Variables
+  # @default -- `[]`
+  extraEnv: []
+
+# =============================================================================
+# POSTGRESQL
+# =============================================================================
+# Bundled Bitnami PostgreSQL dependency. Disable it and set database.host or
+# database.existingSecret to use an external or platform-managed instance
+# -----------------------------------------------------------------------------
+
+# -- PostgreSQL Configuration
+# @default -- See values below
+postgresql:
+  # -- Enable Bundled PostgreSQL
+  # @default -- `true`
+  # Set to false by the umbrella chart, which supplies the platform database
+  enabled: true
+  # -- PostgreSQL Architecture
+  # @default -- `standalone`
+  architecture: standalone
+  # -- Image Configuration
+  # @default -- See values below
+  image:
+    # -- Image Repository
+    # @default -- `bitnamilegacy/postgresql`
+    # Pinned to bitnamilegacy because versioned bitnami/postgresql tags may not
+    # be available on Docker Hub
+    repository: bitnamilegacy/postgresql
+    # -- Image Tag
+    # @default -- `17.6.0-debian-12-r4`
+    tag: 17.6.0-debian-12-r4
+  # -- Authentication Configuration
+  # @default -- See values below
+  auth:
+    # -- Database Username
+    # @default -- `guardian`
+    username: guardian
+    # -- Database Password
+    # @default -- `change-me` (REQUIRED to change when enabled)
+    # Rejected at render time while left at "change-me". Keep in sync with
+    # database.password, or set auth.existingSecret and point database.existingSecret
+    # at the same Secret
+    password: change-me
+    # -- Database Name
+    # @default -- `guardian_gateway`
+    database: guardian_gateway
+  # -- Primary Node Configuration
+  # @default -- See values below
+  primary:
+    # -- Persistence Configuration
+    # @default -- See values below
+    persistence:
+      # -- Enable Persistence
+      # @default -- `true`
+      enabled: true
+      # -- Volume Size
+      # @default -- `20Gi`
+      size: 20Gi
+
+# =============================================================================
+# HAPROXY INGRESS CONTROLLER
+# =============================================================================
+# Bundled HAProxy controller dependency. Enable it only when the cluster has no
+# existing controller serving ingress.className
+# -----------------------------------------------------------------------------
+
+# -- HAProxy Ingress Configuration
+# @default -- See values below
+haproxyIngress:
+  # -- Enable Bundled HAProxy Controller
+  # @default -- `false`
+  enabled: false
+  # -- Name Override
+  # @default -- `haproxy-ingress`
+  # Keeps generated object names lowercase and Kubernetes-compatible
+  nameOverride: haproxy-ingress
+  # -- Controller Configuration
+  # @default -- See values below
+  controller:
+    # -- Replica Count
+    # @default -- `1`
+    replicaCount: 1
+    # -- Service Configuration
+    # @default -- See values below
+    service:
+      # -- Service Type
+      # @default -- `LoadBalancer`
+      type: LoadBalancer
+      # -- Enabled Ports
+      # @default -- See values below
+      # QUIC/UDP and the extra stat/admin ports are disabled to avoid
+      # mixed-protocol LoadBalancer errors on GKE
+      enablePorts:
+        # -- Enable QUIC Port
+        # @default -- `false`
+        quic: false
+        # -- Enable Stats Port
+        # @default -- `false`
+        stat: false
+        # -- Enable Admin Port
+        # @default -- `false`
+        admin: false
+      # -- Service Annotations
+      # @default -- `{}`
+      annotations: {}

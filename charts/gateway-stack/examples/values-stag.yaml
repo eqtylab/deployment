@@ -1,0 +1,155 @@
+# Staging Environment Example
+# Demonstrates Google OIDC bearer verification, PostgreSQL credentials supplied
+# through a pre-created Secret rather than inline values, and cert-manager
+# HTTP-01 issuance behind a dedicated HAProxy ingress class
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `gateway-stack:` key in your umbrella values file
+#
+# Replace every example.com hostname and every replace-with-* placeholder
+# before deploying
+
+global:
+  imagePullSecrets:
+    - name: ghcr-pull
+
+llmGateway:
+  image:
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    tag: ""
+    pullPolicy: IfNotPresent
+  deploymentEnvironment: staging
+  upstreams:
+    anthropicURL: https://api.anthropic.com
+    openaiURL: https://api.openai.com
+  extraEnv:
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://otel-collector.observability.svc.cluster.local:4318
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: http/protobuf
+    - name: OTEL_TRACES_EXPORTER
+      value: otlp
+    - name: OTEL_LOGS_EXPORTER
+      value: otlp
+    - name: OTEL_METRICS_EXPORTER
+      value: otlp
+    - name: OTEL_RESOURCE_ATTRIBUTES
+      value: service.name=llm-gateway,deployment.environment=staging
+    - name: OTEL_EXPORTER_OTLP_HEADERS
+      valueFrom:
+        secretKeyRef:
+          name: otlp-auth
+          key: headers
+  signature:
+    label: sig
+  registration:
+    enabled: true
+    credentialSigner:
+      existingSecret: guardian-stag-llm-gateway-credential-signer
+      secretKey: seed
+
+controlPlane:
+  image:
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    tag: ""
+    pullPolicy: IfNotPresent
+  apiBasePath: /api
+  auth:
+    enabled: true
+    existingSecret: guardian-stag-control-plane-auth
+    cookieSecure: true
+    allowedEmailDomains:
+      - example.com
+    bootstrapAdminEmail: admin@example.com
+    registrationTokenIssuer: control-plane
+    uiBaseURL: https://guardian.stag.example.com
+    bearer:
+      enabled: true
+      issuerURL: https://accounts.google.com
+      clientID: replace-with-device-client-id.apps.googleusercontent.com
+      scopes:
+        - openid
+        - profile
+        - email
+    google:
+      enabled: true
+      redirectURL: https://guardian.stag.example.com/api/v1/auth/callback/google
+  virusTotal:
+    enabled: false
+    existingSecret: ""
+
+ingress:
+  enabled: true
+  className: haproxy-gateway-stag
+  controlPlanePath: /api
+  hosts:
+    llmGateway: gateway.stag.example.com
+    controlPlane: guardian.stag.example.com
+  certManager:
+    enabled: true
+    clusterIssuer: letsencrypt-gateway-stag
+    createClusterIssuer: true
+    acme:
+      email: platform@example.com
+      server: https://acme-v02.api.letsencrypt.org/directory
+      privateKeySecretName: letsencrypt-gateway-stag-account-key
+      solver: http01
+      http01:
+        ingressClass: haproxy-gateway-stag
+
+guardianUI:
+  enabled: true
+  image:
+    repository: ghcr.io/eqtylab/guardian-console
+    tag: ""
+    pullPolicy: IfNotPresent
+  runtime:
+    environment: staging
+    appTitle: Guardian Staging UI
+    appHostname: guardian.stag.example.com
+    apiURL: https://guardian.stag.example.com/api
+    basePath: /
+
+database:
+  user: guardian
+  name: guardian_gateway
+  sslMode: disable
+  existingSecret: guardian-stag-postgres
+
+postgresql:
+  enabled: true
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: 17.6.0-debian-12-r4
+  auth:
+    username: guardian
+    database: guardian_gateway
+    existingSecret: guardian-stag-postgres
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+
+haproxyIngress:
+  enabled: true
+  nameOverride: haproxy-ingress
+  controller:
+    ingressClass: haproxy-gateway-stag
+    ingressClassResource:
+      name: haproxy-gateway-stag
+      enabled: true
+      default: false
+    watchIngressWithoutClass: false
+    electionID: haproxy-gateway-stag
+    service:
+      type: LoadBalancer
+      enablePorts:
+        quic: false
+        stat: false
+        admin: false
+      annotations:
+        cloud.google.com/network-tier: Standard

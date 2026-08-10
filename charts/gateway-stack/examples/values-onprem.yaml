@@ -1,0 +1,118 @@
+# On-Premises Configuration Example
+# Demonstrates an air-gapped install with an internal registry mirror, an
+# external database, S3-compatible plugin artifact storage, and pre-issued TLS
+# certificates
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `gateway-stack:` key in your umbrella values file
+#
+# Replace every example.internal hostname before deploying
+
+global:
+  imagePullSecrets: []
+  # Point every image in this chart at an internal mirror. This also redirects
+  # the psql init container, which would otherwise pull from Docker Hub
+  imageRegistryOverride: registry.example.internal
+
+database:
+  existingSecret: guardian-db
+  secretKeys:
+    dsn: dsn
+  sslMode: require
+
+llmGateway:
+  image:
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    tag: ""
+    pullPolicy: IfNotPresent
+  deploymentEnvironment: production
+  registration:
+    enabled: false
+  upstreams:
+    anthropicURL: https://api.anthropic.com
+    openaiURL: https://api.openai.com
+  plugins:
+    enabled: true
+    pollInterval: 15s
+    authorizerShadowEnabled: false
+    artifactStorage:
+      provider: s3
+      bucket: guardian-plugin-artifacts
+      prefix: production
+      s3:
+        endpoint: https://s3.example.internal
+        region: us-east-1
+        forcePathStyle: true
+        existingSecret: guardian-artifact-s3
+        secretKeys:
+          accessKeyID: accessKeyID
+          secretAccessKey: secretAccessKey
+    trustedSignerKeys:
+      signer-onprem: did:key:z6MksM27vR5Rdxi4BgF3mG7qbQ8x1xWmA2oxRjzT51r9bYEv
+
+controlPlane:
+  image:
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    tag: ""
+    pullPolicy: IfNotPresent
+  apiBasePath: /api
+  corsAllowAll: true
+  auth:
+    enabled: false
+    google:
+      enabled: false
+    bearer:
+      enabled: false
+  plugins:
+    artifactStorage:
+      provider: s3
+      bucket: guardian-plugin-artifacts
+      prefix: production
+      maxUploadBytes: 536870912
+      s3:
+        endpoint: https://s3.example.internal
+        region: us-east-1
+        forcePathStyle: true
+        existingSecret: guardian-artifact-s3
+        secretKeys:
+          accessKeyID: accessKeyID
+          secretAccessKey: secretAccessKey
+    trustedSignerKeys:
+      signer-onprem: did:key:z6MksM27vR5Rdxi4BgF3mG7qbQ8x1xWmA2oxRjzT51r9bYEv
+  waitForRegistryViews:
+    enabled: true
+
+ingress:
+  enabled: true
+  className: ""
+  controlPlanePath: /api
+  hosts:
+    llmGateway: gateway.example.internal
+    controlPlane: guardian.example.internal
+  tls:
+    enabled: true
+    llmGatewaySecretName: guardian-gateway-tls
+    controlPlaneSecretName: guardian-console-tls
+  certManager:
+    enabled: false
+    createClusterIssuer: false
+
+guardianUI:
+  enabled: true
+  image:
+    repository: ghcr.io/eqtylab/guardian-console
+    tag: ""
+    pullPolicy: IfNotPresent
+  runtime:
+    environment: production
+    appTitle: Gateway Guardian
+    appHostname: guardian.example.internal
+    apiURL: https://guardian.example.internal/api
+    basePath: /
+
+postgresql:
+  enabled: false
+
+haproxyIngress:
+  enabled: false

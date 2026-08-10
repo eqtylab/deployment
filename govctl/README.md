@@ -195,12 +195,15 @@ Configures all platform services based on your selections:
 - **global** — environment name, domain. Also `global.postgresql.{host, port, database, username, sslMode, sslRootCert}` placeholders when database mode is `external`
 - **auth-service** — IDP provider config, token exchange, ingress
 - **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: false` by default, image tag/pull policy; no ingress)
+- **gateway-stack** — LLM gateway, control plane, and Guardian console (`enabled: false` by default, image tags/pull policies only; hostnames, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **governance-studio** — frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, persistence, ingress
 - **postgresql** — `enabled: true` plus storage class and resource limits when database mode is `bundled`; just `enabled: false` when `external`
 
-When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/governance-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
+To enable the gateway, layer [`values-gateway.yaml`](../charts/governance-platform/examples/values-gateway.yaml) over the generated file and see [`charts/gateway-stack/README.md`](../charts/gateway-stack/README.md) for hostnames, TLS, and plugin setup.
+
+When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The same placeholder appears inside the generated `gatewayDsn`, so replace it in both places. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/governance-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
 
 ### bootstrap-{env}.yaml _(Auth0, Entra, or Keycloak)_
 
@@ -214,7 +217,7 @@ Pre-configured values for the matching `<provider>-bootstrap` chart with your do
 
 Only includes secrets relevant to your configuration:
 
-- **Database** — PostgreSQL credentials
+- **Database** — PostgreSQL credentials, plus a `gatewayDsn` connection string for the `guardian_gateway` database (only consumed when `gateway-stack` is enabled; it repeats the generated password, so change both together)
 - **Auth service** — API secret, JWT secret
 - **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three)
 - **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials (S3 credentials are omitted when using IAM role / IRSA access)

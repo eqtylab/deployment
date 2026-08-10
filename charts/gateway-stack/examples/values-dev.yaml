@@ -1,0 +1,151 @@
+# Development Environment Example
+# Demonstrates cert-manager HTTP-01 issuance behind a dedicated HAProxy ingress
+# class, the bundled PostgreSQL with inline credentials, and OTLP telemetry
+# export to an in-cluster collector
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `gateway-stack:` key in your umbrella values file
+#
+# Replace every example.com hostname and every replace-with-* placeholder
+# before deploying
+
+global:
+  imagePullSecrets:
+    - name: ghcr-pull
+
+llmGateway:
+  image:
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    tag: ""
+    pullPolicy: Always
+  deploymentEnvironment: development
+  upstreams:
+    anthropicURL: https://api.anthropic.com
+    openaiURL: https://api.openai.com
+  extraEnv:
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://otel-collector.observability.svc.cluster.local:4318
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: http/protobuf
+    - name: OTEL_TRACES_EXPORTER
+      value: otlp
+    - name: OTEL_LOGS_EXPORTER
+      value: otlp
+    - name: OTEL_METRICS_EXPORTER
+      value: otlp
+    - name: OTEL_RESOURCE_ATTRIBUTES
+      value: service.name=llm-gateway,deployment.environment=development
+    - name: OTEL_EXPORTER_OTLP_HEADERS
+      valueFrom:
+        secretKeyRef:
+          name: otlp-auth
+          key: headers
+  signature:
+    label: sig
+  registration:
+    enabled: true
+    credentialSigner:
+      existingSecret: guardian-dev-llm-gateway-credential-signer
+      secretKey: seed
+
+controlPlane:
+  image:
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    tag: ""
+    pullPolicy: Always
+  apiBasePath: /api
+  auth:
+    enabled: true
+    existingSecret: guardian-dev-control-plane-auth
+    cookieSecure: true
+    allowedEmailDomains:
+      - example.com
+    bootstrapAdminEmail: admin@example.com
+    registrationTokenIssuer: control-plane
+    uiBaseURL: https://guardian.dev.example.com
+    bearer:
+      enabled: true
+      issuerURL: https://your-tenant.us.auth0.com/
+      clientID: replace-with-device-client-id
+      scopes:
+        - openid
+        - profile
+        - email
+    google:
+      enabled: true
+      redirectURL: https://guardian.dev.example.com/api/v1/auth/callback/google
+  virusTotal:
+    enabled: false
+    existingSecret: ""
+
+ingress:
+  enabled: true
+  className: haproxy-gateway-dev
+  controlPlanePath: /api
+  hosts:
+    llmGateway: gateway.dev.example.com
+    controlPlane: guardian.dev.example.com
+  certManager:
+    enabled: true
+    clusterIssuer: letsencrypt-gateway-dev
+    createClusterIssuer: true
+    acme:
+      email: platform@example.com
+      server: https://acme-v02.api.letsencrypt.org/directory
+      privateKeySecretName: letsencrypt-gateway-dev-account-key
+      solver: http01
+      http01:
+        ingressClass: haproxy-gateway-dev
+
+guardianUI:
+  enabled: true
+  image:
+    repository: ghcr.io/eqtylab/guardian-console
+    tag: ""
+    pullPolicy: Always
+  runtime:
+    environment: development
+    appTitle: Guardian Dev UI
+    appHostname: guardian.dev.example.com
+    apiURL: https://guardian.dev.example.com/api
+    basePath: /
+
+# Keep these credentials in sync when using the bundled postgresql dependency
+database:
+  user: guardian
+  password: replace-with-strong-password
+  name: guardian_gateway
+  sslMode: disable
+
+postgresql:
+  enabled: true
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: 17.6.0-debian-12-r4
+  auth:
+    username: guardian
+    password: replace-with-strong-password
+    database: guardian_gateway
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+
+haproxyIngress:
+  enabled: true
+  nameOverride: haproxy-ingress
+  controller:
+    ingressClass: haproxy-gateway-dev
+    ingressClassResource:
+      name: haproxy-gateway-dev
+      enabled: true
+      default: false
+    watchIngressWithoutClass: false
+    electionID: haproxy-gateway-dev
+    service:
+      type: LoadBalancer
+      enablePorts:
+        quic: false
+        stat: false
+        admin: false

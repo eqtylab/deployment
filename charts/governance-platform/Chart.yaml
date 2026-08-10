@@ -21,6 +21,11 @@ dependencies:
     version: "1.0.2"
     repository: "file://../eqty-pdfgen"
     condition: eqty-pdfgen.enabled
+  # Gateway, control plane, and console
+  - name: gateway-stack
+    version: "1.0.2"
+    repository: "file://../gateway-stack"
+    condition: gateway-stack.enabled
   # Governance Service API
   - name: governance-service
     version: "1.0.2"

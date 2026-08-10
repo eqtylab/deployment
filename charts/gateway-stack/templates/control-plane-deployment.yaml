@@ -1,0 +1,314 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gateway-stack.fullname" . }}-control-plane
+  labels:
+    {{- include "gateway-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  {{- if not .Values.controlPlane.autoscaling.enabled }}
+  replicas: {{ .Values.controlPlane.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gateway-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-plane
+  template:
+    metadata:
+      labels:
+        {{- include "gateway-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: control-plane
+        {{- with .Values.controlPlane.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/secrets: {{ include "gateway-stack.controlPlaneSecretsChecksum" . }}
+        {{- with .Values.controlPlane.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "gateway-stack.controlPlaneServiceAccountName" . }}
+      {{- if (((.Values.global).secrets).imageRegistry).secretName }}
+      imagePullSecrets:
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
+      {{- else if (.Values.global).imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- else if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.controlPlane.waitForRegistryViews.enabled }}
+      initContainers:
+        - name: wait-for-registry-views
+          image: {{ include "gateway-stack.image" (dict "root" . "image" .Values.controlPlane.waitForRegistryViews.image) | quote }}
+          imagePullPolicy: {{ include "gateway-stack.imagePullPolicy" (dict "root" . "image" .Values.controlPlane.waitForRegistryViews.image) }}
+          {{- with .Values.controlPlane.waitForRegistryViews.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              until psql "$DB_DSN" -Atqc "SELECT to_regclass('public.v_registry_agents') IS NOT NULL" | grep -q t; do
+                echo "waiting for registry views created by llm-gateway migrations"
+                sleep {{ .Values.controlPlane.waitForRegistryViews.intervalSeconds }}
+              done
+          env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.dbSecretName" . }}
+                  key: {{ .Values.database.secretKeys.dsn }}
+      {{- end }}
+      containers:
+        - name: control-plane
+          {{- with .Values.controlPlane.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "gateway-stack.image" (dict "root" . "image" .Values.controlPlane.image) | quote }}
+          imagePullPolicy: {{ include "gateway-stack.imagePullPolicy" (dict "root" . "image" .Values.controlPlane.image) }}
+          args:
+            - -listen={{ .Values.controlPlane.listenAddr }}
+            - -db-dsn=$(DB_DSN)
+            - -cors-allow-all={{ ternary "true" "false" .Values.controlPlane.corsAllowAll }}
+            - -auth-enabled={{ ternary "true" "false" .Values.controlPlane.auth.enabled }}
+            - -auth-cookie-secure={{ ternary "true" "false" .Values.controlPlane.auth.cookieSecure }}
+            - {{ printf "-auth-registration-token-issuer=%s" .Values.controlPlane.auth.registrationTokenIssuer | quote }}
+            - {{ printf "-auth-session-max-age=%s" .Values.controlPlane.auth.sessionMaxAge | quote }}
+            - {{ printf "-auth-session-idle-timeout=%s" .Values.controlPlane.auth.sessionIdleTimeout | quote }}
+            - -auth-google-enabled={{ ternary "true" "false" .Values.controlPlane.auth.google.enabled }}
+            - -auth-bearer-enabled={{ ternary "true" "false" .Values.controlPlane.auth.bearer.enabled }}
+            {{- if .Values.controlPlane.apiBasePath }}
+            - -api-base-path={{ .Values.controlPlane.apiBasePath }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.cookieDomain }}
+            - {{ printf "-auth-cookie-domain=%s" .Values.controlPlane.auth.cookieDomain | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.bootstrapAdminEmail }}
+            - {{ printf "-auth-bootstrap-admin-email=%s" .Values.controlPlane.auth.bootstrapAdminEmail | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.allowedEmailDomains }}
+            - {{ printf "-auth-allowed-email-domains=%s" (join "," .Values.controlPlane.auth.allowedEmailDomains) | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.enabled }}
+            - -auth-registration-token-secret=$(AUTH_REGISTRATION_TOKEN_SECRET)
+            {{- if .Values.controlPlane.auth.google.enabled }}
+            - -auth-state-secret=$(AUTH_STATE_SECRET)
+            {{- end }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.bearer.mode }}
+            - {{ printf "-auth-bearer-mode=%s" .Values.controlPlane.auth.bearer.mode | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.bearer.authServiceBaseURL }}
+            - {{ printf "-auth-bearer-auth-service-base-url=%s" .Values.controlPlane.auth.bearer.authServiceBaseURL | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.bearer.issuerURL }}
+            - {{ printf "-auth-bearer-issuer-url=%s" .Values.controlPlane.auth.bearer.issuerURL | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.bearer.clientID }}
+            - {{ printf "-auth-bearer-client-id=%s" .Values.controlPlane.auth.bearer.clientID | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.bearer.scopes }}
+            - {{ printf "-auth-bearer-scopes=%s" (join "," .Values.controlPlane.auth.bearer.scopes) | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.uiBaseURL }}
+            - {{ printf "-auth-ui-base-url=%s" .Values.controlPlane.auth.uiBaseURL | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.localDevEnabled }}
+            - "-auth-local-dev-enabled=true"
+            {{- end }}
+            {{- if .Values.controlPlane.auth.google.issuerURL }}
+            - {{ printf "-auth-google-issuer-url=%s" .Values.controlPlane.auth.google.issuerURL | quote }}
+            {{- end }}
+            {{- if and .Values.controlPlane.auth.enabled .Values.controlPlane.auth.google.enabled }}
+            - -auth-google-client-id=$(AUTH_GOOGLE_CLIENT_ID)
+            - -auth-google-client-secret=$(AUTH_GOOGLE_CLIENT_SECRET)
+            {{- end }}
+            {{- if .Values.controlPlane.auth.google.redirectURL }}
+            - {{ printf "-auth-google-redirect-url=%s" .Values.controlPlane.auth.google.redirectURL | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.auth.google.scopes }}
+            - {{ printf "-auth-google-scopes=%s" (join "," .Values.controlPlane.auth.google.scopes) | quote }}
+            {{- end }}
+            {{- $adapter := .Values.controlPlane.adapter }}
+            {{- if $adapter.enabled }}
+            - -adapter-auth-enabled=true
+            - {{ printf "-adapter-auth-service-base-url=%s" ($adapter.authServiceBaseURL | default (printf "http://%s-auth-service:8080" .Release.Name)) | quote }}
+            - {{ printf "-adapter-governance-service-base-url=%s" ($adapter.governanceServiceBaseURL | default (printf "http://%s-governance-service:10001" .Release.Name)) | quote }}
+            - {{ printf "-adapter-http-timeout=%s" $adapter.httpTimeout | quote }}
+            - {{ printf "-adapter-project-runtime-read-timeout=%s" $adapter.projectRuntimeReadTimeout | quote }}
+            - {{ printf "-adapter-integrity-base-url=%s" ($adapter.integrityBaseURL | default (printf "http://%s-integrity-service:3050" .Release.Name)) | quote }}
+            - {{ printf "-adapter-integrity-http-timeout=%s" $adapter.integrityHTTPTimeout | quote }}
+            - {{ printf "-adapter-integrity-status-cache-ttl=%s" $adapter.integrityStatusCacheTTL | quote }}
+            {{- end }}
+            {{- if $adapter.trustedMembershipIssuerDIDs }}
+            - {{ printf "-adapter-trusted-membership-issuer-dids=%s" (join "," $adapter.trustedMembershipIssuerDIDs) | quote }}
+            {{- end }}
+            {{- if $adapter.trustedComplianceIssuerDIDs }}
+            - {{ printf "-adapter-trusted-compliance-issuer-dids=%s" (join "," $adapter.trustedComplianceIssuerDIDs) | quote }}
+            {{- end }}
+            {{- if $adapter.allowEmbeddedCredentialBootstrap }}
+            - -adapter-allow-embedded-credential-bootstrap=true
+            {{- end }}
+            {{- if .Values.controlPlane.virusTotal.enabled }}
+            - -vt-enabled=true
+            {{- end }}
+            {{- if .Values.controlPlane.plugins.artifactStorage.provider }}
+            - -plugin-artifact-storage-provider={{ .Values.controlPlane.plugins.artifactStorage.provider }}
+            {{- end }}
+            {{- if .Values.controlPlane.plugins.artifactStorage.bucket }}
+            - -plugin-artifact-storage-bucket={{ .Values.controlPlane.plugins.artifactStorage.bucket }}
+            {{- end }}
+            {{- if .Values.controlPlane.plugins.artifactStorage.prefix }}
+            - -plugin-artifact-storage-prefix={{ .Values.controlPlane.plugins.artifactStorage.prefix }}
+            {{- end }}
+            - -plugin-artifact-storage-max-upload-bytes={{ int64 .Values.controlPlane.plugins.artifactStorage.maxUploadBytes }}
+            {{- if .Values.controlPlane.plugins.artifactStorage.gcs.endpoint }}
+            - -plugin-artifact-storage-gcs-endpoint={{ .Values.controlPlane.plugins.artifactStorage.gcs.endpoint }}
+            {{- end }}
+            {{- if .Values.controlPlane.plugins.artifactStorage.gcs.kmsKeyName }}
+            - -plugin-artifact-storage-gcs-kms-key-name={{ .Values.controlPlane.plugins.artifactStorage.gcs.kmsKeyName }}
+            {{- end }}
+            {{- if eq .Values.controlPlane.plugins.artifactStorage.provider "s3" }}
+            {{- if .Values.controlPlane.plugins.artifactStorage.s3.endpoint }}
+            - -plugin-artifact-storage-s3-endpoint={{ .Values.controlPlane.plugins.artifactStorage.s3.endpoint }}
+            {{- end }}
+            - {{ printf "-plugin-artifact-storage-s3-region=%s" (required "controlPlane.plugins.artifactStorage.s3.region is required when provider=s3" .Values.controlPlane.plugins.artifactStorage.s3.region) | quote }}
+            - -plugin-artifact-storage-s3-force-path-style={{ ternary "true" "false" .Values.controlPlane.plugins.artifactStorage.s3.forcePathStyle }}
+            {{- end }}
+            {{- range $key := keys .Values.controlPlane.plugins.trustedSignerKeys | sortAlpha }}
+            - {{ printf "-plugin-trusted-signer-key=%s=%s" $key (index $.Values.controlPlane.plugins.trustedSignerKeys $key) | quote }}
+            {{- end }}
+            {{- $publisherSigner := .Values.controlPlane.plugins.publisherSigner }}
+            {{- if $publisherSigner.existingSecret }}
+            - {{ printf "-plugin-publisher-signer-key-id=%s" (required "controlPlane.plugins.publisherSigner.keyID is required when existingSecret is set" $publisherSigner.keyID) | quote }}
+            - {{ printf "-plugin-publisher-signer-seed-file=%s/%s" (trimSuffix "/" ($publisherSigner.mountPath | default "/run/secrets/guardian-plugin-publisher")) ($publisherSigner.secretKey | default "seed") | quote }}
+            {{- end }}
+            {{- range .Values.controlPlane.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.dbSecretName" . }}
+                  key: {{ .Values.database.secretKeys.dsn }}
+            {{- if .Values.controlPlane.auth.enabled }}
+            - name: AUTH_REGISTRATION_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
+                  key: {{ .Values.controlPlane.auth.secretKeys.registrationTokenSecret }}
+            {{- if .Values.controlPlane.auth.google.enabled }}
+            - name: AUTH_STATE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
+                  key: {{ .Values.controlPlane.auth.secretKeys.stateSecret }}
+            - name: AUTH_GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
+                  key: {{ .Values.controlPlane.auth.secretKeys.googleClientID }}
+            - name: AUTH_GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
+                  key: {{ .Values.controlPlane.auth.secretKeys.googleClientSecret }}
+            {{- end }}
+            {{- end }}
+            {{- if and .Values.controlPlane.virusTotal.enabled .Values.controlPlane.virusTotal.existingSecret }}
+            - name: CONTROL_PLANE_VT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.controlPlane.virusTotal.existingSecret }}
+                  key: {{ .Values.controlPlane.virusTotal.secretKey | default "api-key" }}
+            {{- end }}
+            {{- $pluginSecretKey := .Values.controlPlane.plugins.secrets.encryptionKey }}
+            {{- if $pluginSecretKey.existingSecret }}
+            - name: CONTROL_PLANE_PLUGIN_SECRETS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pluginSecretKey.existingSecret }}
+                  key: {{ $pluginSecretKey.secretKey | default "encryption-key" }}
+            {{- end }}
+            {{- if eq .Values.controlPlane.plugins.artifactStorage.provider "s3" }}
+            {{- $s3 := .Values.controlPlane.plugins.artifactStorage.s3 }}
+            {{- if $s3.existingSecret }}
+            - name: CONTROL_PLANE_PLUGIN_ARTIFACT_STORAGE_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $s3.existingSecret }}
+                  key: {{ $s3.secretKeys.accessKeyID | default "accessKeyID" }}
+            - name: CONTROL_PLANE_PLUGIN_ARTIFACT_STORAGE_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $s3.existingSecret }}
+                  key: {{ $s3.secretKeys.secretAccessKey | default "secretAccessKey" }}
+            {{- else }}
+            - name: CONTROL_PLANE_PLUGIN_ARTIFACT_STORAGE_S3_ACCESS_KEY_ID
+              value: {{ required "controlPlane.plugins.artifactStorage.s3.accessKeyID is required when provider=s3 and no existingSecret is set" $s3.accessKeyID | quote }}
+            - name: CONTROL_PLANE_PLUGIN_ARTIFACT_STORAGE_S3_SECRET_ACCESS_KEY
+              value: {{ required "controlPlane.plugins.artifactStorage.s3.secretAccessKey is required when provider=s3 and no existingSecret is set" $s3.secretAccessKey | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.controlPlane.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.controlPlane.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ printf "%s/health" (trimSuffix "/" (default "" .Values.controlPlane.apiBasePath)) | replace "//" "/" | quote }}
+              port: http
+            initialDelaySeconds: {{ .Values.controlPlane.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.controlPlane.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ printf "%s/health" (trimSuffix "/" (default "" .Values.controlPlane.apiBasePath)) | replace "//" "/" | quote }}
+              port: http
+            initialDelaySeconds: {{ .Values.controlPlane.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.controlPlane.probes.readiness.periodSeconds }}
+          {{- with .Values.controlPlane.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if $publisherSigner.existingSecret }}
+          volumeMounts:
+            - name: plugin-publisher-signer
+              mountPath: {{ $publisherSigner.mountPath | default "/run/secrets/guardian-plugin-publisher" | quote }}
+              readOnly: true
+          {{- end }}
+      {{- if $publisherSigner.existingSecret }}
+      volumes:
+        - name: plugin-publisher-signer
+          secret:
+            secretName: {{ $publisherSigner.existingSecret | quote }}
+            items:
+              - key: {{ $publisherSigner.secretKey | default "seed" | quote }}
+                path: {{ $publisherSigner.secretKey | default "seed" | quote }}
+      {{- end }}
+{{- end }}

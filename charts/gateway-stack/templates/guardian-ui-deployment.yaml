@@ -1,0 +1,99 @@
+{{- if and .Values.enabled .Values.guardianUI.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gateway-stack.uiServiceName" . }}
+  labels:
+    {{- include "gateway-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: guardian-ui
+spec:
+  {{- if not .Values.guardianUI.autoscaling.enabled }}
+  replicas: {{ .Values.guardianUI.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gateway-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: guardian-ui
+  template:
+    metadata:
+      labels:
+        {{- include "gateway-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: guardian-ui
+        {{- with .Values.guardianUI.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.guardianUI.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "gateway-stack.guardianUIServiceAccountName" . }}
+      {{- if (((.Values.global).secrets).imageRegistry).secretName }}
+      imagePullSecrets:
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
+      {{- else if (.Values.global).imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- else if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with .Values.guardianUI.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.guardianUI.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.guardianUI.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.guardianUI.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: guardian-ui
+          {{- with .Values.guardianUI.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "gateway-stack.image" (dict "root" . "image" .Values.guardianUI.image) | quote }}
+          imagePullPolicy: {{ include "gateway-stack.imagePullPolicy" (dict "root" . "image" .Values.guardianUI.image) }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.guardianUI.containerPort }}
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: {{ .Values.guardianUI.runtime.environment | quote }}
+            - name: APP_TITLE
+              value: {{ .Values.guardianUI.runtime.appTitle | quote }}
+            - name: APP_HOSTNAME
+              value: {{ .Values.guardianUI.runtime.appHostname | quote }}
+            - name: API_URL
+              value: {{ .Values.guardianUI.runtime.apiURL | quote }}
+            - name: BASE_PATH
+              value: {{ .Values.guardianUI.runtime.basePath | quote }}
+            {{- with .Values.guardianUI.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          {{- with .Values.guardianUI.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

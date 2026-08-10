@@ -10,6 +10,7 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 | [auth0-bootstrap](auth0-bootstrap/)         | Utility  | Auth0 application, API, and user configuration job           |
 | [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job        |
 | [eqty-pdfgen](eqty-pdfgen/)                 | Subchart | PDF and ZIP rendering service for governance manifests       |
+| [gateway-stack](gateway-stack/)             | Subchart | LLM gateway, control plane, and console                      |
 | [governance-ops](governance-ops/)           | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
 | [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)                   |
 | [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine                     |
@@ -27,6 +28,7 @@ charts/
 ├── auth0-bootstrap/         # Auth0 configuration utility
 ├── entra-bootstrap/         # Entra ID configuration utility
 ├── eqty-pdfgen/             # Manifest PDF rendering subchart
+├── gateway-stack/           # Gateway, control plane, and console subchart
 ├── governance-ops/          # Operational monitoring (dashboards, alerts)
 ├── governance-platform/     # Umbrella chart (deploy this for full platform)
 │   ├── Chart.yaml           # Dependencies on all subcharts
@@ -151,6 +153,11 @@ helm upgrade --install governance-platform ./governance-platform \
   --namespace governance \
   --values values.yaml
 ```
+
+The Guardian gateway is opt-in for upgrade safety. Add
+`governance-platform/examples/values-gateway.yaml` to the Helm command to enable
+it, and provide the `gateway-dsn` key in `platform-database` when using an
+externally managed Secret.
 
 **9. Verify**
 

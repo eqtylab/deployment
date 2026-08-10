@@ -1,0 +1,179 @@
+# GKE Configuration Example
+# Demonstrates Workload Identity, GCS plugin artifact storage, and cert-manager
+# DNS-01 issuance via Cloud DNS
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `gateway-stack:` key in your umbrella values file
+#
+# Replace every example.com hostname, every your-gcp-* placeholder, and every
+# replace-with-* placeholder before deploying
+
+global:
+  imagePullSecrets: []
+
+llmGateway:
+  image:
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    tag: ""
+  deploymentEnvironment: development
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: guardian-llm-gateway-dev@your-gcp-project-id.iam.gserviceaccount.com
+  upstreams:
+    anthropicURL: https://api.anthropic.com
+    openaiURL: https://api.openai.com
+  registration:
+    enabled: true
+    credentialSigner:
+      existingSecret: guardian-dev-llm-gateway-credential-signer
+      secretKey: seed
+  plugins:
+    enabled: true
+    pollInterval: 15s
+    authorizerShadowEnabled: true
+    artifactStorage:
+      provider: gcs
+      bucket: guardian-plugin-artifacts-dev
+      prefix: development
+    trustedSignerKeys:
+      signer-dev: did:key:z6MkReplaceWithTrustedPluginSigner
+    # Production-style installs should use secrets.resolutionOrder: ["store"]
+    # plus a shared generic encryption key Secret on both services. This dev
+    # example keeps env fallback enabled through secretEnvsSecret
+    secretEnvsSecret:
+      name: guardian-plugin-secrets
+  # Example secret data when using the default GUARDIAN_SECRET_ prefix:
+  # GUARDIAN_SECRET__BUILTIN__VTSCAN__VIRUSTOTAL_API_KEY=<vt-api-key>
+  # GUARDIAN_SECRET__BUILTIN__INTENT_MONITOR__OPENAI_API_KEY=<llm-api-key>
+  extraEnv:
+    # Point these OTEL settings at an existing in-cluster OpenTelemetry Collector
+    - name: OTEL_TRACES_EXPORTER
+      value: otlp
+    - name: OTEL_LOGS_EXPORTER
+      value: otlp
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://otel-collector.observability.svc.cluster.local:4318
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: http/protobuf
+    - name: OTEL_RESOURCE_ATTRIBUTES
+      value: service.name=guardian-llm-gateway,deployment.environment=development
+
+controlPlane:
+  image:
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    tag: ""
+  apiBasePath: /api
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: guardian-control-plane-dev@your-gcp-project-id.iam.gserviceaccount.com
+  auth:
+    enabled: true
+    cookieSecure: true
+    allowedEmailDomains:
+      - example.com
+    bootstrapAdminEmail: admin@example.com
+    stateSecret: replace-with-auth-state-secret
+    registrationTokenSecret: replace-with-registration-token-secret
+    registrationTokenIssuer: control-plane
+    bearer:
+      enabled: true
+      issuerURL: https://accounts.google.com
+      clientID: replace-with-device-client-id
+      scopes:
+        - openid
+        - profile
+        - email
+    uiBaseURL: https://guardian.example.com
+    google:
+      enabled: true
+      clientID: replace-with-google-client-id
+      clientSecret: replace-with-google-client-secret
+      redirectURL: https://guardian.example.com/api/v1/auth/callback/google
+  plugins:
+    publisherSigner:
+      keyID: signer-dev
+      existingSecret: guardian-plugin-publisher-signer
+      secretKey: seed
+    artifactStorage:
+      provider: gcs
+      bucket: guardian-plugin-artifacts-dev
+      prefix: development
+      maxUploadBytes: 536870912
+      gcs:
+        endpoint: ""
+        kmsKeyName: ""
+    trustedSignerKeys:
+      signer-dev: did:key:z6MkReplaceWithTrustedPluginSigner
+    # For store-backed plugin secrets:
+    # secrets:
+    #   encryptionKey:
+    #     existingSecret: guardian-plugin-secret-key
+    #     secretKey: encryption-key
+
+ingress:
+  enabled: true
+  className: haproxy
+  controlPlanePath: /api
+  hosts:
+    llmGateway: gateway.example.com
+    controlPlane: guardian.example.com
+  certManager:
+    enabled: true
+    clusterIssuer: letsencrypt-prod
+    createClusterIssuer: false
+    acme:
+      email: platform@example.com
+      server: https://acme-v02.api.letsencrypt.org/directory
+      privateKeySecretName: letsencrypt-prod-account-key
+      solver: dns01
+      dns01:
+        cloudDNS:
+          project: your-gcp-project-id
+          hostedZoneName: your-public-cloud-dns-zone
+          serviceAccountSecretRef:
+            name: cert-manager-cloud-dns
+            key: key.json
+
+guardianUI:
+  enabled: true
+  image:
+    repository: ghcr.io/eqtylab/guardian-console
+    tag: ""
+  runtime:
+    appHostname: guardian.example.com
+    apiURL: https://guardian.example.com/api
+    basePath: /
+
+# Keep these credentials in sync when using the bundled postgresql dependency
+database:
+  user: guardian
+  password: replace-with-strong-password
+  name: guardian_gateway
+
+postgresql:
+  enabled: true
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: 17.6.0-debian-12-r4
+  auth:
+    username: guardian
+    password: replace-with-strong-password
+    database: guardian_gateway
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+
+haproxyIngress:
+  enabled: true
+  nameOverride: haproxy-ingress
+  controller:
+    service:
+      type: LoadBalancer
+      enablePorts:
+        quic: false
+        stat: false
+        admin: false
+      annotations:
+        cloud.google.com/network-tier: Standard

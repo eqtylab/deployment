@@ -42,6 +42,10 @@ flowchart TD
     GSV -.-> PDF[📄 EQTY PDFGen - optional]
     PDF -.-> AUTH
 
+    GWI[🚦 Ingress - HAProxy + TLS] -.-> GW[🔀 Guardian Gateway Stack - optional]
+    GW -.-> AUTH
+    GW -.-> DB
+
     GSV --> DB[🗄️ PostgreSQL]
     AUTH --> DB
     INT --> DB
@@ -62,12 +66,15 @@ flowchart TD
 | ---------------------- | -------- | --------------------------------------------- | --------------------- |
 | **auth-service**       | Go       | Authentication, authorization, token exchange | `/authService/`       |
 | **eqty-pdfgen**        | Python   | Optional manifest → PDF/ZIP rendering         | Internal only         |
+| **gateway-stack**      | Go       | Optional LLM gateway, control plane, console  | Separate hosts        |
 | **governance-service** | Go       | Backend API, workflow engine, worker          | `/governanceService/` |
 | **governance-studio**  | React    | Web UI for governance workflows               | `/`                   |
 | **integrity-service**  | Rust     | Verifiable credentials and lineage tracking   | `/integrityService/`  |
 | **PostgreSQL**         | —        | Shared database (Bitnami Helm chart)          | Internal only         |
 
 All four application services are exposed through a single domain via NGINX Ingress with path-based routing. PostgreSQL is internal to the cluster.
+
+The **gateway-stack** subchart (LLM gateway, control plane, and Guardian console) is disabled by default and is not covered by this walkthrough. It uses its own hostnames and ingress class rather than the shared domain above. To enable it, see [`charts/gateway-stack/README.md`](../../charts/gateway-stack/README.md) and the [`values-gateway.yaml`](../../charts/governance-platform/examples/values-gateway.yaml) overlay.
 
 ### External Dependencies
 
@@ -166,14 +173,15 @@ The end-to-end deployment follows this order:
 - **cert-manager** installed with a ClusterIssuer or Issuer configured for TLS (see [`scripts/cert-issuer.sh`](../../scripts/cert-issuer.sh))
 - Sufficient resources for the platform (recommended minimums):
 
-| Component          | CPU Request | Memory Request | Storage  |
-| ------------------ | ----------- | -------------- | -------- |
-| auth-service       | 250m        | 256Mi          | —        |
-| eqty-pdfgen        | 100m        | 256Mi          | —        |
-| governance-service | 250m        | 256Mi          | —        |
-| governance-studio  | 100m        | 128Mi          | —        |
-| integrity-service  | 250m        | 256Mi          | —        |
-| PostgreSQL         | 500m        | 1Gi            | 10Gi PVC |
+| Component              | CPU Request | Memory Request | Storage  |
+| ---------------------- | ----------- | -------------- | -------- |
+| auth-service           | 250m        | 256Mi          | —        |
+| eqty-pdfgen            | 100m        | 256Mi          | —        |
+| gateway-stack (3 pods) | 600m        | 640Mi          | —        |
+| governance-service     | 250m        | 256Mi          | —        |
+| governance-studio      | 100m        | 128Mi          | —        |
+| integrity-service      | 250m        | 256Mi          | —        |
+| PostgreSQL             | 500m        | 1Gi            | 10Gi PVC |
 
 ### Microsoft Entra ID Tenant
 
@@ -849,6 +857,8 @@ kubectl create secret generic platform-database \
   --from-literal=password="$(openssl rand -hex 32)" \
   --namespace $NS
 ```
+
+> **Enabling gateway-stack later:** the umbrella reads the Guardian database DSN from a `gateway-dsn` key in this same `platform-database` Secret. Add `--from-literal=gateway-dsn='postgres://...'` when you enable `gateway-stack` — Helm can't validate an externally managed Secret, so a missing key surfaces as Guardian pods failing to start.
 
 #### Microsoft Entra ID (App Registration Credentials)
 

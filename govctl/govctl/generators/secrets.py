@@ -11,6 +11,7 @@ from govctl.core.models import (
     PlatformConfig,
     CloudProvider,
     AuthProvider,
+    DatabaseMode,
     KeyManagementProvider,
 )
 from govctl.utils.yaml import dump_yaml_with_header, _LiteralStr
@@ -69,8 +70,30 @@ def generate_secrets(config: PlatformConfig) -> str:
     return _add_yaml_comments(yaml_output)
 
 
+def _gateway_dsn(config: PlatformConfig, password: str) -> str:
+    """Build the guardian_gateway DSN consumed by the gateway-stack subchart.
+
+    The gateway reads a full connection string rather than user/password fields,
+    so the generated password is repeated here. Change both together.
+
+    Only used when gateway-stack is enabled; the umbrella writes this key into
+    the platform database Secret only in that case.
+    """
+    if config.database_mode == DatabaseMode.EXTERNAL:
+        host = "TODO-set-managed-pg-host.example.com"
+        ssl_mode = "verify-full"
+    else:
+        # Bundled Bitnami PostgreSQL resolves to "{Release.Name}-postgresql".
+        # Adjust the host if the release is not named governance-platform.
+        host = "governance-platform-postgresql"
+        ssl_mode = "disable"
+
+    return f"postgres://postgres:{password}@{host}:5432/guardian_gateway?sslmode={ssl_mode}"
+
+
 def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the secrets section based on configuration."""
+    db_password = _generate_db_secret()
     secrets: dict[str, Any] = {
         "create": True,
         # Auth provider
@@ -82,7 +105,9 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "secretName": "platform-database",
             "values": {
                 "username": "postgres",
-                "password": _generate_db_secret(),
+                "password": db_password,
+                # Only consumed when gateway-stack is enabled
+                "gatewayDsn": _gateway_dsn(config, db_password),
             },
         },
         # Auth service secrets (always required)

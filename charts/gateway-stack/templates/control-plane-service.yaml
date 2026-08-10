@@ -1,0 +1,19 @@
+{{- if and .Values.enabled .Values.controlPlane.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gateway-stack.fullname" . }}-control-plane
+  labels:
+    {{- include "gateway-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  type: {{ .Values.controlPlane.service.type }}
+  ports:
+    - port: {{ .Values.controlPlane.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "gateway-stack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+{{- end }}

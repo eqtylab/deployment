@@ -1,0 +1,236 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gateway-stack.fullname" . }}-llm-gateway
+  labels:
+    {{- include "gateway-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: llm-gateway
+spec:
+  {{- if not .Values.llmGateway.autoscaling.enabled }}
+  replicas: {{ .Values.llmGateway.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gateway-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: llm-gateway
+  template:
+    metadata:
+      labels:
+        {{- include "gateway-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: llm-gateway
+        {{- with .Values.llmGateway.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/secrets: {{ include "gateway-stack.llmGatewaySecretsChecksum" . }}
+        {{- with .Values.llmGateway.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "gateway-stack.llmGatewayServiceAccountName" . }}
+      {{- if (((.Values.global).secrets).imageRegistry).secretName }}
+      imagePullSecrets:
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
+      {{- else if (.Values.global).imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- else if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with .Values.llmGateway.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.llmGateway.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.llmGateway.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.llmGateway.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: llm-gateway
+          {{- with .Values.llmGateway.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "gateway-stack.image" (dict "root" . "image" .Values.llmGateway.image) | quote }}
+          imagePullPolicy: {{ include "gateway-stack.imagePullPolicy" (dict "root" . "image" .Values.llmGateway.image) }}
+          args:
+            - -listen={{ .Values.llmGateway.listenAddr }}
+            {{- if .Values.llmGateway.deploymentEnvironment }}
+            - -deployment-environment={{ .Values.llmGateway.deploymentEnvironment }}
+            {{- end }}
+            - -registry-backend=postgres
+            - -registry-db-dsn=$(DB_DSN)
+            - -agent-registration-enabled={{ ternary "true" "false" .Values.llmGateway.registration.enabled }}
+            - -signature-label={{ .Values.llmGateway.signature.label }}
+            - -default-sig-max-age={{ .Values.llmGateway.signature.defaultSigMaxAge }}
+            - -default-clock-skew={{ .Values.llmGateway.signature.defaultClockSkew }}
+            - -anthropic-upstream-url={{ .Values.llmGateway.upstreams.anthropicURL }}
+            - -openai-upstream-url={{ .Values.llmGateway.upstreams.openaiURL }}
+            - -audit-enabled={{ ternary "true" "false" .Values.llmGateway.audit.enabled }}
+            - -audit-db-dsn=$(DB_DSN)
+            - -audit-queue-dir={{ .Values.llmGateway.audit.queueDir }}
+            - -audit-queue-max-bytes={{ int64 .Values.llmGateway.audit.queueMaxBytes }}
+            - -audit-batch-size={{ .Values.llmGateway.audit.batchSize }}
+            - -audit-flush-interval={{ .Values.llmGateway.audit.flushInterval }}
+            - -audit-retention-days={{ .Values.llmGateway.audit.retentionDays }}
+            {{- if .Values.llmGateway.plugins.enabled }}
+            - -plugins-enabled=true
+            - -plugin-poll-interval={{ .Values.llmGateway.plugins.pollInterval }}
+            - -plugin-end-queue-dir={{ .Values.llmGateway.plugins.endQueueDir }}
+            - -plugin-end-queue-max-bytes={{ int64 .Values.llmGateway.plugins.endQueueMaxBytes }}
+            - -plugin-artifact-cache-dir={{ .Values.llmGateway.plugins.artifactCacheDir }}
+            - -plugin-authorizer-shadow-enabled={{ ternary "true" "false" .Values.llmGateway.plugins.authorizerShadowEnabled }}
+            {{- if .Values.llmGateway.plugins.artifactStorage.provider }}
+            - -plugin-artifact-storage-provider={{ .Values.llmGateway.plugins.artifactStorage.provider }}
+            {{- end }}
+            {{- if .Values.llmGateway.plugins.artifactStorage.bucket }}
+            - -plugin-artifact-storage-bucket={{ .Values.llmGateway.plugins.artifactStorage.bucket }}
+            {{- end }}
+            {{- if .Values.llmGateway.plugins.artifactStorage.prefix }}
+            - -plugin-artifact-storage-prefix={{ .Values.llmGateway.plugins.artifactStorage.prefix }}
+            {{- end }}
+            {{- if .Values.llmGateway.plugins.artifactStorage.gcs.endpoint }}
+            - -plugin-artifact-storage-gcs-endpoint={{ .Values.llmGateway.plugins.artifactStorage.gcs.endpoint }}
+            {{- end }}
+            {{- if eq .Values.llmGateway.plugins.artifactStorage.provider "s3" }}
+            {{- if .Values.llmGateway.plugins.artifactStorage.s3.endpoint }}
+            - -plugin-artifact-storage-s3-endpoint={{ .Values.llmGateway.plugins.artifactStorage.s3.endpoint }}
+            {{- end }}
+            - {{ printf "-plugin-artifact-storage-s3-region=%s" (required "llmGateway.plugins.artifactStorage.s3.region is required when provider=s3" .Values.llmGateway.plugins.artifactStorage.s3.region) | quote }}
+            - -plugin-artifact-storage-s3-force-path-style={{ ternary "true" "false" .Values.llmGateway.plugins.artifactStorage.s3.forcePathStyle }}
+            {{- end }}
+            {{- range $key := keys .Values.llmGateway.plugins.trustedSignerKeys | sortAlpha }}
+            - {{ printf "-plugin-trusted-signer-key=%s=%s" $key (index $.Values.llmGateway.plugins.trustedSignerKeys $key) | quote }}
+            {{- end }}
+            {{- $secretResolutionOrder := default (list) .Values.llmGateway.plugins.secrets.resolutionOrder }}
+            {{- $hasSecretEnvFallback := or (gt (len (default (dict) .Values.llmGateway.plugins.secretEnvs)) 0) .Values.llmGateway.plugins.secretEnvsSecret.name }}
+            {{- if gt (len $secretResolutionOrder) 0 }}
+            - {{ printf "-plugin-secrets-resolution-order=%s" (join "," $secretResolutionOrder) | quote }}
+            {{- else if $hasSecretEnvFallback }}
+            - -plugin-secrets-resolution-order=env
+            {{- end }}
+            {{- end }}
+            {{- range .Values.llmGateway.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.dbSecretName" . }}
+                  key: {{ .Values.database.secretKeys.dsn }}
+            {{- if .Values.llmGateway.registration.enabled }}
+            - name: LLM_GATEWAY_REGISTRATION_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
+                  key: {{ .Values.controlPlane.auth.secretKeys.registrationTokenSecret }}
+            - name: LLM_GATEWAY_REGISTRATION_TOKEN_ISSUER
+              value: {{ default "control-plane" .Values.controlPlane.auth.registrationTokenIssuer | quote }}
+            {{- end }}
+            {{- $credentialSigner := .Values.llmGateway.registration.credentialSigner }}
+            {{- if or $credentialSigner.existingSecret $credentialSigner.seed }}
+            - name: LLM_GATEWAY_CREDENTIAL_SIGNER_SEED
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gateway-stack.llmGatewayCredentialSignerSecretName" . }}
+                  key: {{ $credentialSigner.secretKey | default "seed" }}
+            {{- end }}
+
+            {{- range $key := keys .Values.llmGateway.plugins.secretEnvs | sortAlpha }}
+            - name: {{ $key }}
+              value: {{ index $.Values.llmGateway.plugins.secretEnvs $key | quote }}
+            {{- end }}
+
+            {{- $pluginSecretKey := .Values.llmGateway.plugins.secrets.encryptionKey }}
+            {{- if and .Values.llmGateway.plugins.enabled $pluginSecretKey.existingSecret }}
+            - name: LLM_GATEWAY_PLUGIN_SECRETS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pluginSecretKey.existingSecret }}
+                  key: {{ $pluginSecretKey.secretKey | default "encryption-key" }}
+            {{- end }}
+
+            {{- if and .Values.llmGateway.plugins.enabled (eq .Values.llmGateway.plugins.artifactStorage.provider "s3") }}
+            {{- $s3 := .Values.llmGateway.plugins.artifactStorage.s3 }}
+            {{- if $s3.existingSecret }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $s3.existingSecret }}
+                  key: {{ $s3.secretKeys.accessKeyID | default "accessKeyID" }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $s3.existingSecret }}
+                  key: {{ $s3.secretKeys.secretAccessKey | default "secretAccessKey" }}
+            {{- else }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_ACCESS_KEY_ID
+              value: {{ required "llmGateway.plugins.artifactStorage.s3.accessKeyID is required when provider=s3 and no existingSecret is set" $s3.accessKeyID | quote }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_SECRET_ACCESS_KEY
+              value: {{ required "llmGateway.plugins.artifactStorage.s3.secretAccessKey is required when provider=s3 and no existingSecret is set" $s3.secretAccessKey | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.llmGateway.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if and .Values.llmGateway.plugins.enabled .Values.llmGateway.plugins.secretEnvsSecret.name }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.llmGateway.plugins.secretEnvsSecret.name }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.llmGateway.service.port }}
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: {{ .Values.llmGateway.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.llmGateway.probes.startup.periodSeconds }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.llmGateway.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.llmGateway.probes.liveness.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.llmGateway.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.llmGateway.probes.readiness.periodSeconds }}
+          volumeMounts:
+            - name: audit-queue
+              mountPath: {{ .Values.llmGateway.audit.queueDir }}
+            {{- if .Values.llmGateway.plugins.enabled }}
+            - name: plugin-end-queue
+              mountPath: {{ .Values.llmGateway.plugins.endQueueDir }}
+            - name: plugin-artifact-cache
+              mountPath: {{ .Values.llmGateway.plugins.artifactCacheDir }}
+            {{- end }}
+          {{- with .Values.llmGateway.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: audit-queue
+          emptyDir: {}
+        {{- if .Values.llmGateway.plugins.enabled }}
+        - name: plugin-end-queue
+          emptyDir: {}
+        - name: plugin-artifact-cache
+          emptyDir: {}
+        {{- end }}
+{{- end }}
