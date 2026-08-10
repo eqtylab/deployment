@@ -404,6 +404,26 @@ spec:
                   key: {{ $workerClientSecretKey | quote }}
               {{- end }}
             {{- end }}
+            {{- if eq $idpProvider "entra" }}
+            - name: ENTRA_GOVERNANCE_WORKER_CLIENT_ID
+              {{- if .Values.config.serviceAccounts.governanceWorker.clientId }}
+              value: {{ .Values.config.serviceAccounts.governanceWorker.clientId | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $workerSecretName | quote }}
+                  key: {{ $workerClientIdKey | quote }}
+              {{- end }}
+            - name: ENTRA_GOVERNANCE_WORKER_CLIENT_SECRET
+              {{- if .Values.config.serviceAccounts.governanceWorker.clientSecret }}
+              value: {{ .Values.config.serviceAccounts.governanceWorker.clientSecret | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $workerSecretName | quote }}
+                  key: {{ $workerClientSecretKey | quote }}
+              {{- end }}
+            {{- end }}
             {{- end }}
 
             {{- if .Values.config.tokenExchange.enabled }}

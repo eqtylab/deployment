@@ -339,4 +339,4 @@ The umbrella chart (`governance-platform`) version is incremented when:
 
 - **Email**: support@eqtylab.io
 - **Documentation**: https://docs.eqtylab.io
-- **GitHub Issues**: https://github.com/eqtylab/governance-studio-infrastructure/issues
+- **GitHub Issues**: https://github.com/eqtylab/guardian-infrastructure/issues

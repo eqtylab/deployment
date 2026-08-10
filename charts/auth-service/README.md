@@ -546,6 +546,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.serviceAccounts.governanceWorker.enabled       | bool   | `true`          | Enable governance worker account                                             |
 | config.serviceAccounts.governanceWorker.scopes        | list   | See values.yaml | Worker scopes                                                                |
 | config.serviceAccounts.governanceWorker.audience      | string | `""`            | Token audience (**must be set**; Auth0 API identifier or Keycloak realm URL) |
+| config.serviceAccounts.governanceWorker.scope         | string | `""`            | Worker OAuth scope (**Entra only**; defaults to `api://<clientId>/.default`) |
 | config.serviceAccounts.governanceWorker.clientId      | string | `""`            | Worker client ID (auto-configured from global.secrets.governanceWorker)      |
 | config.serviceAccounts.governanceWorker.clientSecret  | string | `""`            | Worker client secret (auto-configured from global.secrets.governanceWorker)  |
 | config.serviceAccounts.governanceWorker.encryptionKey | string | `""`            | Encryption key (auto-configured from global.secrets.governanceWorker)        |
@@ -647,6 +648,7 @@ kubectl create secret generic platform-auth0 \
 2. **Create a second App Registration** (or reuse the first) with Microsoft Graph API permissions for user management
 3. **Grant Graph API permissions**: `User.Read.All`, `User.ReadWrite.All`, or scopes required by your deployment
 4. **Note your Tenant ID** from Azure Active Directory overview
+5. **Create a confidential App Registration** for the governance worker, if the worker service account is enabled
 
 ### Example Configuration
 
@@ -659,11 +661,37 @@ config:
       tenantId: "your-tenant-id"
       defaultRoles: "user"
 
+  serviceAccounts:
+    governanceWorker:
+      scope: "api://your-backend-app-id/.default"
+
 secrets:
   auth:
     entra:
       name: "platform-entra"
 ```
+
+### Governance Worker Scope
+
+When `config.idp.provider` is `entra` and the governance worker is enabled, auth-service
+requests worker tokens using the client credentials flow. The scope comes from
+`config.serviceAccounts.governanceWorker.scope`; when it is empty, auth-service falls back
+to `api://<clientId>/.default` using the worker's own client ID.
+
+That fallback only works if the worker App Registration has an Application ID URI. The
+`entra-bootstrap` chart does not set one on the worker app — it sets `api://<appId>` on the
+backend app only — so deployments bootstrapped that way must set the scope explicitly,
+pointing at the backend app:
+
+```yaml
+config:
+  serviceAccounts:
+    governanceWorker:
+      scope: "api://<backend-app-id>/.default"
+```
+
+The rendered `ENTRA_GOVERNANCE_WORKER_SCOPE` config key is omitted entirely when the value
+is empty, so auth-service applies its own default rather than receiving a blank scope.
 
 ### Secret Creation
 
@@ -933,4 +961,4 @@ For issues and questions:
 
 - Email: support@eqtylab.io
 - Documentation: https://docs.eqtylab.io
-- GitHub: https://github.com/eqtylab/governance-studio-infrastructure
+- GitHub: https://github.com/eqtylab/guardian-infrastructure

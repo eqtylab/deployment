@@ -1,12 +1,12 @@
 apiVersion: v2
 name: governance-ops
-description: Operational monitoring and observability for Governance Studio platform deployments. Includes Grafana dashboards and Prometheus alerts.
+description: Operational monitoring and observability for Governance Platform deployments. Includes Grafana dashboards and Prometheus alerts.
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
-home: https://github.com/eqtylab/governance-studio-infrastructure
+home: https://github.com/eqtylab/guardian-infrastructure
 sources:
-  - https://github.com/eqtylab/governance-studio-infrastructure/tree/main/charts/governance-ops
+  - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/governance-ops
 maintainers:
   - name: EQTY Lab
     email: support@eqtylab.io

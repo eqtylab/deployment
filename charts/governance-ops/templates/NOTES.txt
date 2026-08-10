@@ -65,4 +65,4 @@ If dashboards don't appear in Grafana:
   kubectl rollout restart deployment/kube-prometheus-stack-grafana -n monitoring
 
 For more information:
-  https://github.com/eqtylab/governance-studio-infrastructure/tree/main/docs/monitoring-setup.md
+  https://github.com/eqtylab/guardian-infrastructure/tree/main/docs/monitoring-setup.md

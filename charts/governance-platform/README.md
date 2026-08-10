@@ -1229,7 +1229,7 @@ For issues and questions:
 
 - **Email**: support@eqtylab.io
 - **Documentation**: https://docs.eqtylab.io
-- **GitHub Issues**: https://github.com/eqtylab/governance-studio-infrastructure/issues
+- **GitHub Issues**: https://github.com/eqtylab/guardian-infrastructure/issues
 - **Security Issues**: security@eqtylab.io
 
 When requesting support, please include:

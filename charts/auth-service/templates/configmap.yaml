@@ -156,6 +156,9 @@ data:
   {{- if $workerAudience }}
   AUTH0_GOVERNANCE_WORKER_AUDIENCE: "{{ $workerAudience }}"
   {{- end }}
+  {{- if and (eq $idpProvider "entra") .Values.config.serviceAccounts.governanceWorker.scope }}
+  ENTRA_GOVERNANCE_WORKER_SCOPE: "{{ .Values.config.serviceAccounts.governanceWorker.scope }}"
+  {{- end }}
   {{- end }}
 
   {{- if .Values.config.tokenExchange.enabled }}
