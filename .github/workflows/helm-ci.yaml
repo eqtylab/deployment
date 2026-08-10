@@ -36,7 +36,8 @@ jobs:
       - name: Add Helm repositories
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update bitnami
+          helm repo add haproxytech https://haproxytech.github.io/helm-charts
+          helm repo update bitnami haproxytech
 
       - name: Install yq
         run: |
@@ -53,7 +54,11 @@ jobs:
           fi
 
       - name: Build umbrella dependencies
-        run: helm dependency build charts/governance-platform
+        run: |
+          if [ -d charts/gateway-stack ]; then
+            helm dependency build charts/gateway-stack
+          fi
+          helm dependency build charts/governance-platform
 
       - name: Lint charts
         run: |
@@ -65,30 +70,43 @@ jobs:
 
       - name: Template supported install paths
         run: |
-          helm template governance-platform charts/governance-platform >/dev/null
+          optional_args=()
           if [ -d charts/eqty-pdfgen ]; then
+            optional_args+=(--set 'eqty-pdfgen.enabled=true')
+          fi
+          if [ -f charts/governance-platform/examples/values-gateway.yaml ]; then
+            optional_args+=(--values charts/governance-platform/examples/values-gateway.yaml)
+          fi
+
+          helm template governance-platform charts/governance-platform >/dev/null
+          if [ "${#optional_args[@]}" -gt 0 ]; then
             helm template governance-platform charts/governance-platform \
-              --set 'eqty-pdfgen.enabled=true' \
+              "${optional_args[@]}" \
               >/dev/null
           fi
-          helm template governance-platform charts/governance-platform \
-            --values charts/governance-platform/examples/values-keycloak.yaml \
-            --values charts/governance-platform/examples/values-external-postgres.yaml \
-            >/dev/null
-          helm template governance-platform charts/governance-platform \
-            --values charts/governance-platform/examples/values-auth0.yaml \
-            --values charts/governance-platform/examples/values-external-postgres.yaml \
-            >/dev/null
-          helm template governance-platform charts/governance-platform \
-            --values charts/governance-platform/examples/values-entra.yaml \
-            --values charts/governance-platform/examples/values-external-postgres.yaml \
-            >/dev/null
+
+          for idp in keycloak auth0 entra; do
+            helm template governance-platform charts/governance-platform \
+              --values "charts/governance-platform/examples/values-${idp}.yaml" \
+              --values charts/governance-platform/examples/values-external-postgres.yaml \
+              >/dev/null
+            if [ "${#optional_args[@]}" -gt 0 ]; then
+              helm template governance-platform charts/governance-platform \
+                "${optional_args[@]}" \
+                --values "charts/governance-platform/examples/values-${idp}.yaml" \
+                --values charts/governance-platform/examples/values-external-postgres.yaml \
+                >/dev/null
+            fi
+          done
 
       - name: Template registry override paths
         run: |
           template_args=()
           if [ -d charts/eqty-pdfgen ]; then
             template_args+=(--set 'eqty-pdfgen.enabled=true')
+          fi
+          if [ -f charts/governance-platform/examples/values-gateway.yaml ]; then
+            template_args+=(--values charts/governance-platform/examples/values-gateway.yaml)
           fi
 
           helm template governance-platform charts/governance-platform \
@@ -106,6 +124,11 @@ jobs:
           grep -q 'registry.customer.example/eqtylab/integrity-service' /tmp/repository-prefix-override.yaml
           if [ -d charts/eqty-pdfgen ]; then
             grep -q 'registry.customer.example/eqtylab/eqty-pdfgen' /tmp/repository-prefix-override.yaml
+          fi
+          if [ -d charts/gateway-stack ]; then
+            grep -q 'registry.customer.example/eqtylab/guardian-llm-gateway' /tmp/repository-prefix-override.yaml
+            grep -q 'registry.customer.example/eqtylab/guardian-control-plane' /tmp/repository-prefix-override.yaml
+            grep -q 'registry.customer.example/eqtylab/guardian-console' /tmp/repository-prefix-override.yaml
           fi
 
       - name: Validate release manifests
@@ -151,6 +174,9 @@ jobs:
             if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$manifest")" = "eqty-pdfgen" ]; then
               images+=(eqtyPdfgen)
             fi
+            if [ "$(yq '.charts.gatewayStack.name // ""' "$manifest")" = "gateway-stack" ]; then
+              images+=(llmGateway controlPlane guardianConsole)
+            fi
 
             for image in "${images[@]}"; do
               tag="$(yq ".images.${image}.tag" "$manifest")"
@@ -172,6 +198,9 @@ jobs:
                 charts+=(eqty-pdfgen)
               fi
               charts+=(governance-service governance-studio integrity-service)
+              if [ "$(yq '.charts.gatewayStack.name // ""' "$manifest")" = "gateway-stack" ]; then
+                charts+=(gateway-stack)
+              fi
               charts+=(governance-platform)
 
               for chart in "${charts[@]}"; do

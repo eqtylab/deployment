@@ -48,7 +48,8 @@ jobs:
       - name: Add Helm repositories
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update bitnami
+          helm repo add haproxytech https://haproxytech.github.io/helm-charts
+          helm repo update bitnami haproxytech
 
       - name: Install yq
         run: |
@@ -117,6 +118,9 @@ jobs:
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             services+=(eqtyPdfgen)
           fi
+          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
+            services+=(llmGateway controlPlane guardianConsole)
+          fi
 
           for service in "${services[@]}"; do
             tag="$(yq ".images.${service}.tag" "$MANIFEST")"
@@ -136,6 +140,9 @@ jobs:
             charts+=(eqty-pdfgen)
           fi
           charts+=(governance-service governance-studio integrity-service)
+          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
+            charts+=(gateway-stack)
+          fi
           charts+=(governance-platform)
 
           for chart in "${charts[@]}"; do
@@ -155,12 +162,18 @@ jobs:
         env:
           MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
+          if [ -d charts/gateway-stack ]; then
+            helm dependency build charts/gateway-stack
+          fi
           helm dependency build charts/governance-platform
           charts=(charts/auth-service)
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             charts+=(charts/eqty-pdfgen)
           fi
           charts+=(charts/governance-service charts/governance-studio charts/integrity-service)
+          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
+            charts+=(charts/gateway-stack)
+          fi
           charts+=(charts/governance-platform)
 
           for chart in "${charts[@]}"; do
@@ -170,6 +183,9 @@ jobs:
           template_args=()
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             template_args+=(--set 'eqty-pdfgen.enabled=true')
+          fi
+          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
+            template_args+=(--values charts/governance-platform/examples/values-gateway.yaml)
           fi
 
           helm template governance-platform charts/governance-platform \
@@ -210,7 +226,7 @@ jobs:
             local digest
             local package_sha
 
-            if [ "$chart" = "governance-platform" ]; then
+            if [ "$chart" = "gateway-stack" ] || [ "$chart" = "governance-platform" ]; then
               helm dependency build "$chart_dir"
             fi
 
@@ -257,6 +273,9 @@ jobs:
             charts+=(eqty-pdfgen)
           fi
           charts+=(governance-service governance-studio integrity-service)
+          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
+            charts+=(gateway-stack)
+          fi
           charts+=(governance-platform)
 
           for chart in "${charts[@]}"; do
