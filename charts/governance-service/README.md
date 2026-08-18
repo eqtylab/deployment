@@ -17,7 +17,7 @@ Key capabilities:
 
 Governance Service uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
-The container also receives a `SERVICE_VERSION` environment variable, auto-populated from `Chart.Version`. This is intended for display and observability purposes and is not user-configurable.
+The container also receives a `SERVICE_VERSION` environment variable, auto-populated from `Chart.Version`. It is reported by the health endpoints and as `info.version` in the Swagger document served at `/swagger/doc.json`, and is not user-configurable.
 
 This allows:
 

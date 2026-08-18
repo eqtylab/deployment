@@ -17,6 +17,8 @@ Key capabilities:
 
 Integrity Service uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
+The container also receives a `SERVICE_VERSION` environment variable, auto-populated from `Chart.Version`. It is reported by the health endpoint and as `info.version` in the OpenAPI document served at `/api-docs/openapi.json`, and is not user-configurable.
+
 This allows:
 
 - A single immutable container image across environments
