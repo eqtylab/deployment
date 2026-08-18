@@ -124,6 +124,8 @@ spec:
             - {{ . | quote }}
             {{- end }}
           env:
+            - name: LLM_GATEWAY_SERVICE_VERSION
+              value: {{ .Chart.Version | quote }}
             - name: DB_DSN
               valueFrom:
                 secretKeyRef:

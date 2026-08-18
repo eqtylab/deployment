@@ -209,6 +209,8 @@ spec:
             - {{ . | quote }}
             {{- end }}
           env:
+            - name: CONTROL_PLANE_SERVICE_VERSION
+              value: {{ .Chart.Version | quote }}
             - name: DB_DSN
               valueFrom:
                 secretKeyRef:

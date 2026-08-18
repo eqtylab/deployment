@@ -22,6 +22,8 @@ Public routes (`ingress.enabled`), agent registration (`llmGateway.registration.
 
 The Gateway Stack uses runtime configuration injected via container arguments and environment variables. Application configuration is provided through Helm values and applied to the container at startup.
 
+The llm-gateway and control-plane containers also receive `LLM_GATEWAY_SERVICE_VERSION` and `CONTROL_PLANE_SERVICE_VERSION` respectively, auto-populated from `Chart.Version` and not user-configurable. These carry the service-prefixed names each service's config loader expects, rather than the bare `SERVICE_VERSION` used by the platform charts.
+
 This allows:
 
 - A single immutable container image across environments
