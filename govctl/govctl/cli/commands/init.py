@@ -69,7 +69,7 @@ def init_cmd(
     output: str,
     interactive: bool,
 ):
-    """Initialize a new Governance Studio Platform deployment.
+    """Initialize a new Governance Platform deployment.
 
     Generates values.yaml and secrets.yaml files based on your configuration.
 
@@ -86,7 +86,7 @@ def init_cmd(
     """
     console.print(
         Panel.fit(
-            "[bold blue]Governance Studio Platform Configuration[/bold blue]\n"
+            "[bold blue]Governance Platform Configuration[/bold blue]\n"
             "Generate Helm values for your deployment",
             border_style="blue",
         )
