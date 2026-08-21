@@ -1041,6 +1041,11 @@ auth-service:
         tenantId: "your-tenant-id"
         defaultRoles: "user"
 
+    # Governance worker — client-credentials service account
+    serviceAccounts:
+      governanceWorker:
+        scope: "api://your-backend-app-id/.default"
+
     # Key Management — GCP KMS for DID signing keys
     keyManagement:
       provider: "gcp_kms"
@@ -1051,13 +1056,20 @@ auth-service:
         scheduledDestroyDays: 24
 ```
 
-| Field                              | Description                 | Where to Get It                                      |
-| ---------------------------------- | --------------------------- | ---------------------------------------------------- |
-| `idp.issuer`                       | Entra ID v2.0 issuer URL    | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
-| `idp.entra.tenantId`               | Entra Directory (tenant) ID | Azure Portal > Entra ID > Overview                   |
-| `keyManagement.gcp_kms.projectId`  | GCP project ID              | From [Section 3](#key-management)                    |
-| `keyManagement.gcp_kms.locationId` | GCP KMS location            | From [Section 3](#key-management)                    |
-| `keyManagement.gcp_kms.keyRingId`  | KMS key ring name           | From [Section 3](#key-management)                    |
+| Field                                    | Description                   | Where to Get It                                      |
+| ---------------------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `idp.issuer`                             | Entra ID v2.0 issuer URL      | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
+| `idp.entra.tenantId`                     | Entra Directory (tenant) ID   | Azure Portal > Entra ID > Overview                   |
+| `keyManagement.gcp_kms.projectId`        | GCP project ID                | From [Section 3](#key-management)                    |
+| `keyManagement.gcp_kms.locationId`       | GCP KMS location              | From [Section 3](#key-management)                    |
+| `keyManagement.gcp_kms.keyRingId`        | KMS key ring name             | From [Section 3](#key-management)                    |
+| `serviceAccounts.governanceWorker.scope` | OAuth scope for worker tokens | `api://<backend-app-id>/.default` (see note)         |
+
+> **The worker scope must be set.** The bootstrap creates the `Governance Worker`
+> app with no Application ID URI, so auth-service's default of
+> `api://<worker-app-id>/.default` does not resolve. Point the scope at the
+> **backend** app instead, using the Backend App ID from
+> [Section 7](#retrieve-app-registration-credentials).
 
 ### Governance Service
 

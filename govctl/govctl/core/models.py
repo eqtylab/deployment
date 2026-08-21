@@ -37,7 +37,7 @@ CLOUD_TO_STORAGE = {
 
 @dataclass
 class PlatformConfig:
-    """Configuration for the Governance Studio Platform."""
+    """Configuration for the Governance Platform."""
 
     # Core settings
     cloud_provider: CloudProvider

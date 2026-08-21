@@ -62,7 +62,7 @@ Set up one of the following before deployment:
 govctl init
 
 ╭──────────────────────────────────────────╮
-│ Governance Studio Platform Configuration │
+│ Governance Platform Configuration        │
 │ Generate Helm values for your deployment │
 ╰──────────────────────────────────────────╯
 

@@ -1045,6 +1045,11 @@ auth-service:
         tenantId: "your-tenant-id"
         defaultRoles: "user"
 
+    # Governance worker — client-credentials service account
+    serviceAccounts:
+      governanceWorker:
+        scope: "api://your-backend-app-id/.default"
+
     # Key Management — AWS KMS for DID signing keys
     keyManagement:
       provider: "aws_kms"
@@ -1052,11 +1057,18 @@ auth-service:
         region: "us-east-1"
 ```
 
-| Field                          | Description                 | Where to Get It                                      |
-| ------------------------------ | --------------------------- | ---------------------------------------------------- |
-| `idp.issuer`                   | Entra ID v2.0 issuer URL    | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
-| `idp.entra.tenantId`           | Entra Directory (tenant) ID | Azure Portal > Entra ID > Overview                   |
-| `keyManagement.aws_kms.region` | AWS KMS region              | Your AWS region (e.g., `us-east-1`)                  |
+| Field                                    | Description                   | Where to Get It                                      |
+| ---------------------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `idp.issuer`                             | Entra ID v2.0 issuer URL      | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
+| `idp.entra.tenantId`                     | Entra Directory (tenant) ID   | Azure Portal > Entra ID > Overview                   |
+| `keyManagement.aws_kms.region`           | AWS KMS region                | Your AWS region (e.g., `us-east-1`)                  |
+| `serviceAccounts.governanceWorker.scope` | OAuth scope for worker tokens | `api://<backend-app-id>/.default` (see note)         |
+
+> **The worker scope must be set.** The bootstrap creates the `Governance Worker`
+> app with no Application ID URI, so auth-service's default of
+> `api://<worker-app-id>/.default` does not resolve. Point the scope at the
+> **backend** app instead, using the Backend App ID from
+> [Section 7](#retrieve-app-registration-credentials).
 
 ### Governance Service
 

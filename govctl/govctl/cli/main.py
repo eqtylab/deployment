@@ -8,9 +8,9 @@ from govctl.cli.commands import init
 @click.group()
 @click.version_option()
 def cli():
-    """govctl - Governance Studio Platform CLI.
+    """govctl - Governance Platform CLI.
 
-    Generate Helm values and secrets files for deploying the Governance Studio Platform.
+    Generate Helm values and secrets files for deploying the Governance Platform.
     """
     pass
 
