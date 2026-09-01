@@ -167,6 +167,8 @@ When deployed via the umbrella chart, these global values are automatically used
 | llmGateway.registration.credentialSigner.seed           | string | `""`                              | Inline Ed25519 seed; prefer `existingSecret` |
 | llmGateway.registration.credentialSigner.existingSecret | string | `""`                              | Pre-created Secret holding the signer seed   |
 | llmGateway.registration.credentialSigner.secretKey      | string | `"seed"`                          | Key within the signer Secret                 |
+| llmGateway.authServiceBaseURL                           | string | `""`                              | Auth-service URL for API-key enroll; empty disables that path |
+| llmGateway.authServiceIdentityIssuer                    | string | `""`                              | Registry identity issuer; defaults to `<authServiceBaseURL>/api/v1/auth` |
 | llmGateway.audit.enabled                                | bool   | `true`                            | Enable audit logging                         |
 | llmGateway.audit.queueDir                               | string | `"/var/lib/guardian/audit-queue"` | Audit queue directory (emptyDir)             |
 | llmGateway.audit.queueMaxBytes                          | int    | `10737418240`                     | Audit queue size cap (10 GiB)                |
@@ -489,6 +491,8 @@ Expected secret keys:
 
 When `llmGateway.registration.enabled=true`, `llm-gateway` reads `registrationTokenSecret` from this secret as `LLM_GATEWAY_REGISTRATION_TOKEN_SECRET`.
 
+API-key enrollment (`viper did register` with `GUARDIAN_API_KEY`) is a separate path. Set `llmGateway.authServiceBaseURL` to the auth-service that minted the key (for example the in-cluster Studio auth-service). Leaving it empty keeps that path disabled and the gateway returns `404 registration_unavailable`.
+
 ## Gateway VC Issuer Signer Wiring
 
 When `llmGateway.registration.enabled=true`, the gateway also needs an Ed25519 seed so it can issue registration and renewal verifiable credentials. Prefer a pre-created Kubernetes Secret:
@@ -680,6 +684,7 @@ kubectl exec -it deployment/guardian-control-plane -n guardian -- curl -s localh
 - Confirm `llmGateway.registration.enabled=true` and a credential signer seed is present
 - Verify llm-gateway and control-plane resolve the same `registrationTokenSecret`
 - Check clock skew against `llmGateway.signature.defaultClockSkew`
+- `404 registration_unavailable` / `API-key agent registration is not enabled` means `llmGateway.authServiceBaseURL` is unset, not that the key is invalid
 
 **Certificates not issued**
 

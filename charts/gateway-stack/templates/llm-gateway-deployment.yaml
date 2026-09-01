@@ -120,6 +120,12 @@ spec:
             - -plugin-secrets-resolution-order=env
             {{- end }}
             {{- end }}
+            {{- if .Values.llmGateway.authServiceBaseURL }}
+            - {{ printf "-auth-service-base-url=%s" .Values.llmGateway.authServiceBaseURL | quote }}
+            {{- end }}
+            {{- if .Values.llmGateway.authServiceIdentityIssuer }}
+            - {{ printf "-auth-service-identity-issuer=%s" .Values.llmGateway.authServiceIdentityIssuer | quote }}
+            {{- end }}
             {{- range .Values.llmGateway.extraArgs }}
             - {{ . | quote }}
             {{- end }}

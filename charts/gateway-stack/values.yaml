@@ -277,6 +277,17 @@ llmGateway:
       # -- Credential Signer Secret Key
       # @default -- `seed`
       secretKey: seed
+  # -- Auth-service base URL for API-key agent enrollment
+  # @default -- `""`
+  # Empty disables the API-key registration path (viper `GUARDIAN_API_KEY` /
+  # `did register --api-key`). Token registration (`registration.enabled`) is
+  # independent. When set, llm-gateway validates Bearer `ak_` keys against
+  # `{url}/api/v1/auth/validate`. Identity issuer defaults to
+  # `{url}/api/v1/auth` when authServiceIdentityIssuer is empty.
+  authServiceBaseURL: ""
+  # -- Identity issuer stamped on API-key enrolled agents
+  # @default -- `""` (defaults to `<authServiceBaseURL>/api/v1/auth`)
+  authServiceIdentityIssuer: ""
   # -- Audit Configuration
   # @default -- See values below
   audit:
