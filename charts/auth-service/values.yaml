@@ -745,9 +745,8 @@ config:
     privateKey: ""
     # -- Access Token Expiry
     # @default -- `3600`
-    # Lifetime of issued access tokens in seconds. Applied on token refresh;
-    # the first token after login is capped by the IdP token's remaining life
-    # (Keycloak realm accessTokenLifespan)
+    # Lifetime of issued access tokens in seconds, max 86400; the first token
+    # after login is capped by the IdP token's remaining life
     accessTokenExpirySeconds: 3600
 
 # =============================================================================

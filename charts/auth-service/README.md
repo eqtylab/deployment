@@ -556,12 +556,12 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 Token exchange is only relevant for Keycloak deployments using federated authentication. It is disabled by default.
 
-| Key                                           | Type   | Default                   | Description                                                                               |
-| --------------------------------------------- | ------ | ------------------------- | ----------------------------------------------------------------------------------------- |
-| config.tokenExchange.enabled                  | bool   | `false`                   | Enable token exchange (Keycloak only)                                                     |
-| config.tokenExchange.keyId                    | string | `"auth-service-prod-001"` | Key identifier for signing key                                                            |
-| config.tokenExchange.privateKey               | string | `""`                      | Token exchange private key (auto-configured from global.secrets.auth.keycloak)            |
-| config.tokenExchange.accessTokenExpirySeconds | int    | `3600`                    | Access token lifetime in seconds. Applied on token refresh; the first token after login is capped by the IdP token's remaining life |
+| Key                                           | Type   | Default                   | Description                                                                                                                                                                  |
+| --------------------------------------------- | ------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| config.tokenExchange.enabled                  | bool   | `false`                   | Enable token exchange (Keycloak only)                                                                                                                                        |
+| config.tokenExchange.keyId                    | string | `"auth-service-prod-001"` | Key identifier for signing key                                                                                                                                               |
+| config.tokenExchange.privateKey               | string | `""`                      | Token exchange private key (auto-configured from global.secrets.auth.keycloak)                                                                                               |
+| config.tokenExchange.accessTokenExpirySeconds | int    | `3600`                    | Access token lifetime in seconds, clamped to `86400` (24h) by the service. Applied on token refresh; the first token after login is capped by the IdP token's remaining life |
 
 ### Advanced: Network Policy Configuration
 
