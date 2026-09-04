@@ -1131,6 +1131,7 @@ auth-service:
     tokenExchange:
       enabled: true
       keyId: "auth-service-prod-001" # Unique key identifier
+      accessTokenExpirySeconds: 3600 # Applied on token refresh; the login token is capped by Keycloak's lifespan
 
     # Key Management — GCP KMS for DID signing keys
     keyManagement:

@@ -167,5 +167,8 @@ data:
   # Token Exchange Configuration
   # ==========================================================================
   AUTH_SERVICE_KEY_ID: "{{ .Values.config.tokenExchange.keyId }}"
+  {{- with .Values.config.tokenExchange.accessTokenExpirySeconds }}
+  ACCESS_TOKEN_EXPIRY_SECONDS: "{{ . }}"
+  {{- end }}
   {{- end }}
 {{- end }}

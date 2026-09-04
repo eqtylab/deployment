@@ -1105,6 +1105,12 @@ auth-service:
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
       # Only used when tokenExchange is enabled
       privateKey: ""
+      # -- Access Token Expiry
+      # @default -- `3600`
+      # Lifetime of issued access tokens in seconds. Applied on token refresh;
+      # the first token after login is capped by the IdP token's remaining life
+      # (Keycloak realm accessTokenLifespan)
+      accessTokenExpirySeconds: 3600
 
   # =============================================================================
   # NETWORK POLICY CONFIGURATION
