@@ -108,3 +108,6 @@ docs:
   default: false
   sourceRepository: eqtylab/governance-platform-docs
   sourceFormat: static-site
+  sourceCommit: adb77425fd3224d53aeb724611adf11b4de11418
+  snapshotTag: docs/v1.1.1
+  workflowRunUrl: https://github.com/eqtylab/governance-platform-docs/actions/runs/32496759496
