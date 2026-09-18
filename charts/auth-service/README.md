@@ -265,7 +265,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                               |
 | global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                               |
 | global.secrets.authService.secretName                   | string | Auth service security secrets name                             |
-| global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, or gcp_kms) |
+| global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, gcp_kms, or openbao) |
 | global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                                |
 | global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                        |
 | global.secrets.keyManagement.gcp_kms.secretName         | string | GCP KMS credentials secret name                                |
@@ -428,6 +428,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------ |
 | secrets.keyManagement.aws_kms.name         | string | Secret name (auto-configured from global.secrets.keyManagement.aws_kms.secretName)         |
 | secrets.keyManagement.azure_key_vault.name | string | Secret name (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName) |
+| secrets.keyManagement.openbao.name         | string | Operator-managed OpenBao token Secret (openbao + token_file only; auto-configured from global.secrets.keyManagement.openbao.secretName) |
 | secrets.keyManagement.gcp_kms.name         | string | Secret name (auto-configured from global.secrets.keyManagement.gcp_kms.secretName)         |
 
 #### Governance Worker Secret
@@ -521,7 +522,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 | Key                                               | Type   | Default | Description                                                                                                              |
 | ------------------------------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| config.keyManagement.provider                     | string | `""`    | Provider (`"aws_kms"`, `"azure_key_vault"`, or `"gcp_kms"`) (auto-configured from global.secrets.keyManagement.provider) |
+| config.keyManagement.provider                     | string | `""`    | Provider (`"aws_kms"`, `"azure_key_vault"`, `"gcp_kms"`, or `"openbao"`) (auto-configured from global.secrets.keyManagement.provider) |
 | config.keyManagement.cacheTTLMinutes              | int    | `15`    | DID key cache TTL in minutes                                                                                             |
 | config.keyManagement.aws_kms.region               | string | `""`    | AWS KMS region                                                                                                           |
 | config.keyManagement.aws_kms.endpoint             | string | `""`    | AWS KMS endpoint (optional, for custom endpoints like LocalStack)                                                        |
@@ -539,6 +540,21 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.keyManagement.gcp_kms.keyRingId            | string | `""`    | GCP KMS key ring ID (defaults to `eqtylab-did`)                                                                          |
 | config.keyManagement.gcp_kms.scheduledDestroyDays | int    | `24`    | GCP KMS scheduled destroy days                                                                                           |
 | config.keyManagement.gcp_kms.serviceAccountJson   | string | `""`    | GCP service account JSON (optional with Workload Identity)                                                               |
+| config.keyManagement.algorithm | string | `""` | DID algorithm: image default secp256k1; OpenBao renders p256. |
+| config.keyManagement.openbao.developmentEnabled | bool | `false` | Required development opt-in; environment must also be development. |
+| config.keyManagement.openbao.address | string | `""` | Required HTTPS origin; explicit loopback IP permits HTTP. Optional root slash; no credentials, path, query or fragment. localhost is rejected. |
+| config.keyManagement.openbao.transitMount | string | `""` | Dedicated Transit mount; defaults to guardian-did. |
+| config.keyManagement.openbao.keyPrefix | string | `""` | Key name prefix; defaults to guardian. |
+| config.keyManagement.openbao.requestTimeout | string | `""` | Request timeout; defaults to 5s, maximum 30s. |
+| config.keyManagement.openbao.ca.secretName | string | `""` | CA Secret; mutually exclusive with configMapName. Neither uses image system trust. |
+| config.keyManagement.openbao.ca.configMapName | string | `""` | CA ConfigMap; mutually exclusive with secretName. |
+| config.keyManagement.openbao.ca.key | string | `""` | CA bundle key; defaults to ca.pem. |
+| config.keyManagement.openbao.auth.method | string | `"kubernetes"` | kubernetes or token_file. |
+| config.keyManagement.openbao.auth.mount | string | `""` | Kubernetes auth mount; defaults to kubernetes. |
+| config.keyManagement.openbao.auth.role | string | `""` | Required role for Kubernetes auth. |
+| config.keyManagement.openbao.auth.audience | string | `""` | Required projected token audience; must match the role. |
+| config.keyManagement.openbao.auth.tokenExpirationSeconds | int | `3600` | Projected token lifetime; kubelet rotates it. |
+| config.keyManagement.openbao.auth.tokenKey | string | `""` | Token Secret key and mounted filename; defaults to token. Secret name resolves from secrets.keyManagement.openbao.name before the global fallback. |
 
 #### Service Account Configuration
 
@@ -743,7 +759,7 @@ secrets:
 
 ## Key Management Configuration
 
-Choose one key management provider for DID credential signing: AWS KMS, Azure Key Vault, or GCP KMS.
+Choose one key management provider for DID credential signing: AWS KMS, Azure Key Vault, GCP KMS, or OpenBao Transit (development profile).
 
 ### AWS KMS
 
@@ -850,6 +866,112 @@ kubectl create secret generic platform-gcp-kms \
   --from-literal=service-account-json="$(cat gcp-service-account.json)" \
   --namespace governance
 ```
+
+### OpenBao Transit (development profile)
+
+OpenBao Transit keeps the DID signing keys in a customer-managed or separately
+installed OpenBao and needs no cloud credentials. Auth creates and uses
+non-exportable P-256 keys under a dedicated Transit mount and authenticates
+with a projected Kubernetes service-account token or an operator-managed token
+file. The current auth-service images only accept this provider in the
+development profile: the chart renders `OPENBAO_DEVELOPMENT_ENABLED=true` and
+fails at `helm template` time unless the environment resolves to `development`
+and `config.keyManagement.openbao.developmentEnabled` is true. Lifting that
+gate is a separate Auth release, not a chart value.
+
+#### Minimum image
+
+The provider requires an auth-service image that contains the OpenBao provider
+(guardian PRs #216 token-file authentication, #225 Kubernetes authentication,
+#223/#224 provisioning and signing health). Do not select `openbao` with an
+older image; it rejects the provider at startup.
+
+#### Required OpenBao Setup (operator-managed)
+
+1. A dedicated Transit mount for Auth with plaintext backup, export and
+   deletion disabled; the scoped policy and its `type=ecdsa-p256` constraint
+   are documented in the Auth Service README.
+2. For `kubernetes` auth: a Kubernetes auth mount, a role bound to this
+   release's ServiceAccount, namespace and audience, and a TokenReview
+   reviewer that is not the Auth ServiceAccount.
+3. For `token_file` auth: a scoped token in a Secret this chart never creates
+   (for example written by an OpenBao Agent); replacing the Secret's content
+   rotates the credential without restarting Auth.
+4. The CA bundle for the endpoint in a ConfigMap or Secret, unless the image's
+   system trust roots already contain it.
+
+Initialization, unsealing, policies and roles are never performed by Auth or
+by a Helm hook.
+
+#### Example Configuration (Kubernetes auth)
+
+```yaml
+config:
+  server:
+    environment: development
+  keyManagement:
+    provider: "openbao"
+    openbao:
+      developmentEnabled: true
+      address: "https://openbao-custody-active.custody.svc.cluster.local:8200"
+      transitMount: "guardian-did"
+      keyPrefix: "guardian"
+      ca:
+        configMapName: "openbao-ca"
+        key: "ca.pem"
+      auth:
+        method: "kubernetes"
+        mount: "kubernetes"
+        role: "guardian-auth"
+        audience: "openbao"
+```
+
+The chart mounts the CA at `/etc/openbao/ca` and a projected token with the
+configured audience at `/var/run/secrets/openbao/token`, and renders every
+`OPENBAO_*` setting into the ConfigMap. Complete examples:
+`examples/values-openbao-kubernetes.yaml`, `examples/values-openbao-token-file.yaml`.
+
+#### Example Configuration (token file, external OpenBao)
+
+This example targets an external, operator-managed endpoint. For the supplied
+custody chart, use `https://openbao-custody-active.custody.svc.cluster.local:8200`.
+
+```yaml
+config:
+  server:
+    environment: development
+  keyManagement:
+    provider: "openbao"
+    openbao:
+      developmentEnabled: true
+      address: "https://openbao.custody.example.internal:8200"
+      ca:
+        secretName: "openbao-ca"
+      auth:
+        method: "token_file"
+
+secrets:
+  keyManagement:
+    openbao:
+      name: "platform-openbao-token"
+```
+
+```bash
+kubectl create secret generic platform-openbao-token \
+  --from-file=token=./auth.token \
+  --namespace governance
+```
+
+#### Render-time checks
+
+`helm template` fails when the provider is `openbao` and: the environment is
+not `development`, `developmentEnabled` is false, `address` is empty or not an
+`https://` origin (loopback `http://` is allowed for local clusters),
+`algorithm` is set to anything but `p256`, both CA sources are set, a
+`kubernetes` role or audience is missing, a `token_file` Secret name is
+missing, or the auth method is unknown. Cloud providers and the default render
+are unchanged, and no cloud KMS credentials are mounted when `openbao` is
+selected.
 
 ## Troubleshooting
 

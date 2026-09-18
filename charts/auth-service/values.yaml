@@ -384,6 +384,14 @@ secrets:
       # @default -- `""` (auto-configured from global.secrets.keyManagement.gcp_kms.secretName)
       name: ""
 
+    # -- OpenBao token Secret
+    # @default -- See values below
+    # Only used when provider is "openbao" and auth method is "token_file"
+    openbao:
+      # -- Secret name holding the scoped OpenBao token (operator-managed; never created here)
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.openbao.secretName)
+      name: ""
+
   # -- Governance Worker Secret
   # @default -- See values below
   governanceWorker:
@@ -610,12 +618,89 @@ config:
   keyManagement:
     # -- Provider
     # @default -- `""` (auto-configured from global.secrets.keyManagement.provider)
-    # Options: aws_kms, azure_key_vault, gcp_kms
+    # Options: aws_kms, azure_key_vault, gcp_kms, openbao
     provider: ""
+    # -- DID key algorithm for newly created keys (DID_KEY_ALGORITHM)
+    # @default -- `""` (image default `secp256k1`; `openbao` renders `p256`)
+    # Cloud providers only accept secp256k1; OpenBao requires p256. Leave empty
+    # unless the Auth image documents another value.
+    algorithm: ""
     # -- Cache TTL Minutes
     # @default -- `15`
-    # DID Key cache TTL in minutes
+    # DID Key cache TTL in minutes (not used by the openbao provider)
     cacheTTLMinutes: 15
+
+    # -- OpenBao Transit Configuration
+    # @default -- See values below
+    # Only used when provider is "openbao". Requires an auth-service image that
+    # contains the OpenBao provider (guardian PRs #216 token_file, #225
+    # kubernetes auth, #223/#224 provisioning and signing health). The current
+    # images gate OpenBao to ENVIRONMENT=development with
+    # developmentEnabled=true; rendering fails otherwise. No cloud KMS
+    # credentials are mounted when this provider is selected.
+    openbao:
+      # -- Development gate (OPENBAO_DEVELOPMENT_ENABLED)
+      # @default -- `false`
+      # Must be true while the Auth image only supports the development profile.
+      developmentEnabled: false
+      # -- OpenBao API origin (OPENBAO_ADDRESS)
+      # @default -- `""`
+      # **REQUIRED**: `https://` origin (or `http://` on an explicit loopback IP)
+      # without credentials, path, query or fragment; an optional trailing / is allowed.
+      # HTTPS example: https://openbao-custody-active.custody.svc.cluster.local:8200
+      # localhost is rejected; for HTTP use an explicit loopback IP, e.g. http://127.0.0.1:8200
+      address: ""
+      # -- Transit mount dedicated to Auth (OPENBAO_TRANSIT_MOUNT)
+      # @default -- `guardian-did`
+      transitMount: ""
+      # -- Key name prefix inside the mount (OPENBAO_KEY_PREFIX)
+      # @default -- `guardian`
+      keyPrefix: ""
+      # -- Per-request timeout (OPENBAO_REQUEST_TIMEOUT)
+      # @default -- `5s` (maximum 30s)
+      requestTimeout: ""
+      # -- CA bundle for the OpenBao endpoint (OPENBAO_CA_FILE)
+      # @default -- See values below
+      # Mounted read-only at /etc/openbao/ca; leave both names empty to use the
+      # image's system trust roots. Set exactly one of secretName/configMapName.
+      ca:
+        # -- Secret holding the PEM bundle
+        # @default -- `""`
+        secretName: ""
+        # -- ConfigMap holding the PEM bundle
+        # @default -- `""`
+        configMapName: ""
+        # -- Key inside the Secret/ConfigMap
+        # @default -- `ca.pem`
+        key: ""
+      # -- Workload authentication
+      # @default -- See values below
+      auth:
+        # -- OPENBAO_AUTH_METHOD: `kubernetes` (projected service-account token,
+        # recommended) or `token_file` (operator-managed scoped token in a Secret)
+        # @default -- `kubernetes`
+        method: "kubernetes"
+        # -- Kubernetes auth mount (OPENBAO_AUTH_MOUNT)
+        # @default -- `kubernetes`
+        mount: ""
+        # -- OpenBao role bound to this service account and namespace (OPENBAO_AUTH_ROLE)
+        # @default -- `""`
+        # **REQUIRED for kubernetes**
+        role: ""
+        # -- Audience of the projected token (OPENBAO_KUBERNETES_AUDIENCE)
+        # @default -- `""`
+        # **REQUIRED for kubernetes**; must match the OpenBao role's bound audience
+        audience: ""
+        # -- Lifetime of the projected token in seconds
+        # @default -- `3600`
+        # The kubelet rotates the file before expiry; Auth rereads it on every login.
+        tokenExpirationSeconds: 3600
+        # -- Key inside the token Secret (token_file only)
+        # @default -- `token`
+        # The Secret name comes from secrets.keyManagement.openbao.name or
+        # global.secrets.keyManagement.openbao.secretName; it is mounted read-only
+        # at /etc/openbao/token and never created by this chart.
+        tokenKey: ""
 
     # -- AWS KMS Configuration
     # @default -- See values below

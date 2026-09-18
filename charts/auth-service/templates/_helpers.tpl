@@ -66,3 +66,86 @@ Resolve the full image reference.
 {{- define "auth-service.image" -}}
 {{- printf "%s:%s" (include "auth-service.imageRepository" .) (.Values.image.tag | default .Chart.AppVersion) -}}
 {{- end -}}
+
+{{/*
+Resolve the key management provider (chart value first, then the umbrella global).
+*/}}
+{{- define "auth-service.keyManagementProvider" -}}
+{{- .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" -}}
+{{- end -}}
+
+{{/*
+Resolve the OpenBao token Secret name (token_file auth only).
+*/}}
+{{- define "auth-service.openbaoTokenSecretName" -}}
+{{- .Values.secrets.keyManagement.openbao.name | default ((((.Values.global).secrets).keyManagement).openbao).secretName | default "" -}}
+{{- end -}}
+
+{{/*
+Validate the OpenBao profile at render time so a misconfigured release fails in
+helm, not in a crash-looping pod. Mirrors the Auth image's own startup checks.
+*/}}
+{{- define "auth-service.openbaoValidate" -}}
+{{- $bao := .Values.config.keyManagement.openbao -}}
+{{- $environment := .Values.config.server.environment | default ((.Values.global).environmentType) | default "production" -}}
+{{- if ne $environment "development" -}}
+{{- fail (printf "config.keyManagement.provider=openbao is development-only in the current auth-service images: ENVIRONMENT resolves to %q, set config.server.environment (or global.environmentType) to \"development\"" $environment) -}}
+{{- end -}}
+{{- if not $bao.developmentEnabled -}}
+{{- fail "config.keyManagement.openbao.developmentEnabled must be true: the current auth-service images only support the development OpenBao profile" -}}
+{{- end -}}
+{{- if not $bao.address -}}
+{{- fail "config.keyManagement.openbao.address is required when key management provider is openbao" -}}
+{{- end -}}
+{{- /* Parse the origin before checking transport. urlParse alone accepts userinfo,
+paths and empty hosts. A root slash is supported by the Auth runtime. */ -}}
+{{- if not (regexMatch `^https?://(\[[0-9a-fA-F:.]+\]|[^/:@?#[:space:]\[\]\\%]+)(:[0-9]*)?/?$` $bao.address) -}}
+{{- fail "config.keyManagement.openbao.address must be an HTTP(S) origin without credentials, path, query or fragment (an optional trailing / is allowed)" -}}
+{{- end -}}
+{{- $origin := urlParse $bao.address -}}
+{{- $host := regexReplaceAll `:[0-9]*$` $origin.host "" -}}
+{{- $octet := `(0|[1-9][0-9]?|1[0-9]{2}|2[0-4][0-9]|25[0-5])` -}}
+{{- $ipv4 := printf `127\.%s\.%s\.%s` $octet $octet $octet -}}
+{{- $loopback := regexMatch (printf `^%s$` $ipv4) $host -}}
+{{- /* net.IP.IsLoopback also accepts expanded IPv6 and IPv4-mapped IPv6. */ -}}
+{{- $v6 := list `(0{1,4}:){7}0{0,3}1` (printf `(0{1,4}:){5}[fF]{4}:%s` $ipv4) `(0{1,4}:){5}[fF]{4}:7[fF][0-9a-fA-F]{2}:[0-9a-fA-F]{1,4}` -}}
+{{- range $i := until 7 -}}
+{{- $left := trimSuffix ":" (repeat $i "0{1,4}:") -}}
+{{- range $j := until (int (sub 7 $i)) -}}
+{{- $v6 = append $v6 (printf `%s::%s0{0,3}1` $left (repeat $j "0{1,4}:")) -}}
+{{- end -}}
+{{- end -}}
+{{- range $i := until 5 -}}
+{{- $left := trimSuffix ":" (repeat $i "0{1,4}:") -}}
+{{- range $j := until (int (sub 5 $i)) -}}
+{{- $prefix := printf `%s::%s[fF]{4}:` $left (repeat $j "0{1,4}:") -}}
+{{- $v6 = append $v6 (printf `%s%s` $prefix $ipv4) -}}
+{{- $v6 = append $v6 (printf `%s7[fF][0-9a-fA-F]{2}:[0-9a-fA-F]{1,4}` $prefix) -}}
+{{- end -}}
+{{- end -}}
+{{- $loopback = or $loopback (regexMatch (printf `^\[(%s)\]$` (join "|" $v6)) $host) -}}
+{{- if and (ne $origin.scheme "https") (not $loopback) -}}
+{{- fail "config.keyManagement.openbao.address requires HTTPS except on an explicit loopback IP (localhost is not accepted)" -}}
+{{- end -}}
+{{- $algorithm := .Values.config.keyManagement.algorithm | default "p256" -}}
+{{- if ne $algorithm "p256" -}}
+{{- fail (printf "config.keyManagement.algorithm must be p256 for the openbao provider, got %q" $algorithm) -}}
+{{- end -}}
+{{- if and $bao.ca.secretName $bao.ca.configMapName -}}
+{{- fail "set only one of config.keyManagement.openbao.ca.secretName and config.keyManagement.openbao.ca.configMapName" -}}
+{{- end -}}
+{{- if eq $bao.auth.method "kubernetes" -}}
+{{- if not $bao.auth.role -}}
+{{- fail "config.keyManagement.openbao.auth.role is required when auth method is kubernetes" -}}
+{{- end -}}
+{{- if not $bao.auth.audience -}}
+{{- fail "config.keyManagement.openbao.auth.audience is required when auth method is kubernetes" -}}
+{{- end -}}
+{{- else if eq $bao.auth.method "token_file" -}}
+{{- if not (include "auth-service.openbaoTokenSecretName" .) -}}
+{{- fail "secrets.keyManagement.openbao.name (or global.secrets.keyManagement.openbao.secretName) is required when auth method is token_file" -}}
+{{- end -}}
+{{- else -}}
+{{- fail (printf "config.keyManagement.openbao.auth.method must be kubernetes or token_file, got %q" $bao.auth.method) -}}
+{{- end -}}
+{{- end -}}

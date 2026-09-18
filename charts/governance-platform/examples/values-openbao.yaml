@@ -1,0 +1,38 @@
+# Governance Platform with Auth signing keys in OpenBao Transit (development profile).
+#
+# Layer this over an identity-provider example (values-keycloak.yaml for a
+# fully local stack) and a database example. It selects the OpenBao provider
+# globally, so no cloud KMS Secret is created or mounted, and points Auth at an
+# externally managed OpenBao endpoint using Kubernetes workload authentication.
+#
+# Prerequisites (operator-managed, outside this chart): a reachable OpenBao with
+# a dedicated Transit mount and scoped policy for Auth, a Kubernetes auth mount
+# and role bound to this release's auth-service ServiceAccount, namespace and
+# audience, a TokenReview reviewer on OpenBao, and an auth-service image that
+# contains the OpenBao provider and Kubernetes auth (guardian PRs #216, #225,
+# #223, #224). Current images only allow the development profile.
+global:
+  environmentType: development
+  secrets:
+    keyManagement:
+      provider: openbao
+
+auth-service:
+  config:
+    keyManagement:
+      # The identity-provider examples pin a cloud provider here; the chart value
+      # wins over the global, so select openbao at both levels.
+      provider: openbao
+      openbao:
+        developmentEnabled: true
+        address: https://openbao-custody-active.custody.svc.cluster.local:8200
+        transitMount: guardian-did
+        keyPrefix: guardian
+        ca:
+          configMapName: openbao-ca
+          key: ca.pem
+        auth:
+          method: kubernetes
+          mount: kubernetes
+          role: guardian-auth
+          audience: openbao

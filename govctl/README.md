@@ -245,3 +245,20 @@ After generating your files, follow the deployment guide for your auth provider 
 - [Keycloak + AWS](../docs/keycloak/deployment-guide-aws.md)
 - [Keycloak + Azure](../docs/keycloak/deployment-guide-azure.md)
 - [Keycloak + GCP](../docs/keycloak/deployment-guide-gcp.md)
+
+## OpenBao development workflow
+
+OpenBao is optional and development-only. The current supported configuration
+workflow is manual Helm values, using
+[the umbrella overlay](../charts/governance-platform/examples/values-openbao.yaml)
+and the [Auth examples](../charts/auth-service/README.md#openbao-transit-development-profile).
+Generate any base cloud/identity configuration first, then maintain and layer the
+OpenBao overlay yourself, selecting the provider both globally and in Auth.
+`govctl` does not currently offer or generate OpenBao; its three-provider prompt
+is intentional until the complete generator workflow is implemented.
+
+A future generator feature must add the provider model and prompt together with
+typed endpoint, development gates, algorithm, CA and auth inputs, values output,
+and round-trip/render tests. Kubernetes auth must emit no token Secret;
+`token_file` must reference an operator-managed Secret name and custom token key
+without collecting token contents. Existing cloud output must remain unchanged.

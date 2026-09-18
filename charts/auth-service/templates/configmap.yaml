@@ -100,9 +100,39 @@ data:
   # ==========================================================================
   # Key Management Configuration
   # ==========================================================================
-  {{- $keyMgmtProvider := .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" }}
+  {{- $keyMgmtProvider := include "auth-service.keyManagementProvider" . }}
   KEY_MANAGEMENT_PROVIDER: "{{ $keyMgmtProvider }}"
   DID_KEY_CACHE_TTL_MINUTES: "{{ .Values.config.keyManagement.cacheTTLMinutes | default 15 }}"
+  {{- if .Values.config.keyManagement.algorithm }}
+  DID_KEY_ALGORITHM: "{{ .Values.config.keyManagement.algorithm }}"
+  {{- end }}
+
+  {{- if eq $keyMgmtProvider "openbao" }}
+  {{- include "auth-service.openbaoValidate" . }}
+  {{- $bao := .Values.config.keyManagement.openbao }}
+
+  # OpenBao Transit Configuration (development profile; credentials are mounted files)
+  {{- if not .Values.config.keyManagement.algorithm }}
+  DID_KEY_ALGORITHM: "p256"
+  {{- end }}
+  OPENBAO_DEVELOPMENT_ENABLED: "true"
+  OPENBAO_ADDRESS: "{{ $bao.address }}"
+  OPENBAO_TRANSIT_MOUNT: "{{ $bao.transitMount | default "guardian-did" }}"
+  OPENBAO_KEY_PREFIX: "{{ $bao.keyPrefix | default "guardian" }}"
+  OPENBAO_REQUEST_TIMEOUT: "{{ $bao.requestTimeout | default "5s" }}"
+  {{- if or $bao.ca.secretName $bao.ca.configMapName }}
+  OPENBAO_CA_FILE: "/etc/openbao/ca/{{ $bao.ca.key | default "ca.pem" }}"
+  {{- end }}
+  OPENBAO_AUTH_METHOD: "{{ $bao.auth.method }}"
+  {{- if eq $bao.auth.method "kubernetes" }}
+  OPENBAO_AUTH_MOUNT: "{{ $bao.auth.mount | default "kubernetes" }}"
+  OPENBAO_AUTH_ROLE: "{{ $bao.auth.role }}"
+  OPENBAO_KUBERNETES_AUDIENCE: "{{ $bao.auth.audience }}"
+  OPENBAO_KUBERNETES_JWT_FILE: "/var/run/secrets/openbao/token"
+  {{- else }}
+  OPENBAO_TOKEN_FILE: "/etc/openbao/token/{{ $bao.auth.tokenKey | default "token" }}"
+  {{- end }}
+  {{- end }}
 
   {{- if eq $keyMgmtProvider "azure_key_vault" }}
   

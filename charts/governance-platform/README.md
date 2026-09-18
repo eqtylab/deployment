@@ -147,6 +147,7 @@ See the [examples/](examples/) directory for complete configuration examples:
 - [values-auth0.yaml](examples/values-auth0.yaml) - Auth0 deployment
 - [values-entra.yaml](examples/values-entra.yaml) - Entra ID deployment
 - [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
+- [values-openbao.yaml](examples/values-openbao.yaml) - Optional development OpenBao overlay (manual Helm values)
 - [secrets-sample.yaml](examples/secrets-sample.yaml) - Complete secrets template
 
 ### Verify
@@ -333,10 +334,11 @@ Centralized secret configuration for all platform components:
 | global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`            | AWS S3 credentials secret name (not required when services use IAM role access — see Storage Provider Configuration) |
 | global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`        | Azure Blob credentials secret name                                                                                   |
 | global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`               | GCS credentials secret name                                                                                          |
-| global.secrets.keyManagement.provider                   | string | `"azure_key_vault"`            | Key management provider for credential signing (aws_kms, azure_key_vault, or gcp_kms)                                |
+| global.secrets.keyManagement.provider                   | string | `"azure_key_vault"`            | Key management provider for credential signing (aws_kms, azure_key_vault, gcp_kms, or openbao)                       |
 | global.secrets.keyManagement.aws_kms.secretName         | string | `"platform-aws-kms"`           | AWS KMS credentials secret name                                                                                      |
 | global.secrets.keyManagement.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name                                                                              |
 | global.secrets.keyManagement.gcp_kms.secretName         | string | `"platform-gcp-kms"`           | GCP KMS credentials secret name                                                                                      |
+| global.secrets.keyManagement.openbao.secretName         | string | `""`                           | Operator-managed OpenBao token Secret (token_file auth only; never created by the umbrella)                          |
 | global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth service secrets (session, JWT, API keys)                                                                        |
 | global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"` | Governance worker credentials secret name                                                                            |
 | global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"` | Container registry credentials secret name                                                                           |
@@ -366,6 +368,8 @@ Authentication and authorization service settings. See [auth-service/README.md](
 | auth-service.replicaCount                  | int    | `2`     | Number of replicas                                                                   |
 | auth-service.config.idp.provider           | string | `""`    | IDP provider (auto-configured from global.secrets.auth.provider)                     |
 | auth-service.config.keyManagement.provider | string | `""`    | Key management provider (auto-configured from global.secrets.keyManagement.provider) |
+| auth-service.secrets.keyManagement.openbao.name | string | `""` | Operator-managed token Secret override; takes precedence over global.secrets.keyManagement.openbao.secretName (token_file only). |
+| auth-service.config.keyManagement.openbao  | object | see values | OpenBao Transit endpoint, CA and workload-auth settings (provider `openbao`; development profile only, see the auth-service chart README) |
 | auth-service.ingress.enabled               | bool   | `false` | Enable ingress                                                                       |
 | auth-service.autoscaling.enabled           | bool   | `false` | Enable horizontal pod autoscaling                                                    |
 
@@ -731,6 +735,17 @@ governance-service:
 ## Key Management Provider Configuration
 
 The auth-service uses a key management provider for credential signing. The provider is set globally and credentials are inherited automatically.
+
+OpenBao Transit is also selectable (`global.secrets.keyManagement.provider: openbao`).
+It needs no cloud credentials: Auth authenticates with a projected Kubernetes
+service-account token (or an operator-managed token Secret) and trusts the
+endpoint through a mounted CA bundle. Current auth-service images only allow it
+in the development profile, so `global.environmentType` must be `development`
+and `auth-service.config.keyManagement.openbao.developmentEnabled` must be true;
+`helm template` fails otherwise. See `examples/values-openbao.yaml` and the
+auth-service chart README for the endpoint, mount, role and CA values.
+
+OpenBao development profiles currently use manually maintained Helm values; govctl does not generate them. See [govctl scope](../../govctl/README.md#openbao-development-workflow).
 
 ### AWS KMS
 

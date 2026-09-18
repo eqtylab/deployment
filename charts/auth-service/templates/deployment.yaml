@@ -269,7 +269,7 @@ spec:
             # ========================================================================
             # Key Management Configuration
             # ========================================================================
-            {{- $keyMgmtProvider := .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" }}
+            {{- $keyMgmtProvider := include "auth-service.keyManagementProvider" . }}
 
             {{- if eq $keyMgmtProvider "azure_key_vault" }}
             
@@ -345,6 +345,12 @@ spec:
                   key: {{ (((((.Values.global).secrets).keyManagement).gcp_kms).keys).serviceAccountJson | default "service-account-json" | quote }}
               {{- end }}
             {{- end }}
+            {{- end }}
+
+            {{- if eq $keyMgmtProvider "openbao" }}
+
+            # OpenBao Transit: no credential environment variables; the CA bundle and
+            # the projected token or token Secret are mounted as files (see volumes)
             {{- end }}
 
             {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
@@ -472,6 +478,23 @@ spec:
               mountPath: /etc/ssl/postgres
               readOnly: true
             {{- end }}
+            {{- if eq (include "auth-service.keyManagementProvider" .) "openbao" }}
+            {{- $bao := .Values.config.keyManagement.openbao }}
+            {{- if or $bao.ca.secretName $bao.ca.configMapName }}
+            - name: openbao-ca
+              mountPath: /etc/openbao/ca
+              readOnly: true
+            {{- end }}
+            {{- if eq $bao.auth.method "kubernetes" }}
+            - name: openbao-token
+              mountPath: /var/run/secrets/openbao
+              readOnly: true
+            {{- else }}
+            - name: openbao-token
+              mountPath: /etc/openbao/token
+              readOnly: true
+            {{- end }}
+            {{- end }}
             {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -493,6 +516,44 @@ spec:
             items:
               - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
                 path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
+        {{- end }}
+        {{- if eq (include "auth-service.keyManagementProvider" .) "openbao" }}
+        {{- $bao := .Values.config.keyManagement.openbao }}
+        {{- $caKey := $bao.ca.key | default "ca.pem" }}
+        {{- if $bao.ca.secretName }}
+        - name: openbao-ca
+          secret:
+            secretName: {{ $bao.ca.secretName | quote }}
+            items:
+              - key: {{ $caKey | quote }}
+                path: {{ $caKey | quote }}
+        {{- else if $bao.ca.configMapName }}
+        - name: openbao-ca
+          configMap:
+            name: {{ $bao.ca.configMapName | quote }}
+            items:
+              - key: {{ $caKey | quote }}
+                path: {{ $caKey | quote }}
+        {{- end }}
+        {{- if eq $bao.auth.method "kubernetes" }}
+        # Projected token: bound to the audience the OpenBao role expects, rotated by
+        # the kubelet before expiry; Auth rereads the file for every login.
+        - name: openbao-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  audience: {{ $bao.auth.audience | quote }}
+                  expirationSeconds: {{ $bao.auth.tokenExpirationSeconds | default 3600 }}
+        {{- else }}
+        {{- $tokenKey := $bao.auth.tokenKey | default "token" }}
+        - name: openbao-token
+          secret:
+            secretName: {{ include "auth-service.openbaoTokenSecretName" . | quote }}
+            items:
+              - key: {{ $tokenKey | quote }}
+                path: {{ $tokenKey | quote }}
+        {{- end }}
         {{- end }}
         {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
