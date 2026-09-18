@@ -1,0 +1,40 @@
+# Single-node, TLS-disabled OpenBao for a disposable development cluster (kind).
+# Never use this profile outside a throwaway cluster: no TLS, no HA, no
+# host-failure tolerance. Initialization and unsealing still apply.
+openbao:
+  global:
+    tlsDisable: true
+  server:
+    volumes: []
+    volumeMounts: []
+    extraEnvironmentVars:
+      BAO_CACERT: ""
+    affinity: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    ha:
+      enabled: true
+      replicas: 1
+      raft:
+        enabled: true
+        setNodeId: true
+        config: |
+          ui = false
+          listener "tcp" {
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            tls_disable = 1
+          }
+          storage "raft" {
+            path = "/openbao/data"
+          }
+          service_registration "kubernetes" {}
+          audit "file" "file" {
+            options {
+              file_path = "/openbao/audit/audit.log"
+            }
+          }

@@ -1,0 +1,22 @@
+apiVersion: v2
+name: openbao-custody
+description: Separately managed OpenBao release holding Guardian Auth's DID signing keys (Transit). Pins the upstream OpenBao chart and image; installed and operated independently of governance-platform.
+type: application
+# Independent release lifecycle: this version is not tied to governance-platform releases.
+version: 0.1.0
+appVersion: "2.6.2"
+# Upstream openbao 0.29.5 has the same minimum; this optional release does not
+# change the platform's Kubernetes 1.29 minimum or external OpenBao support.
+kubeVersion: ">= 1.30.0-0"
+home: https://github.com/eqtylab/guardian-infrastructure
+sources:
+  - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/openbao-custody
+  - https://github.com/openbao/openbao-helm
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io
+dependencies:
+  # Upstream chart pinned exactly; bump deliberately with the runbook's upgrade steps.
+  - name: openbao
+    repository: https://openbao.github.io/openbao-helm
+    version: "0.29.5"

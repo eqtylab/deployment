@@ -1,0 +1,31 @@
+OpenBao Custody has been deployed!
+
+Service URL (internal): {{ include "openbao-custody.endpoint" . }}
+
+Release "{{ .Release.Name }}", server namespace {{ include "openbao-custody.namespace" . }}.
+This is an optional development integration, operated separately from the platform.
+
+The server starts sealed and uninitialized. Complete the operator steps from
+charts/openbao-custody/README.md:
+
+  1. Initialize once on pod 0 and store the unseal shares with their custodians:
+       kubectl -n {{ include "openbao-custody.namespace" . }} exec {{ include "openbao-custody.fullname" . }}-0 -- bao operator init -key-shares=5 -key-threshold=3
+  2. Unseal every replica ({{ .Values.openbao.server.ha.replicas }} configured; additional pods join via retry_join):
+       kubectl -n {{ include "openbao-custody.namespace" . }} exec -it {{ include "openbao-custody.fullname" . }}-<n> -- bao operator unseal
+  3. Confirm the declarative file audit device on the retained audit volume:
+       export BAO_ADDR={{ include "openbao-custody.endpoint" . }}
+       bao audit list
+     Run from an authenticated operator CLI with the CA configured and network
+     access to this Service. kubectl exec does not forward a local BAO_TOKEN.
+  4. Configure the Auth mount, policy and Kubernetes role with a short-lived operator token:
+       scripts/openbao/configure-auth.sh --service-account <release>-auth-service --namespace <auth namespace>
+     Use the companion operator tooling from infrastructure PR #115 (including helpers
+     and policy files). With no --kubernetes-host, the script writes auth/<mount>/config
+     for https://kubernetes.default.svc:443 using the server's local token and CA.
+     Verify the config before Auth logs in; the README covers older tooling too.
+  5. Revoke the initial root token.
+
+Auth endpoint for charts/auth-service: {{ include "openbao-custody.endpoint" . }}
+TLS certificates must cover the rendered names; see README before changing overrides.
+The HTTP development profile is for disposable clusters only, not a remote Auth endpoint.
+Persistent volumes are retained on uninstall; delete them only deliberately.

@@ -1,0 +1,33 @@
+# Optional ingress restriction for release openbao-custody in namespace custody.
+# Change the Auth namespace and peer labels to match your rendered deployment.
+# This file is packaged deliberately so operators can adapt it before installing.
+openbao:
+  server:
+    networkPolicy:
+      enabled: true
+      # Empty egress does not isolate egress in the upstream template. Preserve
+      # DNS and Kubernetes TokenReview/service-registration access.
+      egress: []
+      ingress:
+        # Auth clients may reach the API only, never the cluster port.
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: governance
+          ports:
+            - port: 8200
+              protocol: TCP
+        # Same-namespace peers need API retry_join AND Raft/forwarding traffic.
+        # instance is the HELM RELEASE name, even with a fullnameOverride.
+        # name follows openbao.nameOverride (default: openbao).
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: openbao
+                  app.kubernetes.io/instance: openbao-custody
+                  component: server
+          ports:
+            - port: 8200
+              protocol: TCP
+            - port: 8201
+              protocol: TCP

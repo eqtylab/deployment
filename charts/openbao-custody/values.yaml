@@ -1,0 +1,159 @@
+# OpenBao custody release for Guardian Auth signing keys.
+#
+# This chart only pins and configures the upstream OpenBao chart (values under
+# `openbao`). It is installed as its own Helm release, in its own namespace,
+# and is never a dependency of governance-platform: uninstalling or upgrading
+# the platform cannot touch key material. Initialization, unsealing, audit
+# enablement and Auth's mount/policy/role are operator steps (see README and
+# scripts/openbao/configure-auth.sh), never Helm hooks.
+#
+# Decision points for a pilot are marked DECISION; the defaults are a
+# cloud-independent starting point (three-node Raft, Shamir seal, TLS on).
+
+openbao:
+  # Stable default resource names. Raft retry_join and NOTES follow upstream
+  # naming when overridden; update certificate SANs and Auth's address as well.
+  fullnameOverride: openbao-custody
+
+  global:
+    enabled: true
+    # TLS on every listener. Provide the Secret named below before installing.
+    tlsDisable: false
+
+  # Not used by Guardian: no agent injector, no CSI provider, no web UI.
+  injector:
+    enabled: false
+  csi:
+    enabled: false
+  ui:
+    enabled: false
+
+  server:
+    enabled: true
+    image:
+      registry: quay.io
+      repository: openbao/openbao
+      # Same version the Auth integration tests run against.
+      tag: "2.6.2"
+      pullPolicy: IfNotPresent
+
+    # Upstream default. Pods are replaced by the operator during an upgrade
+    # (standbys first, then the active node) so each replaced pod can be unsealed.
+    updateStrategyType: OnDelete
+
+    logLevel: info
+    logFormat: json
+
+    # OpenBao validates Auth's projected token with a TokenReview using its own
+    # service account (in-cluster Kubernetes auth); this grants system:auth-delegator
+    # to the OpenBao server service account only.
+    authDelegator:
+      enabled: true
+
+    # TLS material: Secret `openbao-custody-tls` with tls.crt, tls.key and ca.crt,
+    # mounted at /openbao/userconfig/openbao-custody-tls. Required SANs are listed
+    # in the README. `volumes`/`volumeMounts` (not `extraVolumes`) so the upstream
+    # `helm test` pod gets the CA as well.
+    volumes:
+      - name: openbao-custody-tls
+        secret:
+          secretName: openbao-custody-tls
+    volumeMounts:
+      - name: openbao-custody-tls
+        mountPath: /openbao/userconfig/openbao-custody-tls
+        readOnly: true
+    extraEnvironmentVars:
+      BAO_CACERT: /openbao/userconfig/openbao-custody-tls/ca.crt
+
+    # DECISION: storage class, size and failure domains for the pilot.
+    dataStorage:
+      enabled: true
+      size: 10Gi
+      storageClass: null
+      accessMode: ReadWriteOnce
+    auditStorage:
+      enabled: true
+      size: 10Gi
+      storageClass: null
+      accessMode: ReadWriteOnce
+    # Volumes outlive the release: `helm uninstall` and scale-down keep the PVCs.
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Retain
+      whenScaled: Retain
+
+    dev:
+      enabled: false
+    standalone:
+      enabled: false
+
+    ha:
+      enabled: true
+      # DECISION: three voters across three failure domains is the HA proposal;
+      # three replicas on one host give no host-failure tolerance.
+      replicas: 3
+      raft:
+        enabled: true
+        setNodeId: true
+        config: |
+          ui = false
+
+          listener "tcp" {
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            tls_cert_file = "/openbao/userconfig/openbao-custody-tls/tls.crt"
+            tls_key_file = "/openbao/userconfig/openbao-custody-tls/tls.key"
+            tls_client_ca_file = "/openbao/userconfig/openbao-custody-tls/ca.crt"
+            tls_min_version = "tls12"
+          }
+
+          storage "raft" {
+            path = "/openbao/data"
+            {{- range $i := until (int .Values.server.ha.replicas) }}
+            retry_join {
+              leader_api_addr = "https://{{ include "openbao.fullname" $ }}-{{ $i }}.{{ include "openbao.fullname" $ }}-internal:8200"
+              leader_ca_cert_file = "/openbao/userconfig/openbao-custody-tls/ca.crt"
+            }
+            {{- end }}
+          }
+
+          service_registration "kubernetes" {}
+
+          # Declarative audit device on the retained audit volume. OpenBao 2.6
+          # refuses API-created audit devices; config-based devices are created on
+          # the active node at start and SIGHUP.
+          audit "file" "file" {
+            description = "Guardian custody audit log"
+            options {
+              file_path = "/openbao/audit/audit.log"
+            }
+          }
+
+          # DECISION: seal model. No seal stanza means Shamir shares held by named
+          # custodians; every restart needs a manual unseal. See the README for the
+          # cloud-independent auto-unseal alternatives before choosing one.
+      disruptionBudget:
+        enabled: true
+        maxUnavailable: null
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+
+    # Optional: the ingress below allows ALL namespaces on ports 8200/8201.
+    # Enabling it restricts ports, not namespaces; egress remains unrestricted.
+    # See examples/values-network-policy.yaml for Auth-only API ingress plus
+    # same-release Bao peer traffic. Auth may also need its own egress allowance.
+    networkPolicy:
+      enabled: false
+      egress: []
+      ingress:
+        - from:
+            - namespaceSelector: {}
+          ports:
+            - port: 8200
+              protocol: TCP
+            - port: 8201
+              protocol: TCP

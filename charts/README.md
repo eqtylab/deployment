@@ -17,6 +17,7 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 | [governance-studio](governance-studio/)     | Subchart | React-based frontend application                             |
 | [integrity-service](integrity-service/)     | Subchart | Rust-based verifiable credentials and lineage service        |
 | [keycloak-bootstrap](keycloak-bootstrap/)   | Utility  | Keycloak realm and client configuration job                  |
+| [openbao-custody](openbao-custody/)         | Custody  | Separately managed OpenBao release for Auth signing keys     |
 
 ## Architecture
 
@@ -37,7 +38,8 @@ charts/
 ├── governance-service/      # Backend API subchart
 ├── governance-studio/       # Frontend subchart
 ├── integrity-service/       # Credentials/lineage subchart
-└── keycloak-bootstrap/      # Keycloak configuration utility
+├── keycloak-bootstrap/      # Keycloak configuration utility
+└── openbao-custody/         # Separate OpenBao release for Auth signing keys (not in the umbrella)
 ```
 
 **Recommended approach**: Deploy using the `governance-platform` umbrella chart. This provides:
@@ -57,6 +59,10 @@ charts/
 - Helm 4.0+
 - kubectl configured for your cluster
 - Container registry access (GitHub Container Registry)
+
+The optional development `openbao-custody` release requires Kubernetes 1.30+
+because its pinned upstream chart 0.29.5 does. The platform minimum remains
+1.29; using an external OpenBao does not require installing this chart.
 
 ### Deploy the Platform
 
@@ -304,7 +310,15 @@ helm push governance-platform-0.1.0.tgz oci://ghcr.io/eqtylab/charts
 
 ### Automated Publishing
 
-Charts are automatically published via GitHub Actions when changes are merged to main. See [publish.yaml](../.github/workflows/publish.yaml) for details.
+Chart changes are validated on PRs and main. Infrastructure publication requires
+an explicit `workflow_dispatch` with `publish: true`; customer platform releases
+publish from deployment. See [publish.yaml](../.github/workflows/publish.yaml).
+
+Locally, `just publish openbao-custody` builds its locked dependency, packages,
+and pushes `oci://ghcr.io/eqtylab/charts/openbao-custody` at its own chart version.
+`just publish-all` deliberately includes this independent chart. Neither command
+adds custody to `governance-platform` or installs it. README and example profiles
+are included in the custody archive for offline operator use.
 
 ## Chart Versioning
 
@@ -320,6 +334,12 @@ The umbrella chart (`governance-platform`) version is incremented when:
 - Global configuration schema changes
 - New subcharts are added
 
+`openbao-custody` is an explicit exception to platform version alignment: chart
+`version: 0.1.0` tracks the custody wrapper and `appVersion: 2.6.2` tracks OpenBao.
+Its upstream chart is separately pinned to 0.29.5 in `Chart.yaml` and `Chart.lock`.
+Changing it does not require a platform version bump. See the
+[release-policy exception and downstream requirements](../docs/formal-release-process.md#independent-openbao-custody-release).
+
 ## Documentation
 
 | Document                                                       | Description                          |
@@ -334,6 +354,7 @@ The umbrella chart (`governance-platform`) version is incremented when:
 | [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration               |
 | [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration    |
 | [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration  |
+| [openbao-custody/README.md](openbao-custody/README.md)         | Optional OpenBao custody configuration and operator runbook |
 
 ## Support
 
