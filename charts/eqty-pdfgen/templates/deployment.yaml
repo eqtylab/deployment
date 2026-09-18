@@ -74,6 +74,8 @@ spec:
               value: {{ .Values.config.timestampUrl | quote }}
             - name: EQTY_SIGNING_URL
               value: {{ include "eqty-pdfgen.signingUrl" . | quote }}
+            - name: EQTY_SIGNING_BOUND
+              value: {{ ternary "1" "0" (.Values.config.signingBound | default false) | quote }}
             {{- with .Values.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

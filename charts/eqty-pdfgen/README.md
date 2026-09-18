@@ -31,6 +31,12 @@ This allows:
 - Container registry access to `ghcr.io/eqtylab/eqty-pdfgen`
 - Auth Service (only required when signed PDFs are needed)
 
+For `config.signingBound: true`, select **both** a PDFgen image implementing the version-bound client and an Auth Service image implementing `GET <signingUrl>/certificate` plus signing-key reference validation/echo ([Guardian #234](https://github.com/eqtylab/guardian/pull/234)). Auth also needs the curve-correct PDF certificates from [Guardian #233](https://github.com/eqtylab/guardian/pull/233), included in #234's dependency chain. Chart defaults and image tags alone do not establish these capabilities; verify the selected builds before opting in. A compatible PDFgen client fails closed if Auth lacks the bound contract.
+
+Signing without a timestamp token also requires the PDFgen implementation from #234: [`sign_pdf` in P2's `_signer.py`](https://github.com/eqtylab/guardian/blob/0cb3d484cc0ec7febbab381e86a55b9c392c11c8/services/pdfgen/eqty_pdfgen/_signer.py#L308) supplies no timestamper when the URL is empty. This applies to both legacy and bound signing; Helm only passes the configured URL to the image.
+
+Bound signing is independent of the key-management provider; it is not inherently OpenBao-only. OpenBao remains optional and development-only.
+
 ## Deployment
 
 When deployed via the `governance-platform` umbrella chart, EQTY PDFGen automatically inherits image registry settings and the default signing URL from global values. The service is **disabled by default** and is enabled environment-by-environment.
@@ -63,6 +69,10 @@ Beyond what is auto-configured, no values are strictly required to start the ser
 
 - `config.signingUrl` - Override the signing endpoint, only needed when Auth Service is exposed under a different internal address than the generated default
 - `config.timestampUrl` - Override the timestamp authority (defaults to `http://timestamp.digicert.com`)
+- `config.signingBound` - `true` binds each PDF signature to the certificate's key version through `<signingUrl>/certificate` (requires compatible Auth **and PDFgen** images; defaults to `false`, the legacy path)
+- Set `config.timestampUrl` to `""` to sign without an RFC 3161 timestamp token where no timestamp authority is reachable, using a PDFgen image with the [empty-URL behavior described above](#prerequisites)
+
+The chart renders `EQTY_SIGNING_BOUND="0"` for default/false and `"1"` for true. P2's [`signing.py`](https://github.com/eqtylab/guardian/blob/0cb3d484cc0ec7febbab381e86a55b9c392c11c8/services/pdfgen/eqty_pdfgen/signing.py#L19) recognizes only `1`, `true`, `yes`, and `on` as true (ignoring case and surrounding whitespace); unset, `0`, and `false` keep legacy mode.
 
 **What gets auto-configured:**
 
@@ -193,8 +203,9 @@ When deployed via the umbrella chart, these global values are automatically used
 | config.tmpDir                | string | `"tmp"`                                     | Writable render directory under the app working directory                                                         |
 | config.typstFontPaths        | string | `"/usr/share/fonts"`                        | Font search paths for the Typst renderer                                                                          |
 | config.typstPackageCachePath | string | `"/opt/app-root/src/.cache/typst/packages"` | Typst package cache directory                                                                                     |
-| config.timestampUrl          | string | `"http://timestamp.digicert.com"`           | Timestamp authority URL                                                                                           |
+| config.timestampUrl          | string | `"http://timestamp.digicert.com"`           | Timestamp authority URL; `""` omits the timestamp token with a compatible PDFgen image (see [prerequisites](#prerequisites)) |
 | config.signingUrl            | string | `""`                                        | Signing endpoint override (auto-generated as `http://{Release.Name}-auth-service:8080/api/v1/protected/sign-pdf`) |
+| config.signingBound          | bool   | `false`                                     | Version-bound signing via `<signingUrl>/certificate` (`EQTY_SIGNING_BOUND`); requires compatible Auth and PDFgen images (see [prerequisites](#prerequisites)) |
 
 ### Advanced: Network Policy Configuration
 

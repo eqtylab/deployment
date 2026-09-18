@@ -388,9 +388,13 @@ Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdf
 | eqty-pdfgen.replicaCount        | int    | `2`     | Number of replicas                                                               |
 | eqty-pdfgen.service.port        | int    | `8080`  | Internal ClusterIP service port                                                  |
 | eqty-pdfgen.config.signingUrl   | string | `""`    | Signing endpoint (auto-generated as auth-service internal signing URL)           |
+| eqty-pdfgen.config.signingBound | bool   | `false` | Version-bound PDF signing; requires compatible Auth and PDFgen images (see [prerequisites](../eqty-pdfgen/README.md#prerequisites)) |
+| eqty-pdfgen.config.timestampUrl | string | `"http://timestamp.digicert.com"` | Timestamp authority URL; `""` omits the timestamp token with the PDFgen empty-URL behavior from Guardian #234 |
 | eqty-pdfgen.autoscaling.enabled | bool   | `false` | Enable horizontal pod autoscaling                                                |
 
 EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
+
+Before opting into bound signing, verify that both selected images include the [Guardian #234](https://github.com/eqtylab/guardian/pull/234) contract and Auth includes the curve-correct certificates from [#233](https://github.com/eqtylab/guardian/pull/233). The chart does not select a supporting image release automatically. Empty timestamp URLs require P2's [`_signer.py` behavior](../eqty-pdfgen/README.md#prerequisites). Bound signing is independent of the key-management provider; OpenBao remains optional and development-only.
 
 ### Governance Service Configuration
 

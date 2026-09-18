@@ -1544,10 +1544,19 @@ eqty-pdfgen:
     typstPackageCachePath: /opt/app-root/src/.cache/typst/packages
     # -- RFC 3161 timestamp authority URL used during PDF signing
     # @default -- `http://timestamp.digicert.com`
+    # Set to an empty string to sign without a timestamp token. Requires the
+    # PDFgen empty-URL behavior from Guardian #234; see eqty-pdfgen README.
     timestampUrl: http://timestamp.digicert.com
     # -- Auth-service signing endpoint
     # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080/api/v1/protected/sign-pdf")
     signingUrl: ""
+    # -- Version-bound signing (EQTY_SIGNING_BOUND)
+    # @default -- `false`
+    # Requires compatible PDFgen and Auth images from Guardian #234, including
+    # Auth's curve-correct certificates from #233. See eqty-pdfgen README.
+    # The supporting PDFgen client fails closed against incompatible Auth images.
+    # Independent of key-management provider; OpenBao is optional and dev-only.
+    signingBound: false
 
   # -- NetworkPolicy Configuration
   # @default -- See values below
