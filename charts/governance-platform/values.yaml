@@ -1037,12 +1037,33 @@ auth-service:
           # -- Key inside the Secret/ConfigMap
           # @default -- `ca.pem`
           key: ""
+        # -- Egress to the OpenBao endpoint when auth-service.networkPolicy.enabled
+        # @default -- See values below
+        networkPolicy:
+          # -- NetworkPolicy `to` peers for the OpenBao endpoint (empty: no rule)
+          # @default -- `[]`
+          to: []
+          # -- OpenBao API port
+          # @default -- `8200`
+          port: 8200
         # -- Workload authentication
         # @default -- See values below
         auth:
           # -- `kubernetes` (projected token) or `token_file` (operator-managed Secret)
           # @default -- `kubernetes`
           method: "kubernetes"
+          # -- TokenReview reviewer for OpenBao's Kubernetes auth (see the auth-service chart README)
+          # @default -- See values below
+          reviewer:
+            # -- Create a reviewer ServiceAccount bound to system:auth-delegator
+            # @default -- `false`
+            create: false
+            # -- Reviewer ServiceAccount name
+            # @default -- `""` (`<release>-auth-service-openbao-reviewer`)
+            name: ""
+            # -- Also create a long-lived token Secret for an external OpenBao
+            # @default -- `false`
+            tokenSecret: false
           # -- Kubernetes auth mount (OPENBAO_AUTH_MOUNT)
           # @default -- `kubernetes`
           mount: ""

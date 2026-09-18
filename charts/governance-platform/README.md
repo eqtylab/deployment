@@ -370,6 +370,11 @@ Authentication and authorization service settings. See [auth-service/README.md](
 | auth-service.config.keyManagement.provider | string | `""`    | Key management provider (auto-configured from global.secrets.keyManagement.provider) |
 | auth-service.secrets.keyManagement.openbao.name | string | `""` | Operator-managed token Secret override; takes precedence over global.secrets.keyManagement.openbao.secretName (token_file only). |
 | auth-service.config.keyManagement.openbao  | object | see values | OpenBao Transit endpoint, CA and workload-auth settings (provider `openbao`; development profile only, see the auth-service chart README) |
+| auth-service.config.keyManagement.openbao.auth.reviewer.create | bool | `false` | Create a separate reviewer ServiceAccount and system:auth-delegator binding; never grant Auth TokenReview permissions. |
+| auth-service.config.keyManagement.openbao.auth.reviewer.name | string | `""` | Reviewer name; defaults to <release>-auth-service-openbao-reviewer. |
+| auth-service.config.keyManagement.openbao.auth.reviewer.tokenSecret | bool | `false` | Create a long-lived reviewer token Secret for external OpenBao. Leave false when OpenBao uses its local projected token. |
+| auth-service.config.keyManagement.openbao.networkPolicy.to | list | `[]` | OpenBao egress peers (namespaceSelector, podSelector or ipBlock); requires networkPolicy.enabled. Empty adds no rule. |
+| auth-service.config.keyManagement.openbao.networkPolicy.port | int | `8200` | OpenBao egress TCP port; applies to networkPolicy.to. |
 | auth-service.ingress.enabled               | bool   | `false` | Enable ingress                                                                       |
 | auth-service.autoscaling.enabled           | bool   | `false` | Enable horizontal pod autoscaling                                                    |
 

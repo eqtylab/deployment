@@ -1,0 +1,52 @@
+{{- /*
+TokenReview reviewer for OpenBao's Kubernetes auth method. OpenBao, not Auth,
+uses this identity to validate Auth's projected token, so it is a separate
+ServiceAccount with system:auth-delegator and nothing else. Auth's own
+ServiceAccount never receives TokenReview permissions.
+*/ -}}
+{{- $bao := .Values.config.keyManagement.openbao }}
+{{- if and .Values.enabled (eq (include "auth-service.keyManagementProvider" .) "openbao") (eq $bao.auth.method "kubernetes") $bao.auth.reviewer.create }}
+{{- $reviewer := $bao.auth.reviewer.name | default (printf "%s-openbao-reviewer" (include "auth-service.fullname" .)) }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $reviewer }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "auth-service.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openbao-reviewer
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ printf "%s-%s" .Release.Namespace $reviewer | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "auth-service.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openbao-reviewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: {{ $reviewer }}
+    namespace: {{ .Release.Namespace }}
+{{- if $bao.auth.reviewer.tokenSecret }}
+---
+# Long-lived reviewer credential for an OpenBao outside this cluster. Read it
+# with `kubectl get secret {{ $reviewer }}-token -o jsonpath='{.data.token}' | base64 -d`
+# and pass it as token_reviewer_jwt (scripts/openbao/configure-auth.sh --reviewer-jwt-file).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $reviewer }}-token
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "auth-service.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openbao-reviewer
+  annotations:
+    kubernetes.io/service-account.name: {{ $reviewer }}
+type: kubernetes.io/service-account-token
+{{- end }}
+{{- end }}

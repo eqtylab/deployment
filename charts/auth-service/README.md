@@ -555,6 +555,11 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.keyManagement.openbao.auth.audience | string | `""` | Required projected token audience; must match the role. |
 | config.keyManagement.openbao.auth.tokenExpirationSeconds | int | `3600` | Projected token lifetime; kubelet rotates it. |
 | config.keyManagement.openbao.auth.tokenKey | string | `""` | Token Secret key and mounted filename; defaults to token. Secret name resolves from secrets.keyManagement.openbao.name before the global fallback. |
+| config.keyManagement.openbao.auth.reviewer.create | bool | `false` | Create a separate reviewer ServiceAccount and system:auth-delegator binding; never grant Auth TokenReview permissions. |
+| config.keyManagement.openbao.auth.reviewer.name | string | `""` | Reviewer name; defaults to <release>-auth-service-openbao-reviewer. |
+| config.keyManagement.openbao.auth.reviewer.tokenSecret | bool | `false` | Create a long-lived reviewer token Secret for external OpenBao. Leave false when OpenBao uses its local projected token. |
+| config.keyManagement.openbao.networkPolicy.to | list | `[]` | OpenBao egress peers (namespaceSelector, podSelector or ipBlock); requires networkPolicy.enabled. Empty adds no rule. |
+| config.keyManagement.openbao.networkPolicy.port | int | `8200` | OpenBao egress TCP port; applies to networkPolicy.to. |
 
 #### Service Account Configuration
 
@@ -961,6 +966,70 @@ kubectl create secret generic platform-openbao-token \
   --from-file=token=./auth.token \
   --namespace governance
 ```
+
+#### Kubernetes auth integration (scoped identity, reviewer, network policy)
+
+Auth authenticates to OpenBao with a projected token for its own
+ServiceAccount (`serviceAccount.name`, default `<release>-auth-service`).
+OpenBao validates that token with a Kubernetes TokenReview, which needs a
+reviewer identity holding `system:auth-delegator`; that identity must never be
+Auth's ServiceAccount, and Auth's ServiceAccount receives no TokenReview or
+other API permissions from this chart.
+
+- `config.keyManagement.openbao.auth.reviewer.create: true` renders a reviewer
+  ServiceAccount (`<release>-auth-service-openbao-reviewer`, token automount
+  off) and a ClusterRoleBinding to `system:auth-delegator`. With
+  `reviewer.tokenSecret: true` a long-lived `kubernetes.io/service-account-token`
+  Secret named `<reviewer>-token` is also created so an OpenBao **outside**
+  this cluster can be configured with `token_reviewer_jwt`; an in-cluster
+  OpenBao uses its own projected token and should leave this off.
+- `config.keyManagement.openbao.networkPolicy.to` (with `networkPolicy.enabled`)
+  appends an egress rule to the OpenBao endpoint on `networkPolicy.port`
+  (default 8200). Without it a restrictive policy blocks signing.
+- `scripts/openbao/configure-auth.sh` performs the OpenBao-side setup with
+  operator credentials: the dedicated Transit mount, the scoped policy
+  (`scripts/openbao/policies/guardian-auth.hcl`), the Kubernetes auth mount and
+  one role bound to exactly Auth's ServiceAccount, namespace and audience, with
+  `token_no_default_policy` and a short TTL. It is idempotent, supports
+  `--dry-run`, and is a separate operator procedure, never a Helm hook or an
+  Auth startup task.
+
+```bash
+# in-cluster OpenBao (uses its own projected token and CA for TokenReview)
+BAO_ADDR=https://openbao-custody-active.custody.svc.cluster.local:8200 BAO_TOKEN=... \
+  scripts/openbao/configure-auth.sh -s governance-auth-service -n governance -a openbao
+
+# external OpenBao: export the reviewer credential created by reviewer.tokenSecret
+kubectl -n governance get secret governance-auth-service-openbao-reviewer-token \
+  -o jsonpath='{.data.token}' | base64 -d > reviewer.jwt
+scripts/openbao/configure-auth.sh -s governance-auth-service -n governance -a openbao \
+  --kubernetes-host https://<api-server>:6443 --kubernetes-ca-file ./ca.crt \
+  --reviewer-jwt-file ./reviewer.jwt
+```
+
+The no-host command **writes** `auth/<mount>/config` with
+`kubernetes_host=https://kubernetes.default.svc:443`, enables local CA/JWT lookup,
+and clears any previously configured external reviewer/CA. Before using it,
+the OpenBao server must run in the target cluster with its projected token and
+CA at `/var/run/secrets/kubernetes.io/serviceaccount/`, API connectivity, and
+its **own** ServiceAccount bound to `system:auth-delegator`. Creating the Auth
+chart's separate reviewer does not grant that role to the OpenBao pod. No
+pre-existing Kubernetes auth config is required on a fresh mount.
+
+External mode requires `--reviewer-jwt-file` and exactly one trust choice:
+`--kubernetes-ca-file` for a private API CA, or `--kubernetes-system-ca` when the
+OpenBao server's system trust store already trusts the API server. It never
+falls back to Auth's client JWT as reviewer. Files must be readable, nonempty
+regular files, including for dry runs, and Python 3 validates the HTTPS API
+origin before any administrative writes. See the
+[operator script reference](../../scripts/openbao/README.md) and
+[upstream local-token configuration](https://openbao.org/docs/auth/kubernetes/#use-local-service-account-token-as-the-reviewer-jwt).
+
+A login from another ServiceAccount, namespace or audience is rejected by
+OpenBao's role binding; renewal and projected-token replacement are handled by
+Auth (see the Auth Service README). The Auth image with Kubernetes auth
+(guardian #225) is required; the live install smoke for this integration is
+recorded with H4.
 
 #### Render-time checks
 

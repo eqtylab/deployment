@@ -16,8 +16,20 @@ spec:
   ingress:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- with .Values.networkPolicy.egress }}
+  {{- $bao := .Values.config.keyManagement.openbao }}
+  {{- $openbaoEgress := and (eq (include "auth-service.keyManagementProvider" .) "openbao") $bao.networkPolicy.to }}
+  {{- if or .Values.networkPolicy.egress $openbaoEgress }}
   egress:
+    {{- with .Values.networkPolicy.egress }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if $openbaoEgress }}
+    # OpenBao Transit endpoint (config.keyManagement.openbao.networkPolicy)
+    - to:
+        {{- toYaml $bao.networkPolicy.to | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ $bao.networkPolicy.port | default 8200 }}
+    {{- end }}
   {{- end }}
 {{- end }}
