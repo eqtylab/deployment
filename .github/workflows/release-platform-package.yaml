@@ -49,7 +49,16 @@ jobs:
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo add haproxytech https://haproxytech.github.io/helm-charts
-          helm repo update bitnami haproxytech
+          helm repo add openbao https://openbao.github.io/openbao-helm
+          helm repo update bitnami haproxytech openbao
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install custody validation dependencies
+        run: python -m pip install PyYAML==6.0.3 jsonschema==4.26.0
 
       - name: Install yq
         run: |
@@ -83,11 +92,26 @@ jobs:
             prerelease="false"
           fi
 
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "manifest=${manifest}" >> "$GITHUB_OUTPUT"
-          echo "release_type=${release_type}" >> "$GITHUB_OUTPUT"
-          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
-          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=${version}"
+            echo "manifest=${manifest}"
+            echo "release_type=${release_type}"
+            echo "prerelease=${prerelease}"
+            echo "publish=${publish}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve optional custody release
+        id: custody
+        env:
+          MANIFEST: ${{ steps.release.outputs.manifest }}
+          BUILD_AIRGAP: ${{ inputs.build_airgap }}
+        run: |
+          custody_version="$(python scripts/release/custody_distribution.py selected-version "$MANIFEST")"
+          if [ -n "$custody_version" ] && [ "$BUILD_AIRGAP" = "true" ]; then
+            echo "::error::Supplied custody is connected-only; its air-gap images/notices are not qualified."
+            exit 1
+          fi
+          echo "version=${custody_version}" >> "$GITHUB_OUTPUT"
 
       - name: Validate release manifest
         env:
@@ -162,6 +186,10 @@ jobs:
         env:
           MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
+          test -f charts/openbao-custody/Chart.lock
+          helm dependency build charts/openbao-custody
+          python scripts/openbao/test-custody-chart.py
+          python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
           fi
@@ -211,6 +239,7 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
           PUBLISH: ${{ steps.release.outputs.publish }}
           MANIFEST: ${{ steps.release.outputs.manifest }}
+          CUSTODY_VERSION: ${{ steps.custody.outputs.version }}
         run: |
           set -o pipefail
 
@@ -225,15 +254,19 @@ jobs:
             local package_path
             local digest
             local package_sha
+            local chart_version
+
+            # Custody has its own lifecycle and must never inherit VERSION.
+            chart_version="$(yq '.version' "$chart_dir/Chart.yaml")"
 
             if [ "$chart" = "gateway-stack" ] || [ "$chart" = "governance-platform" ]; then
               helm dependency build "$chart_dir"
             fi
 
-            if [ "$PUBLISH" = "true" ] && helm show chart "$oci_ref" --version "$VERSION" >/dev/null 2>&1; then
-              echo "${oci_ref}:${VERSION} already exists; pulling for package assembly."
-              helm pull "$oci_ref" --version "$VERSION" --destination dist/charts 2>&1 | tee "dist/charts/${chart}-pull.log"
-              package_path="dist/charts/${chart}-${VERSION}.tgz"
+            if [ "$PUBLISH" = "true" ] && helm show chart "$oci_ref" --version "$chart_version" >/dev/null 2>&1; then
+              echo "${oci_ref}:${chart_version} already exists; pulling for package assembly."
+              helm pull "$oci_ref" --version "$chart_version" --destination dist/charts 2>&1 | tee "dist/charts/${chart}-pull.log"
+              package_path="dist/charts/${chart}-${chart_version}.tgz"
               digest="$(awk '/Digest:/ {print $2; exit}' "dist/charts/${chart}-pull.log")"
               if [ -z "$digest" ]; then
                 echo "::error::Could not parse OCI digest for existing ${chart}."
@@ -241,7 +274,7 @@ jobs:
               fi
             else
               helm package "$chart_dir" --destination dist/charts
-              package_path="dist/charts/${chart}-${VERSION}.tgz"
+              package_path="dist/charts/${chart}-${chart_version}.tgz"
 
               if [ "$PUBLISH" = "true" ]; then
                 helm push "$package_path" oci://ghcr.io/eqtylab/charts 2>&1 | tee "dist/charts/${chart}-push.log"
@@ -260,7 +293,7 @@ jobs:
 
             cat >> "$chart_digest_file" <<EOF
             ${chart}:
-              version: ${VERSION}
+              version: ${chart_version}
               oci: ${oci_ref}
               ociDigest: ${digest}
               package: $(basename "$package_path")
@@ -277,6 +310,10 @@ jobs:
             charts+=(gateway-stack)
           fi
           charts+=(governance-platform)
+
+          if [ -n "$CUSTODY_VERSION" ]; then
+            charts+=(openbao-custody)
+          fi
 
           for chart in "${charts[@]}"; do
             publish_chart "$chart"
@@ -295,6 +332,7 @@ jobs:
           cp dist/charts/*.tgz "$package_root/charts/"
           cp dist/charts/*.sha256 "$package_root/charts/"
           cp -R charts/governance-platform/examples "$package_root/examples/governance-platform"
+          python scripts/release/custody_distribution.py stage "$package_root"
 
           cat > "$package_root/INSTALL.md" <<EOF
           # Governance Platform v${VERSION}
@@ -310,6 +348,8 @@ jobs:
           \`\`\`
 
           Runtime images are private. Configure image pull credentials or mirror the images to a customer registry before installing.
+
+          See OPENBAO.md for the optional, independently versioned custody release and operator setup. Custody is included only when release-manifest.yaml contains charts.openbaoCustody; its absence requires customer-managed OpenBao if that backend is selected. Inclusion does not enable OpenBao in the platform.
           EOF
 
           (cd dist && tar -czf "governance-platform-v${VERSION}.tar.gz" "governance-platform-v${VERSION}")
@@ -351,6 +391,7 @@ jobs:
           tar -xzf "dist/governance-platform-v${VERSION}.tar.gz" -C /tmp/package-check
           test -f "/tmp/package-check/governance-platform-v${VERSION}/release-manifest.yaml"
           test -f "/tmp/package-check/governance-platform-v${VERSION}/chart-digests.yaml"
+          python scripts/release/custody_distribution.py verify-package "/tmp/package-check/governance-platform-v${VERSION}"
           helm template governance-platform "dist/charts/governance-platform-${VERSION}.tgz" >/dev/null
 
       - name: Attest release packages

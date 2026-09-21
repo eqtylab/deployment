@@ -35,6 +35,11 @@
 
 Each platform release has a manifest under [`releases/`](./releases/) that pins the exact chart versions, image digests, and source refs that make up that release. Match the release version to the chart and image versions you deploy — do not mix versions across releases.
 
+The optional [`openbao-custody` delivery](./docs/openbao-delivery.md) has its own
+wrapper version and Kubernetes 1.30+ minimum. It is published and packaged only
+when explicitly selected in the release manifest; it is never an umbrella
+dependency. OpenBao application use remains development-only.
+
 ## 💬 Support
 
 For questions, deployment assistance, or issues, contact your EQTY Lab representative or open an issue in this repository.
