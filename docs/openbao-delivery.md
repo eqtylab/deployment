@@ -41,11 +41,18 @@ candidate evidence. A tag or a successful render is not release approval.
 
 Supplied custody plus `build_airgap=true` is refused: custody image mirroring,
 source/notices, and offline installation are not qualified by this workflow.
-The existing external-only air-gap scaffold remains unchanged.
+The existing external-only air-gap scaffold remains unchanged: the air-gap
+tarball carries platform charts, the manifest and the image mirror script only.
+It contains no custody chart, no `scripts/openbao/` directory and no
+`OPENBAO.md`. An air-gap customer who selects OpenBao therefore operates a
+customer-managed OpenBao and takes the operator script, policy template and
+README from the connected package for the same release, or from
+`scripts/openbao/` in this repository at that release tag.
 
 ## Customer package and operator setup
 
-Both connected modes include these paths, preserving relative imports:
+The connected package includes these paths whether or not custody is
+selected, preserving relative imports (the air-gap package does not):
 
 ```text
 OPENBAO.md
@@ -64,12 +71,11 @@ uninstall custody, delete its PVCs, destroy keys or migrate existing identities.
 Run `bash scripts/openbao/configure-auth.sh --help` from the extracted package.
 Use operator credentials separately from Auth; follow the included script
 README for reviewer topology and TLS trust. The script requires Bash, `bao`
-for writes, and Python 3 for external endpoint validation. The policy grants
-only dedicated Transit key operations, signing, self-renewal, and
-`sys/capabilities-self` update for Auth's health check. Tokens still have no
-default policy or other-token capability lookup. The health grant is synced
-from guardian-infrastructure commit
-`752913f961dc60b51a85cb731c0505e5f5f35f31`.
+for writes, and Python 3 for external endpoint validation. The packaged
+`policies/guardian-auth.hcl` is byte-identical to the synced source tree at the
+release tag, and `scripts/openbao/README.md` in the same package is the
+authoritative description of what it grants; this document does not restate
+the grant list, so the two cannot disagree. Tokens have no default policy.
 
 Match Auth's ServiceAccount, namespace, audience, auth mount/role and Transit
 mount to the script arguments. Configure the selected endpoint and CA in Auth
@@ -84,9 +90,9 @@ PyYAML 6.0.3, jsonschema 4.26.0, and Mike Farah yq:
 ```bash
 helm repo add openbao https://openbao.github.io/openbao-helm
 helm dependency build charts/openbao-custody
-python scripts/openbao/test-custody-chart.py
-python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
-python scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml
+python3 -B scripts/openbao/test-custody-chart.py
+python3 -B -m unittest discover -s scripts/release -p 'test_*.py' -v
+python3 -B scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml
 ```
 
 CI runs locked dependency builds before linting or packaging, the synced custody

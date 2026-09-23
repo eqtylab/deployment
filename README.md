@@ -24,9 +24,9 @@
 ## 📁 Repository Structure
 
 - **[`charts/`](./charts/README.md)** — Helm charts for the Governance Platform services (auth, governance, integrity, studio) plus per-IdP bootstrap charts.
-- **[`docs/`](./docs/)** — Step-by-step deployment guides for each identity provider, with per-cloud variants (AWS, Azure, GCP).
+- **[`docs/`](./docs/)** — Step-by-step deployment guides for each identity provider, with per-cloud variants (AWS, Azure, GCP), plus the optional [OpenBao custody delivery](./docs/openbao-delivery.md) notes.
 - **[`govctl/`](./govctl/README.md)** — CLI tool for generating Helm values, bootstrap configs, and secrets files interactively.
-- **[`scripts/`](./scripts/README.md)** — Helper scripts for NGINX ingress setup, cert-manager installation, IdP bootstrap, and post-install database seeding.
+- **[`scripts/`](./scripts/README.md)** — Helper scripts for NGINX ingress setup, cert-manager installation, IdP bootstrap, post-install database seeding, OpenBao operator setup, and release packaging checks.
 - **[`releases/`](./releases/)** — Per-version release manifests pinning chart versions, image digests, and source refs for each platform release.
 - **[`containers/`](./containers/)** — Custom container image builds (e.g. patched PostgreSQL) used by the platform.
 - **[`schemas/`](./schemas/)** — JSON schemas for release manifests and other structured artifacts in this repo.

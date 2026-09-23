@@ -20,7 +20,9 @@ from custody_distribution import (
     OPERATOR_FILES,
     ROOT,
     custody_version,
+    describe_failure,
     read_yaml,
+    required_chart_files,
     stage_operator_files,
     verify_package,
 )
@@ -29,19 +31,48 @@ SCHEMA = json.loads((ROOT / "schemas/release-manifest.schema.json").read_text())
 SELECTED = {"name": "openbao-custody", "version": "0.1.0", "oci": OCI}
 
 
+def manifest_paths():
+    return sorted((ROOT / "releases").glob("v*/release-manifest.yaml"))
+
+
+def release_order(path):
+    """Newest stable last: numeric parts, then stable ahead of any pre-release."""
+    match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)(-.+)?", path.parent.name)
+    if not match:
+        raise ValueError(f"unexpected release directory {path.parent.name}")
+    major, minor, patch, prerelease = match.groups()
+    return (int(major), int(minor), int(patch), prerelease is None, prerelease or "")
+
+
+def latest_manifest():
+    """The newest released manifest, so fixtures follow the current manifest shape."""
+    return read_yaml(max(manifest_paths(), key=release_order))
+
+
 class ManifestTests(unittest.TestCase):
     def test_every_historical_manifest_remains_external_only(self):
-        manifests = sorted((ROOT / "releases").glob("v*/release-manifest.yaml"))
+        manifests = manifest_paths()
         self.assertGreater(len(manifests), 0)
         for path in manifests:
             with self.subTest(manifest=path.parent.name):
                 manifest = read_yaml(path)
                 jsonschema.validate(manifest, SCHEMA)
-                if "openbaoCustody" not in manifest["charts"]:
-                    self.assertIsNone(custody_version(manifest, ROOT))
+                # No shipped release selected supplied custody; a later manifest
+                # that does must be a deliberate new entry, not a drift here.
+                self.assertNotIn("openbaoCustody", manifest["charts"])
+                self.assertIsNone(custody_version(manifest, ROOT))
+
+    def test_release_order_places_prereleases_before_their_stable_release(self):
+        names = [
+            path.parent.name for path in sorted(manifest_paths(), key=release_order)
+        ]
+        self.assertEqual(names.index("v1.0.0-rc.3") + 1, names.index("v1.0.0"))
+        self.assertEqual(
+            latest_manifest()["platform"]["version"], names[-1].removeprefix("v")
+        )
 
     def test_opt_in_uses_independent_version(self):
-        manifest = read_yaml(ROOT / "releases/v1.2.0/release-manifest.yaml")
+        manifest = latest_manifest()
         manifest["charts"]["openbaoCustody"] = SELECTED.copy()
         jsonschema.validate(manifest, SCHEMA)
         self.assertEqual(custody_version(manifest, ROOT), "0.1.0")
@@ -58,7 +89,7 @@ class ManifestTests(unittest.TestCase):
             {**SELECTED, "oci": "oci://other.example/custody"},
         ):
             with self.subTest(entry=entry):
-                manifest = read_yaml(ROOT / "releases/v1.2.0/release-manifest.yaml")
+                manifest = latest_manifest()
                 manifest["charts"]["openbaoCustody"] = entry
                 with self.assertRaises(jsonschema.ValidationError):
                     jsonschema.validate(manifest, SCHEMA)
@@ -84,7 +115,7 @@ class PackageTests(unittest.TestCase):
         self.work = tempfile.TemporaryDirectory(prefix="custody-delivery-test-")
         self.addCleanup(self.work.cleanup)
         self.root = Path(self.work.name)
-        self.manifest = read_yaml(ROOT / "releases/v1.2.0/release-manifest.yaml")
+        self.manifest = latest_manifest()
         self.manifest["platform"]["version"] = "9.8.7"
         self.manifest["validation"]["evidence"] = {
             "status": "pending",
@@ -190,23 +221,23 @@ class PackageTests(unittest.TestCase):
         self.assertTrue((package / "charts/openbao-custody-0.1.0.tgz").is_file())
         self.assertFalse((package / "charts/openbao-custody-9.8.7.tgz").exists())
 
-        policy = (package / "scripts/openbao/policies/guardian-auth.hcl").read_text()
+        # The policy is owned upstream and synced; the package must carry the
+        # source tree's bytes exactly rather than any content asserted here.
+        policy = package / "scripts/openbao/policies/guardian-auth.hcl"
         self.assertEqual(
-            set(re.findall(r'^path "([^"]+)"', policy, re.MULTILINE)),
-            {
-                "@TRANSIT_MOUNT@/keys/+",
-                "@TRANSIT_MOUNT@/sign/+/sha2-256",
-                "auth/token/renew-self",
-                "sys/capabilities-self",
-            },
+            policy.read_bytes(),
+            (ROOT / "scripts/openbao/policies/guardian-auth.hcl").read_bytes(),
         )
-        self.assertRegex(
-            policy,
-            r'path "sys/capabilities-self"\s*\{\s*capabilities = \["update"\]\s*\}',
+        with tarfile.open(package / "charts/openbao-custody-0.1.0.tgz") as archive:
+            names = set(archive.getnames())
+        for name in required_chart_files(ROOT):
+            self.assertIn("openbao-custody/" + name, names)
+        self.assertTrue(
+            any(name.startswith("examples/") for name in required_chart_files(ROOT))
         )
 
         (package / "scripts/helpers/output.sh").unlink()
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaisesRegex(ValueError, "missing or changed operator file"):
             verify_package(self.root, package)
         stage_operator_files(self.root, package)
         (package / "scripts/openbao/policies/guardian-auth.hcl").write_text(
@@ -266,6 +297,26 @@ class PackageTests(unittest.TestCase):
                 else:
                     with self.assertRaisesRegex(ValueError, "payload differs"):
                         verify_package(self.root, package)
+
+    def test_subprocess_failures_keep_their_stderr(self):
+        error = subprocess.CalledProcessError(
+            3, ["helm", "package"], stderr=b"Error: bad chart\n"
+        )
+        self.assertIn("Error: bad chart", describe_failure(error))
+        self.assertIn("exit status 3", describe_failure(error))
+        self.assertEqual(
+            describe_failure(subprocess.CalledProcessError(1, ["x"])),
+            str(subprocess.CalledProcessError(1, ["x"])),
+        )
+        package = self.assemble(supplied=True)
+        # Byte comparison against the (synthetic) source tree runs first, so the
+        # failing script must be the source's script as well as the packaged copy.
+        failing = "#!/usr/bin/env bash\necho 'synthetic operator failure' >&2\nexit 7\n"
+        for root in (self.root, package):
+            (root / "scripts/openbao/configure-auth.sh").write_text(failing)
+        with self.assertRaises(subprocess.CalledProcessError) as raised:
+            verify_package(self.root, package)
+        self.assertIn("synthetic operator failure", describe_failure(raised.exception))
 
     def test_stale_custody_version_refused_before_packaging(self):
         self.manifest["charts"]["openbaoCustody"] = {**SELECTED, "version": "0.0.1"}

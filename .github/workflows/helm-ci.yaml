@@ -83,9 +83,9 @@ jobs:
 
       - name: Validate custody renders and distribution
         run: |
-          python scripts/openbao/test-custody-chart.py
+          python -B scripts/openbao/test-custody-chart.py
           python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
-          python scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml
+          python -B scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml
 
       - name: Lint charts
         run: |

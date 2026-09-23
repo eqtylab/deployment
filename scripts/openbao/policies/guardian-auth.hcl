@@ -35,9 +35,3 @@ path "@TRANSIT_MOUNT@/sign/+/sha2-256" {
 path "auth/token/renew-self" {
   capabilities = ["update"]
 }
-
-# SigningHealth checks the caller's own permissions; the default policy is
-# deliberately absent from workload tokens. This grants no other-token lookup.
-path "sys/capabilities-self" {
-  capabilities = ["update"]
-}

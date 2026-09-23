@@ -26,6 +26,21 @@ def read_yaml(path):
     return yaml.safe_load(Path(path).read_text())
 
 
+def run_quietly(args, **kwargs):
+    """Run a check with stdout discarded; a failure keeps its stderr for main()."""
+    return subprocess.run(
+        args, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, **kwargs
+    )
+
+
+def describe_failure(error):
+    stderr = error.stderr or b""
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode(errors="replace")
+    stderr = stderr.strip()
+    return f"{error}\n{stderr}" if stderr else str(error)
+
+
 def custody_version(manifest, source=None):
     """Absence is external-only; a present but invalid entry must fail closed."""
     charts = manifest["charts"]
@@ -51,6 +66,17 @@ def custody_version(manifest, source=None):
     ):
         raise ValueError("selected custody version does not match the source chart")
     return version
+
+
+def required_chart_files(source):
+    """Files every packaged custody chart must carry, in lockstep with the source tree."""
+    examples = sorted(
+        "examples/" + path.name
+        for path in (source / "charts/openbao-custody/examples").glob("*.yaml")
+    )
+    if not examples:
+        raise ValueError("source custody chart ships no examples to distribute")
+    return ("README.md", "templates/NOTES.txt", "templates/_helpers.tpl", *examples)
 
 
 def stage_operator_files(source, destination):
@@ -84,13 +110,17 @@ def verify_package(source, package):
     manifest = read_yaml(package / "release-manifest.yaml")
     version = custody_version(manifest, source)
     for name in OPERATOR_FILES:
-        if (package / name).read_bytes() != (source / name).read_bytes():
+        packaged = package / name
+        if (
+            not packaged.is_file()
+            or packaged.read_bytes() != (source / name).read_bytes()
+        ):
             raise ValueError(f"missing or changed operator file: {name}")
     if not (package / "OPENBAO.md").is_file():
         raise ValueError("missing OPENBAO.md operator handoff")
     # This exercises relative helper/policy imports after distribution. No bao
     # command executes in dry-run mode, even when credentials exist in the shell.
-    subprocess.run(
+    run_quietly(
         [
             "bash",
             str((package / "scripts/openbao/configure-auth.sh").resolve()),
@@ -101,9 +131,6 @@ def verify_package(source, package):
             "--dry-run",
         ],
         cwd=package,
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
     )
     archives = list((package / "charts").glob("openbao-custody-*.tgz"))
     digests = read_yaml(package / "chart-digests.yaml")["charts"]
@@ -144,34 +171,25 @@ def verify_package(source, package):
         upstream = chart_yaml("charts/openbao/Chart.yaml")
         if upstream["version"] != lock["dependencies"][0]["version"]:
             raise ValueError("packaged upstream chart differs from custody lock")
-        for name in (
-            "README.md",
-            "templates/NOTES.txt",
-            "templates/_helpers.tpl",
-            "examples/values-dev-kind.yaml",
-            "examples/values-network-policy.yaml",
-        ):
+        for name in required_chart_files(source):
             contents.getmember("openbao-custody/" + name)
     # An existing immutable OCI version may have matching metadata/lock while
     # holding different values, templates, or vendored files. Repackage the
     # validated source and compare every payload before trusting the reused tar.
     with tempfile.TemporaryDirectory(prefix="custody-source-package-") as work:
-        subprocess.run(
+        run_quietly(
             [
                 os.environ.get("HELM", "helm"),
                 "package",
                 str(source / "charts/openbao-custody"),
                 "--destination",
                 work,
-            ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
+            ]
         )
         expected_archive = Path(work) / archive.name
         if archive_contents(archive) != archive_contents(expected_archive):
             raise ValueError("custody archive payload differs from validated source")
-    subprocess.run(
+    run_quietly(
         [
             os.environ.get("HELM", "helm"),
             "template",
@@ -181,10 +199,7 @@ def verify_package(source, package):
             "custody",
             "--kube-version",
             "1.30.0",
-        ],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        ]
     )
 
 
@@ -216,14 +231,11 @@ def main():
             stage_operator_files(args.source, args.package)
         else:
             verify_package(args.source, args.package)
-    except (
-        ValueError,
-        KeyError,
-        OSError,
-        yaml.YAMLError,
-        tarfile.TarError,
-        subprocess.CalledProcessError,
-    ) as error:
+    except subprocess.CalledProcessError as error:
+        parser.exit(
+            1, f"custody distribution check failed: {describe_failure(error)}\n"
+        )
+    except (ValueError, KeyError, OSError, yaml.YAMLError, tarfile.TarError) as error:
         parser.exit(1, f"custody distribution check failed: {error}\n")
 
 

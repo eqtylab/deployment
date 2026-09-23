@@ -100,19 +100,6 @@ jobs:
             echo "publish=${publish}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Resolve optional custody release
-        id: custody
-        env:
-          MANIFEST: ${{ steps.release.outputs.manifest }}
-          BUILD_AIRGAP: ${{ inputs.build_airgap }}
-        run: |
-          custody_version="$(python scripts/release/custody_distribution.py selected-version "$MANIFEST")"
-          if [ -n "$custody_version" ] && [ "$BUILD_AIRGAP" = "true" ]; then
-            echo "::error::Supplied custody is connected-only; its air-gap images/notices are not qualified."
-            exit 1
-          fi
-          echo "version=${custody_version}" >> "$GITHUB_OUTPUT"
-
       - name: Validate release manifest
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -182,13 +169,26 @@ jobs:
             fi
           done
 
+      - name: Resolve optional custody release
+        id: custody
+        env:
+          MANIFEST: ${{ steps.release.outputs.manifest }}
+          BUILD_AIRGAP: ${{ inputs.build_airgap }}
+        run: |
+          custody_version="$(python -B scripts/release/custody_distribution.py selected-version "$MANIFEST")"
+          if [ -n "$custody_version" ] && [ "$BUILD_AIRGAP" = "true" ]; then
+            echo "::error::Supplied custody is connected-only; its air-gap images/notices are not qualified."
+            exit 1
+          fi
+          echo "version=${custody_version}" >> "$GITHUB_OUTPUT"
+
       - name: Helm validation
         env:
           MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
           test -f charts/openbao-custody/Chart.lock
           helm dependency build charts/openbao-custody
-          python scripts/openbao/test-custody-chart.py
+          python -B scripts/openbao/test-custody-chart.py
           python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
@@ -332,7 +332,7 @@ jobs:
           cp dist/charts/*.tgz "$package_root/charts/"
           cp dist/charts/*.sha256 "$package_root/charts/"
           cp -R charts/governance-platform/examples "$package_root/examples/governance-platform"
-          python scripts/release/custody_distribution.py stage "$package_root"
+          python -B scripts/release/custody_distribution.py stage "$package_root"
 
           cat > "$package_root/INSTALL.md" <<EOF
           # Governance Platform v${VERSION}
@@ -391,8 +391,9 @@ jobs:
           tar -xzf "dist/governance-platform-v${VERSION}.tar.gz" -C /tmp/package-check
           test -f "/tmp/package-check/governance-platform-v${VERSION}/release-manifest.yaml"
           test -f "/tmp/package-check/governance-platform-v${VERSION}/chart-digests.yaml"
-          python scripts/release/custody_distribution.py verify-package "/tmp/package-check/governance-platform-v${VERSION}"
-          helm template governance-platform "dist/charts/governance-platform-${VERSION}.tgz" >/dev/null
+          python -B scripts/release/custody_distribution.py verify-package "/tmp/package-check/governance-platform-v${VERSION}"
+          umbrella_package="$(yq '.charts.governance-platform.package' dist/chart-digests.yaml)"
+          helm template governance-platform "dist/charts/${umbrella_package}" >/dev/null
 
       - name: Attest release packages
         if: steps.release.outputs.publish == 'true'

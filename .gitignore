@@ -28,3 +28,7 @@ Session.vim
 # Helm
 /**/*.tgz
 **/.helm_ls_cache/**
+
+# Python bytecode
+__pycache__/
+*.pyc
