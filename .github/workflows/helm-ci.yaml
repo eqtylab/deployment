@@ -8,6 +8,11 @@ on:
       - "charts/**"
       - "releases/**"
       - "schemas/**"
+      - "scripts/openbao/**"
+      - "scripts/helpers/output.sh"
+      - "scripts/release/**"
+      - "docs/openbao-delivery.md"
+      - ".github/workflows/release-platform-package.yaml"
   push:
     branches:
       - main
@@ -16,6 +21,11 @@ on:
       - "charts/**"
       - "releases/**"
       - "schemas/**"
+      - "scripts/openbao/**"
+      - "scripts/helpers/output.sh"
+      - "scripts/release/**"
+      - "docs/openbao-delivery.md"
+      - ".github/workflows/release-platform-package.yaml"
   workflow_dispatch:
 
 permissions:
@@ -37,7 +47,16 @@ jobs:
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo add haproxytech https://haproxytech.github.io/helm-charts
-          helm repo update bitnami haproxytech
+          helm repo add openbao https://openbao.github.io/openbao-helm
+          helm repo update bitnami haproxytech openbao
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install custody validation dependencies
+        run: python -m pip install PyYAML==6.0.3 jsonschema==4.26.0
 
       - name: Install yq
         run: |
@@ -53,12 +72,20 @@ jobs:
             exit 1
           fi
 
-      - name: Build umbrella dependencies
+      - name: Build locked chart dependencies
         run: |
+          test -f charts/openbao-custody/Chart.lock
+          helm dependency build charts/openbao-custody
           if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
           fi
           helm dependency build charts/governance-platform
+
+      - name: Validate custody renders and distribution
+        run: |
+          python -B scripts/openbao/test-custody-chart.py
+          python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
+          python -B scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml
 
       - name: Lint charts
         run: |

@@ -10,7 +10,7 @@
       "required": ["name", "version", "releaseType", "kubernetesMinimumVersion", "architecture"],
       "properties": {
         "name": { "const": "governance-platform" },
-        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-.][0-9A-Za-z.-]+)?$" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$", "$comment": "Semantic version; the same pattern applies to charts.openbaoCustody.version." },
         "releaseType": { "enum": ["prerelease", "stable"] },
         "releaseDate": { "type": "string" },
         "kubernetesMinimumVersion": { "type": "string" },
@@ -43,7 +43,21 @@
         }
       }
     },
-    "charts": { "type": "object" },
+    "charts": {
+      "type": "object",
+      "properties": {
+        "openbaoCustody": {
+          "description": "Optional separate custody release. Omit for customer-managed OpenBao; version is independent of platform.version.",
+          "type": "object",
+          "required": ["name", "version", "oci"],
+          "properties": {
+            "name": { "const": "openbao-custody" },
+            "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$" },
+            "oci": { "const": "oci://ghcr.io/eqtylab/charts/openbao-custody" }
+          }
+        }
+      }
+    },
     "sources": { "type": "object" },
     "validation": {
       "type": "object",

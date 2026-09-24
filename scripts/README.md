@@ -1,6 +1,6 @@
 # Scripts
 
-Helper scripts for infrastructure setup, identity provider bootstrap, and post-install database seeding.
+Helper scripts for infrastructure setup, identity provider bootstrap, post-install database seeding, optional OpenBao operator setup, and release packaging checks.
 
 ## Infrastructure
 
@@ -43,3 +43,23 @@ The `helpers/` directory contains shared shell functions used by all scripts:
 | [helpers/string.sh](helpers/string.sh) | String manipulation                  |
 | [helpers/array.sh](helpers/array.sh)   | Array utilities                      |
 | [helpers/os.sh](helpers/os.sh)         | OS detection                         |
+
+## OpenBao Operator Setup
+
+The `openbao/` directory is synced from `eqtylab/guardian-infrastructure`; edit it there, not here. It configures a development-only OpenBao for Auth signing and is shipped in the connected customer package (see [`docs/openbao-delivery.md`](../docs/openbao-delivery.md)).
+
+| Script                                                         | Description                                                                          | Usage                                                        |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| [openbao/configure-auth.sh](openbao/configure-auth.sh)         | Enables the Transit mount, scoped policy, Kubernetes auth method and role for Auth   | `./scripts/openbao/configure-auth.sh --help`                 |
+| [openbao/kind-custody-smoke.sh](openbao/kind-custody-smoke.sh) | Installs the custody chart on a disposable kind cluster and checks Raft/unseal       | `./scripts/openbao/kind-custody-smoke.sh`                    |
+| [openbao/test-custody-chart.py](openbao/test-custody-chart.py) | Cluster-free custody render, NOTES and package checks (build dependencies first)     | `python3 -B scripts/openbao/test-custody-chart.py`           |
+
+The script reads `openbao/policies/guardian-auth.hcl` and `helpers/output.sh` relative to itself; keep that layout when copying it.
+
+## Release Tooling
+
+| Script                                                                       | Description                                                                                       | Usage                                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| [release/custody_distribution.py](release/custody_distribution.py)           | Validates optional custody selection in release manifests and verifies the packaged custody files | `python3 -B scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml`   |
+
+Owned in this repository (not synced). The release workflow runs it before publication; `python3 -B -m unittest discover -s scripts/release -p 'test_*.py' -v` runs its regressions.
