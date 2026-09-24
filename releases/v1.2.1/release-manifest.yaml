@@ -1,0 +1,113 @@
+platform:
+  name: governance-platform
+  version: 1.2.1
+  releaseType: stable
+  releaseDate: "2026-09-24"
+  kubernetesMinimumVersion: "1.29"
+  architecture: linux/amd64
+sources:
+  guardian:
+    repository: eqtylab/guardian
+    ref: 92e64ba46907928ad62f65ef31a9112b18f1f39c
+  infrastructure:
+    repository: eqtylab/guardian-infrastructure
+    ref: "e9572b3783c290dc8d5134f53842f1f2d2e790b9"
+images:
+  authService:
+    repository: ghcr.io/eqtylab/auth-service
+    tag: 1.2.1
+    digest: "sha256:46d908fa9cd16c30892f098408d7bb5ceeeeccfbead156ff869546e604b44602"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-auth-service
+  governanceService:
+    repository: ghcr.io/eqtylab/governance-service
+    tag: 1.2.1
+    digest: "sha256:c70ecfaa23321b222ce84313fef0dfdff1be72ab2fc067922659868ebdaf0ac8"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-governance-service
+  governanceStudio:
+    repository: ghcr.io/eqtylab/governance-studio
+    tag: 1.2.1
+    digest: "sha256:2648b1bc70a3740e8d184549b53b10fff47516f29adb6e7e53c0b3375eb4338f"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-governance-studio
+  integrityService:
+    repository: ghcr.io/eqtylab/integrity-service
+    tag: 1.2.1
+    digest: "sha256:80c21b6fe3de7aa21b79728259b936e292a13b3c606027f4b32a76e2e81ee15a"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-integrity-service
+  eqtyPdfgen:
+    repository: ghcr.io/eqtylab/eqty-pdfgen
+    tag: 1.2.1
+    digest: "sha256:cb0ae268bb4d58742a44e2865b3a473e34c8a0b2bf82c49874f22f7c8eef7f42"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-pdfgen
+  llmGateway:
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    tag: 1.2.1
+    digest: "sha256:131e5dd7aba3379ba53abb8f09a22b3dd90cb53e37db6cce051d0453638de982"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-llm-gateway
+  controlPlane:
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    tag: 1.2.1
+    digest: "sha256:a49d9a1bf73c3870ffc16a15d8529e9d174572aa2fbbf38ab14b90bf12a2a6f3"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-control-plane
+  guardianConsole:
+    repository: ghcr.io/eqtylab/guardian-console
+    tag: 1.2.1
+    digest: "sha256:8f95cb46627f51750b6bd8d0b5557b94123c5fdcf368e5c40d9afff5f2b1a267"
+    sourceSha: "92e64ba46907928ad62f65ef31a9112b18f1f39c"
+    metadataArtifact: image-metadata-console
+charts:
+  authService:
+    name: auth-service
+    version: 1.2.1
+    oci: oci://ghcr.io/eqtylab/charts/auth-service
+  governanceService:
+    name: governance-service
+    version: 1.2.1
+    oci: oci://ghcr.io/eqtylab/charts/governance-service
+  governanceStudio:
+    name: governance-studio
+    version: 1.2.1
+    oci: oci://ghcr.io/eqtylab/charts/governance-studio
+  integrityService:
+    name: integrity-service
+    version: 1.2.1
+    oci: oci://ghcr.io/eqtylab/charts/integrity-service
+  eqtyPdfgen:
+    name: eqty-pdfgen
+    version: 1.2.1
+    oci: oci://ghcr.io/eqtylab/charts/eqty-pdfgen
+  gatewayStack:
+    name: gateway-stack
+    version: 1.2.1
+    oci: oci://ghcr.io/eqtylab/charts/gateway-stack
+  governancePlatform:
+    name: governance-platform
+    version: 1.2.1
+    oci: oci://ghcr.io/eqtylab/charts/governance-platform
+validation:
+  required: true
+  mode: manual
+  identityProvider: keycloak
+  database: external-postgres
+  evidence:
+    status: approved
+    recordedIn: infrastructure-release-pr
+    reviewer: "tmccoy14"
+    reviewedAt: "2026-09-24T20:10:55Z"
+    notes: "Staging upgrade from v1.2.0 completed and validated with Keycloak identity provider and external Postgres; Auth Service, Governance Service, and Integrity Service migrations applied and expected platform services healthy. Confirmed failing indicator evaluations create declarations, bulk indicator application, the plugin configurations tab, and organization owners holding no project roles. Gateway stack not enabled in staging and not covered by this validation."
+docs:
+  provider: self-hosted
+  version: v1.2.1
+  state: beta
+  default: false
+  sourceRepository: eqtylab/governance-platform-docs
+  sourceFormat: static-site
+  sourceCommit: 0038174a55fb321d31bdeb77c1c2df9e785c6a27
+  snapshotTag: docs/v1.2.1
+  workflowRunUrl: https://github.com/eqtylab/governance-platform-docs/actions/runs/36053461757
