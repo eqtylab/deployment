@@ -29,7 +29,9 @@ permissions:
   id-token: write
 
 concurrency:
-  group: platform-package-${{ github.ref_name || inputs.version }}
+  # Share the version lock with the mirror so it cannot announce delivery
+  # while a packaging retry replaces its source artifacts.
+  group: platform-release-${{ inputs.version && format('platform/v{0}', inputs.version) || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -99,6 +101,13 @@ jobs:
             echo "prerelease=${prerelease}"
             echo "publish=${publish}"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Reject republishing a delivered version
+        if: steps.release.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: python -B scripts/release/cloudsmith_release.py check-publish "$VERSION"
 
       - name: Validate release manifest
         env:
@@ -189,11 +198,11 @@ jobs:
           test -f charts/openbao-custody/Chart.lock
           helm dependency build charts/openbao-custody
           python -B scripts/openbao/test-custody-chart.py
-          python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
           fi
           helm dependency build charts/governance-platform
+          python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           charts=(charts/auth-service)
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             charts+=(charts/eqty-pdfgen)
@@ -332,12 +341,13 @@ jobs:
           cp dist/charts/*.tgz "$package_root/charts/"
           cp dist/charts/*.sha256 "$package_root/charts/"
           cp -R charts/governance-platform/examples "$package_root/examples/governance-platform"
+          cp charts/governance-platform/examples/values-cloudsmith.yaml "$package_root/values-cloudsmith.yaml"
           python -B scripts/release/custody_distribution.py stage "$package_root"
 
           cat > "$package_root/INSTALL.md" <<EOF
           # Governance Platform v${VERSION}
 
-          Install the customer release with the published umbrella chart:
+          Until this version has a verified Cloudsmith delivery, use its existing GHCR chart and image credentials:
 
           \`\`\`bash
           helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
@@ -347,7 +357,7 @@ jobs:
             --values values.yaml
           \`\`\`
 
-          Runtime images are private. Configure image pull credentials or mirror the images to a customer registry before installing.
+          GHCR installs require GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json confirms this version is delivered, follow https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md to install from Cloudsmith with the packaged values-cloudsmith.yaml and your EQTY-issued prod entitlement token. A GitHub release or enabled publishing flag alone does not prove delivery. Prereleases remain in GitHub.
 
           See OPENBAO.md for the optional, independently versioned custody release and operator setup. Custody is included only when release-manifest.yaml contains charts.openbaoCustody; its absence requires customer-managed OpenBao if that backend is selected. Inclusion does not enable OpenBao in the platform.
           EOF
@@ -431,7 +441,7 @@ jobs:
           - Chart digests: \`chart-digests.yaml\`
           - Runtime image tags: \`${VERSION}\`
 
-          This release uses private runtime images. Customers must configure GHCR image pull credentials or mirror images into their own registry.
+          The GHCR installation above remains available with GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json appears on this release, use the Cloudsmith installation guide at https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md with the packaged values-cloudsmith.yaml and an EQTY prod entitlement token. Prereleases and internal installations continue using GHCR.
           EOF
 
       - name: Publish GitHub release
@@ -441,6 +451,7 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
           PRERELEASE: ${{ steps.release.outputs.prerelease }}
         run: |
+          python -B scripts/release/cloudsmith_release.py check-publish "$VERSION"
           tag="platform/v${VERSION}"
           assets=(
             "dist/governance-platform-v${VERSION}.tar.gz"
@@ -475,3 +486,19 @@ jobs:
               --verify-tag \
               "${flags[@]}"
           fi
+
+      - name: Record successful stable publication
+        if: steps.release.outputs.publish == 'true' && steps.release.outputs.release_type == 'stable'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: python -B scripts/release/cloudsmith_release.py receipt "$VERSION" dist/release-publication.json
+
+      - name: Retain publication receipt
+        if: steps.release.outputs.publish == 'true' && steps.release.outputs.release_type == 'stable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stable-publication-${{ github.run_attempt }}
+          path: dist/release-publication.json
+          if-no-files-found: error
+          retention-days: 90

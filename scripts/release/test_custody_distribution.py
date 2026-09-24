@@ -140,6 +140,10 @@ class PackageTests(unittest.TestCase):
         examples = self.root / "charts/governance-platform/examples"
         examples.mkdir()
         (examples / "values.yaml").write_text("{}\n")
+        shutil.copy2(
+            ROOT / "charts/governance-platform/examples/values-cloudsmith.yaml",
+            examples,
+        )
         shutil.copytree(
             ROOT / "charts/openbao-custody", self.root / "charts/openbao-custody"
         )

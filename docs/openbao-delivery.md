@@ -104,7 +104,9 @@ bytes to source, checks optional inclusion and chart hashes/locks, and renders
 the supplied archive without a cluster. It also runs in the release workflow
 before customer archive publication. No credentials or live fixtures are needed.
 
-Charts and `scripts/openbao/` are owned upstream and synced from
-`eqtylab/guardian-infrastructure`. The workflow, schema and
+Charts, `govctl/`, `docs/{auth0,entra,keycloak}/`, `docs/cloudsmith.md`, and
+`scripts/openbao/` are owned upstream and synced from
+`eqtylab/guardian-infrastructure`. The [Cloudsmith operator runbook](cloudsmith-release.md)
+owns the raw package naming and delivery URL/schema contract. The workflow, schema and
 `scripts/release/` distribution checks are owned here; keep them outside synced
 directories so a source sync cannot remove the downstream validation.
