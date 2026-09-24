@@ -148,7 +148,7 @@ See the [examples/](examples/) directory for complete configuration examples:
 - [values-auth0.yaml](examples/values-auth0.yaml) - Auth0 deployment
 - [values-entra.yaml](examples/values-entra.yaml) - Entra ID deployment
 - [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
-- [values-openbao.yaml](examples/values-openbao.yaml) - Optional development OpenBao overlay (manual Helm values)
+- [values-openbao.yaml](examples/values-openbao.yaml) - Optional OpenBao Transit overlay (manual Helm values)
 - [values-openbao-kind.yaml](examples/values-openbao-kind.yaml) - Disposable local-kind OpenBao diagnostic profile; layer after `values-keycloak.yaml` and `values-openbao.yaml`. It cannot `helm template` on its own because the `openbaoKindProfile` guard needs launcher-supplied publisher values
 - [secrets-sample.yaml](examples/secrets-sample.yaml) - Complete secrets template
 
@@ -394,7 +394,7 @@ Authentication and authorization service settings. See [auth-service/README.md](
 | auth-service.config.idp.provider           | string | `""`    | IDP provider (auto-configured from global.secrets.auth.provider)                     |
 | auth-service.config.keyManagement.provider | string | `""`    | Key management provider (auto-configured from global.secrets.keyManagement.provider) |
 | auth-service.secrets.keyManagement.openbao.name | string | `""` | Operator-managed token Secret override; takes precedence over global.secrets.keyManagement.openbao.secretName (token_file only). |
-| auth-service.config.keyManagement.openbao  | object | see values | OpenBao Transit endpoint, CA and workload-auth settings (provider `openbao`; development profile only, see the auth-service chart README) |
+| auth-service.config.keyManagement.openbao  | object | see values | OpenBao Transit endpoint, CA and workload-auth settings (provider `openbao`; see the auth-service chart README) |
 | auth-service.config.keyManagement.openbao.auth.reviewer.create | bool | `false` | Create a separate reviewer ServiceAccount and system:auth-delegator binding; never grant Auth TokenReview permissions. |
 | auth-service.config.keyManagement.openbao.auth.reviewer.name | string | `""` | Reviewer name; defaults to <release>-auth-service-openbao-reviewer. |
 | auth-service.config.keyManagement.openbao.auth.reviewer.tokenSecret | bool | `false` | Create a long-lived reviewer token Secret for external OpenBao. Leave false when OpenBao uses its local projected token. |
@@ -419,7 +419,7 @@ Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdf
 
 EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
 
-Before opting into bound signing, verify that both selected images include the [Guardian #234](https://github.com/eqtylab/guardian/pull/234) contract and Auth includes the curve-correct certificates from [#233](https://github.com/eqtylab/guardian/pull/233). The chart does not select a supporting image release automatically. Empty timestamp URLs require P2's [`_signer.py` behavior](../eqty-pdfgen/README.md#prerequisites). Bound signing is independent of the key-management provider; OpenBao remains optional and development-only.
+Before opting into bound signing, verify that both selected images include the [Guardian #234](https://github.com/eqtylab/guardian/pull/234) contract and Auth includes the curve-correct certificates from [#233](https://github.com/eqtylab/guardian/pull/233). The chart does not select a supporting image release automatically. Empty timestamp URLs require P2's [`_signer.py` behavior](../eqty-pdfgen/README.md#prerequisites). Bound signing is independent of the key-management provider; OpenBao remains optional.
 
 ### Governance Service Configuration
 
@@ -773,13 +773,12 @@ The auth-service uses a key management provider for credential signing. The prov
 OpenBao Transit is also selectable (`global.secrets.keyManagement.provider: openbao`).
 It needs no cloud credentials: Auth authenticates with a projected Kubernetes
 service-account token (or an operator-managed token Secret) and trusts the
-endpoint through a mounted CA bundle. Current auth-service images only allow it
-in the development profile, so `global.environmentType` must be `development`
-and `auth-service.config.keyManagement.openbao.developmentEnabled` must be true;
-`helm template` fails otherwise. See `examples/values-openbao.yaml` and the
-auth-service chart README for the endpoint, mount, role and CA values.
+endpoint through a mounted CA bundle. It is supported for fresh installations
+with P-256/SHA-256 in any `global.environmentType`. See
+`examples/values-openbao.yaml` and the auth-service chart
+README for the endpoint, mount, role and CA values.
 
-OpenBao development profiles currently use manually maintained Helm values; govctl does not generate them. See [govctl scope](../../govctl/README.md#openbao-development-workflow).
+OpenBao profiles currently use manually maintained Helm values; govctl does not generate them. See [govctl scope](../../govctl/README.md#openbao-workflow).
 
 A complete disposable local-kind diagnostic profile is
 `examples/values-openbao-kind.yaml`, documented with

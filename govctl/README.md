@@ -153,7 +153,7 @@ Configures all platform services based on your selections:
 
 To enable the gateway, layer [`values-gateway.yaml`](../charts/governance-platform/examples/values-gateway.yaml) over the generated file and see [`charts/gateway-stack/README.md`](../charts/gateway-stack/README.md) for hostnames, TLS, and plugin setup.
 
-PDFgen bound signing and optional timestamping are available through explicit values overrides: layer `eqty-pdfgen.config.signingBound`, `eqty-pdfgen.config.timestampUrl`, and compatible Auth/PDFgen image selections over the generated file. Verify the [image capability prerequisites](../charts/eqty-pdfgen/README.md#prerequisites) first. Bound signing is independent of the key-management provider; OpenBao remains optional and development-only. Full generator support for these settings is deferred.
+PDFgen bound signing and optional timestamping are available through explicit values overrides: layer `eqty-pdfgen.config.signingBound`, `eqty-pdfgen.config.timestampUrl`, and compatible Auth/PDFgen image selections over the generated file. Verify the [image capability prerequisites](../charts/eqty-pdfgen/README.md#prerequisites) first. Bound signing is independent of the key-management provider; OpenBao remains optional. Full generator support for these settings is deferred.
 
 When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The same placeholder appears inside the generated `gatewayDsn`, so replace it in both places. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/governance-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
 
@@ -198,19 +198,19 @@ After generating your files, follow the deployment guide for your auth provider 
 - [Keycloak + Azure](../docs/keycloak/deployment-guide-azure.md)
 - [Keycloak + GCP](../docs/keycloak/deployment-guide-gcp.md)
 
-## OpenBao development workflow
+## OpenBao workflow
 
-OpenBao is optional and development-only. The current supported configuration
+OpenBao is optional. The current supported configuration
 workflow is manual Helm values, using
 [the umbrella overlay](../charts/governance-platform/examples/values-openbao.yaml)
-and the [Auth examples](../charts/auth-service/README.md#openbao-transit-development-profile).
+and the [Auth examples](../charts/auth-service/README.md#openbao-transit).
 Generate any base cloud/identity configuration first, then maintain and layer the
 OpenBao overlay yourself, selecting the provider both globally and in Auth.
 `govctl` does not currently offer or generate OpenBao; its three-provider prompt
 is intentional until the complete generator workflow is implemented.
 
 A future generator feature must add the provider model and prompt together with
-typed endpoint, development gates, algorithm, CA and auth inputs, values output,
+typed endpoint, algorithm, CA and auth inputs, values output,
 and round-trip/render tests. Kubernetes auth must emit no token Secret;
 `token_file` must reference an operator-managed Secret name and custom token key
 without collecting token contents. Existing cloud output must remain unchanged.

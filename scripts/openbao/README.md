@@ -94,5 +94,5 @@ python3 -B -m unittest discover -s tests -p test_openbao_script.py -v
 
 Tests use a fake `bao` CLI to assert zero calls on invalid input, config writes
 for both modes, dry-run behavior, and execution from the distributed layout.
-They do not contact or modify an OpenBao server. OpenBao remains optional and
-development-only; this script does not install or deploy it.
+They do not contact or modify an OpenBao server. OpenBao remains optional;
+this script does not install or deploy it.

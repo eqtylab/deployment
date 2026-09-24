@@ -429,7 +429,7 @@ config:
     # @default -- `0.0.0.0`
     host: "0.0.0.0"
     # -- Environment
-    # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+    # @default -- `""` (auto-configured from global.environmentType, defaults to "production")
     environment: ""
     # -- Auth Service URL
     # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}/api/v1/auth")
@@ -641,23 +641,18 @@ config:
 
     # -- OpenBao Transit Configuration
     # @default -- See values below
-    # Only used when provider is "openbao". Requires an auth-service image that
-    # contains the OpenBao provider (guardian PRs #216 token_file, #225
-    # kubernetes auth, #223/#224 provisioning and signing health). The current
-    # images gate OpenBao to ENVIRONMENT=development with
-    # developmentEnabled=true; rendering fails otherwise. No cloud KMS
-    # credentials are mounted when this provider is selected.
+    # Only used when provider is "openbao". Supported for fresh installations
+    # with P-256/SHA-256. No cloud KMS credentials are mounted when this
+    # provider is selected.
     openbao:
-      # -- Development gate (OPENBAO_DEVELOPMENT_ENABLED)
-      # @default -- `false`
-      # Must be true while the Auth image only supports the development profile.
-      developmentEnabled: false
       # -- OpenBao API origin (OPENBAO_ADDRESS)
       # @default -- `""`
-      # **REQUIRED**: `https://` origin (or `http://` on an explicit loopback IP)
-      # without credentials, path, query or fragment; an optional trailing / is allowed.
+      # **REQUIRED**: `https://` origin without credentials, path, query or
+      # fragment; an optional trailing / is allowed. An explicit loopback IP
+      # permits `http://` only when the environment is exactly "development"
+      # (config.server.environment, then global.environmentType, default
+      # "production"); localhost is rejected in every environment.
       # HTTPS example: https://openbao-custody-active.custody.svc.cluster.local:8200
-      # localhost is rejected; for HTTP use an explicit loopback IP, e.g. http://127.0.0.1:8200
       address: ""
       # -- Transit mount dedicated to Auth (OPENBAO_TRANSIT_MOUNT)
       # @default -- `guardian-did`

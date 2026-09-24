@@ -1,20 +1,17 @@
-# OpenBao Transit with Kubernetes workload authentication (development profile).
+# OpenBao Transit with Kubernetes workload authentication.
 #
 # Prerequisites (operator-managed, outside this chart):
 #   - An OpenBao endpoint reachable at config.keyManagement.openbao.address with a
 #     dedicated Transit mount for Auth and the scoped policy from the Auth README.
 #   - A Kubernetes auth mount and a role bound to this release's service account,
 #     namespace and audience, with a TokenReview reviewer configured on OpenBao.
-#   - An auth-service image containing the OpenBao provider and Kubernetes auth
-#     (guardian PRs #216, #225, #223, #224). Current images only allow the
-#     development profile, so the environment must resolve to "development".
+# Requires an auth-service image that includes eqtylab/guardian#271 (the first release after 1.2.0 ships it).
+# Set config.server.environment as for any other deployment.
 config:
-  server:
-    environment: development
   keyManagement:
     provider: openbao
     openbao:
-      developmentEnabled: true
+      # Bundled custody chart address. The bundled openbao-custody chart is an optional integration not yet approved for production rollout: for production, point Auth at a customer-operated OpenBao that meets your availability and recovery requirements, or qualify the bundled chart first.
       address: https://openbao-custody-active.custody.svc.cluster.local:8200
       transitMount: guardian-did
       keyPrefix: guardian

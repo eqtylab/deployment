@@ -94,13 +94,6 @@ helm, not in a crash-looping pod. Mirrors the Auth image's own startup checks.
 */}}
 {{- define "auth-service.openbaoValidate" -}}
 {{- $bao := .Values.config.keyManagement.openbao -}}
-{{- $environment := .Values.config.server.environment | default ((.Values.global).environmentType) | default "production" -}}
-{{- if ne $environment "development" -}}
-{{- fail (printf "config.keyManagement.provider=openbao is development-only in the current auth-service images: ENVIRONMENT resolves to %q, set config.server.environment (or global.environmentType) to \"development\"" $environment) -}}
-{{- end -}}
-{{- if not $bao.developmentEnabled -}}
-{{- fail "config.keyManagement.openbao.developmentEnabled must be true: the current auth-service images only support the development OpenBao profile" -}}
-{{- end -}}
 {{- if not $bao.address -}}
 {{- fail "config.keyManagement.openbao.address is required when key management provider is openbao" -}}
 {{- end -}}
@@ -131,8 +124,10 @@ paths and empty hosts. A root slash is supported by the Auth runtime. */ -}}
 {{- end -}}
 {{- end -}}
 {{- $loopback = or $loopback (regexMatch (printf `^\[(%s)\]$` (join "|" $v6)) $host) -}}
-{{- if and (ne $origin.scheme "https") (not $loopback) -}}
-{{- fail "config.keyManagement.openbao.address requires HTTPS except on an explicit loopback IP (localhost is not accepted)" -}}
+{{- /* The Auth image accepts a loopback HTTP origin only when ENVIRONMENT is development. */ -}}
+{{- $environment := .Values.config.server.environment | default ((.Values.global).environmentType) | default "production" -}}
+{{- if and (ne $origin.scheme "https") (or (not $loopback) (ne $environment "development")) -}}
+{{- fail (printf "config.keyManagement.openbao.address requires HTTPS except on an explicit loopback IP in a development environment (localhost is not accepted; ENVIRONMENT resolves to %q)" $environment) -}}
 {{- end -}}
 {{- $algorithm := .Values.config.keyManagement.algorithm | default "p256" -}}
 {{- if ne $algorithm "p256" -}}

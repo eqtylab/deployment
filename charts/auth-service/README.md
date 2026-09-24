@@ -543,8 +543,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.keyManagement.gcp_kms.scheduledDestroyDays | int    | `24`    | GCP KMS scheduled destroy days                                                                                           |
 | config.keyManagement.gcp_kms.serviceAccountJson   | string | `""`    | GCP service account JSON (optional with Workload Identity)                                                               |
 | config.keyManagement.algorithm | string | `""` | DID algorithm: image default secp256k1; OpenBao renders p256. |
-| config.keyManagement.openbao.developmentEnabled | bool | `false` | Required development opt-in; environment must also be development. |
-| config.keyManagement.openbao.address | string | `""` | Required HTTPS origin; explicit loopback IP permits HTTP. Optional root slash; no credentials, path, query or fragment. localhost is rejected. |
+| config.keyManagement.openbao.address | string | `""` | Required HTTPS origin; an explicit loopback IP permits HTTP only when the environment is exactly `development`. Optional root slash; no credentials, path, query or fragment. localhost is rejected. |
 | config.keyManagement.openbao.transitMount | string | `""` | Dedicated Transit mount; defaults to guardian-did. |
 | config.keyManagement.openbao.keyPrefix | string | `""` | Key name prefix; defaults to guardian. |
 | config.keyManagement.openbao.requestTimeout | string | `""` | Request timeout; defaults to 5s, maximum 30s. |
@@ -766,7 +765,7 @@ secrets:
 
 ## Key Management Configuration
 
-Choose one key management provider for DID credential signing: AWS KMS, Azure Key Vault, GCP KMS, or OpenBao Transit (development profile).
+Choose one key management provider for DID credential signing: AWS KMS, Azure Key Vault, GCP KMS, or OpenBao Transit.
 
 ### AWS KMS
 
@@ -874,24 +873,21 @@ kubectl create secret generic platform-gcp-kms \
   --namespace governance
 ```
 
-### OpenBao Transit (development profile)
+### OpenBao Transit
 
 OpenBao Transit keeps the DID signing keys in a customer-managed or separately
 installed OpenBao and needs no cloud credentials. Auth creates and uses
 non-exportable P-256 keys under a dedicated Transit mount and authenticates
 with a projected Kubernetes service-account token or an operator-managed token
-file. The current auth-service images only accept this provider in the
-development profile: the chart renders `OPENBAO_DEVELOPMENT_ENABLED=true` and
-fails at `helm template` time unless the environment resolves to `development`
-and `config.keyManagement.openbao.developmentEnabled` is true. Lifting that
-gate is a separate Auth release, not a chart value.
+file. The provider is supported for fresh installations with P-256/SHA-256 in
+any environment.
 
 #### Minimum image
 
-The provider requires an auth-service image that contains the OpenBao provider
-(guardian PRs #216 token-file authentication, #225 Kubernetes authentication,
-#223/#224 provisioning and signing health). Do not select `openbao` with an
-older image; it rejects the provider at startup.
+Requires an auth-service image that includes eqtylab/guardian#271 (the first release after 1.2.0 ships it). The chart's default `appVersion`
+image has no OpenBao provider, and earlier gated images require a variable this
+chart does not render; with either, the chart renders cleanly and the pod fails
+at startup. Select a supporting image before selecting the provider.
 
 #### Required OpenBao Setup (operator-managed)
 
@@ -914,12 +910,9 @@ by a Helm hook.
 
 ```yaml
 config:
-  server:
-    environment: development
   keyManagement:
     provider: "openbao"
     openbao:
-      developmentEnabled: true
       address: "https://openbao-custody-active.custody.svc.cluster.local:8200"
       transitMount: "guardian-did"
       keyPrefix: "guardian"
@@ -937,20 +930,19 @@ The chart mounts the CA at `/etc/openbao/ca` and a projected token with the
 configured audience at `/var/run/secrets/openbao/token`, and renders every
 `OPENBAO_*` setting into the ConfigMap. Complete examples:
 `examples/values-openbao-kubernetes.yaml`, `examples/values-openbao-token-file.yaml`.
+The address above is the bundled custody chart's active Service. The bundled openbao-custody chart is an optional integration not yet approved for production rollout: for production, point Auth at a customer-operated OpenBao that meets your availability and recovery requirements, or qualify the bundled chart first.
 
 #### Example Configuration (token file, external OpenBao)
 
 This example targets an external, operator-managed endpoint. For the supplied
 custody chart, use `https://openbao-custody-active.custody.svc.cluster.local:8200`.
+The bundled openbao-custody chart is an optional integration not yet approved for production rollout: for production, point Auth at a customer-operated OpenBao that meets your availability and recovery requirements, or qualify the bundled chart first.
 
 ```yaml
 config:
-  server:
-    environment: development
   keyManagement:
     provider: "openbao"
     openbao:
-      developmentEnabled: true
       address: "https://openbao.custody.example.internal:8200"
       ca:
         secretName: "openbao-ca"
@@ -1029,15 +1021,14 @@ origin before any administrative writes. See the
 
 A login from another ServiceAccount, namespace or audience is rejected by
 OpenBao's role binding; renewal and projected-token replacement are handled by
-Auth (see the Auth Service README). The Auth image with Kubernetes auth
-(guardian #225) is required; the live install smoke for this integration is
-recorded with H4.
+Auth (see the Auth Service README). The minimum image stated above applies; the
+live install smoke for this integration is recorded with H4.
 
 #### Render-time checks
 
-`helm template` fails when the provider is `openbao` and: the environment is
-not `development`, `developmentEnabled` is false, `address` is empty or not an
-`https://` origin (loopback `http://` is allowed for local clusters),
+`helm template` fails when the provider is `openbao` and: `address` is empty or
+not an `https://` origin (loopback `http://` is allowed only when the environment
+is `development`),
 `algorithm` is set to anything but `p256`, both CA sources are set, a
 `kubernetes` role or audience is missing, a `token_file` Secret name is
 missing, or the auth method is unknown. Cloud providers and the default render

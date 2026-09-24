@@ -35,7 +35,7 @@ For `config.signingBound: true`, select **both** a PDFgen image implementing the
 
 Signing without a timestamp token also requires the PDFgen implementation from #234: [`sign_pdf` in P2's `_signer.py`](https://github.com/eqtylab/guardian/blob/0cb3d484cc0ec7febbab381e86a55b9c392c11c8/services/pdfgen/eqty_pdfgen/_signer.py#L308) supplies no timestamper when the URL is empty. This applies to both legacy and bound signing; Helm only passes the configured URL to the image.
 
-Bound signing is independent of the key-management provider; it is not inherently OpenBao-only. OpenBao remains optional and development-only.
+Bound signing is independent of the key-management provider; it is not inherently OpenBao-only. OpenBao remains optional.
 
 ## Deployment
 

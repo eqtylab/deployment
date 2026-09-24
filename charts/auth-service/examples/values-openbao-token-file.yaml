@@ -1,19 +1,19 @@
-# OpenBao Transit with an operator-managed scoped token (development profile).
+# OpenBao Transit with an operator-managed scoped token.
 #
 # This example targets an external, operator-managed OpenBao endpoint.
 # For the supplied custody chart use https://openbao-custody-active.custody.svc.cluster.local:8200.
+# The bundled openbao-custody chart is an optional integration not yet approved for production rollout: for production, point Auth at a customer-operated OpenBao that meets your availability and recovery requirements, or qualify the bundled chart first.
 # The token lives in a Secret this chart never creates, for example written by
 # an OpenBao Agent or a bootstrap procedure:
 #   kubectl create secret generic platform-openbao-token \
 #     --from-file=token=./auth.token --namespace governance
 # Replacing the Secret's content rotates the credential without restarting Auth.
+# Requires an auth-service image that includes eqtylab/guardian#271 (the first release after 1.2.0 ships it);
+# set config.server.environment as for any other deployment.
 config:
-  server:
-    environment: development
   keyManagement:
     provider: openbao
     openbao:
-      developmentEnabled: true
       address: https://openbao.custody.example.internal:8200
       ca:
         secretName: openbao-ca
