@@ -11,12 +11,21 @@ class _LiteralStr(str):
     """String subclass that signals literal block style in YAML."""
 
 
+class _QuotedStr(str):
+    """String subclass for markers that must remain single-quoted in YAML."""
+
+
+def _quoted_representer(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="'")
+
+
 def _literal_representer(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
     """Represent multiline strings using literal block style (|)."""
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
 
 
 yaml.add_representer(_LiteralStr, _literal_representer)
+yaml.add_representer(_QuotedStr, _quoted_representer)
 
 
 def dump_yaml(data: dict[str, Any], width: int = 120) -> str:

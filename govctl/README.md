@@ -60,88 +60,37 @@ Set up one of the following before deployment:
 
 ```bash
 govctl init
-
-╭──────────────────────────────────────────╮
-│ Governance Platform Configuration        │
-│ Generate Helm values for your deployment │
-╰──────────────────────────────────────────╯
-
-Domain (governance.f0829.eqtylab.io): governance.staging.eqtylab.io
-Environment (development): staging
-
-Database Configuration:
-  Database Mode (bundled = Bitnami PostgreSQL in-cluster; external = cloud-managed PostgreSQL) [bundled/external] (bundled): bundled
-
-Cloud Configuration:
-  Cloud Provider [aws/azure/gcp] (gcp): gcp
-
-Key Management Configuration (for DID keys):
-  Key Management Provider [aws_kms/azure_key_vault/gcp_kms] (gcp_kms): gcp_kms
-  GCP Project ID (your-gcp-project-id): my-governance-project
-  GCP KMS Location (us-east1): us-east1
-  GCP KMS Key Ring ID (eqtylab-did): eqtylab-did
-
-Auth Configuration:
-  Auth Provider [auth0/entra/keycloak] (keycloak): keycloak
-  Keycloak URL (https://governance.staging.eqtylab.io/keycloak): https://governance.staging.eqtylab.io/keycloak
-  Keycloak Realm (governance): governance
-
-Image Registry Configuration:
-  Registry URL (docker.cloudsmith.io): docker.cloudsmith.io
-  Registry Username (): eqtylab-bot
-  Registry Email (): ci@eqtylab.io
-
-                         Configuration Summary
-┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Setting             ┃ Value                                          ┃
-┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ Cloud Provider      │ GCP                                            │
-│ Domain              │ governance.staging.eqtylab.io                  │
-│ Environment         │ staging                                        │
-│ Auth Provider       │ keycloak                                       │
-│ Storage Provider    │ gcs                                            │
-│ Database Mode       │ bundled                                        │
-│ Key Management      │ gcp_kms                                        │
-│ GCP KMS Project ID  │ my-governance-project                          │
-│ GCP KMS Location    │ us-east1                                       │
-│ GCP KMS Key Ring    │ eqtylab-did                                    │
-│ Keycloak URL        │ https://governance.staging.eqtylab.io/keycloak │
-│ Keycloak Realm      │ governance                                     │
-│ Image Registry      │ docker.cloudsmith.io                                        │
-│ Registry Username   │ eqtylab-bot                                    │
-│ Registry Email      │ ci@eqtylab.io                                  │
-└─────────────────────┴────────────────────────────────────────────────┘
-
-Generate files with this configuration? [y/n]: y
-
-Files generated successfully!
-
-  output/values-staging.yaml
-  output/secrets-staging.yaml
-  output/bootstrap-staging.yaml
-
-Next steps:
-
-  1. Fill in any remaining secrets in output/secrets-staging.yaml
-
-  2. Review output/values-staging.yaml and output/bootstrap-staging.yaml for correctness
-
-  3. Follow the deployment guide for your auth provider before deploying
-     See: https://github.com/eqtylab/deployment/tree/main/docs
-
-  4. Run the Keycloak bootstrap:
-
-     helm upgrade --install keycloak-bootstrap ./charts/keycloak-bootstrap \
-       -f output/bootstrap-staging.yaml \
-       -n governance --wait
-
-  5. Deploy the platform:
-
-     helm upgrade --install governance-platform ./charts/governance-platform \
-       -f output/values-staging.yaml \
-       -f output/secrets-staging.yaml \
-       -n governance --create-namespace
 ```
+
+For the default Cloudsmith profile, the registry prompts are:
+
+```text
+Image Registry Configuration:
+  Registry URL (docker.cloudsmith.io):
+  Registry Username (eqtylab/prod):
+  Registry Email ():
+```
+
+The confirmation summary includes the artifact source (`cloudsmith`), image
+prefix (`docker.cloudsmith.io/eqtylab/prod`), registry host, and username. Review
+these before generating the values, secrets, and bootstrap files.
+
+After completing the provider bootstrap and secrets, the platform command for
+an example staging installation is:
+
+```bash
+helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
+helm upgrade --install governance-platform \
+  oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+  --version <released-version> \
+  -f output/values-staging.yaml \
+  -f output/secrets-staging.yaml \
+  -n governance --create-namespace
+```
+
+Select a stable version with a verified `cloudsmith-delivery.json`. For a version
+not yet delivered to Cloudsmith, generate GHCR settings with
+`govctl init --artifact-source github` and use the existing GHCR install path.
 
 The interactive wizard walks you through:
 
@@ -163,7 +112,7 @@ Generated files:
 
 ### Non-Interactive Mode
 
-All flags are required in non-interactive mode:
+`--cloud`, `--domain`, `--environment`, and `--auth` are required in non-interactive mode:
 
 ```bash
 govctl init -I \
@@ -183,6 +132,7 @@ govctl init -I \
 | `--environment`                  | `-e`    | Environment name                                                                                                      |
 | `--auth`                         | `-a`    | Auth provider (`auth0`, `entra`, `keycloak`)                                                                          |
 | `--database`                     | `-D`    | Database mode (`bundled` or `external`). Defaults to `external` when environment is `production`, otherwise `bundled` |
+| `--artifact-source` | | `cloudsmith` (default) for verified customer releases; `github` for existing GHCR installs |
 | `--output`                       | `-o`    | Output directory (default: `output`)                                                                                  |
 | `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                                                                                               |
 
@@ -267,8 +217,11 @@ without collecting token contents. Existing cloud output must remain unchanged.
 
 ## Artifact source
 
-`govctl init` defaults to Cloudsmith for customer installs. Use
-`--artifact-source github` for internal GHCR installations. Cloudsmith output
+`govctl init` defaults to Cloudsmith for customer installs. Use this profile only
+with a stable chart version whose `cloudsmith-delivery.json` confirms delivery.
+Generated Cloudsmith values inherit that chart’s released image tags and digests;
+they do not override images to `latest`. Use
+`--artifact-source github` for internal GHCR installations or versions not yet delivered to Cloudsmith. Cloudsmith output
 sets the EQTY image prefix, pull-secret registry, and entitlement username
 (`eqtylab/prod`) together. Fill the token placeholder through your existing
 secret-management process. Custom registry hosts prompt for the full image

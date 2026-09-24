@@ -14,7 +14,7 @@ from govctl.core.models import (
     DatabaseMode,
     KeyManagementProvider,
 )
-from govctl.utils.yaml import dump_yaml_with_header, _LiteralStr
+from govctl.utils.yaml import dump_yaml_with_header, _LiteralStr, _QuotedStr
 
 
 def _generate_secret(length: int = 32) -> str:
@@ -44,7 +44,7 @@ def _generate_rsa_private_key(bits: int = 2048) -> str:
 
 def _required(comment: str) -> str:
     """Mark a value as requiring user input. Post-processed into a YAML comment."""
-    return f"__REQUIRED__{comment}"
+    return _QuotedStr(f"__REQUIRED__{comment}")
 
 
 def _add_yaml_comments(yaml_str: str) -> str:
@@ -127,6 +127,8 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "password": _required(
                     "Cloudsmith prod entitlement token"
                     if config.image_registry_url == "docker.cloudsmith.io"
+                    else "GitHub PAT with read:packages scope"
+                    if config.image_registry_url == "ghcr.io"
                     else "Registry pull credential"
                 ),
                 "email": config.image_registry_email or "",

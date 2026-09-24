@@ -3,6 +3,13 @@
 from govctl.core.models import PlatformConfig
 
 
+def runtime_image_values(config: PlatformConfig) -> dict[str, str]:
+    """Preserve the selected release chart's image tags and digest pins."""
+    if config.artifact_source == "cloudsmith":
+        return {"pullPolicy": "IfNotPresent"}
+    return {"tag": "latest", "pullPolicy": "Always"}
+
+
 def configure_artifacts(config: PlatformConfig, source: str) -> None:
     config.artifact_source = source
     if source == "cloudsmith":

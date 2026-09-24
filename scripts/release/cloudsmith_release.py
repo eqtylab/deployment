@@ -131,6 +131,17 @@ def asset_identity(data):
     )
 
 
+def check_publish(version):
+    """Prevent rebuilding source artifacts once a delivery has been announced."""
+    safe_name(version)
+    data = api(f"releases/tags/{quote('platform/v' + version, safe='')}", missing=True)
+    require(
+        data is None
+        or not any(a["name"] == "cloudsmith-delivery.json" for a in data["assets"]),
+        "This version has a completed Cloudsmith delivery; publish a new version instead",
+    )
+
+
 def receipt(version, destination):
     data, commit = release(version)
     require(
@@ -203,13 +214,21 @@ def validate_manifest(manifest, version):
     )
 
 
+def raw_package_name(name):
+    name = safe_name(name).lower()
+    return (
+        name
+        if name.startswith("governance-platform-")
+        else "governance-platform-" + name
+    )
+
+
 def file_entry(path):
-    safe_name(path.name)
     return {
         "name": path.name,
         "sha256": sha256(path),
         "path": f"assets/{path.name}",
-        "packageName": f"governance-platform-{path.name.lower()}",
+        "packageName": raw_package_name(path.name),
     }
 
 
@@ -527,10 +546,14 @@ def main():
     stage.add_argument("--version", default="")
     stage.add_argument("--receipt", type=Path)
     stage.add_argument("--work", type=Path, required=True)
+    check = commands.add_parser("check-publish")
+    check.add_argument("version")
     args = parser.parse_args()
     try:
         if args.command == "receipt":
             receipt(args.version, args.output)
+        elif args.command == "check-publish":
+            check_publish(args.version)
         else:
             prepare(args.version, args.work, args.receipt)
     except (

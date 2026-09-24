@@ -14,25 +14,14 @@ is being commissioned. Prereleases are internal GitHub artifacts.
 
 ## Download the customer package
 
-Use the Cloudsmith repository setup instructions with your entitlement token.
-Raw assets use the package name `governance-platform-<lowercase-filename>` and the platform
-version. For example, the authenticated URL for the delivery manifest is:
+The [deployment download contract](https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith-release.md#customer-download-contract)
+documents the delivery manifest URL and raw package naming. Obtain that manifest
+with your prod entitlement and use its artifact locations for the customer
+archive and checksum. Verify the archive's SHA-256 before extracting it. The
+archive contains chart packages, examples, and `values-cloudsmith.yaml`.
 
-```text
-https://dl.cloudsmith.io/basic/eqtylab/prod/raw/names/governance-platform-cloudsmith-delivery.json/versions/<version>/cloudsmith-delivery.json
-```
-
-The delivery manifest lists the original GitHub sources and Cloudsmith locations,
-digests, raw package names, versions, checksums, and credential-free download URLs.
-Download `governance-platform-v<version>.tar.gz` and its checksum using the same
-URL pattern. Verify the SHA-256 of the downloaded archive before extracting it.
-Original checksum files retain their `dist/` paths from the release publisher;
-compare the recorded hash to the downloaded file or reproduce that directory.
-The archive contains chart packages, examples, and `values-cloudsmith.yaml`.
-
-Use an entitlement-aware credential store or HTTP basic authentication with
-username `token` and the entitlement token as password. Do not embed tokens in
-URLs, saved scripts, shell history, or support logs.
+Until your version has a verified delivery, continue using the existing GHCR
+chart, image credentials, and `govctl init --artifact-source github`.
 
 ## Authenticate Helm and Kubernetes
 
@@ -61,7 +50,9 @@ rm -f "$pull_config/config.json"
 rmdir "$pull_config"
 ```
 
-Alternatively, `govctl init` generates Cloudsmith registry settings by default.
+Alternatively, `govctl init` generates Cloudsmith registry settings by default for verified
+releases. It inherits the selected release chart’s image tags and digests instead
+of setting `latest`.
 Fill the entitlement-token placeholder through your existing secret-management
 system if using Helm-managed secrets. Use `govctl init --artifact-source github`
 for internal installations. Custom registry hosts also require the full image

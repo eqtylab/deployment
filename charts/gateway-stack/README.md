@@ -616,7 +616,7 @@ When exposing control-plane behind a path prefix (for example `/api`), set both:
 
 The chart pins PostgreSQL to `bitnamilegacy/postgresql` by default because versioned tags for `bitnami/postgresql` may not be available on Docker Hub.
 
-For air-gapped installs, `global.imageRegistryOverride` and `global.imageRepositoryPrefixOverride` redirect every image this chart owns, including the `psql` init container. They do **not** reach the bundled Bitnami subchart, which reads its own `global.imageRegistry`; mirror that image separately or set `postgresql.image.repository` directly.
+For air-gapped installs, `global.imageRegistryOverride` redirects the registry host for images this chart owns, including the `psql` init container. `global.imageRepositoryPrefixOverride` now redirects only EQTY images whose source begins with `ghcr.io/eqtylab/`; it leaves upstream images at their existing sources. Installations that previously used the prefix alone to mirror `psql` must also set the host override or `controlPlane.waitForRegistryViews.image.repository` explicitly. Neither override reaches the bundled Bitnami subchart, which reads its own `global.imageRegistry`; mirror that image separately or set `postgresql.image.repository` directly.
 
 ## Optional TOML Runtime Files
 

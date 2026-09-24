@@ -21,6 +21,7 @@ from cloudsmith_release import (
     file_entry,
     image_entries,
     referrers,
+    raw_package_name,
     release,
     require,
     resolve,
@@ -205,7 +206,7 @@ def validate_inventory(inventory, work):
         safe_name(entry["name"])
         require(
             entry["path"] == "assets/" + entry["name"]
-            and entry["packageName"] == "governance-platform-" + entry["name"].lower(),
+            and entry["packageName"] == raw_package_name(entry["name"]),
             "Unsafe raw artifact path",
         )
         require(

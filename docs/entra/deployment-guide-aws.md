@@ -1,6 +1,6 @@
 # Governance Platform Deployment Guide (Entra ID + AWS)
 
-> Customer releases use Cloudsmith. Complete the [Cloudsmith setup](../cloudsmith.md) first and apply `values-cloudsmith.yaml` after your environment values in the platform Helm commands below. Use only a stable version with a verified delivery manifest; local chart paths below are for the chart packaged with that release.
+> For a stable version with `cloudsmith-delivery.json`, complete the [Cloudsmith setup](../cloudsmith.md) and apply `values-cloudsmith.yaml` last. Until that version has a verified delivery, use the existing GHCR install path and `govctl init --artifact-source github`; set the pull-secret host and credentials to GHCR. Local chart paths below refer to the chart packaged with the selected release.
 
 End-to-end guide for deploying the EQTY Lab Governance Platform on Kubernetes with Microsoft Entra ID as the identity provider, AWS S3 for object storage, and AWS KMS for key management.
 
@@ -200,7 +200,7 @@ You will need:
 
 ### Container Registry Access
 
-Platform images are hosted on Cloudsmith (GHCR). You need:
+For versions with a verified Cloudsmith delivery, customer platform images are hosted at `docker.cloudsmith.io/eqtylab/prod`. Obtain the prod entitlement token from your EQTY contact. You need:
 
 - A **Cloudsmith prod entitlement token**
 - Or access to a mirror registry containing the platform images
@@ -640,6 +640,8 @@ govctl init -I \
 | `--domain`                       | `-d`    | Deployment domain                            |
 | `--environment`                  | `-e`    | Environment name                             |
 | `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`) |
+| `--artifact-source` | | Registry profile: `cloudsmith` (default) or `github` for GHCR installs |
+| `--database` | `-D` | `bundled` or `external`; production defaults to external |
 | `--output`                       | `-o`    | Output directory (default: `output`)         |
 | `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                      |
 

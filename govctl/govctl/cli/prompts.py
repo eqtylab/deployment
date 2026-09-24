@@ -309,7 +309,7 @@ def collect_interactive_config(
         registry_url = Prompt.ask(
             "  Registry URL",
             default=config.image_registry_url,
-        )
+        ).strip().lower()
         if is_valid_domain(registry_url):
             break
         console.print(
@@ -321,7 +321,7 @@ def collect_interactive_config(
         while True:
             prefix = Prompt.ask(
                 "  Full image repository prefix", default=f"{registry_url}/eqtylab"
-            )
+            ).strip()
             if (
                 prefix.startswith(registry_url + "/")
                 and not any(c.isspace() for c in prefix)

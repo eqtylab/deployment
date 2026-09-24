@@ -7,17 +7,17 @@
 
 ## 🚀 Quick Start
 
-1. Review the [prerequisites](#-prerequisites) below and follow [Cloudsmith setup](docs/cloudsmith.md). Use a stable version with a verified `cloudsmith-delivery.json`.
+1. Review the [prerequisites](#-prerequisites). Use the existing GHCR installation path until your version has a verified `cloudsmith-delivery.json`; then follow [Cloudsmith setup](docs/cloudsmith.md).
 2. Pick your identity provider and follow the matching guide in [`docs/`](./docs/):
    - [Auth0](./docs/auth0/) · [Microsoft Entra ID](./docs/entra/) · [Keycloak](./docs/keycloak/)
-3. Use [`govctl`](./govctl/README.md) to generate Helm values and secrets, then install the [`governance-platform`](./charts/governance-platform/) umbrella chart.
+3. Use [`govctl`](./govctl/README.md) to generate Helm values and secrets (`--artifact-source github` for GHCR; the Cloudsmith default only for verified deliveries), then install the [`governance-platform`](./charts/governance-platform/) umbrella chart.
 
 ## ✅ Prerequisites
 
 - Kubernetes **1.29+**
 - Helm **4.0+**
 - `kubectl` configured for your target cluster
-- A Cloudsmith prod entitlement token from EQTY for released charts and runtime images
+- GitHub package read credentials for GHCR, or an EQTY-issued Cloudsmith prod entitlement for a version with verified delivery
 - A configured identity provider (Auth0, Microsoft Entra ID, or Keycloak)
 - A cloud account (AWS, Azure, or GCP) with object storage and a key/secret vault provisioned for the platform
 

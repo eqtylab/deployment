@@ -109,6 +109,79 @@ class ReleaseTests(unittest.TestCase):
             self.work, custody=True
         )
 
+    def test_completed_deliveries_cannot_be_republished(self):
+        for data in (None, self.data):
+            with patch.object(source, "api", return_value=data):
+                source.check_publish("1.2.0")
+        data = copy.deepcopy(self.data)
+        data["assets"].append({"name": "cloudsmith-delivery.json"})
+        with (
+            patch.object(source, "api", return_value=data),
+            self.assertRaisesRegex(ValueError, "completed Cloudsmith delivery"),
+        ):
+            source.check_publish("1.2.0")
+        with (
+            patch.object(source, "api", side_effect=RuntimeError("unauthorized")),
+            self.assertRaises(RuntimeError),
+        ):
+            source.check_publish("1.2.0")
+
+    def test_raw_names_do_not_repeat_platform_prefix(self):
+        for name, expected in (
+            ("governance-platform-v1.2.0.tar.gz", "governance-platform-v1.2.0.tar.gz"),
+            (
+                "governance-platform-v1.2.0.tar.gz.sha256",
+                "governance-platform-v1.2.0.tar.gz.sha256",
+            ),
+            ("CHARTS.sha256", "governance-platform-charts.sha256"),
+            (
+                "cloudsmith-delivery.json",
+                "governance-platform-cloudsmith-delivery.json",
+            ),
+        ):
+            self.assertEqual(source.raw_package_name(name), expected)
+
+    def test_publication_guard_precedes_chart_and_release_writes(self):
+        workflow = yaml.load(
+            (
+                source.ROOT / ".github/workflows/release-platform-package.yaml"
+            ).read_text(),
+            Loader=yaml.BaseLoader,
+        )
+        steps = workflow["jobs"]["release"]["steps"]
+        guard = next(
+            i
+            for i, step in enumerate(steps)
+            if step.get("name") == "Reject republishing a delivered version"
+        )
+        charts = next(
+            i
+            for i, step in enumerate(steps)
+            if step.get("name") == "Publish platform charts"
+        )
+        self.assertLess(guard, charts)
+        script = next(
+            step["run"]
+            for step in steps
+            if step.get("name") == "Publish GitHub release"
+        )
+        self.assertLess(script.index("check-publish"), script.index("--clobber"))
+        # Both manual and tag publishers lock the same key as mirror publication.
+        self.assertEqual(
+            workflow["concurrency"]["group"],
+            "platform-release-${{ inputs.version && format('platform/v{0}', inputs.version) || github.ref_name }}",
+        )
+        mirror = yaml.load(
+            (
+                source.ROOT / ".github/workflows/mirror-cloudsmith-release.yaml"
+            ).read_text(),
+            Loader=yaml.BaseLoader,
+        )
+        self.assertEqual(
+            mirror["jobs"]["publish"]["concurrency"]["group"],
+            "platform-release-platform/v${{ needs.prepare.outputs.version }}",
+        )
+
     def test_inventory_preserves_all_runtime_images_and_independent_custody(self):
         self.assertEqual(len(self.inventory["images"]), 8)
         self.assertEqual(len(self.inventory["charts"]), 8)

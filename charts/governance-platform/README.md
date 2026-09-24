@@ -53,7 +53,7 @@ This allows:
 - Kubernetes 1.29+
 - Helm 4.0+
 - Persistent Volume Provisioner for database storage
-- Container Registry Access (GitHub Container Registry credentials)
+- Registry access: a Cloudsmith prod entitlement for a verified delivery, or existing GHCR credentials before that version is delivered
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificate management (cert-manager or manual)
 
@@ -144,6 +144,7 @@ Whether using `govctl` or manual configuration, these values **must** be set:
 
 See the [examples/](examples/) directory for complete configuration examples:
 
+- [values-cloudsmith.yaml](examples/values-cloudsmith.yaml) - Registry overlay for verified Cloudsmith deliveries
 - [values-auth0.yaml](examples/values-auth0.yaml) - Auth0 deployment
 - [values-entra.yaml](examples/values-entra.yaml) - Entra ID deployment
 - [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
@@ -159,6 +160,19 @@ kubectl get ingress -n governance
 ```
 
 ### Installing from OCI Registry
+
+Until your version has a verified Cloudsmith delivery, use the GHCR command below.
+For a stable version with `cloudsmith-delivery.json`, follow [Cloudsmith setup](../../docs/cloudsmith.md)
+and use the delivered chart with its overlay:
+
+```bash
+helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
+helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+  --version <released-version> --namespace governance --create-namespace \
+  --values values.yaml --values values-cloudsmith.yaml
+```
+
+Existing GHCR installation:
 
 ```bash
 helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
@@ -319,6 +333,9 @@ These global values are automatically inherited by all subcharts:
 | global.domain                | string | `"governance.example.com"` | Base domain for all services (**MUST override**)                                                             |
 | global.environmentType       | string | `"production"`             | Environment type (development/staging/production)                                                            |
 | global.imagePullPolicy       | string | `"IfNotPresent"`           | Default image pull policy for all containers                                                                 |
+| global.imageRegistryOverride | string | `""` | Override runtime image registry hosts; upstream dependencies have their own settings |
+| global.imageRepositoryPrefixOverride | string | `""` | Replace the EQTY image prefix, preserving upstream sources |
+| global.imagePullSecrets | list | `[{"name": "platform-image-pull-secret"}]` | Pull secrets shared by subcharts |
 | global.utilityImages.busybox | string | `""`                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
 
 `global.utilityImages` deliberately covers only the three runtime dependency wait

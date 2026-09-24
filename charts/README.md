@@ -58,7 +58,7 @@ charts/
 - Kubernetes 1.29+
 - Helm 4.0+
 - kubectl configured for your cluster
-- Container registry access (GitHub Container Registry)
+- Registry access: Cloudsmith prod entitlement for verified deliveries; existing GHCR credentials otherwise
 
 The optional development `openbao-custody` release requires Kubernetes 1.30+
 because its pinned upstream chart 0.29.5 does. The platform minimum remains
@@ -190,6 +190,19 @@ helm upgrade --install governance-platform ./governance-platform \
 
 ### From OCI Registry
 
+Until your version has a verified Cloudsmith delivery, use the GHCR command below.
+For a stable version with `cloudsmith-delivery.json`, follow [Cloudsmith setup](../docs/cloudsmith.md)
+and use the delivered chart with its overlay:
+
+```bash
+helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
+helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+  --version <released-version> --namespace governance --create-namespace \
+  --values values.yaml --values values-cloudsmith.yaml
+```
+
+Existing GHCR installation:
+
 ```bash
 # Authenticate with GitHub Container Registry
 echo $GITHUB_PAT | helm registry login ghcr.io -u USERNAME --password-stdin
@@ -209,6 +222,7 @@ The `governance-platform/examples/` directory contains complete deployment examp
 | Example                                                                           | Description                                                                                                 |
 | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | [secrets-sample.yaml](governance-platform/examples/secrets-sample.yaml)           | Complete secrets configuration template                                                                     |
+| [values-cloudsmith.yaml](governance-platform/examples/values-cloudsmith.yaml) | Registry overlay for verified Cloudsmith deliveries |
 | [values-auth0.yaml](governance-platform/examples/values-auth0.yaml)               | Platform deployment using Auth0 as the identity provider                                                    |
 | [values-entra.yaml](governance-platform/examples/values-entra.yaml)               | Platform deployment using Entra ID as the identity provider                                                 |
 | [values-keycloak.yaml](governance-platform/examples/values-keycloak.yaml)         | Platform deployment using Keycloak as the identity provider                                                 |

@@ -11,7 +11,12 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from govctl.cli.commands.init import init_cmd
 from govctl.core.artifacts import configure_artifacts
-from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider
+from govctl.core.models import (
+    PlatformConfig,
+    CloudProvider,
+    AuthProvider,
+    KeyManagementProvider,
+)
 from govctl.generators.values import generate_values
 from govctl.generators.secrets import generate_secrets
 
@@ -29,16 +34,66 @@ class ArtifactProfileTests(unittest.TestCase):
         config = self.config()
         configure_artifacts(config, "cloudsmith")
         values = yaml.safe_load(generate_values(config))
-        credentials = yaml.safe_load(generate_secrets(config))["global"]["secrets"][
-            "imageRegistry"
-        ]
+        secrets = generate_secrets(config)
+        credentials = yaml.safe_load(secrets)["global"]["secrets"]["imageRegistry"]
         self.assertEqual(
             values["global"]["imageRepositoryPrefixOverride"],
             "docker.cloudsmith.io/eqtylab/prod",
         )
         self.assertEqual(credentials["registry"], "docker.cloudsmith.io")
         self.assertEqual(credentials["values"]["username"], "eqtylab/prod")
-        self.assertIn("entitlement", credentials["values"]["password"])
+        self.assertEqual(credentials["values"]["password"], "")
+        self.assertIn(
+            "password: ''  # REQUIRED: Cloudsmith prod entitlement token", secrets
+        )
+
+    def test_required_secrets_are_empty_for_all_providers_and_sources(self):
+        for auth in AuthProvider:
+            for cloud in CloudProvider:
+                for source in ("cloudsmith", "github"):
+                    with self.subTest(auth=auth, cloud=cloud, source=source):
+                        config = self.config()
+                        config.auth_provider = auth
+                        config.cloud_provider = cloud
+                        config.key_management_provider = {
+                            CloudProvider.AWS: KeyManagementProvider.AWS_KMS,
+                            CloudProvider.AZURE: KeyManagementProvider.AZURE_KEY_VAULT,
+                            CloudProvider.GCP: KeyManagementProvider.GCP_KMS,
+                        }[cloud]
+                        configure_artifacts(config, source)
+                        secrets = generate_secrets(config)
+                        self.assertNotIn("__REQUIRED__", secrets)
+                        self.assertEqual(
+                            yaml.safe_load(secrets)["global"]["secrets"][
+                                "imageRegistry"
+                            ]["values"]["password"],
+                            "",
+                        )
+                        if source == "github":
+                            self.assertIn(
+                                "GitHub PAT with read:packages scope", secrets
+                            )
+
+    def test_cloudsmith_inherits_all_eight_released_image_versions(self):
+        def images(value):
+            if isinstance(value, dict):
+                if "image" in value:
+                    yield value["image"]
+                for child in value.values():
+                    yield from images(child)
+
+        config = self.config()
+        for source in ("cloudsmith", "github"):
+            configure_artifacts(config, source)
+            overrides = list(images(yaml.safe_load(generate_values(config))))
+            self.assertEqual(len(overrides), 8)
+            for image in overrides:
+                if source == "cloudsmith":
+                    self.assertNotIn("tag", image)
+                    self.assertNotIn("digest", image)
+                    self.assertNotIn("repository", image)
+                else:
+                    self.assertEqual(image["tag"], "latest")
 
     def test_internal_profile_and_direct_callers_keep_ghcr(self):
         config = self.config()

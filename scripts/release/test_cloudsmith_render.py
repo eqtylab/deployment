@@ -1,5 +1,9 @@
 """Render the same charts for customers and internal installations; no registry I/O."""
 
+# Source: eqtylab/guardian-infrastructure/tests/test_cloudsmith_render.py.
+# Keep deployment/scripts/release/test_cloudsmith_render.py aligned when changing
+# this test; deployment runs it against the charts received by the source sync.
+
 import json
 import base64
 from pathlib import Path
@@ -56,20 +60,24 @@ class CloudsmithRenderTests(unittest.TestCase):
         def images(docs):
             found = {}
 
-            def walk(value):
+            def walk(value, path):
                 if isinstance(value, dict):
                     if isinstance(value.get("image"), str):
-                        found[value.get("name", "")] = value["image"]
-                    for child in value.values():
-                        walk(child)
+                        key = (*path, value.get("name", ""))
+                        self.assertNotIn(key, found)
+                        found[key] = value["image"]
+                    for key, child in value.items():
+                        walk(child, (*path, key))
                 elif isinstance(value, list):
-                    for child in value:
-                        walk(child)
+                    for index, child in enumerate(value):
+                        walk(child, (*path, str(index)))
 
-            walk(docs)
+            for doc in docs:
+                walk(doc, (doc["kind"], doc["metadata"]["name"]))
             return found
 
         internal, customer = images(self.render()), images(self.render(True))
+        self.assertEqual(internal.keys(), customer.keys())
         changed = set()
         for name, reference in internal.items():
             if reference.startswith("ghcr.io/eqtylab/"):

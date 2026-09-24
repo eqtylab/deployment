@@ -77,8 +77,11 @@ explicitly. Source signatures must verify against Guardian's image build
 workflow. Charts use their released archive bytes and recorded GHCR digests;
 the destination OCI digest and identical archive checksum are recorded.
 
-All original GitHub release assets are copied as versioned raw packages named
-`governance-platform-<lowercase-filename>`. Available GitHub attestation bundles are also
+All original GitHub release assets are copied as versioned raw packages. Names
+are lowercase filenames, prefixed with `governance-platform-` only if that prefix
+is not already present. For example, the archive package is
+`governance-platform-v1.2.0.tar.gz`; the manifest package is
+`governance-platform-release-manifest.yaml`. Available GitHub attestation bundles are also
 exported as raw packages and attached additively to the GitHub release.
 The original signed manifests, archives, and checksums are not rewritten.
 
@@ -87,18 +90,41 @@ after verification and retained on GitHub. It has deterministic contents and
 credential-free download URLs. The marker is absent for incomplete deliveries.
 Cloudsmith is not transactional: partial artifacts can exist before the marker.
 
-Retry the **mirror workflow**, not the packaging workflow. Per-version
-concurrency serializes automatic/manual mirrors. Identical existing artifacts
+Retry the **mirror workflow**, not the packaging workflow. A shared per-version
+concurrency group serializes the packaging workflow and automatic/manual mirror
+publishing, including tag-triggered and manually dispatched packaging attempts. Identical existing artifacts
 are reused; conflicting hashes, authentication failures, quarantined raw
 packages, and unexpected registry errors stop the run. No force overwrite or
 delete operation is used. A mismatch requires investigation or a new release
-version. The source publisher's existing `--clobber` behavior is not a retry
-mechanism for Cloudsmith; changing released source bytes causes mirroring to
-fail rather than replacing customer artifacts.
+version. The source publisher rejects versions with an existing delivery marker before
+chart publication and again before GitHub asset replacement. Its pre-delivery
+`--clobber` behavior cannot replace a completed delivery; publish a new version
+instead. Retry partial deliveries through the mirror, preserving the source bytes.
 
 Upstream runtime images and separately hosted documentation snapshots are not
 mirrored. Custody keeps its independent version and is included only when
 selected. Viper's independent publication workflow is unaffected.
+
+## Customer download contract
+
+This repository owns raw package naming, the delivery schema, and download URLs.
+The infrastructure-owned `docs/cloudsmith.md` links here so changes to this
+contract do not require two independently maintained descriptions.
+
+Raw packages use the naming rule above and the platform version. The delivery
+manifest has this credential-free authenticated URL:
+
+```text
+https://dl.cloudsmith.io/basic/eqtylab/prod/raw/names/governance-platform-cloudsmith-delivery.json/versions/<version>/cloudsmith-delivery.json
+```
+
+Use HTTP basic authentication with username `token` and the prod entitlement as
+password, through an approved credential store. The manifest records original
+sources, image digests and attachments, chart archive hashes and destination
+digests, and raw file names, package identifiers, hashes and download URLs. The
+archive and checksum package names are their lowercase filenames without an
+extra `governance-platform-` prefix. Original checksum contents retain the release
+publisher's `dist/` paths.
 
 ## Local validation
 

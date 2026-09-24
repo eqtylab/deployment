@@ -29,7 +29,9 @@ permissions:
   id-token: write
 
 concurrency:
-  group: platform-package-${{ github.ref_name || inputs.version }}
+  # Share the version lock with the mirror so it cannot announce delivery
+  # while a packaging retry replaces its source artifacts.
+  group: platform-release-${{ inputs.version && format('platform/v{0}', inputs.version) || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -99,6 +101,13 @@ jobs:
             echo "prerelease=${prerelease}"
             echo "publish=${publish}"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Reject republishing a delivered version
+        if: steps.release.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: python -B scripts/release/cloudsmith_release.py check-publish "$VERSION"
 
       - name: Validate release manifest
         env:
@@ -338,18 +347,17 @@ jobs:
           cat > "$package_root/INSTALL.md" <<EOF
           # Governance Platform v${VERSION}
 
-          Install the customer release with the published umbrella chart:
+          Until this version has a verified Cloudsmith delivery, use its existing GHCR chart and image credentials:
 
           \`\`\`bash
-          helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
-          helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \\
+          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
             --version ${VERSION} \\
             --namespace governance \\
             --create-namespace \\
-            --values values.yaml --values values-cloudsmith.yaml
+            --values values.yaml
           \`\`\`
 
-          Use your EQTY-issued prod entitlement token for Helm login and the Kubernetes image pull secret. See the Cloudsmith installation guide in the deployment repository for credential setup. Customer delivery is ready only when cloudsmith-delivery.json is present; a GitHub release alone does not prove Cloudsmith publication. Prereleases remain internal GitHub artifacts.
+          GHCR installs require GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json confirms this version is delivered, follow https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md to install from Cloudsmith with the packaged values-cloudsmith.yaml and your EQTY-issued prod entitlement token. A GitHub release or enabled publishing flag alone does not prove delivery. Prereleases remain in GitHub.
 
           See OPENBAO.md for the optional, independently versioned custody release and operator setup. Custody is included only when release-manifest.yaml contains charts.openbaoCustody; its absence requires customer-managed OpenBao if that backend is selected. Inclusion does not enable OpenBao in the platform.
           EOF
@@ -419,12 +427,11 @@ jobs:
           ### Install
 
           \`\`\`bash
-          helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
-          helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \\
+          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
             --version ${VERSION} \\
             --namespace governance \\
             --create-namespace \\
-            --values values.yaml --values values-cloudsmith.yaml
+            --values values.yaml
           \`\`\`
 
           ### Artifacts
@@ -434,7 +441,7 @@ jobs:
           - Chart digests: \`chart-digests.yaml\`
           - Runtime image tags: \`${VERSION}\`
 
-          Customers use Cloudsmith prod entitlement tokens. Download the connected package for values-cloudsmith.yaml and installation instructions. Delivery is ready only after cloudsmith-delivery.json appears on this release. Prereleases stay in GitHub. Internal installations continue using the GHCR chart and image references in release-manifest.yaml.
+          The GHCR installation above remains available with GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json appears on this release, use the Cloudsmith installation guide at https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md with the packaged values-cloudsmith.yaml and an EQTY prod entitlement token. Prereleases and internal installations continue using GHCR.
           EOF
 
       - name: Publish GitHub release
@@ -444,6 +451,7 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
           PRERELEASE: ${{ steps.release.outputs.prerelease }}
         run: |
+          python -B scripts/release/cloudsmith_release.py check-publish "$VERSION"
           tag="platform/v${VERSION}"
           assets=(
             "dist/governance-platform-v${VERSION}.tar.gz"

@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from govctl.core.artifacts import runtime_image_values
+
 from govctl.core.models import PlatformConfig, AuthProvider
 
 
@@ -9,10 +11,7 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
     """Generate the governance-studio section of values.yaml."""
     section: dict[str, Any] = {
         "replicaCount": 1,
-        "image": {
-            "tag": "latest",
-            "pullPolicy": "Always",
-        },
+        "image": runtime_image_values(config),
     }
 
     if config.enable_ingress:
