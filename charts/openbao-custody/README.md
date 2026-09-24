@@ -112,7 +112,10 @@ and pod 2 after pod 1. Complete the operator steps below in order.
 Any upstream value can be set under `openbao.`; see
 `helm show values openbao/openbao --version 0.29.5`.
 `examples/values-dev-kind.yaml` is a single-node, TLS-disabled profile for
-disposable development clusters only.
+disposable development clusters only. `examples/values-kind-tls.yaml` keeps the
+wrapper's TLS/Raft/audit settings with three voters on one disposable host (a
+topology simulation, not host-failure HA); do not layer `values-dev-kind.yaml`
+over it.
 
 ## Configuration Inheritance
 

@@ -19,6 +19,12 @@ global:
   imageRegistryOverride: ""
   # -- Replace the full EQTY image repository prefix, for example registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
+  # -- Helper images shared by the platform's dependency wait containers
+  # @default -- See values below
+  utilityImages:
+    # -- Complete image reference for the BusyBox wait container (empty keeps `busybox:1.36`)
+    # @default -- `""`
+    busybox: ""
 
 # -- Replica Count
 # @default -- `2`
@@ -39,6 +45,9 @@ image:
   # -- Image Tag
   # @default -- `""` (uses chart appVersion)
   tag: ""
+  # -- Immutable digest; takes precedence over tag when set
+  # @default -- `""`
+  digest: ""
 
 # -- Image Pull Secrets
 # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
@@ -257,6 +266,9 @@ persistence:
     # @default -- `/var/lib/integrity`
     # Only used when persistence.enabled is true
     hostPath: /var/lib/integrity
+    # -- Use an existing PVC instead of a node-local hostPath
+    # @default -- `""`
+    existingClaim: ""
 
 # =============================================================================
 # DATABASE CONFIGURATION
@@ -310,8 +322,11 @@ config:
   # -- Blob Store Type
   # @default -- `""`
   # **REQUIRED**: Blob storage backend type
-  # Options: aws_s3, azure_blob, gcs
+  # Options: aws_s3, azure_blob, gcs, local_fs
   integrityAppBlobStoreType: ""
+  # -- Local filesystem path (requires a persistent mount for retained data)
+  # @default -- `""`
+  integrityAppBlobStoreLocalPath: ""
 
   # -- AWS S3 Region
   # @default -- `""`

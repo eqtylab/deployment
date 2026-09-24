@@ -64,7 +64,14 @@ Resolve the image repository, honoring customer registry mirror overrides.
 Resolve the full image reference.
 */}}
 {{- define "eqty-pdfgen.image" -}}
+{{- if .Values.image.digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" .Values.image.digest) -}}
+{{- fail "image.digest must be a sha256 digest" -}}
+{{- end -}}
+{{- printf "%s@%s" (include "eqty-pdfgen.imageRepository" .) .Values.image.digest -}}
+{{- else -}}
 {{- printf "%s:%s" (include "eqty-pdfgen.imageRepository" .) (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*

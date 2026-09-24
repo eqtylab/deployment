@@ -148,6 +148,7 @@ See the [examples/](examples/) directory for complete configuration examples:
 - [values-entra.yaml](examples/values-entra.yaml) - Entra ID deployment
 - [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
 - [values-openbao.yaml](examples/values-openbao.yaml) - Optional development OpenBao overlay (manual Helm values)
+- [values-openbao-kind.yaml](examples/values-openbao-kind.yaml) - Disposable local-kind OpenBao diagnostic profile; layer after `values-keycloak.yaml` and `values-openbao.yaml`. It cannot `helm template` on its own because the `openbaoKindProfile` guard needs launcher-supplied publisher values
 - [secrets-sample.yaml](examples/secrets-sample.yaml) - Complete secrets template
 
 ### Verify
@@ -313,11 +314,18 @@ helm upgrade governance-platform ./charts/governance-platform \
 
 These global values are automatically inherited by all subcharts:
 
-| Key                    | Type   | Default                    | Description                                       |
-| ---------------------- | ------ | -------------------------- | ------------------------------------------------- |
-| global.domain          | string | `"governance.example.com"` | Base domain for all services (**MUST override**)  |
-| global.environmentType | string | `"production"`             | Environment type (development/staging/production) |
-| global.imagePullPolicy | string | `"IfNotPresent"`           | Default image pull policy for all containers      |
+| Key                          | Type   | Default                    | Description                                                                                                  |
+| ---------------------------- | ------ | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| global.domain                | string | `"governance.example.com"` | Base domain for all services (**MUST override**)                                                             |
+| global.environmentType       | string | `"production"`             | Environment type (development/staging/production)                                                            |
+| global.imagePullPolicy       | string | `"IfNotPresent"`           | Default image pull policy for all containers                                                                 |
+| global.utilityImages.busybox | string | `""`                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
+
+`global.utilityImages` deliberately covers only the three runtime dependency wait
+containers. The post-install hook Jobs and `keycloak-bootstrap` keep their own
+pinned `postgres:17-alpine` and `busybox:1.36` images, which
+`imageRegistryOverride` does not reach either; the kind profile disables those
+hooks rather than pinning them.
 
 ### Global Secret Configuration
 
@@ -426,13 +434,13 @@ Frontend application settings. See [governance-studio/README.md](../governance-s
 
 Credential and lineage service settings. See [integrity-service/README.md](../integrity-service/README.md) for complete documentation.
 
-| Key                                                | Type   | Default | Description                                            |
-| -------------------------------------------------- | ------ | ------- | ------------------------------------------------------ |
-| integrity-service.enabled                          | bool   | `true`  | Enable Integrity Service                               |
-| integrity-service.replicaCount                     | int    | `2`     | Number of replicas                                     |
-| integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                         |
-| integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs) |
-| integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                      |
+| Key                                                | Type   | Default | Description                                                     |
+| -------------------------------------------------- | ------ | ------- | --------------------------------------------------------------- |
+| integrity-service.enabled                          | bool   | `true`  | Enable Integrity Service                                        |
+| integrity-service.replicaCount                     | int    | `2`     | Number of replicas                                              |
+| integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                                  |
+| integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs/local_fs) |
+| integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                               |
 
 ### PostgreSQL Configuration
 
@@ -755,6 +763,14 @@ and `auth-service.config.keyManagement.openbao.developmentEnabled` must be true;
 auth-service chart README for the endpoint, mount, role and CA values.
 
 OpenBao development profiles currently use manually maintained Helm values; govctl does not generate them. See [govctl scope](../../govctl/README.md#openbao-development-workflow).
+
+A complete disposable local-kind diagnostic profile is
+`examples/values-openbao-kind.yaml`, documented with
+[the local qualification fixture](../../tests/fixtures/openbao-kind/README.md).
+Layer `values-keycloak.yaml`, `values-openbao.yaml`, then `values-openbao-kind.yaml`,
+and supply the immutable digest/namespace overlay last. It is development-only and
+emulated, not a supported customer database or IDP deployment. Runtime image
+objects accept `digest` in addition to `tag`.
 
 ### AWS KMS
 

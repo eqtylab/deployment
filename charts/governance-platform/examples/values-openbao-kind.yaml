@@ -1,0 +1,289 @@
+# Disposable local-kind OpenBao diagnostic profile (development only)
+# Complete platform overlay for the disposable kind fixture in
+# tests/fixtures/openbao-kind. Emulated amd64 diagnostics, not a supported
+# customer database, identity-provider or storage deployment.
+#
+# Layering:
+#   values-keycloak.yaml, values-openbao.yaml, then this file, then the
+#   launcher-generated overlay (immutable image digests, custody namespace,
+#   frontdoor host aliases and the publisher public key) LAST.
+#
+# This file cannot `helm template` on its own: openbaoKindProfile requires the
+# launcher-supplied publisher trust keys and Secret reference. No credentials
+# belong here.
+#
+# Usage:
+#   helm dependency update ./charts/governance-platform
+#   helm upgrade --install guardian ./charts/governance-platform \
+#     --namespace <cluster>-app \
+#     --values values-keycloak.yaml \
+#     --values values-openbao.yaml \
+#     --values values-openbao-kind.yaml \
+#     --values <launcher-generated overlay>
+
+openbaoKindProfile: true
+
+global:
+  environmentType: "development"
+  domain: "guardian.local.test:8080"
+  imagePullSecrets: []
+  postgresql:
+    host: "postgres"
+    database: "governance"
+    username: "postgres"
+    sslMode: "disable"
+  secrets:
+    create: false
+    imageRegistry:
+      secretName: ""
+    auth:
+      provider: "keycloak"
+    keyManagement:
+      provider: "openbao"
+
+postgresql:
+  enabled: false
+
+# The platform's post-install hook is disabled: the probe operator seeds the
+# organization and platform admin only after both Auth and Governance
+# migrations have completed.
+keycloak:
+  createOrganization: false
+  createPlatformAdmin: false
+
+# =============================================================================
+# Auth Service
+# =============================================================================
+auth-service:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+  fullnameOverride: "guardian-auth-service"
+  serviceAccount:
+    create: true
+    name: "guardian-auth"
+    automount: false
+  ingress:
+    enabled: false
+  autoscaling:
+    enabled: false
+  config:
+    idp:
+      provider: "keycloak"
+      # Keycloak publishes its issuer on the public origin (KC_HOSTNAME in the
+      # fixture); Auth reaches it through the launcher's frontdoor host alias.
+      issuer: "http://guardian.local.test:8080/keycloak/realms/governance"
+      skipIssuerVerification: false
+      keycloak:
+        realm: "governance"
+        # The admin REST API does not depend on the hostname setting.
+        adminUrl: "http://keycloak:8080/keycloak"
+        clientId: "governance-platform-frontend"
+    keyManagement:
+      provider: "openbao"
+      openbao:
+        developmentEnabled: true
+        # Replace `custody` with the custody release namespace; the launcher
+        # substitutes `<cluster>-custody`.
+        address: "https://openbao-custody-active.custody.svc.cluster.local:8200"
+        transitMount: "guardian-did"
+        keyPrefix: "guardian"
+        ca:
+          configMapName: "guardian-openbao-ca"
+          secretName: ""
+          key: "ca.pem"
+        auth:
+          method: "kubernetes"
+          mount: "kubernetes"
+          role: "guardian-auth"
+          audience: "openbao"
+          tokenExpirationSeconds: 3600
+          reviewer:
+            create: false
+            tokenSecret: false
+  networkPolicy:
+    # The launcher emits explicit app/DNS/custody allow rules.
+    enabled: false
+
+# =============================================================================
+# Governance Service
+# =============================================================================
+governance-service:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+  # Never use the provider example's -debug-config in a credentialed fixture.
+  args: []
+  ingress:
+    enabled: false
+  autoscaling:
+    enabled: false
+  localStorageCA:
+    configMapName: "guardian-openbao-ca"
+    key: "ca.pem"
+  config:
+    authProvider: "keycloak"
+    # Token endpoint for the worker's client-credentials grant; issued tokens
+    # still carry the public issuer above.
+    keycloakUrl: "http://keycloak:8080/keycloak"
+    keycloakRealm: "governance"
+    storageProvider: "azure_blob"
+    azureStorageAccountName: "guardian"
+    azureStorageContainerName: "governance"
+    azureUseManagedIdentity: false
+    serviceAccount:
+      enabled: true
+  migrations:
+    runAtStartup: true
+
+# =============================================================================
+# Governance Studio
+# =============================================================================
+governance-studio:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+  ingress:
+    enabled: false
+  autoscaling:
+    enabled: false
+  config:
+    apiUrl: "http://guardian.local.test:8080/governanceService"
+    authServiceUrl: "http://guardian.local.test:8080/authService"
+    integrityServiceUrl: "http://guardian.local.test:8080/integrityService"
+    gatewayApiUrl: "http://guardian.local.test:8080/controlPlane"
+    keycloakUrl: "http://guardian.local.test:8080/keycloak"
+    keycloakRealm: "governance"
+    keycloakClientId: "governance-platform-frontend"
+    features:
+      governance: true
+      lineage: true
+      gateway: true
+
+# =============================================================================
+# Integrity Service
+# =============================================================================
+integrity-service:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+  ingress:
+    enabled: false
+  autoscaling:
+    enabled: false
+  podSecurityContext:
+    fsGroup: 1000
+  config:
+    integrityServiceUrl: "http://guardian.local.test:8080/integrityService"
+    integrityAppBlobStoreType: "local_fs"
+    integrityAppBlobStoreLocalPath: "/data/integrity"
+  persistence:
+    enabled: true
+    integrity:
+      existingClaim: "integrity-data"
+      mountPath: "/data/integrity"
+
+# =============================================================================
+# EQTY PDFGen
+# =============================================================================
+eqty-pdfgen:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+  ingress:
+    enabled: false
+  config:
+    signingBound: true
+    # No RFC 3161 token; this profile makes no timestamp trust claim.
+    timestampUrl: ""
+
+# =============================================================================
+# Gateway Stack
+# =============================================================================
+gateway-stack:
+  enabled: true
+  guardianUI:
+    enabled: false
+  postgresql:
+    enabled: false
+  haproxyIngress:
+    enabled: false
+  ingress:
+    enabled: false
+  llmGateway:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        memory: "512Mi"
+    deploymentEnvironment: "development"
+    registration:
+      enabled: false
+    plugins:
+      enabled: true
+      artifactStorage:
+        provider: "s3"
+        bucket: "guardian-plugins"
+        prefix: "kind"
+        s3:
+          endpoint: "http://minio:9000"
+          region: "us-east-1"
+          forcePathStyle: true
+          existingSecret: "guardian-artifact-s3"
+      # Required; the launcher supplies the actual publisher public key.
+      trustedSignerKeys: {}
+  controlPlane:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        memory: "512Mi"
+    apiBasePath: "/api"
+    adapter:
+      integrityBaseURL: "http://guardian.local.test:8080/integrityService"
+    auth:
+      enabled: true
+      existingSecret: "guardian-control-plane-auth"
+      google:
+        enabled: false
+      bearer:
+        enabled: true
+        mode: "auth_service"
+    plugins:
+      artifactStorage:
+        provider: "s3"
+        bucket: "guardian-plugins"
+        prefix: "kind"
+        s3:
+          endpoint: "http://minio:9000"
+          region: "us-east-1"
+          forcePathStyle: true
+          existingSecret: "guardian-artifact-s3"
+      trustedSignerKeys: {}

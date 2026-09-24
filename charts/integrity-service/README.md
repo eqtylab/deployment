@@ -192,14 +192,15 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                               | Description                                           |
-| ---------------- | ------ | ------------------------------------- | ----------------------------------------------------- |
-| enabled          | bool   | `true`                                | Enable this subchart (umbrella chart only)            |
-| replicaCount     | int    | `2`                                   | Number of replicas to deploy                          |
-| image.repository | string | `"ghcr.io/eqtylab/integrity-service"` | Container image repository                            |
-| image.pullPolicy | string | `"IfNotPresent"`                      | Image pull policy                                     |
-| image.tag        | string | `""`                                  | Overrides the image tag (default is chart appVersion) |
-| imagePullSecrets | list   | `[]`                                  | Additional image pull secrets (beyond global)         |
+| Key              | Type   | Default                               | Description                                              |
+| ---------------- | ------ | ------------------------------------- | -------------------------------------------------------- |
+| enabled          | bool   | `true`                                | Enable this subchart (umbrella chart only)               |
+| replicaCount     | int    | `2`                                   | Number of replicas to deploy                             |
+| image.repository | string | `"ghcr.io/eqtylab/integrity-service"` | Container image repository                               |
+| image.pullPolicy | string | `"IfNotPresent"`                      | Image pull policy                                        |
+| image.tag        | string | `""`                                  | Overrides the image tag (default is chart appVersion)    |
+| image.digest     | string | `""`                                  | Immutable sha256 digest; takes precedence over image.tag |
+| imagePullSecrets | list   | `[]`                                  | Additional image pull secrets (beyond global)            |
 
 ### Service Account
 
@@ -288,11 +289,17 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Persistence
 
-| Key                             | Type   | Default                | Description                                                             |
-| ------------------------------- | ------ | ---------------------- | ----------------------------------------------------------------------- |
-| persistence.enabled             | bool   | `false`                | Enable persistent volume for integrity data                             |
-| persistence.integrity.mountPath | string | `"/data/integrity"`    | Container mount path for integrity data                                 |
-| persistence.integrity.hostPath  | string | `"/var/lib/integrity"` | Host path for data storage (only used when persistence.enabled is true) |
+| Key                                 | Type   | Default                | Description                                                                           |
+| ----------------------------------- | ------ | ---------------------- | ------------------------------------------------------------------------------------- |
+| persistence.enabled                 | bool   | `false`                | Enable persistent volume for integrity data                                           |
+| persistence.integrity.mountPath     | string | `"/data/integrity"`    | Container mount path for integrity data                                               |
+| persistence.integrity.hostPath      | string | `"/var/lib/integrity"` | Host path for data storage (only used when persistence.enabled is true)               |
+| persistence.integrity.existingClaim | string | `""`                   | Existing PVC mounted instead of hostPath (only used when persistence.enabled is true) |
+
+For a single-replica local persistent store, select `config.integrityAppBlobStoreType: local_fs`,
+set `config.integrityAppBlobStoreLocalPath` to `persistence.integrity.mountPath`, and supply
+`persistence.integrity.existingClaim`. The claim must exist before installation. This avoids
+node-local `hostPath`; RWO storage is not a shared multi-replica backend.
 
 ### Database Configuration
 
@@ -347,7 +354,8 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 | Key                                            | Type   | Default | Description                                                                                                                                              |
 | ---------------------------------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| config.integrityAppBlobStoreType               | string | `""`    | Storage provider (**must be set**; `aws_s3`, `azure_blob`, or `gcs`)                                                                                     |
+| config.integrityAppBlobStoreType               | string | `""`    | Storage provider (**must be set**; `aws_s3`, `azure_blob`, `gcs`, or `local_fs`)                                                                         |
+| config.integrityAppBlobStoreLocalPath          | string | `""`    | Local filesystem path (**must be set** when using local_fs; needs a persistent mount)                                                                    |
 | config.integrityAppBlobStoreAwsRegion          | string | `""`    | AWS region (**must be set** when using S3)                                                                                                               |
 | config.integrityAppBlobStoreAwsBucket          | string | `""`    | AWS S3 bucket name (**must be set** when using S3)                                                                                                       |
 | config.integrityAppBlobStoreAwsFolder          | string | `""`    | AWS S3 folder/prefix (**must be set** when using S3)                                                                                                     |

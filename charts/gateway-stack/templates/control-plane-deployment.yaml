@@ -55,6 +55,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.controlPlane.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- if .Values.controlPlane.waitForRegistryViews.enabled }}
       initContainers:
         - name: wait-for-registry-views

@@ -1,0 +1,27 @@
+{{- if .Values.openbaoKindProfile }}
+{{- $gateway := index .Values "gateway-stack" }}
+{{- $publisher := $gateway.controlPlane.plugins.publisherSigner }}
+{{- $keyID := required "local kind profile requires controlPlane.plugins.publisherSigner.keyID" $publisher.keyID }}
+{{- $_ := required "local kind profile requires controlPlane.plugins.publisherSigner.existingSecret" $publisher.existingSecret }}
+{{- $gatewayKey := index $gateway.llmGateway.plugins.trustedSignerKeys $keyID | default "" }}
+{{- $controlPlaneKey := index $gateway.controlPlane.plugins.trustedSignerKeys $keyID | default "" }}
+{{- if or (empty $gatewayKey) (ne $gatewayKey $controlPlaneKey) }}
+{{- fail "local kind profile requires matching publisher public keys in Gateway and Control Plane trustedSignerKeys" }}
+{{- end }}
+{{- if or (not (regexMatch "^[A-Za-z0-9+/]{43}=$" $gatewayKey)) (ne (len (b64dec $gatewayKey)) 32) }}
+{{- fail "local kind publisher public key must be a base64-encoded 32-byte Ed25519 public key" }}
+{{- end }}
+{{- $integrity := index .Values "integrity-service" }}
+{{- if ne $gateway.controlPlane.adapter.integrityBaseURL $integrity.config.integrityServiceUrl }}
+{{- fail "local kind Control Plane integrityBaseURL must match the Integrity public status URL" }}
+{{- end }}
+{{- $statusHostAlias := false }}
+{{- range $alias := $gateway.controlPlane.hostAliases }}
+{{- if has "guardian.local.test" $alias.hostnames }}
+{{- $statusHostAlias = true }}
+{{- end }}
+{{- end }}
+{{- if not $statusHostAlias }}
+{{- fail "local kind Control Plane requires a guardian.local.test hostAlias for the trusted status origin" }}
+{{- end }}
+{{- end }}

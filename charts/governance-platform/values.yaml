@@ -44,6 +44,15 @@ global:
   # Example: registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
 
+  # -- Utility Images
+  # @default -- See values below
+  # Helper images shared by the Auth, Governance and Integrity dependency wait containers
+  utilityImages:
+    # -- BusyBox Wait Container Image
+    # @default -- `""` (keeps `busybox:1.36`)
+    # Complete image reference, for example docker.io/library/busybox@sha256:...
+    busybox: ""
+
   # -- Image Pull Secrets
   # @default -- `[{"name": "platform-image-pull-secret"}]`
   # Secrets for accessing private container registries
@@ -419,6 +428,10 @@ auth-service:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
 
   # -- Image Pull Secrets
   # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
@@ -1327,6 +1340,11 @@ auth-service:
   # Extra manifests to deploy
   extraManifests: []
 
+  # -- Host Aliases
+  # @default -- `[]`
+  # Optional pod host aliases (local qualification DNS only)
+  hostAliases: []
+
 # =============================================================================
 # EQTY PDFGen
 # =============================================================================
@@ -1357,6 +1375,10 @@ eqty-pdfgen:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
 
   # -- Image Pull Secrets
   # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
@@ -1660,6 +1682,10 @@ governance-service:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
 
   # -- Container Command
   # @default -- `["./governance-service"]`
@@ -2247,6 +2273,23 @@ governance-service:
         # @default -- `api-secret`
         apiKey: "api-secret"
 
+  # -- Local Storage CA
+  # @default -- See values below
+  # Additional trusted CA for a local HTTPS artifact storage endpoint (exposed through SSL_CERT_DIR)
+  localStorageCA:
+    # -- ConfigMap Name
+    # @default -- `""`
+    # ConfigMap holding the public PEM CA (empty disables the mount)
+    configMapName: ""
+    # -- ConfigMap Key
+    # @default -- `ca.pem`
+    key: ca.pem
+
+  # -- Host Aliases
+  # @default -- `[]`
+  # Optional pod host aliases (local qualification DNS only)
+  hostAliases: []
+
 # =============================================================================
 # Governance Studio
 # =============================================================================
@@ -2277,6 +2320,10 @@ governance-studio:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
 
   # -- Image Pull Secrets
   # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
@@ -2632,6 +2679,10 @@ integrity-service:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
 
   # -- Image Pull Secrets
   # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
@@ -2850,6 +2901,9 @@ integrity-service:
       # @default -- `/var/lib/integrity`
       # Only used when persistence.enabled is true
       hostPath: /var/lib/integrity
+      # -- Use an existing PVC instead of a node-local hostPath
+      # @default -- `""`
+      existingClaim: ""
 
   # =============================================================================
   # DATABASE CONFIGURATION
@@ -2903,8 +2957,11 @@ integrity-service:
     # -- Blob Store Type
     # @default -- `""`
     # **REQUIRED**: Blob storage backend type
-    # Options: aws_s3, azure_blob, gcs
+    # Options: aws_s3, azure_blob, gcs, local_fs
     integrityAppBlobStoreType: ""
+    # -- Local filesystem path (requires a persistent mount for retained data)
+    # @default -- `""`
+    integrityAppBlobStoreLocalPath: ""
 
     # -- AWS S3 Region
     # @default -- `""`
@@ -3182,6 +3239,15 @@ postgresql:
 
           CREATE DATABASE guardian_gateway;
           GRANT ALL PRIVILEGES ON DATABASE guardian_gateway TO postgres;
+
+# ------------------------------------------------------------------------------
+# Local kind Diagnostic Profile Guard
+# ------------------------------------------------------------------------------
+# -- OpenBao kind Profile
+# @default -- `false`
+# Enforce the opt-in local kind publisher trust/custody contract
+# (development-only diagnostics; see examples/values-openbao-kind.yaml)
+openbaoKindProfile: false
 
 # =============================================================================
 # Auth0 Post-Install Configuration

@@ -115,6 +115,9 @@ llmGateway:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Immutable digest; takes precedence over tag when set
+    # @default -- `""`
+    digest: ""
     # -- Image Pull Policy
     # @default -- `IfNotPresent`
     # Options: IfNotPresent, Always, Never
@@ -466,6 +469,9 @@ controlPlane:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Immutable digest; takes precedence over tag when set
+    # @default -- `""`
+    digest: ""
     # -- Image Pull Policy
     # @default -- `IfNotPresent`
     # Options: IfNotPresent, Always, Never
@@ -559,6 +565,9 @@ controlPlane:
   # @default -- `{}`
   # Node labels for pod assignment
   nodeSelector: {}
+  # -- Optional pod host aliases (local qualification DNS only)
+  # @default -- `[]`
+  hostAliases: []
   # -- Tolerations
   # @default -- `[]`
   # Tolerations for pod assignment
@@ -867,6 +876,9 @@ controlPlane:
       # @default -- `17.6`
       # Debian variant; alpine images use UID 70, not the 999 pinned below
       tag: "17.6"
+      # -- Immutable digest; takes precedence over tag when set
+      # @default -- `""`
+      digest: ""
     # -- Poll Interval Seconds
     # @default -- `2`
     intervalSeconds: 2
@@ -1019,6 +1031,9 @@ guardianUI:
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
+    # -- Immutable digest; takes precedence over tag when set
+    # @default -- `""`
+    digest: ""
     # -- Image Pull Policy
     # @default -- `IfNotPresent`
     # Options: IfNotPresent, Always, Never

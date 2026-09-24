@@ -9,8 +9,12 @@ Configures one OpenBao server for one Auth deployment:
 
 1. enables a dedicated Transit mount (default `guardian-did`),
 2. writes the scoped runtime policy from `policies/guardian-auth.hcl` with the
-   mount substituted (P-256 key create/read/update and prehashed JWS signing
-   under that mount plus `auth/token/renew-self`, nothing else),
+   mount substituted. It grants exactly four paths: P-256 key
+   create/read/update and prehashed JWS signing under that mount,
+   `auth/token/renew-self` for the workload token, and `update` on
+   `sys/capabilities-self` so Auth's signing health check can inspect its own
+   token's capabilities without the default policy. Nothing else is granted,
+   and in particular no lookup of other tokens,
 3. enables the Kubernetes auth method (default mount `kubernetes`) and writes
    its API host and local or external reviewer/CA configuration,
 4. writes one role bound to exactly Auth's ServiceAccount, namespace and

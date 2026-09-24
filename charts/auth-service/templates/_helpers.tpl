@@ -64,7 +64,14 @@ Resolve the image repository, honoring customer registry mirror overrides.
 Resolve the full image reference.
 */}}
 {{- define "auth-service.image" -}}
+{{- if .Values.image.digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" .Values.image.digest) -}}
+{{- fail "image.digest must be a sha256 digest" -}}
+{{- end -}}
+{{- printf "%s@%s" (include "auth-service.imageRepository" .) .Values.image.digest -}}
+{{- else -}}
 {{- printf "%s:%s" (include "auth-service.imageRepository" .) (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*

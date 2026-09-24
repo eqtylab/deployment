@@ -38,6 +38,9 @@ image:
   # -- Image Tag
   # @default -- `""` (uses chart appVersion)
   tag: ""
+  # -- Immutable digest; takes precedence over tag when set
+  # @default -- `""`
+  digest: ""
 
 # -- Image Pull Secrets
 # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)

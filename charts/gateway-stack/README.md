@@ -72,6 +72,10 @@ All example files are sanitized and safe to copy:
 Set these before a production install. Image tags are omitted deliberately: leaving
 `image.tag` empty resolves to the chart `appVersion`, which the platform release
 process pins to the release version. Set a tag only to pin outside a release.
+Every image object (`llmGateway.image`, `controlPlane.image`,
+`controlPlane.waitForRegistryViews.image` and `guardianUI.image`) also accepts
+`digest: sha256:...`, which takes precedence over its tag while retaining
+registry mirror behavior.
 
 - `llmGateway.image.repository`
 - `llmGateway.registration.credentialSigner.existingSecret` when `llmGateway.registration.enabled=true`
@@ -144,6 +148,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | llmGateway.replicaCount               | int    | `1`                                      | Number of replicas to deploy                                |
 | llmGateway.image.repository           | string | `"ghcr.io/eqtylab/guardian-llm-gateway"` | Container image repository                                  |
 | llmGateway.image.tag                  | string | `""`                                     | Overrides the image tag (default is chart appVersion)       |
+| llmGateway.image.digest               | string | `""`                                     | Immutable sha256 digest; takes precedence over the tag      |
 | llmGateway.image.pullPolicy           | string | `"IfNotPresent"`                         | Image pull policy                                           |
 | llmGateway.listenAddr                 | string | `":10000"`                               | Listen address                                              |
 | llmGateway.deploymentEnvironment      | string | `""`                                     | Reported on audit events and used by gateway runtime policy |
@@ -178,45 +183,53 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### LLM Gateway Plugin Runtime
 
-| Key                                                     | Type   | Default                                | Description                                                      |
-| ------------------------------------------------------- | ------ | -------------------------------------- | ---------------------------------------------------------------- |
-| llmGateway.plugins.enabled                              | bool   | `false`                                | Enable the plugin runtime                                        |
-| llmGateway.plugins.pollInterval                         | string | `"15s"`                                | Plugin poll interval                                             |
-| llmGateway.plugins.authorizerShadowEnabled              | bool   | `false`                                | Evaluate authorizer plugins without enforcing decisions          |
-| llmGateway.plugins.endQueueDir                          | string | `"/var/lib/guardian/plugin-end-queue"` | Async `request.end` queue directory                              |
-| llmGateway.plugins.endQueueMaxBytes                     | int    | `134217728`                            | End queue size cap (128 MiB)                                     |
-| llmGateway.plugins.artifactCacheDir                     | string | `"/var/lib/guardian/plugin-artifacts"` | Plugin artifact cache directory                                  |
-| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs` or `s3`)                        |
-| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket                                          |
-| llmGateway.plugins.artifactStorage.prefix               | string | `""`                                   | Artifact storage key prefix                                      |
-| llmGateway.plugins.trustedSignerKeys                    | object | `{}`                                   | Map of signer key ID to did:key public key                       |
-| llmGateway.plugins.secrets.resolutionOrder              | list   | `[]`                                   | Secret resolver order; prefer `["store"]` for shared deployments |
-| llmGateway.plugins.secrets.encryptionKey.existingSecret | string | `""`                                   | Secret holding the plugin secret encryption key                  |
-| llmGateway.plugins.secretEnvs                           | object | `{}`                                   | Inline plugin secret env vars (local/dev fallback)               |
-| llmGateway.plugins.secretEnvsSecret.name                | string | `""`                                   | Secret providing plugin secret env vars (local/dev fallback)     |
+| Key                                                     | Type   | Default                                | Description                                                                            |
+| ------------------------------------------------------- | ------ | -------------------------------------- | -------------------------------------------------------------------------------------- |
+| llmGateway.plugins.enabled                              | bool   | `false`                                | Enable the plugin runtime                                                              |
+| llmGateway.plugins.pollInterval                         | string | `"15s"`                                | Plugin poll interval                                                                   |
+| llmGateway.plugins.authorizerShadowEnabled              | bool   | `false`                                | Evaluate authorizer plugins without enforcing decisions                                |
+| llmGateway.plugins.endQueueDir                          | string | `"/var/lib/guardian/plugin-end-queue"` | Async `request.end` queue directory                                                    |
+| llmGateway.plugins.endQueueMaxBytes                     | int    | `134217728`                            | End queue size cap (128 MiB)                                                           |
+| llmGateway.plugins.artifactCacheDir                     | string | `"/var/lib/guardian/plugin-artifacts"` | Plugin artifact cache directory                                                        |
+| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs` or `s3`)                                              |
+| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket                                                                |
+| llmGateway.plugins.artifactStorage.prefix               | string | `""`                                   | Artifact storage key prefix                                                            |
+| llmGateway.plugins.trustedSignerKeys                    | object | `{}`                                   | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`) |
+| llmGateway.plugins.secrets.resolutionOrder              | list   | `[]`                                   | Secret resolver order; prefer `["store"]` for shared deployments                       |
+| llmGateway.plugins.secrets.encryptionKey.existingSecret | string | `""`                                   | Secret holding the plugin secret encryption key                                        |
+| llmGateway.plugins.secretEnvs                           | object | `{}`                                   | Inline plugin secret env vars (local/dev fallback)                                     |
+| llmGateway.plugins.secretEnvsSecret.name                | string | `""`                                   | Secret providing plugin secret env vars (local/dev fallback)                           |
 
 ### Control Plane
 
-| Key                                                | Type   | Default                                    | Description                                           |
-| -------------------------------------------------- | ------ | ------------------------------------------ | ----------------------------------------------------- |
-| controlPlane.replicaCount                          | int    | `1`                                        | Number of replicas to deploy                          |
-| controlPlane.image.repository                      | string | `"ghcr.io/eqtylab/guardian-control-plane"` | Container image repository                            |
-| controlPlane.image.tag                             | string | `""`                                       | Overrides the image tag (default is chart appVersion) |
-| controlPlane.image.pullPolicy                      | string | `"IfNotPresent"`                           | Image pull policy                                     |
-| controlPlane.listenAddr                            | string | `":10010"`                                 | Listen address                                        |
-| controlPlane.apiBasePath                           | string | `""`                                       | API base path; set with `ingress.controlPlanePath`    |
-| controlPlane.corsAllowAll                          | bool   | `true`                                     | Allow all CORS origins                                |
-| controlPlane.service.enabled                       | bool   | `true`                                     | Create a Service resource                             |
-| controlPlane.service.type                          | string | `"ClusterIP"`                              | Kubernetes service type                               |
-| controlPlane.service.port                          | int    | `10010`                                    | Service port                                          |
-| controlPlane.extraArgs                             | list   | `[]`                                       | Extra container arguments                             |
-| controlPlane.extraEnv                              | list   | `[]`                                       | Extra environment variables                           |
-| controlPlane.resources                             | object | `{}`                                       | Resource requests and limits                          |
-| controlPlane.waitForRegistryViews.enabled          | bool   | `true`                                     | Wait for llm-gateway migrations before starting       |
-| controlPlane.waitForRegistryViews.image.repository | string | `"docker.io/library/postgres"`             | Init container image supplying `psql`                 |
-| controlPlane.waitForRegistryViews.image.tag        | string | `"17.6"`                                   | Init container image tag                              |
-| controlPlane.waitForRegistryViews.image.pullPolicy | string | `"IfNotPresent"`                           | Init container image pull policy                      |
-| controlPlane.waitForRegistryViews.intervalSeconds  | int    | `2`                                        | Poll interval                                         |
+| Key                                                | Type   | Default                                    | Description                                              |
+| -------------------------------------------------- | ------ | ------------------------------------------ | -------------------------------------------------------- |
+| controlPlane.replicaCount                          | int    | `1`                                        | Number of replicas to deploy                             |
+| controlPlane.image.repository                      | string | `"ghcr.io/eqtylab/guardian-control-plane"` | Container image repository                               |
+| controlPlane.image.tag                             | string | `""`                                       | Overrides the image tag (default is chart appVersion)    |
+| controlPlane.image.digest                          | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag   |
+| controlPlane.image.pullPolicy                      | string | `"IfNotPresent"`                           | Image pull policy                                        |
+| controlPlane.listenAddr                            | string | `":10010"`                                 | Listen address                                           |
+| controlPlane.apiBasePath                           | string | `""`                                       | API base path; set with `ingress.controlPlanePath`       |
+| controlPlane.corsAllowAll                          | bool   | `true`                                     | Allow all CORS origins                                   |
+| controlPlane.service.enabled                       | bool   | `true`                                     | Create a Service resource                                |
+| controlPlane.service.type                          | string | `"ClusterIP"`                              | Kubernetes service type                                  |
+| controlPlane.service.port                          | int    | `10010`                                    | Service port                                             |
+| controlPlane.extraArgs                             | list   | `[]`                                       | Extra container arguments                                |
+| controlPlane.extraEnv                              | list   | `[]`                                       | Extra environment variables                              |
+| controlPlane.hostAliases                           | list   | `[]`                                       | Optional pod host aliases (local qualification DNS only) |
+| controlPlane.resources                             | object | `{}`                                       | Resource requests and limits                             |
+| controlPlane.waitForRegistryViews.enabled          | bool   | `true`                                     | Wait for llm-gateway migrations before starting          |
+| controlPlane.waitForRegistryViews.image.repository | string | `"docker.io/library/postgres"`             | Init container image supplying `psql`                    |
+| controlPlane.waitForRegistryViews.image.tag        | string | `"17.6"`                                   | Init container image tag                                 |
+| controlPlane.waitForRegistryViews.image.digest     | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag   |
+| controlPlane.waitForRegistryViews.image.pullPolicy | string | `"IfNotPresent"`                           | Init container image pull policy                         |
+| controlPlane.waitForRegistryViews.intervalSeconds  | int    | `2`                                        | Poll interval                                            |
+
+`controlPlane.hostAliases` exists for local qualification DNS only: the disposable
+OpenBao kind profile resolves its canonical Integrity status origin through it.
+The application's URL trust checks are unchanged. The `openbaoKindProfile` guard in
+the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 
 ### Control Plane Authentication
 
@@ -266,43 +279,44 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Control Plane Plugin Management
 
-| Key                                                       | Type   | Default                                    | Description                                     |
-| --------------------------------------------------------- | ------ | ------------------------------------------ | ----------------------------------------------- |
-| controlPlane.plugins.publisherSigner.keyID                | string | `""`                                       | Publisher signer key ID                         |
-| controlPlane.plugins.publisherSigner.existingSecret       | string | `""`                                       | Secret holding the publisher signer seed        |
-| controlPlane.plugins.publisherSigner.secretKey            | string | `"seed"`                                   | Key within the signer Secret                    |
-| controlPlane.plugins.publisherSigner.mountPath            | string | `"/run/secrets/guardian-plugin-publisher"` | Signer seed mount path                          |
-| controlPlane.plugins.artifactStorage.provider             | string | `""`                                       | Artifact storage provider (`gcs` or `s3`)       |
-| controlPlane.plugins.artifactStorage.bucket               | string | `""`                                       | Artifact storage bucket                         |
-| controlPlane.plugins.artifactStorage.prefix               | string | `""`                                       | Artifact storage key prefix                     |
-| controlPlane.plugins.artifactStorage.maxUploadBytes       | int    | `536870912`                                | Maximum upload size (512 MiB)                   |
-| controlPlane.plugins.artifactStorage.gcs.kmsKeyName       | string | `""`                                       | GCS KMS key name                                |
-| controlPlane.plugins.trustedSignerKeys                    | object | `{}`                                       | Map of signer key ID to did:key public key      |
-| controlPlane.plugins.secrets.encryptionKey.existingSecret | string | `""`                                       | Secret holding the plugin secret encryption key |
-| controlPlane.virusTotal.enabled                           | bool   | `false`                                    | Enable VirusTotal upload scanning               |
-| controlPlane.virusTotal.existingSecret                    | string | `""`                                       | Secret holding the VirusTotal API key           |
-| controlPlane.virusTotal.secretKey                         | string | `"api-key"`                                | Key within the VirusTotal Secret                |
+| Key                                                       | Type   | Default                                    | Description                                                                            |
+| --------------------------------------------------------- | ------ | ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| controlPlane.plugins.publisherSigner.keyID                | string | `""`                                       | Publisher signer key ID                                                                |
+| controlPlane.plugins.publisherSigner.existingSecret       | string | `""`                                       | Secret holding the publisher signer seed                                               |
+| controlPlane.plugins.publisherSigner.secretKey            | string | `"seed"`                                   | Key within the signer Secret                                                           |
+| controlPlane.plugins.publisherSigner.mountPath            | string | `"/run/secrets/guardian-plugin-publisher"` | Signer seed mount path                                                                 |
+| controlPlane.plugins.artifactStorage.provider             | string | `""`                                       | Artifact storage provider (`gcs` or `s3`)                                              |
+| controlPlane.plugins.artifactStorage.bucket               | string | `""`                                       | Artifact storage bucket                                                                |
+| controlPlane.plugins.artifactStorage.prefix               | string | `""`                                       | Artifact storage key prefix                                                            |
+| controlPlane.plugins.artifactStorage.maxUploadBytes       | int    | `536870912`                                | Maximum upload size (512 MiB)                                                          |
+| controlPlane.plugins.artifactStorage.gcs.kmsKeyName       | string | `""`                                       | GCS KMS key name                                                                       |
+| controlPlane.plugins.trustedSignerKeys                    | object | `{}`                                       | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`) |
+| controlPlane.plugins.secrets.encryptionKey.existingSecret | string | `""`                                       | Secret holding the plugin secret encryption key                                        |
+| controlPlane.virusTotal.enabled                           | bool   | `false`                                    | Enable VirusTotal upload scanning                                                      |
+| controlPlane.virusTotal.existingSecret                    | string | `""`                                       | Secret holding the VirusTotal API key                                                  |
+| controlPlane.virusTotal.secretKey                         | string | `"api-key"`                                | Key within the VirusTotal Secret                                                       |
 
 ### Guardian Console
 
-| Key                            | Type   | Default                              | Description                                           |
-| ------------------------------ | ------ | ------------------------------------ | ----------------------------------------------------- |
-| guardianUI.enabled             | bool   | `false`                              | Enable the Guardian console                           |
-| guardianUI.replicaCount        | int    | `1`                                  | Number of replicas to deploy                          |
-| guardianUI.image.repository    | string | `"ghcr.io/eqtylab/guardian-console"` | Container image repository                            |
-| guardianUI.image.tag           | string | `""`                                 | Overrides the image tag (default is chart appVersion) |
-| guardianUI.image.pullPolicy    | string | `"IfNotPresent"`                     | Image pull policy                                     |
-| guardianUI.containerPort       | int    | `80`                                 | Container port                                        |
-| guardianUI.service.enabled     | bool   | `true`                               | Create a Service resource                             |
-| guardianUI.service.type        | string | `"ClusterIP"`                        | Kubernetes service type                               |
-| guardianUI.service.port        | int    | `80`                                 | Service port                                          |
-| guardianUI.runtime.environment | string | `"production"`                       | Runtime environment                                   |
-| guardianUI.runtime.appTitle    | string | `"Gateway Guardian"`                 | Application title                                     |
-| guardianUI.runtime.appHostname | string | `""`                                 | Application hostname                                  |
-| guardianUI.runtime.apiURL      | string | `""`                                 | Control-plane API URL                                 |
-| guardianUI.runtime.basePath    | string | `"/"`                                | Base path                                             |
-| guardianUI.extraEnv            | list   | `[]`                                 | Extra environment variables                           |
-| guardianUI.resources           | object | `{}`                                 | Resource requests and limits                          |
+| Key                            | Type   | Default                              | Description                                            |
+| ------------------------------ | ------ | ------------------------------------ | ------------------------------------------------------ |
+| guardianUI.enabled             | bool   | `false`                              | Enable the Guardian console                            |
+| guardianUI.replicaCount        | int    | `1`                                  | Number of replicas to deploy                           |
+| guardianUI.image.repository    | string | `"ghcr.io/eqtylab/guardian-console"` | Container image repository                             |
+| guardianUI.image.tag           | string | `""`                                 | Overrides the image tag (default is chart appVersion)  |
+| guardianUI.image.digest        | string | `""`                                 | Immutable sha256 digest; takes precedence over the tag |
+| guardianUI.image.pullPolicy    | string | `"IfNotPresent"`                     | Image pull policy                                      |
+| guardianUI.containerPort       | int    | `80`                                 | Container port                                         |
+| guardianUI.service.enabled     | bool   | `true`                               | Create a Service resource                              |
+| guardianUI.service.type        | string | `"ClusterIP"`                        | Kubernetes service type                                |
+| guardianUI.service.port        | int    | `80`                                 | Service port                                           |
+| guardianUI.runtime.environment | string | `"production"`                       | Runtime environment                                    |
+| guardianUI.runtime.appTitle    | string | `"Gateway Guardian"`                 | Application title                                      |
+| guardianUI.runtime.appHostname | string | `""`                                 | Application hostname                                   |
+| guardianUI.runtime.apiURL      | string | `""`                                 | Control-plane API URL                                  |
+| guardianUI.runtime.basePath    | string | `"/"`                                | Base path                                              |
+| guardianUI.extraEnv            | list   | `[]`                                 | Extra environment variables                            |
+| guardianUI.resources           | object | `{}`                                 | Resource requests and limits                           |
 
 ### Plugin Artifact Storage Backends
 

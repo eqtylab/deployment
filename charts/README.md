@@ -206,12 +206,14 @@ helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governan
 
 The `governance-platform/examples/` directory contains complete deployment examples:
 
-| Example                                                                   | Description                                                 |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| [secrets-sample.yaml](governance-platform/examples/secrets-sample.yaml)   | Complete secrets configuration template                     |
-| [values-auth0.yaml](governance-platform/examples/values-auth0.yaml)       | Platform deployment using Auth0 as the identity provider    |
-| [values-entra.yaml](governance-platform/examples/values-entra.yaml)       | Platform deployment using Entra ID as the identity provider |
-| [values-keycloak.yaml](governance-platform/examples/values-keycloak.yaml) | Platform deployment using Keycloak as the identity provider |
+| Example                                                                           | Description                                                                                                 |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [secrets-sample.yaml](governance-platform/examples/secrets-sample.yaml)           | Complete secrets configuration template                                                                     |
+| [values-auth0.yaml](governance-platform/examples/values-auth0.yaml)               | Platform deployment using Auth0 as the identity provider                                                    |
+| [values-entra.yaml](governance-platform/examples/values-entra.yaml)               | Platform deployment using Entra ID as the identity provider                                                 |
+| [values-keycloak.yaml](governance-platform/examples/values-keycloak.yaml)         | Platform deployment using Keycloak as the identity provider                                                 |
+| [values-openbao.yaml](governance-platform/examples/values-openbao.yaml)           | Optional development OpenBao Transit overlay for Auth signing keys                                          |
+| [values-openbao-kind.yaml](governance-platform/examples/values-openbao-kind.yaml) | Disposable local-kind OpenBao diagnostic profile (not standalone; needs launcher-supplied publisher values) |
 
 ## Deployment Guides
 

@@ -257,16 +257,17 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                                | Description                                           |
-| ---------------- | ------ | -------------------------------------- | ----------------------------------------------------- |
-| enabled          | bool   | `true`                                 | Enable this subchart (umbrella chart only)            |
-| replicaCount     | int    | `2`                                    | Number of replicas to deploy                          |
-| image.repository | string | `"ghcr.io/eqtylab/governance-service"` | Container image repository                            |
-| image.pullPolicy | string | `"IfNotPresent"`                       | Image pull policy                                     |
-| image.tag        | string | `""`                                   | Overrides the image tag (default is chart appVersion) |
-| imagePullSecrets | list   | `[]`                                   | Additional image pull secrets (beyond global)         |
-| command          | list   | `["./governance-service"]`             | Container entrypoint command                          |
-| args             | list   | `[]`                                   | Container arguments (-debug-config, -help, etc.)      |
+| Key              | Type   | Default                                | Description                                              |
+| ---------------- | ------ | -------------------------------------- | -------------------------------------------------------- |
+| enabled          | bool   | `true`                                 | Enable this subchart (umbrella chart only)               |
+| replicaCount     | int    | `2`                                    | Number of replicas to deploy                             |
+| image.repository | string | `"ghcr.io/eqtylab/governance-service"` | Container image repository                               |
+| image.pullPolicy | string | `"IfNotPresent"`                       | Image pull policy                                        |
+| image.tag        | string | `""`                                   | Overrides the image tag (default is chart appVersion)    |
+| image.digest     | string | `""`                                   | Immutable sha256 digest; takes precedence over image.tag |
+| imagePullSecrets | list   | `[]`                                   | Additional image pull secrets (beyond global)            |
+| command          | list   | `["./governance-service"]`             | Container entrypoint command                             |
+| args             | list   | `[]`                                   | Container arguments (-debug-config, -help, etc.)         |
 
 ### Service Account
 
@@ -327,12 +328,13 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Node Scheduling
 
-| Key            | Type   | Default | Description                       |
-| -------------- | ------ | ------- | --------------------------------- |
-| nodeSelector   | object | `{}`    | Node labels for pod assignment    |
-| tolerations    | list   | `[]`    | Tolerations for pod assignment    |
-| affinity       | object | `{}`    | Affinity rules for pod assignment |
-| initContainers | list   | `[]`    | Init containers to add to the pod |
+| Key            | Type   | Default | Description                                              |
+| -------------- | ------ | ------- | -------------------------------------------------------- |
+| nodeSelector   | object | `{}`    | Node labels for pod assignment                           |
+| tolerations    | list   | `[]`    | Tolerations for pod assignment                           |
+| hostAliases    | list   | `[]`    | Optional pod host aliases (local qualification DNS only) |
+| affinity       | object | `{}`    | Affinity rules for pod assignment                        |
+| initContainers | list   | `[]`    | Init containers to add to the pod                        |
 
 ### Health Checks
 
@@ -472,6 +474,17 @@ All config values support global fallbacks when deployed via umbrella chart.
 | Key                  | Type   | Default | Description                    |
 | -------------------- | ------ | ------- | ------------------------------ |
 | config.gcsBucketName | string | `""`    | GCS bucket name (**REQUIRED**) |
+
+**Local HTTPS artifact endpoint CA (optional, any storage provider):**
+
+| Key                          | Type   | Default    | Description                                                                          |
+| ---------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------ |
+| localStorageCA.configMapName | string | `""`       | ConfigMap holding a public PEM CA for a local HTTPS artifact endpoint (never a key) |
+| localStorageCA.key           | string | `"ca.pem"` | ConfigMap key containing the PEM CA                                                  |
+
+The CA is mounted read-only and exposed through `SSL_CERT_DIR`. The image keeps
+its own `SSL_CERT_FILE` public bundle and Go loads both, so public CAs stay
+trusted; the local CA is additive.
 
 #### Authentication Provider Configuration
 

@@ -102,16 +102,17 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                         | Description                                           |
-| ---------------- | ------ | ------------------------------- | ----------------------------------------------------- |
-| enabled          | bool   | `true`                          | Enable this subchart (umbrella chart only)            |
-| replicaCount     | int    | `2`                             | Number of replicas to deploy                          |
-| image.repository | string | `"ghcr.io/eqtylab/eqty-pdfgen"` | Container image repository                            |
-| image.pullPolicy | string | `"IfNotPresent"`                | Image pull policy                                     |
-| image.tag        | string | `""`                            | Overrides the image tag (default is chart appVersion) |
-| imagePullSecrets | list   | `[]`                            | Additional image pull secrets (beyond global)         |
-| nameOverride     | string | `""`                            | Override the chart name used for resource naming      |
-| fullnameOverride | string | `""`                            | Override the fully qualified resource name            |
+| Key              | Type   | Default                         | Description                                              |
+| ---------------- | ------ | ------------------------------- | -------------------------------------------------------- |
+| enabled          | bool   | `true`                          | Enable this subchart (umbrella chart only)               |
+| replicaCount     | int    | `2`                             | Number of replicas to deploy                             |
+| image.repository | string | `"ghcr.io/eqtylab/eqty-pdfgen"` | Container image repository                               |
+| image.pullPolicy | string | `"IfNotPresent"`                | Image pull policy                                        |
+| image.tag        | string | `""`                            | Overrides the image tag (default is chart appVersion)    |
+| image.digest     | string | `""`                            | Immutable sha256 digest; takes precedence over image.tag |
+| imagePullSecrets | list   | `[]`                            | Additional image pull secrets (beyond global)            |
+| nameOverride     | string | `""`                            | Override the chart name used for resource naming         |
+| fullnameOverride | string | `""`                            | Override the fully qualified resource name               |
 
 ### Service Account
 

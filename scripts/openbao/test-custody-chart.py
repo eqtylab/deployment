@@ -160,7 +160,7 @@ class CustodyChartTests(unittest.TestCase):
             archive = Path(work) / "openbao-custody-0.1.0.tgz"
             with tarfile.open(archive) as package:
                 names = set(package.getnames())
-                for filename in ("README.md", "examples/values-dev-kind.yaml", "examples/values-network-policy.yaml", "templates/_helpers.tpl", "templates/NOTES.txt", "Chart.lock", "charts/openbao/Chart.yaml"):
+                for filename in ("README.md", "examples/values-dev-kind.yaml", "examples/values-kind-tls.yaml", "examples/values-network-policy.yaml", "templates/_helpers.tpl", "templates/NOTES.txt", "Chart.lock", "charts/openbao/Chart.yaml"):
                     self.assertIn("openbao-custody/" + filename, names)
                 self.assertFalse(any(name.endswith((".swp", ".bak", ".tmp", "~", ".DS_Store")) or "/.git/" in name or "/.idea/" in name or "/.vscode/" in name for name in names))
                 metadata = yaml.safe_load(package.extractfile("openbao-custody/Chart.yaml"))

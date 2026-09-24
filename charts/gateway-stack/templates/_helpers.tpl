@@ -68,7 +68,14 @@ Resolve the full image reference.
 */}}
 {{- define "gateway-stack.image" -}}
 {{- $tag := .image.tag | default .root.Chart.AppVersion | toString -}}
+{{- if .image.digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" .image.digest) -}}
+{{- fail "image.digest must be a sha256 digest" -}}
+{{- end -}}
+{{- printf "%s@%s" (include "gateway-stack.imageRepository" .) .image.digest -}}
+{{- else -}}
 {{- printf "%s:%s" (include "gateway-stack.imageRepository" .) $tag -}}
+{{- end -}}
 {{- end -}}
 
 {{/*

@@ -274,14 +274,15 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                          | Description                                           |
-| ---------------- | ------ | -------------------------------- | ----------------------------------------------------- |
-| enabled          | bool   | `true`                           | Enable this subchart (umbrella chart only)            |
-| replicaCount     | int    | `2`                              | Number of replicas to deploy                          |
-| image.repository | string | `"ghcr.io/eqtylab/auth-service"` | Container image repository                            |
-| image.pullPolicy | string | `"IfNotPresent"`                 | Image pull policy                                     |
-| image.tag        | string | `""`                             | Overrides the image tag (default is chart appVersion) |
-| imagePullSecrets | list   | `[]`                             | Additional image pull secrets (beyond global)         |
+| Key              | Type   | Default                          | Description                                              |
+| ---------------- | ------ | -------------------------------- | -------------------------------------------------------- |
+| enabled          | bool   | `true`                           | Enable this subchart (umbrella chart only)               |
+| replicaCount     | int    | `2`                              | Number of replicas to deploy                             |
+| image.repository | string | `"ghcr.io/eqtylab/auth-service"` | Container image repository                               |
+| image.pullPolicy | string | `"IfNotPresent"`                 | Image pull policy                                        |
+| image.tag        | string | `""`                             | Overrides the image tag (default is chart appVersion)    |
+| image.digest     | string | `""`                             | Immutable sha256 digest; takes precedence over image.tag |
+| imagePullSecrets | list   | `[]`                             | Additional image pull secrets (beyond global)            |
 
 ### Service Account
 
@@ -349,12 +350,13 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Node Scheduling
 
-| Key            | Type   | Default           | Description                                   |
-| -------------- | ------ | ----------------- | --------------------------------------------- |
-| nodeSelector   | object | `{}`              | Node labels for pod assignment                |
-| tolerations    | list   | `[]`              | Tolerations for pod assignment                |
-| affinity       | object | Pod anti-affinity | Affinity rules (default spreads across nodes) |
-| initContainers | list   | `[]`              | Init containers to add to the pod             |
+| Key            | Type   | Default           | Description                                              |
+| -------------- | ------ | ----------------- | -------------------------------------------------------- |
+| nodeSelector   | object | `{}`              | Node labels for pod assignment                           |
+| tolerations    | list   | `[]`              | Tolerations for pod assignment                           |
+| hostAliases    | list   | `[]`              | Optional pod host aliases (local qualification DNS only) |
+| affinity       | object | Pod anti-affinity | Affinity rules (default spreads across nodes)            |
+| initContainers | list   | `[]`              | Init containers to add to the pod                        |
 
 ### Health Checks
 
