@@ -87,7 +87,6 @@ auth-service:
     keyManagement:
       provider: "openbao"
       openbao:
-        developmentEnabled: true
         # Replace `custody` with the custody release namespace; the launcher
         # substitutes `<cluster>-custody`.
         address: "https://openbao-custody-active.custody.svc.cluster.local:8200"

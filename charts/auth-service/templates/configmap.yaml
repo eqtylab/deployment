@@ -111,11 +111,10 @@ data:
   {{- include "auth-service.openbaoValidate" . }}
   {{- $bao := .Values.config.keyManagement.openbao }}
 
-  # OpenBao Transit Configuration (development profile; credentials are mounted files)
+  # OpenBao Transit Configuration (credentials are mounted files)
   {{- if not .Values.config.keyManagement.algorithm }}
   DID_KEY_ALGORITHM: "p256"
   {{- end }}
-  OPENBAO_DEVELOPMENT_ENABLED: "true"
   OPENBAO_ADDRESS: "{{ $bao.address }}"
   OPENBAO_TRANSIT_MOUNT: "{{ $bao.transitMount | default "guardian-did" }}"
   OPENBAO_KEY_PREFIX: "{{ $bao.keyPrefix | default "guardian" }}"

@@ -1016,18 +1016,15 @@ auth-service:
 
       # -- OpenBao Transit Configuration
       # @default -- See values below
-      # Only used when provider is "openbao". Development profile only in current
-      # auth-service images: global.environmentType (or auth-service.config.server.environment)
-      # must be "development" and developmentEnabled must be true, or rendering fails.
-      # See charts/auth-service/README.md, "OpenBao Transit".
+      # Only used when provider is "openbao". Supported for fresh installations
+      # with P-256/SHA-256. See charts/auth-service/README.md, "OpenBao Transit".
       openbao:
-        # -- Development gate (OPENBAO_DEVELOPMENT_ENABLED)
-        # @default -- `false`
-        developmentEnabled: false
         # -- OpenBao API origin (OPENBAO_ADDRESS)
-        # @default -- `""` (**REQUIRED**: https:// origin, or http:// on an explicit loopback IP)
+        # @default -- `""` (**REQUIRED**: https:// origin)
         # No credentials, path, query or fragment; optional trailing / allowed.
-        # localhost is rejected by the runtime.
+        # An explicit loopback IP permits http:// only when the environment is
+        # exactly "development" (auth-service.config.server.environment, then
+        # global.environmentType, default "production"); localhost is rejected.
         address: ""
         # -- Transit mount dedicated to Auth (OPENBAO_TRANSIT_MOUNT)
         # @default -- `guardian-did`
