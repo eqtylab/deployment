@@ -262,13 +262,13 @@ global:
       # Only used if create=true
       values:
         # -- Registry Username
-        # @default -- `""` (GitHub username or token name)
+        # @default -- `""` (eqtylab/prod for Cloudsmith entitlements; GitHub username for GHCR)
         username: ""
         # -- Registry Password
-        # @default -- `""` (GitHub PAT with read:packages scope)
+        # @default -- `""` (Cloudsmith prod entitlement token, or GitHub PAT with read:packages for GHCR)
         password: ""
         # -- Registry Email
-        # @default -- `""` (email associated with GitHub account)
+        # @default -- `""` (registry contact email)
         email: ""
 
     # -- Key Management Configuration (for credential signing)

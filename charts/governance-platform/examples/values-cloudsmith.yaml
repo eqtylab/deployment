@@ -1,0 +1,22 @@
+# =============================================================================
+# Cloudsmith Customer Registry Overlay
+# =============================================================================
+# Usage (only for a stable version verified in cloudsmith-delivery.json):
+#   helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+#     --version <released-version> -f values.yaml -f values-cloudsmith.yaml
+#
+# Secrets: pre-create platform-image-pull-secret with your prod entitlement token.
+# If global.secrets.create=true, supply that token through your protected secrets
+# values at global.secrets.imageRegistry.values.password instead.
+# Upstream images (Postgres, Keycloak, OpenBao, utility containers) keep their sources.
+global:
+  imageRepositoryPrefixOverride: docker.cloudsmith.io/eqtylab/prod
+  imagePullSecrets:
+    - name: platform-image-pull-secret
+  secrets:
+    imageRegistry:
+      registry: docker.cloudsmith.io
+      values:
+        username: eqtylab/prod
+        # Supply the prod entitlement token through your secret-management system.
+        # Do not commit it here. The default uses a pre-created pull secret.

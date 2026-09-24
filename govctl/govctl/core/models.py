@@ -102,6 +102,9 @@ class PlatformConfig:
     keycloak_realm: str = "governance"
 
     # Image registry
+    # Direct callers retain the existing internal defaults; init selects its profile.
+    artifact_source: str = "github"
+    image_repository_prefix: str = ""
     image_registry_url: str = "ghcr.io"
     image_registry_username: str = ""
     image_registry_password: str = ""

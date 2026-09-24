@@ -1,5 +1,7 @@
 # Governance Platform Deployment Guide (Keycloak + GCP)
 
+> For a stable version with `cloudsmith-delivery.json`, complete the [Cloudsmith setup](../cloudsmith.md) and apply `values-cloudsmith.yaml` last. Until that version has a verified delivery, use the existing GHCR install path and `govctl init --artifact-source github`; set the pull-secret host and credentials to GHCR. Local chart paths below refer to the chart packaged with the selected release.
+
 End-to-end guide for deploying the EQTY Lab Governance Platform on Kubernetes with Keycloak as the identity provider, Google Cloud Storage for object storage, and Google Cloud KMS for key management.
 
 ## Table of Contents
@@ -200,9 +202,9 @@ Requirements:
 
 ### Container Registry Access
 
-Platform images are hosted on GitHub Container Registry (GHCR). You need:
+For versions with a verified Cloudsmith delivery, customer platform images are hosted at `docker.cloudsmith.io/eqtylab/prod`. Obtain the prod entitlement token from your EQTY contact. You need:
 
-- A **GitHub Personal Access Token (PAT)** with `read:packages` scope
+- A **Cloudsmith prod entitlement token**
 - Or access to a mirror registry containing the platform images
 
 ### Cloud Provider Resources
@@ -239,7 +241,7 @@ Before proceeding, confirm:
 - [ ] Google Cloud Storage buckets are provisioned with a service account
 - [ ] Google Cloud KMS key ring is provisioned with appropriate permissions
 - [ ] DNS domain is available and you can create records
-- [ ] GitHub PAT with `read:packages` scope is available
+- [ ] Cloudsmith prod entitlement token is available
 - [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
 - [ ] Google Cloud CLI (`gcloud`) is installed locally
 
@@ -693,6 +695,8 @@ govctl init -I \
 | `--domain`                       | `-d`    | Deployment domain                            |
 | `--environment`                  | `-e`    | Environment name                             |
 | `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`) |
+| `--artifact-source` | | Registry profile: `cloudsmith` (default) or `github` for GHCR installs |
+| `--database` | `-D` | `bundled` or `external`; production defaults to external |
 | `--output`                       | `-o`    | Output directory (default: `output`)         |
 | `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                      |
 
@@ -1003,9 +1007,9 @@ kubectl create secret generic platform-gcp-kms \
 
 ```bash
 kubectl create secret docker-registry platform-image-pull-secret \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USERNAME \
-  --docker-password=YOUR_GITHUB_PAT \
+  --docker-server=docker.cloudsmith.io \
+  --docker-username=eqtylab/prod \
+  --docker-password=YOUR_CLOUDSMITH_ENTITLEMENT_TOKEN \
   --docker-email=YOUR_EMAIL \
   --namespace $NS
 ```

@@ -60,6 +60,9 @@ def show_config_summary(config: PlatformConfig) -> None:
         table.add_row("Keycloak Realm", config.keycloak_realm)
 
     # Image registry
+    table.add_row("Artifact Source", config.artifact_source)
+    if config.image_repository_prefix:
+        table.add_row("Image Prefix", config.image_repository_prefix)
     if config.image_registry_url:
         table.add_row("Image Registry", config.image_registry_url)
     if config.image_registry_username:
@@ -142,8 +145,23 @@ def show_next_steps(
 
     console.print(f"  {step}. Deploy the platform:")
     console.print()
+    chart = "./charts/governance-platform"
+    version_flag = ""
+    if config.artifact_source == "cloudsmith":
+        console.print(
+            "     Use a stable version listed in cloudsmith-delivery.json. "
+            "Log in with your prod entitlement token:"
+        )
+        console.print(
+            "[dim]     helm registry login helm.oci.cloudsmith.io "
+            "--username eqtylab/prod[/dim]"
+        )
+        chart = "oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform"
+        version_flag = "       --version <released-version> \\\n"
     helm_cmd = (
-        f"     helm upgrade --install {config.release_name} ./charts/governance-platform \\\n"
+        f"     helm upgrade --install {config.release_name} \\\n"
+        f"       {chart} \\\n"
+        f"{version_flag}"
         f"       -f {values_file} \\\n"
         f"       -f {secrets_file} \\\n"
         f"       -n {config.namespace} --create-namespace"

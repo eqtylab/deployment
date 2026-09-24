@@ -1,5 +1,7 @@
 # Governance Platform Deployment Guide (Auth0 + Azure)
 
+> For a stable version with `cloudsmith-delivery.json`, complete the [Cloudsmith setup](../cloudsmith.md) and apply `values-cloudsmith.yaml` last. Until that version has a verified delivery, use the existing GHCR install path and `govctl init --artifact-source github`; set the pull-secret host and credentials to GHCR. Local chart paths below refer to the chart packaged with the selected release.
+
 End-to-end guide for deploying the EQTY Lab Governance Platform on Kubernetes with Auth0 as the identity provider, Azure Blob Storage for object storage, and Azure Key Vault for key management.
 
 > **Note on tenant IDs in this guide.** Auth0 hosts the **user** identity provider (a separate cloud service at `<your-tenant>.auth0.com`). Azure Key Vault still authenticates a separate service principal in an **Azure AD** tenant. These are two different tenants — wherever this doc says "Azure tenant ID", it means the Azure AD tenant that owns the Key Vault SP, not your Auth0 tenant.
@@ -209,9 +211,9 @@ You will need:
 
 ### Container Registry Access
 
-Platform images are hosted on GitHub Container Registry (GHCR). You need:
+For versions with a verified Cloudsmith delivery, customer platform images are hosted at `docker.cloudsmith.io/eqtylab/prod`. Obtain the prod entitlement token from your EQTY contact. You need:
 
-- A **GitHub Personal Access Token (PAT)** with `read:packages` scope
+- A **Cloudsmith prod entitlement token**
 - Or access to a mirror registry containing the platform images
 
 ### Cloud Provider Resources
@@ -249,7 +251,7 @@ Before proceeding, confirm:
 - [ ] Azure Storage account and containers are provisioned
 - [ ] Azure Key Vault is provisioned with a service principal that has key + secret permissions
 - [ ] DNS domain is available and you can create records
-- [ ] GitHub PAT with `read:packages` scope is available
+- [ ] Cloudsmith prod entitlement token is available
 - [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
 - [ ] Azure CLI (`az`) is installed locally
 
@@ -675,6 +677,8 @@ govctl init -I \
 | `--domain`                       | `-d`    | Deployment domain                            |
 | `--environment`                  | `-e`    | Environment name                             |
 | `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`) |
+| `--artifact-source` | | Registry profile: `cloudsmith` (default) or `github` for GHCR installs |
+| `--database` | `-D` | `bundled` or `external`; production defaults to external |
 | `--output`                       | `-o`    | Output directory (default: `output`)         |
 | `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                      |
 
@@ -1011,9 +1015,9 @@ kubectl create secret generic platform-azure-key-vault \
 
 ```bash
 kubectl create secret docker-registry platform-image-pull-secret \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USERNAME \
-  --docker-password=YOUR_GITHUB_PAT \
+  --docker-server=docker.cloudsmith.io \
+  --docker-username=eqtylab/prod \
+  --docker-password=YOUR_CLOUDSMITH_ENTITLEMENT_TOKEN \
   --docker-email=YOUR_EMAIL \
   --namespace $NS
 ```

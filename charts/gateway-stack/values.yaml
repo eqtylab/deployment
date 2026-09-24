@@ -863,7 +863,7 @@ controlPlane:
     enabled: true
     # -- Wait Container Image
     # @default -- See values below
-    # Supplies psql; fully qualified so the global registry overrides apply
+    # Supplies psql; the global host override applies, but the EQTY prefix override does not
     image:
       # -- Image Repository
       # @default -- `docker.io/library/postgres`

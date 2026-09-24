@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from govctl.core.artifacts import runtime_image_values
+
 from govctl.core.models import PlatformConfig
 
 
@@ -18,10 +20,7 @@ def generate_eqty_pdfgen_section(config: PlatformConfig) -> dict[str, Any]:
     section: dict[str, Any] = {
         "enabled": False,
         "replicaCount": 2,
-        "image": {
-            "tag": "latest",
-            "pullPolicy": "Always",
-        },
+        "image": runtime_image_values(config),
     }
 
     return section
