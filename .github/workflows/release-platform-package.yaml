@@ -189,11 +189,11 @@ jobs:
           test -f charts/openbao-custody/Chart.lock
           helm dependency build charts/openbao-custody
           python -B scripts/openbao/test-custody-chart.py
-          python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
           fi
           helm dependency build charts/governance-platform
+          python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           charts=(charts/auth-service)
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             charts+=(charts/eqty-pdfgen)
@@ -332,6 +332,7 @@ jobs:
           cp dist/charts/*.tgz "$package_root/charts/"
           cp dist/charts/*.sha256 "$package_root/charts/"
           cp -R charts/governance-platform/examples "$package_root/examples/governance-platform"
+          cp charts/governance-platform/examples/values-cloudsmith.yaml "$package_root/values-cloudsmith.yaml"
           python -B scripts/release/custody_distribution.py stage "$package_root"
 
           cat > "$package_root/INSTALL.md" <<EOF
@@ -340,14 +341,15 @@ jobs:
           Install the customer release with the published umbrella chart:
 
           \`\`\`bash
-          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
+          helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
+          helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \\
             --version ${VERSION} \\
             --namespace governance \\
             --create-namespace \\
-            --values values.yaml
+            --values values.yaml --values values-cloudsmith.yaml
           \`\`\`
 
-          Runtime images are private. Configure image pull credentials or mirror the images to a customer registry before installing.
+          Use your EQTY-issued prod entitlement token for Helm login and the Kubernetes image pull secret. See the Cloudsmith installation guide in the deployment repository for credential setup. Customer delivery is ready only when cloudsmith-delivery.json is present; a GitHub release alone does not prove Cloudsmith publication. Prereleases remain internal GitHub artifacts.
 
           See OPENBAO.md for the optional, independently versioned custody release and operator setup. Custody is included only when release-manifest.yaml contains charts.openbaoCustody; its absence requires customer-managed OpenBao if that backend is selected. Inclusion does not enable OpenBao in the platform.
           EOF
@@ -417,11 +419,12 @@ jobs:
           ### Install
 
           \`\`\`bash
-          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
+          helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
+          helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \\
             --version ${VERSION} \\
             --namespace governance \\
             --create-namespace \\
-            --values values.yaml
+            --values values.yaml --values values-cloudsmith.yaml
           \`\`\`
 
           ### Artifacts
@@ -431,7 +434,7 @@ jobs:
           - Chart digests: \`chart-digests.yaml\`
           - Runtime image tags: \`${VERSION}\`
 
-          This release uses private runtime images. Customers must configure GHCR image pull credentials or mirror images into their own registry.
+          Customers use Cloudsmith prod entitlement tokens. Download the connected package for values-cloudsmith.yaml and installation instructions. Delivery is ready only after cloudsmith-delivery.json appears on this release. Prereleases stay in GitHub. Internal installations continue using the GHCR chart and image references in release-manifest.yaml.
           EOF
 
       - name: Publish GitHub release
@@ -475,3 +478,19 @@ jobs:
               --verify-tag \
               "${flags[@]}"
           fi
+
+      - name: Record successful stable publication
+        if: steps.release.outputs.publish == 'true' && steps.release.outputs.release_type == 'stable'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: python -B scripts/release/cloudsmith_release.py receipt "$VERSION" dist/release-publication.json
+
+      - name: Retain publication receipt
+        if: steps.release.outputs.publish == 'true' && steps.release.outputs.release_type == 'stable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stable-publication-${{ github.run_attempt }}
+          path: dist/release-publication.json
+          if-no-files-found: error
+          retention-days: 90

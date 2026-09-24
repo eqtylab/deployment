@@ -2,6 +2,8 @@
 
 from rich.prompt import Prompt
 
+from govctl.core.artifacts import configure_artifacts
+
 from govctl.core.models import (
     PlatformConfig,
     CloudProvider,
@@ -31,6 +33,7 @@ def collect_interactive_config(
     environment: str | None,
     auth: str | None,
     database: str | None = None,
+    artifact_source: str = "cloudsmith",
 ) -> PlatformConfig:
     """Collect configuration interactively."""
     console.print()
@@ -299,12 +302,13 @@ def collect_interactive_config(
         config.keycloak_realm = keycloak_realm
 
     # --- Image registry ---
+    configure_artifacts(config, artifact_source)
     console.print()
     console.print("[bold]Image Registry Configuration:[/bold]")
     while True:
         registry_url = Prompt.ask(
             "  Registry URL",
-            default="ghcr.io",
+            default=config.image_registry_url,
         )
         if is_valid_domain(registry_url):
             break
@@ -312,9 +316,32 @@ def collect_interactive_config(
             "[red]Invalid domain format. Expected format: ghcr.io, registry.example.com, etc.[/red]"
         )
     config.image_registry_url = registry_url
+    if registry_url not in ("ghcr.io", "docker.cloudsmith.io"):
+        # A custom credential host alone cannot redirect the chart's image paths.
+        while True:
+            prefix = Prompt.ask(
+                "  Full image repository prefix", default=f"{registry_url}/eqtylab"
+            )
+            if (
+                prefix.startswith(registry_url + "/")
+                and not any(c.isspace() for c in prefix)
+                and "://" not in prefix
+                and prefix.rstrip("/") != registry_url
+            ):
+                config.image_repository_prefix = prefix.rstrip("/")
+                break
+            console.print(
+                "[red]Prefix must start with the registry host followed by / "
+                "and a repository path.[/red]"
+            )
+        config.image_registry_username = ""
+    elif registry_url == "ghcr.io":
+        configure_artifacts(config, "github")
+    else:
+        configure_artifacts(config, "cloudsmith")
     config.image_registry_username = Prompt.ask(
         "  Registry Username",
-        default="",
+        default=config.image_registry_username,
     )
     while True:
         registry_email = Prompt.ask(

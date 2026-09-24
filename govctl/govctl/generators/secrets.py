@@ -124,7 +124,11 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "registry": config.image_registry_url or "ghcr.io",
             "values": {
                 "username": config.image_registry_username or "",  # Registry username
-                "password": _required("Registry password / PAT with read:packages"),
+                "password": _required(
+                    "Cloudsmith prod entitlement token"
+                    if config.image_registry_url == "docker.cloudsmith.io"
+                    else "Registry pull credential"
+                ),
                 "email": config.image_registry_email or "",
             },
         },

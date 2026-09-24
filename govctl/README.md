@@ -53,8 +53,8 @@ Set up one of the following before deployment:
 
 ### Container Registry
 
-- Access to a container registry (default: `ghcr.io`) with the platform images
-- A personal access token or service account with `read:packages` scope
+- Access to a container registry (default: `docker.cloudsmith.io`) with the platform images
+- A Cloudsmith prod entitlement token from EQTY
 
 ## Usage
 
@@ -87,7 +87,7 @@ Auth Configuration:
   Keycloak Realm (governance): governance
 
 Image Registry Configuration:
-  Registry URL (ghcr.io): ghcr.io
+  Registry URL (docker.cloudsmith.io): docker.cloudsmith.io
   Registry Username (): eqtylab-bot
   Registry Email (): ci@eqtylab.io
 
@@ -107,7 +107,7 @@ Image Registry Configuration:
 │ GCP KMS Key Ring    │ eqtylab-did                                    │
 │ Keycloak URL        │ https://governance.staging.eqtylab.io/keycloak │
 │ Keycloak Realm      │ governance                                     │
-│ Image Registry      │ ghcr.io                                        │
+│ Image Registry      │ docker.cloudsmith.io                                        │
 │ Registry Username   │ eqtylab-bot                                    │
 │ Registry Email      │ ci@eqtylab.io                                  │
 └─────────────────────┴────────────────────────────────────────────────┘
@@ -264,3 +264,12 @@ typed endpoint, development gates, algorithm, CA and auth inputs, values output,
 and round-trip/render tests. Kubernetes auth must emit no token Secret;
 `token_file` must reference an operator-managed Secret name and custom token key
 without collecting token contents. Existing cloud output must remain unchanged.
+
+## Artifact source
+
+`govctl init` defaults to Cloudsmith for customer installs. Use
+`--artifact-source github` for internal GHCR installations. Cloudsmith output
+sets the EQTY image prefix, pull-secret registry, and entitlement username
+(`eqtylab/prod`) together. Fill the token placeholder through your existing
+secret-management process. Custom registry hosts prompt for the full image
+repository prefix as well. See [Cloudsmith installation](../docs/cloudsmith.md).

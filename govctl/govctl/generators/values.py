@@ -124,6 +124,8 @@ def _generate_global_section(config: PlatformConfig) -> dict[str, Any]:
         "environmentType": config.environment,
         "domain": config.domain,
     }
+    if config.image_repository_prefix:
+        section["imageRepositoryPrefixOverride"] = config.image_repository_prefix
 
     if config.database_mode == DatabaseMode.EXTERNAL:
         # Placeholders for cloud-managed PostgreSQL.

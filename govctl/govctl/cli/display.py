@@ -142,8 +142,18 @@ def show_next_steps(
 
     console.print(f"  {step}. Deploy the platform:")
     console.print()
+    chart = "./charts/governance-platform"
+    version_flag = ""
+    if config.artifact_source == "cloudsmith":
+        console.print(
+            "  Use a stable version listed in cloudsmith-delivery.json. "
+            "Log in with your prod entitlement token:"
+        )
+        console.print("  helm registry login helm.oci.cloudsmith.io --username eqtylab/prod")
+        chart = "oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform"
+        version_flag = " --version <released-version>"
     helm_cmd = (
-        f"     helm upgrade --install {config.release_name} ./charts/governance-platform \\\n"
+        f"     helm upgrade --install {config.release_name} {chart}{version_flag} \\\n"
         f"       -f {values_file} \\\n"
         f"       -f {secrets_file} \\\n"
         f"       -n {config.namespace} --create-namespace"

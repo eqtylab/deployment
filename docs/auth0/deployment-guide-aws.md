@@ -1,5 +1,7 @@
 # Governance Platform Deployment Guide (Auth0 + AWS)
 
+> Customer releases use Cloudsmith. Complete the [Cloudsmith setup](../cloudsmith.md) first and apply `values-cloudsmith.yaml` after your environment values in the platform Helm commands below. Use only a stable version with a verified delivery manifest; local chart paths below are for the chart packaged with that release.
+
 End-to-end guide for deploying the EQTY Lab Governance Platform on Kubernetes with Auth0 as the identity provider, AWS S3 for object storage, and AWS KMS for key management.
 
 ## Table of Contents
@@ -207,9 +209,9 @@ You will need:
 
 ### Container Registry Access
 
-Platform images are hosted on GitHub Container Registry (GHCR). You need:
+Platform images are hosted on Cloudsmith (GHCR). You need:
 
-- A **GitHub Personal Access Token (PAT)** with `read:packages` scope
+- A **Cloudsmith prod entitlement token**
 - Or access to a mirror registry containing the platform images
 
 ### Cloud Provider Resources
@@ -247,7 +249,7 @@ Before proceeding, confirm:
 - [ ] AWS S3 buckets are provisioned
 - [ ] AWS KMS IAM user/role is provisioned with signing permissions
 - [ ] DNS domain is available and you can create records
-- [ ] GitHub PAT with `read:packages` scope is available
+- [ ] Cloudsmith prod entitlement token is available
 - [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
 - [ ] AWS CLI (`aws`) is installed locally
 
@@ -990,9 +992,9 @@ kubectl create secret generic platform-aws-kms \
 
 ```bash
 kubectl create secret docker-registry platform-image-pull-secret \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USERNAME \
-  --docker-password=YOUR_GITHUB_PAT \
+  --docker-server=docker.cloudsmith.io \
+  --docker-username=eqtylab/prod \
+  --docker-password=YOUR_CLOUDSMITH_ENTITLEMENT_TOKEN \
   --docker-email=YOUR_EMAIL \
   --namespace $NS
 ```

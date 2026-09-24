@@ -7,7 +7,7 @@
 
 ## 🚀 Quick Start
 
-1. Review the [prerequisites](#-prerequisites) below.
+1. Review the [prerequisites](#-prerequisites) below and follow [Cloudsmith setup](docs/cloudsmith.md). Use a stable version with a verified `cloudsmith-delivery.json`.
 2. Pick your identity provider and follow the matching guide in [`docs/`](./docs/):
    - [Auth0](./docs/auth0/) · [Microsoft Entra ID](./docs/entra/) · [Keycloak](./docs/keycloak/)
 3. Use [`govctl`](./govctl/README.md) to generate Helm values and secrets, then install the [`governance-platform`](./charts/governance-platform/) umbrella chart.
@@ -17,7 +17,7 @@
 - Kubernetes **1.29+**
 - Helm **4.0+**
 - `kubectl` configured for your target cluster
-- Pull access to the EQTY Lab container registry (GitHub Container Registry)
+- A Cloudsmith prod entitlement token from EQTY for released charts and runtime images
 - A configured identity provider (Auth0, Microsoft Entra ID, or Keycloak)
 - A cloud account (AWS, Azure, or GCP) with object storage and a key/secret vault provisioned for the platform
 
@@ -43,3 +43,6 @@ dependency. OpenBao application use remains development-only.
 ## 💬 Support
 
 For questions, deployment assistance, or issues, contact your EQTY Lab representative or open an issue in this repository.
+
+Release operators: [Cloudsmith mirroring and activation](docs/cloudsmith-release.md).
+Internal infrastructure continues to use GHCR; use `govctl init --artifact-source github`.

@@ -1,5 +1,7 @@
 # Governance Platform Deployment Guide (Auth0 + Azure)
 
+> Customer releases use Cloudsmith. Complete the [Cloudsmith setup](../cloudsmith.md) first and apply `values-cloudsmith.yaml` after your environment values in the platform Helm commands below. Use only a stable version with a verified delivery manifest; local chart paths below are for the chart packaged with that release.
+
 End-to-end guide for deploying the EQTY Lab Governance Platform on Kubernetes with Auth0 as the identity provider, Azure Blob Storage for object storage, and Azure Key Vault for key management.
 
 > **Note on tenant IDs in this guide.** Auth0 hosts the **user** identity provider (a separate cloud service at `<your-tenant>.auth0.com`). Azure Key Vault still authenticates a separate service principal in an **Azure AD** tenant. These are two different tenants — wherever this doc says "Azure tenant ID", it means the Azure AD tenant that owns the Key Vault SP, not your Auth0 tenant.
@@ -209,9 +211,9 @@ You will need:
 
 ### Container Registry Access
 
-Platform images are hosted on GitHub Container Registry (GHCR). You need:
+Platform images are hosted on Cloudsmith (GHCR). You need:
 
-- A **GitHub Personal Access Token (PAT)** with `read:packages` scope
+- A **Cloudsmith prod entitlement token**
 - Or access to a mirror registry containing the platform images
 
 ### Cloud Provider Resources
@@ -249,7 +251,7 @@ Before proceeding, confirm:
 - [ ] Azure Storage account and containers are provisioned
 - [ ] Azure Key Vault is provisioned with a service principal that has key + secret permissions
 - [ ] DNS domain is available and you can create records
-- [ ] GitHub PAT with `read:packages` scope is available
+- [ ] Cloudsmith prod entitlement token is available
 - [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
 - [ ] Azure CLI (`az`) is installed locally
 
@@ -1011,9 +1013,9 @@ kubectl create secret generic platform-azure-key-vault \
 
 ```bash
 kubectl create secret docker-registry platform-image-pull-secret \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USERNAME \
-  --docker-password=YOUR_GITHUB_PAT \
+  --docker-server=docker.cloudsmith.io \
+  --docker-username=eqtylab/prod \
+  --docker-password=YOUR_CLOUDSMITH_ENTITLEMENT_TOKEN \
   --docker-email=YOUR_EMAIL \
   --namespace $NS
 ```

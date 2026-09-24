@@ -7,6 +7,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 
 from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider, DatabaseMode
+from govctl.core.artifacts import configure_artifacts
 from govctl.generators.values import generate_values
 from govctl.generators.secrets import generate_secrets
 from govctl.generators.keycloak_bootstrap import generate_keycloak_bootstrap
@@ -48,6 +49,13 @@ from govctl.cli.display import show_config_summary, show_next_steps
     help="Database mode (bundled Bitnami PostgreSQL or external managed PostgreSQL)",
 )
 @click.option(
+    "--artifact-source",
+    type=click.Choice(["cloudsmith", "github"], case_sensitive=False),
+    default="cloudsmith",
+    show_default=True,
+    help="Cloudsmith for customer releases; GitHub for internal installations",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(),
@@ -66,6 +74,7 @@ def init_cmd(
     environment: str | None,
     auth: str | None,
     database: str | None,
+    artifact_source: str,
     output: str,
     interactive: bool,
 ):
@@ -94,7 +103,9 @@ def init_cmd(
 
     # Collect configuration
     if interactive:
-        config = collect_interactive_config(cloud, domain, environment, auth, database)
+        config = collect_interactive_config(
+            cloud, domain, environment, auth, database, artifact_source.lower()
+        )
     else:
         if not all([cloud, domain, environment, auth]):
             raise click.UsageError(
@@ -117,6 +128,7 @@ def init_cmd(
             auth_provider=AuthProvider(auth.lower()),
             database_mode=db_mode,
         )
+        configure_artifacts(config, artifact_source.lower())
 
     # Show summary
     show_config_summary(config)
