@@ -153,7 +153,11 @@ class ArtifactProfileTests(unittest.TestCase):
                 )["global"]["secrets"]["imageRegistry"]
                 self.assertEqual(credentials["registry"], host)
                 if host == "docker.cloudsmith.io":
-                    self.assertIn("helm.oci.cloudsmith.io", result.output)
+                    self.assertIn("helm repo add cloudsmith-prod", result.output)
+                    self.assertIn(
+                        "cloudsmith-prod/governance-platform",
+                        "".join(result.output.split()),
+                    )
 
 
 if __name__ == "__main__":

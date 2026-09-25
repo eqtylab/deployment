@@ -159,15 +159,19 @@ kubectl get pods -n governance
 kubectl get ingress -n governance
 ```
 
-### Installing from OCI Registry
+### Installing from a hosted chart repository
 
 Until your version has a verified Cloudsmith delivery, use the GHCR command below.
 For a stable version with `cloudsmith-delivery.json`, follow [Cloudsmith setup](../../docs/cloudsmith.md)
-and use the delivered chart with its overlay:
+and use the delivered chart with its overlay. With Helm 3.20 or later, load your
+prod entitlement into `CLOUDSMITH_ENTITLEMENT_TOKEN` through your secret manager:
 
 ```bash
-helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
-helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+printf '%s' "$CLOUDSMITH_ENTITLEMENT_TOKEN" | helm repo add cloudsmith-prod \
+  https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ \
+  --username token --password-stdin
+helm repo update cloudsmith-prod
+helm upgrade --install governance-platform cloudsmith-prod/governance-platform \
   --version <released-version> --namespace governance --create-namespace \
   --values values.yaml --values values-cloudsmith.yaml
 ```

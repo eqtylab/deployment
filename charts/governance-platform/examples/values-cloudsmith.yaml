@@ -2,7 +2,8 @@
 # Cloudsmith Customer Registry Overlay
 # =============================================================================
 # Usage (only for a stable version verified in cloudsmith-delivery.json):
-#   helm upgrade --install governance-platform oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+#   Add the cloudsmith-prod native Helm repository first; see docs/cloudsmith.md.
+#   helm upgrade --install governance-platform cloudsmith-prod/governance-platform \
 #     --version <released-version> -f values.yaml -f values-cloudsmith.yaml
 #
 # Secrets: pre-create platform-image-pull-secret with your prod entitlement token.
