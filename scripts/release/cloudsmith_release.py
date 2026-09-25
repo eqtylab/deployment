@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = "eqtylab/deployment"
 PUBLISH_WORKFLOW = ".github/workflows/release-platform-package.yaml"
 IMAGE_PREFIX = "docker.cloudsmith.io/eqtylab/prod"
-CHART_PREFIX = "helm.oci.cloudsmith.io/eqtylab/prod"
+CHART_REPOSITORY = "https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/"
 SIGNER = "https://github.com/eqtylab/guardian/.github/workflows/_build-image.yml@refs/heads/main"
 DIGEST = re.compile(r"sha256:[a-f0-9]{64}")
 STABLE = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
@@ -34,7 +34,9 @@ def run(args, *, cwd=None, missing=False):
             re.IGNORECASE,
         ):
             message = f"oras {args[1]} failed: registry access denied"
-            if args[:2] == ["oras", "resolve"] and args[2].startswith("ghcr.io/eqtylab/"):
+            if args[:2] == ["oras", "resolve"] and args[2].startswith(
+                "ghcr.io/eqtylab/"
+            ):
                 message += (
                     "; check each source package's Settings > Manage Actions access: "
                     "eqtylab/deployment needs Read access. Workflow packages: read "
@@ -42,6 +44,10 @@ def run(args, *, cwd=None, missing=False):
                 )
             raise RuntimeError(message)
         # Authentication, transport errors and policy denials are never absence.
+        status = re.search(
+            r"(?:response status code |Error response from registry: )([45][0-9]{2})\b",
+            result.stderr,
+        )
         absent = (
             "(HTTP 404)" in result.stderr
             if args[0] == "gh"
@@ -54,10 +60,13 @@ def run(args, *, cwd=None, missing=False):
                 == f"Error response from registry: failed to resolve digest: {args[2]}: not found"
             )
         )
-        if missing and absent:
+        if missing and absent and (status is None or status[1] == "404"):
             return None
         # Do not echo provider output, which can contain signed URLs or tokens.
-        raise RuntimeError(f"{args[0]} {args[1]} failed (exit {result.returncode})")
+        detail = f"; HTTP {status[1]}" if status else ""
+        raise RuntimeError(
+            f"{args[0]} {args[1]} failed (exit {result.returncode}{detail})"
+        )
     return result.stdout
 
 
@@ -309,7 +318,7 @@ def unpack_charts(archive, manifest, chart_digests, work):
                     "path": f"charts/{package}",
                     "sha256": recorded["packageSha256"],
                     "source": chart["oci"][6:] + "@" + recorded["ociDigest"],
-                    "destination": f"{CHART_PREFIX}/{name}:{chart_version.replace('+', '_')}",
+                    "destination": CHART_REPOSITORY,
                 }
             )
     return charts
@@ -528,7 +537,7 @@ def prepare(version, work, receipt_path=None):
         "Raw package name collision",
     )
     result = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "version": version,
         "release": {
             "id": data["id"],

@@ -25,11 +25,15 @@ chart, image credentials, and `govctl init --artifact-source github`.
 
 ## Authenticate Helm and Kubernetes
 
-Helm credentials and Kubernetes image pull credentials are separate. Log Helm in
-and enter the entitlement token at the password prompt:
+Helm credentials and Kubernetes image pull credentials are separate. With Helm
+3.20 or later, load your prod entitlement into `CLOUDSMITH_ENTITLEMENT_TOKEN`
+through your secret manager, then add the native Helm repository:
 
 ```bash
-helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
+printf '%s' "$CLOUDSMITH_ENTITLEMENT_TOKEN" | helm repo add cloudsmith-prod \
+  https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ \
+  --username token --password-stdin
+helm repo update cloudsmith-prod
 ```
 
 Create the namespace and a registry secret before installation. The following
@@ -64,7 +68,7 @@ Substitute a delivered stable version and your environment configuration:
 
 ```bash
 helm upgrade --install governance-platform \
-  oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+  cloudsmith-prod/governance-platform \
   --version <version> --namespace governance --create-namespace \
   --values values.yaml --values values-cloudsmith.yaml
 ```
@@ -76,9 +80,9 @@ host settings consistent. All eight EQTY runtime images use Cloudsmith while
 the release's existing digest pins are preserved.
 
 The original `release-manifest.yaml` and `chart-digests.yaml` retain GHCR build
-references. Use `cloudsmith-delivery.json` for distribution locations. Helm
-registry manifest digests may differ between registries; chart archive SHA-256s
-must match. Image digests must be identical.
+references. Use `cloudsmith-delivery.json` for distribution locations and native
+Helm package identifiers. Chart archive SHA-256s and image digests must match
+their original release artifacts.
 
 The optional `openbao-custody` chart is delivered only when selected by the
 release manifest, using its own version. It does not enable OpenBao in the

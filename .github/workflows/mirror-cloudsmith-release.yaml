@@ -42,7 +42,6 @@ jobs:
       - name: Isolate registry credentials
         run: |
           echo "DOCKER_CONFIG=$RUNNER_TEMP/mirror-docker" >> "$GITHUB_ENV"
-          echo "HELM_REGISTRY_CONFIG=$RUNNER_TEMP/mirror-helm/config.json" >> "$GITHUB_ENV"
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
@@ -147,8 +146,11 @@ jobs:
     steps:
       - name: Isolate registry credentials
         run: |
-          echo "DOCKER_CONFIG=$RUNNER_TEMP/mirror-docker" >> "$GITHUB_ENV"
-          echo "HELM_REGISTRY_CONFIG=$RUNNER_TEMP/mirror-helm/config.json" >> "$GITHUB_ENV"
+          {
+            echo "DOCKER_CONFIG=$RUNNER_TEMP/mirror-docker"
+            echo "HELM_REPOSITORY_CONFIG=$RUNNER_TEMP/mirror-helm/repositories.yaml"
+            echo "HELM_REPOSITORY_CACHE=$RUNNER_TEMP/mirror-helm/cache"
+          } >> "$GITHUB_ENV"
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
@@ -181,13 +183,15 @@ jobs:
           oidc-audience: https://github.com/eqtylab
           export-auth-token: 'true'
           verify-auth: 'true'
-      - name: Authenticate registries
+      - name: Authenticate registries and native Helm repository
         run: |
-          mkdir -p "$DOCKER_CONFIG" "$(dirname "$HELM_REGISTRY_CONFIG")"
+          umask 077
+          mkdir -p "$DOCKER_CONFIG" "$(dirname "$HELM_REPOSITORY_CONFIG")"
           printf '%s' "$GH_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           printf '%s' "$CLOUDSMITH_API_KEY" | oras login docker.cloudsmith.io --username "$CLOUDSMITH_USERNAME" --password-stdin
-          printf '%s' "$CLOUDSMITH_API_KEY" | oras login helm.oci.cloudsmith.io --username "$CLOUDSMITH_USERNAME" --password-stdin
-          printf '%s' "$CLOUDSMITH_API_KEY" | helm registry login helm.oci.cloudsmith.io --username "$CLOUDSMITH_USERNAME" --password-stdin
+          printf '%s' "$CLOUDSMITH_API_KEY" | helm repo add cloudsmith-prod \
+            https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ \
+            --username "$CLOUDSMITH_USERNAME" --password-stdin
       - name: Mirror exact artifacts and verify delivery
         run: python -B scripts/release/publish_cloudsmith.py --work "$RUNNER_TEMP/cloudsmith-delivery"
       - name: Report verified delivery
@@ -198,6 +202,8 @@ jobs:
         if: always()
         run: |
           if command -v oras >/dev/null; then
-            for host in ghcr.io docker.cloudsmith.io helm.oci.cloudsmith.io; do oras logout "$host"; done
+            for host in ghcr.io docker.cloudsmith.io; do oras logout "$host"; done
           fi
-          if command -v helm >/dev/null; then helm registry logout helm.oci.cloudsmith.io; fi
+          if command -v helm >/dev/null && [ -f "$HELM_REPOSITORY_CONFIG" ]; then
+            helm repo remove cloudsmith-prod
+          fi

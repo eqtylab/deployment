@@ -67,7 +67,7 @@ def fixture(directory, custody=False):
         image.update(attachments=[], referrers=[])
     files = [source.file_entry(p) for p in sorted(assets.iterdir())]
     inventory = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "version": "1.2.0",
         "release": {
             "id": 42,
@@ -194,6 +194,19 @@ class ReleaseTests(unittest.TestCase):
             self.assertTrue(
                 image["destination"].startswith("docker.cloudsmith.io/eqtylab/prod/")
             )
+
+    def test_charts_use_native_helm_repository_with_independent_versions(self):
+        for chart in self.inventory["charts"]:
+            self.assertEqual(
+                chart["destination"],
+                "https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/",
+            )
+        self.assertEqual(
+            next(c for c in self.inventory["charts"] if c["name"] == "openbao-custody")[
+                "version"
+            ],
+            "0.1.0",
+        )
 
     def test_pending_prerelease_and_wrong_version_are_rejected(self):
         for field, value in (
@@ -373,6 +386,25 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(source.subprocess, "run", return_value=result):
             self.assertIsNone(source.resolve("registry.example/image:v1", missing=True))
 
+    def test_registry_server_errors_keep_status_without_provider_output(self):
+        for stderr in (
+            'HEAD "https://registry.example/?token=secret-canary": response status code 500: Internal Server Error',
+            "Error response from registry: 500: Internal Server Error: secret-canary",
+            "response status code 503: manifest unknown secret-canary",
+        ):
+            with (
+                self.subTest(stderr=stderr),
+                patch.object(
+                    source.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 1, "", stderr),
+                ),
+                self.assertRaisesRegex(RuntimeError, "HTTP 50[03]") as error,
+            ):
+                source.resolve("registry.example/chart:1.2.1", missing=True)
+            self.assertNotIn("secret-canary", str(error.exception))
+            self.assertNotIn("https://", str(error.exception))
+
     def test_ghcr_access_denials_explain_package_permissions_without_secrets(self):
         for detail in (
             "401 Unauthorized",
@@ -433,6 +465,7 @@ class ReleaseTests(unittest.TestCase):
     def test_raw_reuse_conflicts_and_quarantine(self):
         entry = self.inventory["files"][0]
         package = {
+            "format": "raw",
             "name": entry["packageName"],
             "version": "1.2.0",
             "checksum_sha256": entry["sha256"],
@@ -460,6 +493,154 @@ class ReleaseTests(unittest.TestCase):
                 self.assertRaises(ValueError),
             ):
                 publisher.raw_package(entry, "1.2.0")
+
+    def test_native_helm_upload_waits_and_preserves_archive(self):
+        chart = self.inventory["charts"][0]
+        pending = {"is_sync_completed": False}
+        complete = {
+            "is_sync_completed": True,
+            "is_downloadable": True,
+            "slug_perm": "native-helm",
+        }
+        for first in (None, pending, complete):
+            with (
+                self.subTest(first=first),
+                patch.object(
+                    publisher, "helm_package", side_effect=[first, pending, complete]
+                ),
+                patch.object(publisher, "run") as run,
+                patch.object(publisher.time, "sleep") as sleep,
+                patch.object(publisher, "chart_checksum") as verify,
+            ):
+                result = publisher.publish_chart(chart, self.work)
+            if first is None:
+                run.assert_called_once_with(
+                    [
+                        "cloudsmith",
+                        "push",
+                        "helm",
+                        "eqtylab/prod",
+                        str(self.work / chart["path"]),
+                        "--no-republish",
+                    ]
+                )
+            else:
+                run.assert_not_called()
+            verify.assert_called_once_with(
+                chart["name"], chart["sha256"], chart["version"]
+            )
+            sleep.assert_called_once_with(10)
+            self.assertEqual(result["packageId"], "native-helm")
+            self.assertEqual(result["format"], "helm")
+            self.assertNotIn("destinationDigest", result)
+            self.assertNotIn("path", result)
+
+    def test_native_helm_conflicts_and_policy_denials_block_reuse(self):
+        chart = self.inventory["charts"][0]
+        package = {
+            "format": "helm",
+            "name": chart["name"],
+            "version": chart["version"],
+            "checksum_sha256": chart["sha256"],
+        }
+        for changes in (
+            {"checksum_sha256": "0" * 64},
+            {"is_quarantined": True},
+            {"is_sync_failed": True},
+            {"policy_violated": True},
+        ):
+            with (
+                self.subTest(changes=changes),
+                patch.object(
+                    publisher,
+                    "run",
+                    return_value=json.dumps({"data": [{**package, **changes}]}),
+                ) as run,
+                self.assertRaises(ValueError),
+            ):
+                publisher.publish_chart(chart, self.work)
+            self.assertTrue(all(c.args[0][1] == "list" for c in run.call_args_list))
+
+    def test_native_helm_waits_for_index_and_checks_downloaded_bytes(self):
+        chart = self.inventory["charts"][0]
+        reference = "cloudsmith-prod/" + chart["name"]
+        for corrupt in (False, True):
+            searches = iter([[], [{"name": reference, "version": chart["version"]}]])
+
+            def command(args):
+                if args[1:3] == ["repo", "update"]:
+                    return ""
+                if args[1:3] == ["search", "repo"]:
+                    return json.dumps(next(searches))
+                self.assertEqual(args[:3], ["helm", "pull", reference])
+                destination = Path(args[args.index("--destination") + 1])
+                destination.joinpath("chart.tgz").write_bytes(
+                    b"corrupt" if corrupt else (self.work / chart["path"]).read_bytes()
+                )
+                return ""
+
+            with (
+                self.subTest(corrupt=corrupt),
+                patch.object(publisher, "run", side_effect=command),
+                patch.object(publisher.time, "sleep") as sleep,
+            ):
+                if corrupt:
+                    with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                        publisher.chart_checksum(
+                            chart["name"], chart["sha256"], chart["version"]
+                        )
+                else:
+                    publisher.chart_checksum(
+                        chart["name"], chart["sha256"], chart["version"]
+                    )
+            sleep.assert_called_once_with(10)
+
+    def test_native_helm_index_timeout_blocks_delivery(self):
+        with (
+            patch.object(publisher, "run", return_value="[]") as run,
+            patch.object(publisher.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "did not appear in Helm index"),
+        ):
+            publisher.chart_checksum("auth-service", "0" * 64, "1.2.1")
+        self.assertFalse(any(c.args[0][1] == "pull" for c in run.call_args_list))
+
+    def test_native_helm_failures_never_announce_delivery(self):
+        for preflight in (True, False):
+            with (
+                self.subTest(preflight=preflight),
+                patch.object(publisher, "require_publish_context"),
+                patch.object(publisher, "release", return_value=(self.data, "a" * 40)),
+                patch.object(publisher, "check_oci"),
+                patch.object(publisher, "referrers", return_value=[]),
+                patch.object(publisher, "raw_package", return_value=None),
+                patch.object(
+                    publisher,
+                    "helm_package",
+                    side_effect=ValueError("Conflicting helm package")
+                    if preflight
+                    else None,
+                ),
+                patch.object(publisher, "copy_oci") as copy,
+                patch.object(
+                    publisher,
+                    "publish_chart",
+                    side_effect=RuntimeError("chart checksum mismatch"),
+                ) as chart,
+                patch.object(publisher, "publish_raw") as raw,
+                patch.object(publisher, "github_asset") as github,
+                self.assertRaisesRegex(
+                    (ValueError, RuntimeError), "Conflicting|checksum"
+                ),
+            ):
+                publisher.publish(self.work)
+            if preflight:
+                copy.assert_not_called()
+                chart.assert_not_called()
+            else:
+                chart.assert_called_once()
+            raw.assert_not_called()
+            github.assert_not_called()
+            self.assertFalse((self.work / "assets/cloudsmith-delivery.json").exists())
 
     def test_completion_marker_is_last_and_absent_after_partial_failure(self):
         for fail in (False, True):
@@ -499,6 +680,20 @@ class ReleaseTests(unittest.TestCase):
                 stack.enter_context(patch.object(publisher, "copy_oci"))
                 stack.enter_context(patch.object(publisher, "chart_checksum"))
                 stack.enter_context(
+                    patch.object(publisher, "helm_package", return_value=None)
+                )
+                stack.enter_context(
+                    patch.object(
+                        publisher,
+                        "publish_chart",
+                        side_effect=lambda chart, work: {
+                            **{k: v for k, v in chart.items() if k != "path"},
+                            "format": "helm",
+                            "packageId": "native-chart",
+                        },
+                    )
+                )
+                stack.enter_context(
                     patch.object(publisher, "raw_package", return_value=None)
                 )
                 stack.enter_context(
@@ -517,6 +712,9 @@ class ReleaseTests(unittest.TestCase):
                     delivery = json.loads(marker.read_text())
                     self.assertEqual(len(delivery["images"]), 8)
                     self.assertNotIn("path", delivery["charts"][0])
+                    self.assertNotIn("destinationDigest", delivery["charts"][0])
+                    self.assertEqual(delivery["charts"][0]["format"], "helm")
+                    self.assertEqual(delivery["schemaVersion"], 2)
 
     def test_partial_raw_upload_waits_without_republishing(self):
         entry = self.inventory["files"][0]

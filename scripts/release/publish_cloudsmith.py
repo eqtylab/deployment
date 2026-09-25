@@ -12,7 +12,7 @@ import jsonschema
 import yaml
 
 from cloudsmith_release import (
-    CHART_PREFIX,
+    CHART_REPOSITORY,
     DIGEST,
     IMAGE_PREFIX,
     REPOSITORY,
@@ -77,7 +77,7 @@ def copy_oci(source, destination, digest):
     return destination_repo
 
 
-def raw_package(entry, version):
+def cloudsmith_package(format_name, name, version, expected_sha256):
     result = json.loads(
         run(
             [
@@ -89,7 +89,7 @@ def raw_package(entry, version):
                 "json",
                 "--page-all",
                 "--query",
-                f"format:raw name:^{entry['packageName']}$ version:^{version}$",
+                f"format:{format_name} name:^{name}$ version:^{version}$",
             ]
         )
     )
@@ -99,23 +99,31 @@ def raw_package(entry, version):
     packages = [
         p
         for p in packages
-        if p["name"] == entry["packageName"] and p["version"] == version
+        if p["name"] == name and p["version"] == version and p["format"] == format_name
     ]
-    require(len(packages) <= 1, f"Duplicate Cloudsmith package: {entry['name']}")
+    require(len(packages) <= 1, f"Duplicate Cloudsmith {format_name} package: {name}")
     if not packages:
         return None
     package = packages[0]
     require(
-        package["checksum_sha256"] == entry["sha256"],
-        f"Conflicting raw package: {entry['name']}",
+        package["checksum_sha256"] == expected_sha256,
+        f"Conflicting {format_name} package: {name}",
     )
     require(
         not package.get("is_sync_failed")
         and not package.get("is_quarantined")
         and not package.get("policy_violated"),
-        f"Cloudsmith blocked package: {entry['name']}",
+        f"Cloudsmith blocked package: {name}",
     )
     return package
+
+
+def raw_package(entry, version):
+    return cloudsmith_package("raw", entry["packageName"], version, entry["sha256"])
+
+
+def helm_package(chart):
+    return cloudsmith_package("helm", chart["name"], chart["version"], chart["sha256"])
 
 
 def publish_raw(entry, version, work):
@@ -161,13 +169,31 @@ def publish_raw(entry, version, work):
     )
 
 
-def chart_checksum(reference, expected, version):
+def chart_checksum(name, expected, version):
+    # API sync can finish before the native Helm index reaches the CDN.
+    reference = "cloudsmith-prod/" + name
+    for _ in range(30):
+        run(["helm", "repo", "update", "cloudsmith-prod"])
+        entries = json.loads(
+            run(["helm", "search", "repo", reference, "--versions", "--output", "json"])
+        )
+        require(isinstance(entries, list), "Unexpected Helm search response")
+        if any(
+            entry["name"] == reference and entry["version"] == version
+            for entry in entries
+        ):
+            break
+        time.sleep(10)
+    else:
+        raise RuntimeError(
+            f"Cloudsmith chart did not appear in Helm index: {name} {version}"
+        )
     with tempfile.TemporaryDirectory() as directory:
         run(
             [
                 "helm",
                 "pull",
-                "oci://" + reference.rsplit(":", 1)[0],
+                reference,
                 "--version",
                 version,
                 "--destination",
@@ -179,6 +205,35 @@ def chart_checksum(reference, expected, version):
             len(files) == 1 and sha256(files[0]) == expected,
             "Cloudsmith chart checksum mismatch",
         )
+
+
+def publish_chart(chart, work):
+    if helm_package(chart) is None:
+        run(
+            [
+                "cloudsmith",
+                "push",
+                "helm",
+                "eqtylab/prod",
+                str(work / chart["path"]),
+                "--no-republish",
+            ]
+        )
+    for _ in range(30):
+        package = helm_package(chart)
+        if (
+            package
+            and package.get("is_sync_completed")
+            and package.get("is_downloadable")
+        ):
+            chart_checksum(chart["name"], chart["sha256"], chart["version"])
+            return {
+                **{k: v for k, v in chart.items() if k != "path"},
+                "format": "helm",
+                "packageId": package["slug_perm"],
+            }
+        time.sleep(10)
+    raise RuntimeError(f"Cloudsmith chart did not become downloadable: {chart['name']}")
 
 
 def github_asset(path, data):
@@ -193,6 +248,7 @@ def github_asset(path, data):
 
 
 def validate_inventory(inventory, work):
+    require(inventory.get("schemaVersion") == 2, "Prepare a new native Helm inventory")
     version = inventory["version"]
     data, commit = release(version)
     require(
@@ -278,8 +334,7 @@ def validate_inventory(inventory, work):
         name, chart_version = safe_name(chart["name"]), safe_name(chart["version"])
         require(
             chart["path"] == f"charts/{name}-{chart_version}.tgz"
-            and chart["destination"]
-            == f"{CHART_PREFIX}/{name}:{chart_version.replace('+', '_')}",
+            and chart["destination"] == CHART_REPOSITORY,
             "Unsafe chart destination",
         )
         require(
@@ -297,6 +352,7 @@ def publish(work):
     # Preflight every destination before the first upload. Only a real missing
     # manifest/package permits creation; 401/403 and transport failures stop here.
     for image in inventory["images"]:
+        print(f"Checking image destination {image['destination']}", flush=True)
         require(
             referrers(image["source"]) == image["referrers"],
             "Source provenance changed; prepare again",
@@ -305,13 +361,15 @@ def publish(work):
         for attachment in image["attachments"]:
             check_oci(attachment["destination"], attachment["digest"])
     for chart in inventory["charts"]:
-        if resolve(chart["destination"], missing=True):
-            chart_checksum(chart["destination"], chart["sha256"], chart["version"])
+        print(
+            f"Checking native Helm chart {chart['name']} {chart['version']}", flush=True
+        )
+        helm_package(chart)
     for entry in inventory["files"]:
         raw_package(entry, version)
 
     delivery = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "version": version,
         "release": inventory["release"],
         "images": [],
@@ -332,15 +390,7 @@ def publish(work):
         delivery["images"].append(image)
     for chart in inventory["charts"]:
         print(f"Mirroring chart {chart['name']} {chart['version']}", flush=True)
-        if resolve(chart["destination"], missing=True) is None:
-            run(["helm", "push", str(work / chart["path"]), "oci://" + CHART_PREFIX])
-        chart_checksum(chart["destination"], chart["sha256"], chart["version"])
-        delivery["charts"].append(
-            {
-                **{k: v for k, v in chart.items() if k != "path"},
-                "destinationDigest": resolve(chart["destination"]),
-            }
-        )
+        delivery["charts"].append(publish_chart(chart, work))
     for entry in inventory["files"]:
         print(f"Mirroring release file {entry['name']}", flush=True)
         if entry["name"].startswith("cloudsmith-provenance-"):

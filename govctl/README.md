@@ -76,12 +76,16 @@ prefix (`docker.cloudsmith.io/eqtylab/prod`), registry host, and username. Revie
 these before generating the values, secrets, and bootstrap files.
 
 After completing the provider bootstrap and secrets, the platform command for
-an example staging installation is:
+an example staging installation is below. With Helm 3.20 or later, load your prod
+entitlement into `CLOUDSMITH_ENTITLEMENT_TOKEN` through your secret manager first:
 
 ```bash
-helm registry login helm.oci.cloudsmith.io --username eqtylab/prod
+printf '%s' "$CLOUDSMITH_ENTITLEMENT_TOKEN" | helm repo add cloudsmith-prod \
+  https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ \
+  --username token --password-stdin
+helm repo update cloudsmith-prod
 helm upgrade --install governance-platform \
-  oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform \
+  cloudsmith-prod/governance-platform \
   --version <released-version> \
   -f output/values-staging.yaml \
   -f output/secrets-staging.yaml \

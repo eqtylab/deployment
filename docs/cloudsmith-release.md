@@ -147,11 +147,28 @@ matching existing artifacts are reused.
 
 ## Integrity and retries
 
+Charts are uploaded with `cloudsmith push helm` to the native Helm repository at
+`https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/`. Images remain under
+`docker.cloudsmith.io/eqtylab/prod/<name>:<version>`. Native Helm packages and
+Docker images are separate package formats, so shared names and versions do not
+collide. The previous `helm.oci.cloudsmith.io` endpoint returned HTTP 500 during
+chart lookups, before any artifacts were uploaded.
+
+The publish job authenticates the native Helm repository using its short-lived
+Cloudsmith OIDC credential. Each chart must finish processing and appear in the
+Helm index before it is pulled and its archive checksum is verified. The job
+waits up to five minutes for each stage, including index propagation to the CDN.
+
+For historical releases, follow the current installation guide and locations in
+`cloudsmith-delivery.json`. Older packaged instructions may still mention the
+Helm OCI endpoint. The original release archives and checksums remain unchanged.
+
 Images are copied by digest with ORAS, including all platforms and OCI
 referrers. Cosign 2.x `.sig`, `.att`, and `.sbom` tags are inventoried and copied
 explicitly. Source signatures must verify against Guardian's image build
 workflow. Charts use their released archive bytes and recorded GHCR digests;
-the destination OCI digest and identical archive checksum are recorded.
+the delivery manifest records each native Helm package ID, repository, name,
+version, and identical archive checksum alongside its original GHCR source.
 
 All original GitHub release assets are copied as versioned raw packages. Names
 are lowercase filenames, prefixed with `governance-platform-` only if that prefix
@@ -161,7 +178,8 @@ is not already present. For example, the archive package is
 exported as raw packages and attached additively to the GitHub release.
 The original signed manifests, archives, and checksums are not rewritten.
 
-The schema-validated `cloudsmith-delivery.json` completion marker is published
+The schema-validated `cloudsmith-delivery.json` completion marker (schema version
+2 for native Helm delivery) is published
 after verification and retained on GitHub. It has deterministic contents and
 credential-free download URLs. The marker is absent for incomplete deliveries.
 Cloudsmith is not transactional: partial artifacts can exist before the marker.
@@ -169,7 +187,7 @@ Cloudsmith is not transactional: partial artifacts can exist before the marker.
 Retry the **mirror workflow**, not the packaging workflow. A shared per-version
 concurrency group serializes the packaging workflow and automatic/manual mirror
 publishing, including tag-triggered and manually dispatched packaging attempts. Identical existing artifacts
-are reused; conflicting hashes, authentication failures, quarantined raw
+are reused; conflicting hashes, authentication failures, quarantined Helm or raw
 packages, and unexpected registry errors stop the run. No force overwrite or
 delete operation is used. A mismatch requires investigation or a new release
 version. The source publisher rejects versions with an existing delivery marker before
@@ -196,8 +214,9 @@ https://dl.cloudsmith.io/basic/eqtylab/prod/raw/names/governance-platform-clouds
 
 Use HTTP basic authentication with username `token` and the prod entitlement as
 password, through an approved credential store. The manifest records original
-sources, image digests and attachments, chart archive hashes and destination
-digests, and raw file names, package identifiers, hashes and download URLs. The
+sources, image digests and attachments, native Helm repository and package
+identifiers, chart archive hashes, and raw file names, package identifiers,
+hashes and download URLs. The
 archive and checksum package names are their lowercase filenames without an
 extra `governance-platform-` prefix. Original checksum contents retain the release
 publisher's `dist/` paths.

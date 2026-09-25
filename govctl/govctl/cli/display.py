@@ -150,13 +150,17 @@ def show_next_steps(
     if config.artifact_source == "cloudsmith":
         console.print(
             "     Use a stable version listed in cloudsmith-delivery.json. "
-            "Log in with your prod entitlement token:"
+            "With Helm 3.20+, load your prod entitlement into "
+            "CLOUDSMITH_ENTITLEMENT_TOKEN through your secret manager, then:"
         )
         console.print(
-            "[dim]     helm registry login helm.oci.cloudsmith.io "
-            "--username eqtylab/prod[/dim]"
+            "[dim]     printf '%s' \"$CLOUDSMITH_ENTITLEMENT_TOKEN\" | "
+            "helm repo add cloudsmith-prod "
+            "https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ "
+            "--username token --password-stdin[/dim]"
         )
-        chart = "oci://helm.oci.cloudsmith.io/eqtylab/prod/governance-platform"
+        console.print("[dim]     helm repo update cloudsmith-prod[/dim]")
+        chart = "cloudsmith-prod/governance-platform"
         version_flag = "       --version <released-version> \\\n"
     helm_cmd = (
         f"     helm upgrade --install {config.release_name} \\\n"
