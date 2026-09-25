@@ -571,6 +571,8 @@ class ReleaseTests(unittest.TestCase):
                 if args[1:3] == ["repo", "update"]:
                     return ""
                 if args[1:3] == ["search", "repo"]:
+                    # Independently versioned charts may include prereleases.
+                    self.assertIn("--devel", args)
                     return json.dumps(next(searches))
                 self.assertEqual(args[:3], ["helm", "pull", reference])
                 destination = Path(args[args.index("--destination") + 1])

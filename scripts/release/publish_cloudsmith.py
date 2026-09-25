@@ -175,7 +175,18 @@ def chart_checksum(name, expected, version):
     for _ in range(30):
         run(["helm", "repo", "update", "cloudsmith-prod"])
         entries = json.loads(
-            run(["helm", "search", "repo", reference, "--versions", "--output", "json"])
+            run(
+                [
+                    "helm",
+                    "search",
+                    "repo",
+                    reference,
+                    "--versions",
+                    "--devel",
+                    "--output",
+                    "json",
+                ]
+            )
         )
         require(isinstance(entries, list), "Unexpected Helm search response")
         if any(
