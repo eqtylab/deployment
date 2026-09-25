@@ -373,6 +373,40 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(source.subprocess, "run", return_value=result):
             self.assertIsNone(source.resolve("registry.example/image:v1", missing=True))
 
+    def test_ghcr_access_denials_explain_package_permissions_without_secrets(self):
+        for detail in (
+            "401 Unauthorized",
+            "403 Forbidden",
+            "DENIED: permission_denied: read_package",
+            "insufficient_scope: authorization failed",
+            "DENIED: manifest unknown",  # Denial must win over optional absence.
+        ):
+            result = subprocess.CompletedProcess(
+                [], 1, "", detail + " https://registry.example/?token=secret-canary"
+            )
+            with (
+                self.subTest(detail=detail),
+                patch.object(source.subprocess, "run", return_value=result),
+                self.assertRaises(RuntimeError) as error,
+            ):
+                source.resolve("ghcr.io/eqtylab/auth-service:1.2.1", missing=True)
+            message = str(error.exception)
+            self.assertIn("registry access denied", message)
+            self.assertIn("Manage Actions access", message)
+            self.assertIn("eqtylab/deployment needs Read access", message)
+            self.assertNotIn("secret-canary", message)
+            self.assertNotIn(detail, message)
+
+    def test_destination_access_denial_does_not_suggest_ghcr_permissions(self):
+        result = subprocess.CompletedProcess([], 1, "", "403 Forbidden")
+        with (
+            patch.object(source.subprocess, "run", return_value=result),
+            self.assertRaises(RuntimeError) as error,
+        ):
+            source.resolve("docker.cloudsmith.io/eqtylab/prod/auth-service:1.2.1")
+        self.assertIn("registry access denied", str(error.exception))
+        self.assertNotIn("Manage Actions access", str(error.exception))
+
     def test_conflicting_image_is_never_copied(self):
         with (
             patch.object(publisher, "resolve", return_value="sha256:" + "b" * 64),

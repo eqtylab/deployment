@@ -47,6 +47,32 @@ GHCR, including their signature/attestation tags. The workflow uses its own
 job additionally uses `contents: write` for additive delivery/provenance assets
 and `id-token: write` for short-lived Cloudsmith OIDC credentials.
 
+For each runtime image below, open **Package settings > Manage Actions access**,
+add `eqtylab/deployment`, and select the **Read** role. Package access inherited
+from `eqtylab/guardian` does not grant the deployment workflow access. A successful
+`oras login ghcr.io` confirms authentication, not permission to read these images.
+
+- [auth-service](https://github.com/orgs/eqtylab/packages/container/auth-service/settings)
+- [governance-service](https://github.com/orgs/eqtylab/packages/container/governance-service/settings)
+- [governance-studio](https://github.com/orgs/eqtylab/packages/container/governance-studio/settings)
+- [integrity-service](https://github.com/orgs/eqtylab/packages/container/integrity-service/settings)
+- [eqty-pdfgen](https://github.com/orgs/eqtylab/packages/container/eqty-pdfgen/settings)
+- [guardian-llm-gateway](https://github.com/orgs/eqtylab/packages/container/guardian-llm-gateway/settings)
+- [guardian-control-plane](https://github.com/orgs/eqtylab/packages/container/guardian-control-plane/settings)
+- [guardian-console](https://github.com/orgs/eqtylab/packages/container/guardian-console/settings)
+
+The grant covers the image and its signature/attestation tags within that
+package. Check all eight to avoid fixing one only to fail on the next image.
+Private chart packages selected by the release also need deployment Actions
+access; charts published by deployment normally already have it. Keep the
+packages private and retain their existing access grants.
+
+See GitHub's [package Actions access documentation](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#ensuring-workflow-access-to-your-package).
+These grants are GitHub package settings, not repository files or Cloudsmith
+policies. After correcting only package permissions, the failed mirror run can
+be rerun; no release rebuild or new tag is needed. A local preview using a
+developer's credentials cannot validate the workflow token's access.
+
 The Cloudsmith action and CLI are pinned. The action masks the temporary token
 and exports it for registry clients; registry logins use stdin and isolated
 runner-temp credential files. Source code is always checked out from the trusted
