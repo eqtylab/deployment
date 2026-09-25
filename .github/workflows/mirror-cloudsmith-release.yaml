@@ -86,7 +86,7 @@ jobs:
           version: '1.3.4'
           url: https://github.com/oras-project/oras/releases/download/v1.3.4/oras_1.3.4_linux_amd64.tar.gz
           checksum: f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454
-      - uses: sigstore/cosign-installer@v4
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         if: steps.select.outputs.selected == 'true'
         with:
           cosign-release: v3.1.3

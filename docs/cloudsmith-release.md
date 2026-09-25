@@ -7,13 +7,18 @@ release before emitting `stable-publication-<run-attempt>`. The separate
 inventory using only GitHub/GHCR reads. No receipt is emitted for prereleases or
 packaging previews.
 
+The mirror and packaging workflows, `scripts/release/`, and this runbook are
+maintained in `eqtylab/deployment`. The infrastructure sync copies selected
+customer paths (including charts, release manifests, and `docs/cloudsmith.md`),
+but does not overwrite these deployment-owned files.
+
 Publishing is disabled unless the **repository variable**
 `CLOUDSMITH_PUBLISH_ENABLED` is exactly `true`. Manual dispatch defaults to
 `publish=false`; automatic runs publish only after this variable is enabled.
 Neither merging these changes nor previewing a release authenticates to
 Cloudsmith while the flag is disabled.
 
-## Configuration to perform later
+## Required configuration
 
 Following [EQTY's Cloudsmith conventions](https://github.com/eqtylab/cloudsmith),
 create service account `github_deployment_ci` with download and upload access to
@@ -68,6 +73,51 @@ There is no automatic historical backfill. Manual promotion enforces the same
 stable version, approved tagged manifest, published release, and main ancestry
 requirements as automatic promotion. Historical releases without Guardian source
 metadata or GitHub asset checksums need a new release, not a bypass.
+
+## Retry a failed delivery or mirror a historical release
+
+After merging a workflow fix, dispatch the mirror from **main** with the existing
+published version. GitHub's **Re-run jobs** uses the original workflow commit,
+so it will not pick up a fix merged after that run. Do not rerun the packaging
+workflow or move the release tag to retry a Cloudsmith delivery.
+
+For example, preview the existing `platform/v1.2.1` release:
+
+```bash
+gh workflow run mirror-cloudsmith-release.yaml \
+  --repo eqtylab/deployment --ref main \
+  -f version=1.2.1 -f publish=false
+gh run list --repo eqtylab/deployment \
+  --workflow mirror-cloudsmith-release.yaml --event workflow_dispatch --limit 5
+```
+
+Inspect that run's `cloudsmith-inventory` artifact and summary. When the required
+OIDC policies and GHCR package access above are configured, enable publishing
+and dispatch the same version:
+
+```bash
+gh variable set CLOUDSMITH_PUBLISH_ENABLED --repo eqtylab/deployment --body true
+gh workflow run mirror-cloudsmith-release.yaml \
+  --repo eqtylab/deployment --ref main \
+  -f version=1.2.1 -f publish=true
+```
+
+Enabling the variable also enables automatic mirroring of subsequent successful
+stable publications. A successful preview alone does not upload anything.
+
+For a historical release, replace `1.2.1` in both dispatches with its version
+(for example, `1.2.0`), keeping `--ref main`. Manual dispatch reads that version's
+existing release assets and approved tagged manifest; it does not require the
+original Actions run or publication receipt to remain available. The same
+integrity requirements apply, including Guardian source metadata, image
+signatures, asset checksums, and recorded chart OCI digests. Older releases that
+lack these inputs cannot be backfilled by bypassing verification.
+
+Delivery is complete only when the publish job succeeds and
+`cloudsmith-delivery.json` is attached to that GitHub release. If publishing is
+skipped, check that the repository variable is exactly `true` and the dispatch
+used `publish=true`. For an interrupted upload, dispatch the same version again;
+matching existing artifacts are reused.
 
 ## Integrity and retries
 
