@@ -27,6 +27,20 @@ GENERATED = {"cloudsmith-delivery.json"}
 def run(args, *, cwd=None, missing=False):
     result = subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=900)
     if result.returncode:
+        # Report a fixed diagnostic, never provider text containing credentials.
+        if args[0] == "oras" and re.search(
+            r"\b(?:unauthorized|forbidden|denied|insufficient_scope)\b",
+            result.stderr,
+            re.IGNORECASE,
+        ):
+            message = f"oras {args[1]} failed: registry access denied"
+            if args[:2] == ["oras", "resolve"] and args[2].startswith("ghcr.io/eqtylab/"):
+                message += (
+                    "; check each source package's Settings > Manage Actions access: "
+                    "eqtylab/deployment needs Read access. Workflow packages: read "
+                    "and a successful registry login alone do not grant package access"
+                )
+            raise RuntimeError(message)
         # Authentication, transport errors and policy denials are never absence.
         absent = (
             "(HTTP 404)" in result.stderr
