@@ -11,6 +11,7 @@ Key capabilities:
 - **Realm Configuration**: Creates and configures the governance realm with security settings
 - **Client Management**: Sets up frontend, backend, and worker OAuth clients
 - **Scope Creation**: Creates custom OAuth scopes for fine-grained authorization
+- **User Profile Attributes**: Adds custom attributes to the realm user profile
 - **User Provisioning**: Creates initial platform admin user
 - **Secret Generation**: Outputs configuration secrets for platform services
 
@@ -234,6 +235,18 @@ Default scopes created:
 - `write:projects` - Write access to projects
 - `read:evaluations` - Read access to evaluations
 - `write:evaluations` - Write access to evaluations
+
+### User Profile Configuration
+
+| Key                    | Type | Default         | Description                                             |
+| ---------------------- | ---- | --------------- | ------------------------------------------------------- |
+| userProfile.attributes | list | See values.yaml | Attributes to add to the realm declarative user profile |
+
+Keycloak provides `username`, `email`, `firstName`, and `lastName` as built-in user profile attributes. Default attributes added by the bootstrap:
+
+- `picture` - Profile picture HTTPS URL (viewable and editable by users and admins), emitted as the `picture` claim by the built-in `profile` scope
+
+Attributes that already exist in the realm user profile are left unchanged.
 
 ### Governance Studio Admin User Configuration
 

@@ -152,6 +152,19 @@ scopes:
   - name: "write:evaluations"
     description: "Write access to evaluations"
 
+# User profile attributes added alongside the built-in username, email, firstName, lastName
+userProfile:
+  attributes:
+    - name: "picture"
+      displayName: "Picture"
+      multivalued: false
+      permissions:
+        view: ["admin", "user"]
+        edit: ["admin", "user"]
+      validations:
+        uri:
+          allowedSchemes: ["https"]
+
 # Initial users
 users:
   # Governance Studio admin user (for logging into Governance Studio)

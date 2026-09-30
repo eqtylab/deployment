@@ -396,6 +396,30 @@ scopes:
     description: "Write access to evaluations"
 
 # =============================================================================
+# USER PROFILE CONFIGURATION
+# =============================================================================
+
+# -- User Profile Configuration
+# @default -- See values below
+# Attributes added to the realm's declarative user profile, in addition to
+# the Keycloak built-in username, email, firstName, and lastName attributes
+userProfile:
+  # -- Attributes
+  # @default -- See values below
+  # User profile attribute definitions (Keycloak UPAttribute format)
+  # Existing attributes with the same name are left unchanged
+  attributes:
+    - name: "picture"
+      displayName: "Picture"
+      multivalued: false
+      permissions:
+        view: ["admin", "user"]
+        edit: ["admin", "user"]
+      validations:
+        uri:
+          allowedSchemes: ["https"]
+
+# =============================================================================
 # INITIAL USERS CONFIGURATION
 # =============================================================================
 

@@ -149,6 +149,20 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
             {"name": "read:evaluations", "description": "Read access to evaluations"},
             {"name": "write:evaluations", "description": "Write access to evaluations"},
         ],
+        "userProfile": {
+            "attributes": [
+                {
+                    "name": "picture",
+                    "displayName": "Picture",
+                    "multivalued": False,
+                    "permissions": {
+                        "view": ["admin", "user"],
+                        "edit": ["admin", "user"],
+                    },
+                    "validations": {"uri": {"allowedSchemes": ["https"]}},
+                },
+            ],
+        },
         "users": {
             "admin": {
                 "enabled": True,

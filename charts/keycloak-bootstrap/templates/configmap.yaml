@@ -389,6 +389,44 @@ data:
       fi
     }
 
+    # Function to add an attribute to the realm user profile if not already present
+    add_user_profile_attribute() {
+      local ATTR_NAME=$1
+      local ATTR_CONFIG=$2
+
+      echo "Adding user profile attribute: ${ATTR_NAME}..."
+
+      PROFILE=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users/profile")
+
+      if [ -z "$PROFILE" ] || ! echo "$PROFILE" | jq -e '.attributes' > /dev/null 2>&1; then
+        echo "  Failed to get user profile configuration"
+        return 1
+      fi
+
+      if echo "$PROFILE" | jq -e --arg name "$ATTR_NAME" '.attributes[] | select(.name == $name)' > /dev/null; then
+        echo "  User profile attribute already exists: ${ATTR_NAME}"
+        return 0
+      fi
+
+      UPDATED_PROFILE=$(echo "$PROFILE" | jq -c --argjson attr "$ATTR_CONFIG" '.attributes += [$attr]')
+
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/users/profile" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${UPDATED_PROFILE}")
+
+      if [ "$RESPONSE" = "200" ]; then
+        echo "  User profile attribute added: ${ATTR_NAME}"
+        return 0
+      else
+        echo "  Failed to add user profile attribute: ${ATTR_NAME} (Response: $RESPONSE)"
+        return 1
+      fi
+    }
+
     # Function to create user
     create_user() {
       local USERNAME=$1
@@ -450,6 +488,11 @@ data:
           exit 1
         fi
       fi
+
+      # Add user profile attributes
+      {{- range .Values.userProfile.attributes }}
+      add_user_profile_attribute "{{ .name }}" '{{ . | toJson }}'
+      {{- end }}
 
       # Create client scopes
       {{- range .Values.scopes }}

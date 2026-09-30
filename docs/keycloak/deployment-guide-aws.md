@@ -690,16 +690,16 @@ govctl init -I \
   --auth keycloak
 ```
 
-| Flag                             | Short   | Description                                  |
-| -------------------------------- | ------- | -------------------------------------------- |
-| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)       |
-| `--domain`                       | `-d`    | Deployment domain                            |
-| `--environment`                  | `-e`    | Environment name                             |
-| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`) |
-| `--artifact-source` | | Registry profile: `cloudsmith` (default) or `github` for GHCR installs |
-| `--database` | `-D` | `bundled` or `external`; production defaults to external |
-| `--output`                       | `-o`    | Output directory (default: `output`)         |
-| `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                      |
+| Flag                             | Short   | Description                                                            |
+| -------------------------------- | ------- | ---------------------------------------------------------------------- |
+| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)                                 |
+| `--domain`                       | `-d`    | Deployment domain                                                      |
+| `--environment`                  | `-e`    | Environment name                                                       |
+| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`)                           |
+| `--artifact-source`              |         | Registry profile: `cloudsmith` (default) or `github` for GHCR installs |
+| `--database`                     | `-D`    | `bundled` or `external`; production defaults to external               |
+| `--output`                       | `-o`    | Output directory (default: `output`)                                   |
+| `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                                                |
 
 ### Generated Files
 
@@ -828,6 +828,7 @@ keycloak-bootstrap    1/1           30s        1m
 | **Backend client**      | `governance-platform-backend` — confidential, service account with `query-users` and `view-users` roles |
 | **Worker client**       | `governance-worker` — confidential, service account only                                                |
 | **Custom scopes**       | 8 authorization scopes (governance, integrity, organizations, projects, evaluations)                    |
+| **User profile**        | `picture` attribute added to the realm user profile                                                     |
 | **Platform admin user** | `platform-admin` in the governance realm                                                                |
 
 ### Retrieve Auto-Generated Client Secrets
