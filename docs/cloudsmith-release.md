@@ -59,10 +59,9 @@ from `eqtylab/guardian` does not grant the deployment workflow access. A success
 - [eqty-pdfgen](https://github.com/orgs/eqtylab/packages/container/eqty-pdfgen/settings)
 - [guardian-llm-gateway](https://github.com/orgs/eqtylab/packages/container/guardian-llm-gateway/settings)
 - [guardian-control-plane](https://github.com/orgs/eqtylab/packages/container/guardian-control-plane/settings)
-- [guardian-console](https://github.com/orgs/eqtylab/packages/container/guardian-console/settings)
 
 The grant covers the image and its signature/attestation tags within that
-package. Check all eight to avoid fixing one only to fail on the next image.
+package. Check all seven to avoid fixing one only to fail on the next image.
 Private chart packages selected by the release also need deployment Actions
 access; charts published by deployment normally already have it. Keep the
 packages private and retain their existing access grants.
