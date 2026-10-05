@@ -68,7 +68,7 @@ flowchart TD
 | ---------------------- | -------- | --------------------------------------------- | --------------------- |
 | **auth-service**       | Go       | Authentication, authorization, token exchange | `/authService/`       |
 | **eqty-pdfgen**        | Python   | Optional manifest → PDF/ZIP rendering         | Internal only         |
-| **gateway-stack**      | Go       | Optional LLM gateway, control plane, console  | Separate hosts        |
+| **gateway-stack**      | Go       | Optional LLM gateway and control plane        | Separate hosts        |
 | **governance-service** | Go       | Backend API, workflow engine, worker          | `/governanceService/` |
 | **governance-studio**  | React    | Web UI for governance workflows               | `/`                   |
 | **integrity-service**  | Rust     | Verifiable credentials and lineage tracking   | `/integrityService/`  |
@@ -76,7 +76,7 @@ flowchart TD
 
 All four application services are exposed through a single domain via NGINX Ingress with path-based routing. PostgreSQL is internal to the cluster.
 
-The **gateway-stack** subchart (LLM gateway, control plane, and Guardian console) is disabled by default and is not covered by this walkthrough. It uses its own hostnames and ingress class rather than the shared domain above. To enable it, see [`charts/gateway-stack/README.md`](../../charts/gateway-stack/README.md) and the [`values-gateway.yaml`](../../charts/governance-platform/examples/values-gateway.yaml) overlay.
+The **gateway-stack** subchart (LLM gateway and control plane) is disabled by default and is not covered by this walkthrough. It uses its own hostnames and ingress class rather than the shared domain above. To enable it, see [`charts/gateway-stack/README.md`](../../charts/gateway-stack/README.md) and the [`values-gateway.yaml`](../../charts/governance-platform/examples/values-gateway.yaml) overlay.
 
 ### External Dependencies
 
@@ -634,16 +634,16 @@ govctl init -I \
   --auth entra
 ```
 
-| Flag                             | Short   | Description                                  |
-| -------------------------------- | ------- | -------------------------------------------- |
-| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)       |
-| `--domain`                       | `-d`    | Deployment domain                            |
-| `--environment`                  | `-e`    | Environment name                             |
-| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`) |
-| `--artifact-source` | | Registry profile: `cloudsmith` (default) or `github` for GHCR installs |
-| `--database` | `-D` | `bundled` or `external`; production defaults to external |
-| `--output`                       | `-o`    | Output directory (default: `output`)         |
-| `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                      |
+| Flag                             | Short   | Description                                                            |
+| -------------------------------- | ------- | ---------------------------------------------------------------------- |
+| `--cloud`                        | `-c`    | Cloud provider (`gcp`, `aws`, `azure`)                                 |
+| `--domain`                       | `-d`    | Deployment domain                                                      |
+| `--environment`                  | `-e`    | Environment name                                                       |
+| `--auth`                         | `-a`    | Auth provider (`auth0`, `keycloak`, `entra`)                           |
+| `--artifact-source`              |         | Registry profile: `cloudsmith` (default) or `github` for GHCR installs |
+| `--database`                     | `-D`    | `bundled` or `external`; production defaults to external               |
+| `--output`                       | `-o`    | Output directory (default: `output`)                                   |
+| `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                                                |
 
 ### Generated Files
 

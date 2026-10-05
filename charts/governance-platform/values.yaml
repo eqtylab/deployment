@@ -1642,11 +1642,9 @@ gateway-stack:
         enabled: true
         mode: "auth_service"
 
-  # Keep public routes and the console opt-in until their hostnames and auth
-  # policy have been selected for an environment
+  # Keep public routes opt-in until their hostnames and auth policy have been
+  # selected for an environment
   ingress:
-    enabled: false
-  guardianUI:
     enabled: false
 
 # =============================================================================

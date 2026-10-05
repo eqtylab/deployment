@@ -74,7 +74,7 @@ class ArtifactProfileTests(unittest.TestCase):
                                 "GitHub PAT with read:packages scope", secrets
                             )
 
-    def test_cloudsmith_inherits_all_eight_released_image_versions(self):
+    def test_cloudsmith_inherits_all_seven_released_image_versions(self):
         def images(value):
             if isinstance(value, dict):
                 if "image" in value:
@@ -86,7 +86,7 @@ class ArtifactProfileTests(unittest.TestCase):
         for source in ("cloudsmith", "github"):
             configure_artifacts(config, source)
             overrides = list(images(yaml.safe_load(generate_values(config))))
-            self.assertEqual(len(overrides), 8)
+            self.assertEqual(len(overrides), 7)
             for image in overrides:
                 if source == "cloudsmith":
                     self.assertNotIn("tag", image)

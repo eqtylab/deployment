@@ -93,23 +93,10 @@ ingress:
   tls:
     enabled: true
     llmGatewaySecretName: guardian-gateway-tls
-    controlPlaneSecretName: guardian-console-tls
+    controlPlaneSecretName: guardian-control-plane-tls
   certManager:
     enabled: false
     createClusterIssuer: false
-
-guardianUI:
-  enabled: true
-  image:
-    repository: ghcr.io/eqtylab/guardian-console
-    tag: ""
-    pullPolicy: IfNotPresent
-  runtime:
-    environment: production
-    appTitle: Gateway Guardian
-    appHostname: guardian.example.internal
-    apiURL: https://guardian.example.internal/api
-    basePath: /
 
 postgresql:
   enabled: false

@@ -40,13 +40,4 @@ spec:
                 name: {{ include "gateway-stack.fullname" . }}-control-plane
                 port:
                   number: {{ .Values.controlPlane.service.port }}
-          {{- if and .Values.guardianUI.enabled (ne $controlPlanePath "/") }}
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "gateway-stack.uiServiceName" . }}
-                port:
-                  number: {{ .Values.guardianUI.service.port }}
-          {{- end }}
 {{- end }}

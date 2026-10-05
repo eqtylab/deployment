@@ -226,8 +226,6 @@ eqty-pdfgen:
 # =============================================================================
 gateway-stack:
   enabled: true
-  guardianUI:
-    enabled: false
   postgresql:
     enabled: false
   haproxyIngress:

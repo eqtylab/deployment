@@ -2,8 +2,8 @@
 # GATEWAY STACK - HELM VALUES CONFIGURATION
 # =============================================================================
 # This values file configures the Guardian gateway stack: the LLM gateway,
-# the control plane, the operator console, and the bundled PostgreSQL and
-# HAProxy ingress dependencies
+# the control plane, and the bundled PostgreSQL and HAProxy ingress
+# dependencies
 #
 # When deployed via the umbrella chart (governance-platform), the database and
 # control-plane adapter values are auto-configured from the platform release
@@ -11,7 +11,7 @@
 
 # -- Enable Gateway Stack
 # @default -- `true`
-# Enable the LLM gateway, control plane, and operator console
+# Enable the LLM gateway and control plane
 enabled: true
 
 # -- Global values shared by umbrella and standalone installs
@@ -455,7 +455,7 @@ llmGateway:
 
 # -- Control Plane Configuration
 # @default -- See values below
-# The management API behind the operator console and the CLI onboarding flows
+# The management API behind Governance Studio and the CLI onboarding flows
 controlPlane:
   # -- Replica Count
   # @default -- `1`
@@ -584,7 +584,6 @@ controlPlane:
   extraEnv: []
   # -- Authentication Configuration
   # @default -- See values below
-  # See docs/google-workspace-sso.md for the full SSO setup guide
   auth:
     # -- Enable Authentication
     # @default -- `false`
@@ -615,11 +614,11 @@ controlPlane:
     cookieSecure: true
     # -- Allowed Email Domains
     # @default -- `[]`
-    # Restricts console sign-in to these email domains
+    # Restricts browser sign-in and bearer tokens to these email domains
     allowedEmailDomains: []
     # -- Bootstrap Admin Email
     # @default -- `""`
-    # Granted admin on first boot
+    # Granted admin on first Google sign-in
     bootstrapAdminEmail: ""
     # -- OAuth State Secret
     # @default -- `""` (REQUIRED when google.enabled and existingSecret is unset)
@@ -659,8 +658,9 @@ controlPlane:
         - openid
         - profile
         - email
-    # -- Console Base URL
+    # -- UI Base URL
     # @default -- `""`
+    # Base URL for auth callback redirects
     uiBaseURL: ""
     # -- Local Development Mode
     # @default -- `false`
@@ -699,7 +699,7 @@ controlPlane:
         - email
   # -- Governance Studio Adapter Configuration
   # @default -- See values below
-  # Resolves platform identity, project, and integrity data for the console
+  # Resolves platform identity, project, and integrity data for Governance Studio
   adapter:
     # -- Enable Adapter
     # @default -- `false` (set to true by the umbrella chart)
@@ -943,8 +943,7 @@ ingress:
   controlPlaneAnnotations: {}
   # -- Control Plane Path
   # @default -- `/`
-  # Set together with controlPlane.apiBasePath. The console is only routed when
-  # this is not "/", since it otherwise collides with the control-plane API
+  # Set together with controlPlane.apiBasePath when serving behind a path prefix
   controlPlanePath: /
   # -- Ingress Hosts
   # @default -- See values below
@@ -1007,162 +1006,6 @@ ingress:
       # @default -- `{}` (REQUIRED when solver is dns01)
       # Passed through verbatim to the ClusterIssuer dns01 solver
       dns01: {}
-
-# =============================================================================
-# GUARDIAN CONSOLE
-# =============================================================================
-
-# -- Guardian Console Configuration
-# @default -- See values below
-# Operator console served alongside the control-plane API
-guardianUI:
-  # -- Enable Guardian Console
-  # @default -- `false`
-  enabled: false
-  # -- Replica Count
-  # @default -- `1`
-  replicaCount: 1
-  # -- Image Configuration
-  # @default -- See values below
-  image:
-    # -- Image Repository
-    # @default -- `ghcr.io/eqtylab/guardian-console`
-    repository: ghcr.io/eqtylab/guardian-console
-    # -- Image Tag
-    # @default -- `""` (uses chart appVersion)
-    tag: ""
-    # -- Immutable digest; takes precedence over tag when set
-    # @default -- `""`
-    digest: ""
-    # -- Image Pull Policy
-    # @default -- `IfNotPresent`
-    # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
-  # -- Pod Annotations
-  # @default -- `{}`
-  podAnnotations: {}
-  # -- Pod Labels
-  # @default -- `{}`
-  podLabels: {}
-  # -- Service Account Configuration
-  # @default -- See values below
-  serviceAccount:
-    # -- Create Service Account
-    # @default -- `true`
-    create: true
-    # -- Automount API Credentials
-    # @default -- `true`
-    automount: true
-    # -- Service Account Name
-    # @default -- `""` (generated if create is true)
-    name: ""
-    # -- Service Account Annotations
-    # @default -- `{}`
-    annotations: {}
-  # -- Pod Security Context
-  # @default -- `{}`
-  podSecurityContext: {}
-  # -- Container Security Context
-  # @default -- See values below
-  # The console image serves on privileged port 80, so it cannot run non-root
-  # without NET_BIND_SERVICE. Once the image serves on a port above 1024, match
-  # governance-studio: runAsNonRoot, readOnlyRootFilesystem, and drop ALL with
-  # no added capability
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-      add:
-        - NET_BIND_SERVICE
-  # -- Resource Requests and Limits
-  # @default -- `{}`
-  resources: {}
-  # -- Autoscaling Configuration
-  # @default -- See values below
-  autoscaling:
-    # -- Enable Autoscaling
-    # @default -- `false`
-    # Replaces replicaCount when enabled
-    enabled: false
-    # -- Minimum Replicas
-    # @default -- `1`
-    minReplicas: 1
-    # -- Maximum Replicas
-    # @default -- `10`
-    maxReplicas: 10
-    # -- Target CPU Utilization
-    # @default -- `80`
-    targetCPUUtilizationPercentage: 80
-    # -- Target Memory Utilization
-    # @default -- `80`
-    targetMemoryUtilizationPercentage: 80
-  # -- Pod Disruption Budget
-  # @default -- See values below
-  podDisruptionBudget:
-    # -- Enable PDB
-    # @default -- `false`
-    enabled: false
-    # -- Minimum Available
-    # @default -- `1`
-    # Only rendered when replicaCount > 1
-    minAvailable: 1
-    # -- Maximum Unavailable
-    # @default -- `1`
-    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
-    # Setting this to `0` may block node drains and cluster upgrades
-    maxUnavailable: 1
-  # -- Node Selector
-  # @default -- `{}`
-  # Node labels for pod assignment
-  nodeSelector: {}
-  # -- Tolerations
-  # @default -- `[]`
-  # Tolerations for pod assignment
-  tolerations: []
-  # -- Affinity
-  # @default -- `{}`
-  # Affinity rules for pod assignment
-  affinity: {}
-  # -- Container Port
-  # @default -- `80`
-  containerPort: 80
-  # -- Service Configuration
-  # @default -- See values below
-  service:
-    # -- Enable Service
-    # @default -- `true`
-    enabled: true
-    # -- Service Type
-    # @default -- `ClusterIP`
-    # Options: ClusterIP, NodePort, LoadBalancer
-    type: ClusterIP
-    # -- Service Port
-    # @default -- `80`
-    port: 80
-  # -- Console Runtime Configuration
-  # @default -- See values below
-  # Injected into the console container as ENVIRONMENT, APP_TITLE,
-  # APP_HOSTNAME, API_URL, and BASE_PATH
-  runtime:
-    # -- Runtime Environment
-    # @default -- `production`
-    environment: production
-    # -- Application Title
-    # @default -- `Gateway Guardian`
-    appTitle: Gateway Guardian
-    # -- Application Hostname
-    # @default -- `""`
-    appHostname: ""
-    # -- Control Plane API URL
-    # @default -- `""`
-    apiURL: ""
-    # -- Base Path
-    # @default -- `/`
-    basePath: /
-  # -- Extra Environment Variables
-  # @default -- `[]`
-  extraEnv: []
 
 # =============================================================================
 # POSTGRESQL

@@ -23,7 +23,7 @@ The platform uses a microservices architecture with the following components:
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
 - **EQTY PDFGen** - Optional PDF and ZIP rendering service for governance manifests
-- **Gateway Stack** - Optional LLM gateway, control plane, and operator console
+- **Gateway Stack** - Optional LLM gateway and control plane
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
 
@@ -332,15 +332,15 @@ helm upgrade governance-platform ./charts/governance-platform \
 
 These global values are automatically inherited by all subcharts:
 
-| Key                          | Type   | Default                    | Description                                                                                                  |
-| ---------------------------- | ------ | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| global.domain                | string | `"governance.example.com"` | Base domain for all services (**MUST override**)                                                             |
-| global.environmentType       | string | `"production"`             | Environment type (development/staging/production)                                                            |
-| global.imagePullPolicy       | string | `"IfNotPresent"`           | Default image pull policy for all containers                                                                 |
-| global.imageRegistryOverride | string | `""` | Override runtime image registry hosts; upstream dependencies have their own settings |
-| global.imageRepositoryPrefixOverride | string | `""` | Replace the EQTY image prefix, preserving upstream sources |
-| global.imagePullSecrets | list | `[{"name": "platform-image-pull-secret"}]` | Pull secrets shared by subcharts |
-| global.utilityImages.busybox | string | `""`                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
+| Key                                  | Type   | Default                                    | Description                                                                                                  |
+| ------------------------------------ | ------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| global.domain                        | string | `"governance.example.com"`                 | Base domain for all services (**MUST override**)                                                             |
+| global.environmentType               | string | `"production"`                             | Environment type (development/staging/production)                                                            |
+| global.imagePullPolicy               | string | `"IfNotPresent"`                           | Default image pull policy for all containers                                                                 |
+| global.imageRegistryOverride         | string | `""`                                       | Override runtime image registry hosts; upstream dependencies have their own settings                         |
+| global.imageRepositoryPrefixOverride | string | `""`                                       | Replace the EQTY image prefix, preserving upstream sources                                                   |
+| global.imagePullSecrets              | list   | `[{"name": "platform-image-pull-secret"}]` | Pull secrets shared by subcharts                                                                             |
+| global.utilityImages.busybox         | string | `""`                                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
 
 `global.utilityImages` deliberately covers only the three runtime dependency wait
 containers. The post-install hook Jobs and `keycloak-bootstrap` keep their own
@@ -391,35 +391,35 @@ Shared PostgreSQL connection settings:
 
 Authentication and authorization service settings. See [auth-service/README.md](../auth-service/README.md) for complete documentation.
 
-| Key                                        | Type   | Default | Description                                                                          |
-| ------------------------------------------ | ------ | ------- | ------------------------------------------------------------------------------------ |
-| auth-service.enabled                       | bool   | `true`  | Enable Auth Service                                                                  |
-| auth-service.replicaCount                  | int    | `2`     | Number of replicas                                                                   |
-| auth-service.config.idp.provider           | string | `""`    | IDP provider (auto-configured from global.secrets.auth.provider)                     |
-| auth-service.config.keyManagement.provider | string | `""`    | Key management provider (auto-configured from global.secrets.keyManagement.provider) |
-| auth-service.secrets.keyManagement.openbao.name | string | `""` | Operator-managed token Secret override; takes precedence over global.secrets.keyManagement.openbao.secretName (token_file only). |
-| auth-service.config.keyManagement.openbao  | object | see values | OpenBao Transit endpoint, CA and workload-auth settings (provider `openbao`; see the auth-service chart README) |
-| auth-service.config.keyManagement.openbao.auth.reviewer.create | bool | `false` | Create a separate reviewer ServiceAccount and system:auth-delegator binding; never grant Auth TokenReview permissions. |
-| auth-service.config.keyManagement.openbao.auth.reviewer.name | string | `""` | Reviewer name; defaults to <release>-auth-service-openbao-reviewer. |
-| auth-service.config.keyManagement.openbao.auth.reviewer.tokenSecret | bool | `false` | Create a long-lived reviewer token Secret for external OpenBao. Leave false when OpenBao uses its local projected token. |
-| auth-service.config.keyManagement.openbao.networkPolicy.to | list | `[]` | OpenBao egress peers (namespaceSelector, podSelector or ipBlock); requires networkPolicy.enabled. Empty adds no rule. |
-| auth-service.config.keyManagement.openbao.networkPolicy.port | int | `8200` | OpenBao egress TCP port; applies to networkPolicy.to. |
-| auth-service.ingress.enabled               | bool   | `false` | Enable ingress                                                                       |
-| auth-service.autoscaling.enabled           | bool   | `false` | Enable horizontal pod autoscaling                                                    |
+| Key                                                                 | Type   | Default    | Description                                                                                                                      |
+| ------------------------------------------------------------------- | ------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| auth-service.enabled                                                | bool   | `true`     | Enable Auth Service                                                                                                              |
+| auth-service.replicaCount                                           | int    | `2`        | Number of replicas                                                                                                               |
+| auth-service.config.idp.provider                                    | string | `""`       | IDP provider (auto-configured from global.secrets.auth.provider)                                                                 |
+| auth-service.config.keyManagement.provider                          | string | `""`       | Key management provider (auto-configured from global.secrets.keyManagement.provider)                                             |
+| auth-service.secrets.keyManagement.openbao.name                     | string | `""`       | Operator-managed token Secret override; takes precedence over global.secrets.keyManagement.openbao.secretName (token_file only). |
+| auth-service.config.keyManagement.openbao                           | object | see values | OpenBao Transit endpoint, CA and workload-auth settings (provider `openbao`; see the auth-service chart README)                  |
+| auth-service.config.keyManagement.openbao.auth.reviewer.create      | bool   | `false`    | Create a separate reviewer ServiceAccount and system:auth-delegator binding; never grant Auth TokenReview permissions.           |
+| auth-service.config.keyManagement.openbao.auth.reviewer.name        | string | `""`       | Reviewer name; defaults to <release>-auth-service-openbao-reviewer.                                                              |
+| auth-service.config.keyManagement.openbao.auth.reviewer.tokenSecret | bool   | `false`    | Create a long-lived reviewer token Secret for external OpenBao. Leave false when OpenBao uses its local projected token.         |
+| auth-service.config.keyManagement.openbao.networkPolicy.to          | list   | `[]`       | OpenBao egress peers (namespaceSelector, podSelector or ipBlock); requires networkPolicy.enabled. Empty adds no rule.            |
+| auth-service.config.keyManagement.openbao.networkPolicy.port        | int    | `8200`     | OpenBao egress TCP port; applies to networkPolicy.to.                                                                            |
+| auth-service.ingress.enabled                                        | bool   | `false`    | Enable ingress                                                                                                                   |
+| auth-service.autoscaling.enabled                                    | bool   | `false`    | Enable horizontal pod autoscaling                                                                                                |
 
 ### EQTY PDFGen Configuration
 
 Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdfgen/README.md) for complete documentation.
 
-| Key                             | Type   | Default | Description                                                                      |
-| ------------------------------- | ------ | ------- | -------------------------------------------------------------------------------- |
-| eqty-pdfgen.enabled             | bool   | `false` | Enable EQTY PDFGen. Disabled by default and currently enabled only in dev values |
-| eqty-pdfgen.replicaCount        | int    | `2`     | Number of replicas                                                               |
-| eqty-pdfgen.service.port        | int    | `8080`  | Internal ClusterIP service port                                                  |
-| eqty-pdfgen.config.signingUrl   | string | `""`    | Signing endpoint (auto-generated as auth-service internal signing URL)           |
-| eqty-pdfgen.config.signingBound | bool   | `false` | Version-bound PDF signing; requires compatible Auth and PDFgen images (see [prerequisites](../eqty-pdfgen/README.md#prerequisites)) |
-| eqty-pdfgen.config.timestampUrl | string | `"http://timestamp.digicert.com"` | Timestamp authority URL; `""` omits the timestamp token with the PDFgen empty-URL behavior from Guardian #234 |
-| eqty-pdfgen.autoscaling.enabled | bool   | `false` | Enable horizontal pod autoscaling                                                |
+| Key                             | Type   | Default                           | Description                                                                                                                         |
+| ------------------------------- | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| eqty-pdfgen.enabled             | bool   | `false`                           | Enable EQTY PDFGen. Disabled by default and currently enabled only in dev values                                                    |
+| eqty-pdfgen.replicaCount        | int    | `2`                               | Number of replicas                                                                                                                  |
+| eqty-pdfgen.service.port        | int    | `8080`                            | Internal ClusterIP service port                                                                                                     |
+| eqty-pdfgen.config.signingUrl   | string | `""`                              | Signing endpoint (auto-generated as auth-service internal signing URL)                                                              |
+| eqty-pdfgen.config.signingBound | bool   | `false`                           | Version-bound PDF signing; requires compatible Auth and PDFgen images (see [prerequisites](../eqty-pdfgen/README.md#prerequisites)) |
+| eqty-pdfgen.config.timestampUrl | string | `"http://timestamp.digicert.com"` | Timestamp authority URL; `""` omits the timestamp token with the PDFgen empty-URL behavior from Guardian #234                       |
+| eqty-pdfgen.autoscaling.enabled | bool   | `false`                           | Enable horizontal pod autoscaling                                                                                                   |
 
 EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
 

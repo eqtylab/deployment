@@ -10,7 +10,7 @@ This repository contains Helm charts for deploying the EQTY Lab Governance Platf
 | [auth0-bootstrap](auth0-bootstrap/)         | Utility  | Auth0 application, API, and user configuration job           |
 | [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job        |
 | [eqty-pdfgen](eqty-pdfgen/)                 | Subchart | PDF and ZIP rendering service for governance manifests       |
-| [gateway-stack](gateway-stack/)             | Subchart | LLM gateway, control plane, and console                      |
+| [gateway-stack](gateway-stack/)             | Subchart | LLM gateway and control plane                                |
 | [governance-ops](governance-ops/)           | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
 | [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)                   |
 | [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine                     |
@@ -29,7 +29,7 @@ charts/
 ├── auth0-bootstrap/         # Auth0 configuration utility
 ├── entra-bootstrap/         # Entra ID configuration utility
 ├── eqty-pdfgen/             # Manifest PDF rendering subchart
-├── gateway-stack/           # Gateway, control plane, and console subchart
+├── gateway-stack/           # Gateway and control plane subchart
 ├── governance-ops/          # Operational monitoring (dashboards, alerts)
 ├── governance-platform/     # Umbrella chart (deploy this for full platform)
 │   ├── Chart.yaml           # Dependencies on all subcharts
@@ -226,7 +226,7 @@ The `governance-platform/examples/` directory contains complete deployment examp
 | Example                                                                           | Description                                                                                                 |
 | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | [secrets-sample.yaml](governance-platform/examples/secrets-sample.yaml)           | Complete secrets configuration template                                                                     |
-| [values-cloudsmith.yaml](governance-platform/examples/values-cloudsmith.yaml) | Registry overlay for verified Cloudsmith deliveries |
+| [values-cloudsmith.yaml](governance-platform/examples/values-cloudsmith.yaml)     | Registry overlay for verified Cloudsmith deliveries                                                         |
 | [values-auth0.yaml](governance-platform/examples/values-auth0.yaml)               | Platform deployment using Auth0 as the identity provider                                                    |
 | [values-entra.yaml](governance-platform/examples/values-entra.yaml)               | Platform deployment using Entra ID as the identity provider                                                 |
 | [values-keycloak.yaml](governance-platform/examples/values-keycloak.yaml)         | Platform deployment using Keycloak as the identity provider                                                 |
@@ -362,18 +362,18 @@ Changing it does not require a platform version bump. See the
 
 ## Documentation
 
-| Document                                                       | Description                          |
-| -------------------------------------------------------------- | ------------------------------------ |
-| [auth-service/README.md](auth-service/README.md)               | Authentication service configuration |
-| [auth0-bootstrap/README.md](auth0-bootstrap/README.md)         | Auth0 application/API/user setup     |
-| [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup      |
-| [eqty-pdfgen/README.md](eqty-pdfgen/README.md)                 | PDF generation service configuration |
-| [governance-ops/README.md](governance-ops/README.md)           | Operational monitoring setup         |
-| [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide   |
-| [governance-service/README.md](governance-service/README.md)   | Backend API configuration            |
-| [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration               |
-| [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration    |
-| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration  |
+| Document                                                       | Description                                                 |
+| -------------------------------------------------------------- | ----------------------------------------------------------- |
+| [auth-service/README.md](auth-service/README.md)               | Authentication service configuration                        |
+| [auth0-bootstrap/README.md](auth0-bootstrap/README.md)         | Auth0 application/API/user setup                            |
+| [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup                             |
+| [eqty-pdfgen/README.md](eqty-pdfgen/README.md)                 | PDF generation service configuration                        |
+| [governance-ops/README.md](governance-ops/README.md)           | Operational monitoring setup                                |
+| [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide                          |
+| [governance-service/README.md](governance-service/README.md)   | Backend API configuration                                   |
+| [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration                                      |
+| [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration                           |
+| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration                         |
 | [openbao-custody/README.md](openbao-custody/README.md)         | Optional OpenBao custody configuration and operator runbook |
 
 ## Support

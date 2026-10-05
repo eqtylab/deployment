@@ -21,7 +21,7 @@ dependencies:
     version: "1.2.1"
     repository: "file://../eqty-pdfgen"
     condition: eqty-pdfgen.enabled
-  # Gateway, control plane, and console
+  # Gateway and control plane
   - name: gateway-stack
     version: "1.2.1"
     repository: "file://../gateway-stack"

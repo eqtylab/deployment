@@ -69,11 +69,8 @@ controlPlane:
       iam.gke.io/gcp-service-account: guardian-control-plane-dev@your-gcp-project-id.iam.gserviceaccount.com
   auth:
     enabled: true
-    cookieSecure: true
     allowedEmailDomains:
       - example.com
-    bootstrapAdminEmail: admin@example.com
-    stateSecret: replace-with-auth-state-secret
     registrationTokenSecret: replace-with-registration-token-secret
     registrationTokenIssuer: control-plane
     bearer:
@@ -84,12 +81,6 @@ controlPlane:
         - openid
         - profile
         - email
-    uiBaseURL: https://guardian.example.com
-    google:
-      enabled: true
-      clientID: replace-with-google-client-id
-      clientSecret: replace-with-google-client-secret
-      redirectURL: https://guardian.example.com/api/v1/auth/callback/google
   plugins:
     publisherSigner:
       keyID: signer-dev
@@ -134,16 +125,6 @@ ingress:
           serviceAccountSecretRef:
             name: cert-manager-cloud-dns
             key: key.json
-
-guardianUI:
-  enabled: true
-  image:
-    repository: ghcr.io/eqtylab/guardian-console
-    tag: ""
-  runtime:
-    appHostname: guardian.example.com
-    apiURL: https://guardian.example.com/api
-    basePath: /
 
 # Keep these credentials in sync when using the bundled postgresql dependency
 database:
