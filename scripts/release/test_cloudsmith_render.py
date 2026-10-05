@@ -90,7 +90,7 @@ class CloudsmithRenderTests(unittest.TestCase):
                 changed.add(reference)
             else:
                 self.assertEqual(customer[name], reference, name)
-        self.assertEqual(len(changed), 8)
+        self.assertEqual(len(changed), 7)
 
     def test_helm_managed_secret_has_cloudsmith_host_and_username(self):
         docs = self.render(True, True)

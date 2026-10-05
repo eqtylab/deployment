@@ -139,7 +139,7 @@ jobs:
             services+=(eqtyPdfgen)
           fi
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
-            services+=(llmGateway controlPlane guardianConsole)
+            services+=(llmGateway controlPlane)
           fi
 
           for service in "${services[@]}"; do
