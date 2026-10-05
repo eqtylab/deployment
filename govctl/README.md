@@ -136,7 +136,7 @@ govctl init -I \
 | `--environment`                  | `-e`    | Environment name                                                                                                      |
 | `--auth`                         | `-a`    | Auth provider (`auth0`, `entra`, `keycloak`)                                                                          |
 | `--database`                     | `-D`    | Database mode (`bundled` or `external`). Defaults to `external` when environment is `production`, otherwise `bundled` |
-| `--artifact-source` | | `cloudsmith` (default) for verified customer releases; `github` for existing GHCR installs |
+| `--artifact-source`              |         | `cloudsmith` (default) for verified customer releases; `github` for existing GHCR installs                            |
 | `--output`                       | `-o`    | Output directory (default: `output`)                                                                                  |
 | `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                                                                                               |
 
@@ -149,7 +149,7 @@ Configures all platform services based on your selections:
 - **global** — environment name, domain. Also `global.postgresql.{host, port, database, username, sslMode, sslRootCert}` placeholders when database mode is `external`
 - **auth-service** — IDP provider config, token exchange, ingress
 - **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: false` by default, image tag/pull policy; no ingress)
-- **gateway-stack** — LLM gateway, control plane, and Guardian console (`enabled: false` by default, image tags/pull policies only; hostnames, TLS, and plugin storage are not prompted for)
+- **gateway-stack** — LLM gateway and control plane (`enabled: false` by default, image tags/pull policies only; hostnames, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **governance-studio** — frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, persistence, ingress

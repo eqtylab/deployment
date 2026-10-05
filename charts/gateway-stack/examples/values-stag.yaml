@@ -58,12 +58,9 @@ controlPlane:
   auth:
     enabled: true
     existingSecret: guardian-stag-control-plane-auth
-    cookieSecure: true
     allowedEmailDomains:
       - example.com
-    bootstrapAdminEmail: admin@example.com
     registrationTokenIssuer: control-plane
-    uiBaseURL: https://guardian.stag.example.com
     bearer:
       enabled: true
       issuerURL: https://accounts.google.com
@@ -72,9 +69,6 @@ controlPlane:
         - openid
         - profile
         - email
-    google:
-      enabled: true
-      redirectURL: https://guardian.stag.example.com/api/v1/auth/callback/google
   virusTotal:
     enabled: false
     existingSecret: ""
@@ -97,19 +91,6 @@ ingress:
       solver: http01
       http01:
         ingressClass: haproxy-gateway-stag
-
-guardianUI:
-  enabled: true
-  image:
-    repository: ghcr.io/eqtylab/guardian-console
-    tag: ""
-    pullPolicy: IfNotPresent
-  runtime:
-    environment: staging
-    appTitle: Guardian Staging UI
-    appHostname: guardian.stag.example.com
-    apiURL: https://guardian.stag.example.com/api
-    basePath: /
 
 database:
   user: guardian

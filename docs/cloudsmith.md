@@ -76,7 +76,7 @@ helm upgrade --install governance-platform \
 For Helm-managed secrets, also supply your protected secrets values file. The
 Cloudsmith overlay sets the registry host and entitlement username but contains
 no token and does not enable secret creation. Keep its image prefix and secret
-host settings consistent. All eight EQTY runtime images use Cloudsmith while
+host settings consistent. All seven EQTY runtime images use Cloudsmith while
 the release's existing digest pins are preserved.
 
 The original `release-manifest.yaml` and `chart-digests.yaml` retain GHCR build

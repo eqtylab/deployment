@@ -9,12 +9,12 @@ from govctl.core.models import PlatformConfig
 
 def generate_gateway_stack_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the gateway-stack section of values.yaml."""
-    # The gateway stack (LLM gateway, control plane, and Guardian console) uses
-    # its own hostnames and ingress class rather than the shared platform domain,
-    # so enabling it needs deployment-specific decisions that govctl does not
-    # prompt for: hostnames, TLS, a registration credential signer, and plugin
-    # artifact storage. Disabled by default to match the governance-platform
-    # chart default.
+    # The gateway stack (LLM gateway and control plane) uses its own hostnames
+    # and ingress class rather than the shared platform domain, so enabling it
+    # needs deployment-specific decisions that govctl does not prompt for:
+    # hostnames, TLS, a registration credential signer, and plugin artifact
+    # storage. Disabled by default to match the governance-platform chart
+    # default.
     #
     # To enable it, layer charts/governance-platform/examples/values-gateway.yaml
     # over this file and see charts/gateway-stack/README.md for the full setup.
@@ -26,10 +26,6 @@ def generate_gateway_stack_section(config: PlatformConfig) -> dict[str, Any]:
             "image": runtime_image_values(config),
         },
         "controlPlane": {
-            "image": runtime_image_values(config),
-        },
-        "guardianUI": {
-            "enabled": False,
             "image": runtime_image_values(config),
         },
     }

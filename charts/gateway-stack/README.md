@@ -4,19 +4,18 @@ A Helm chart for deploying the EQTY Lab Guardian gateway stack on Kubernetes.
 
 ## Description
 
-The Gateway Stack provides a signing proxy in front of upstream model providers, a management control plane, and an operator console for the Governance Platform.
+The Gateway Stack provides a signing proxy in front of upstream model providers and a management control plane for the Governance Platform.
 
 Key capabilities:
 
 - **LLM Gateway**: RFC 9421 signed proxy for Anthropic and OpenAI upstreams, with an append-only audit trail
 - **Control Plane**: Management API for agent registration, plugin publishing, and project configuration
-- **Guardian Console**: Operator UI served alongside the control-plane API
 - **Hook/Plugin Runtime**: Signed plugin distribution with GCS or S3 artifact storage and encrypted plugin secrets
 - **Agent Registration**: Ed25519-signed verifiable credentials issued to onboarding agents
 
 The chart also bundles PostgreSQL (Bitnami) and an optional HAProxy ingress controller.
 
-Public routes (`ingress.enabled`), agent registration (`llmGateway.registration.enabled`), the Guardian console (`guardianUI.enabled`), and the bundled HAProxy controller all default to `false`. A default install stays cluster-internal and allocates no LoadBalancer; enable each once hostnames, TLS, and an auth policy have been chosen.
+Public routes (`ingress.enabled`), agent registration (`llmGateway.registration.enabled`), and the bundled HAProxy controller all default to `false`. A default install stays cluster-internal and allocates no LoadBalancer; enable each once hostnames, TLS, and an auth policy have been chosen.
 
 ## Configuration Model
 
@@ -72,10 +71,9 @@ All example files are sanitized and safe to copy:
 Set these before a production install. Image tags are omitted deliberately: leaving
 `image.tag` empty resolves to the chart `appVersion`, which the platform release
 process pins to the release version. Set a tag only to pin outside a release.
-Every image object (`llmGateway.image`, `controlPlane.image`,
-`controlPlane.waitForRegistryViews.image` and `guardianUI.image`) also accepts
-`digest: sha256:...`, which takes precedence over its tag while retaining
-registry mirror behavior.
+Every image object (`llmGateway.image`, `controlPlane.image` and
+`controlPlane.waitForRegistryViews.image`) also accepts `digest: sha256:...`,
+which takes precedence over its tag while retaining registry mirror behavior.
 
 - `llmGateway.image.repository`
 - `llmGateway.registration.credentialSigner.existingSecret` when `llmGateway.registration.enabled=true`
@@ -85,9 +83,9 @@ registry mirror behavior.
 - `controlPlane.auth.bearer.issuerURL`
 - `controlPlane.auth.bearer.clientID`
 - One of:
-  - `controlPlane.auth.existingSecret` with keys for `registrationTokenSecret`, `googleClientID`, and `googleClientSecret` (plus `stateSecret` when `controlPlane.auth.google.enabled=true`)
-  - inline values `controlPlane.auth.registrationTokenSecret`, `controlPlane.auth.google.clientID`, `controlPlane.auth.google.clientSecret` (plus `controlPlane.auth.stateSecret` when `controlPlane.auth.google.enabled=true`)
-- `controlPlane.auth.google.redirectURL`
+  - `controlPlane.auth.existingSecret` with a `registrationTokenSecret` key (plus `stateSecret`, `googleClientID`, and `googleClientSecret` when `controlPlane.auth.google.enabled=true`)
+  - inline `controlPlane.auth.registrationTokenSecret` (plus `controlPlane.auth.stateSecret`, `controlPlane.auth.google.clientID`, and `controlPlane.auth.google.clientSecret` when `controlPlane.auth.google.enabled=true`)
+- `controlPlane.auth.google.redirectURL` when `controlPlane.auth.google.enabled=true`
 - `ingress.enabled=true` (plus `haproxyIngress.enabled=true` unless an existing ingress controller serves `ingress.className`)
 - `ingress.hosts.llmGateway`
 - `ingress.hosts.controlPlane`
@@ -166,20 +164,20 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### LLM Gateway Registration and Audit
 
-| Key                                                     | Type   | Default                           | Description                                  |
-| ------------------------------------------------------- | ------ | --------------------------------- | -------------------------------------------- |
-| llmGateway.registration.enabled                         | bool   | `false`                           | Enable agent registration                    |
-| llmGateway.registration.credentialSigner.seed           | string | `""`                              | Inline Ed25519 seed; prefer `existingSecret` |
-| llmGateway.registration.credentialSigner.existingSecret | string | `""`                              | Pre-created Secret holding the signer seed   |
-| llmGateway.registration.credentialSigner.secretKey      | string | `"seed"`                          | Key within the signer Secret                 |
-| llmGateway.authServiceBaseURL                           | string | `""`                              | Auth-service URL for API-key enroll; empty disables that path |
+| Key                                                     | Type   | Default                           | Description                                                              |
+| ------------------------------------------------------- | ------ | --------------------------------- | ------------------------------------------------------------------------ |
+| llmGateway.registration.enabled                         | bool   | `false`                           | Enable agent registration                                                |
+| llmGateway.registration.credentialSigner.seed           | string | `""`                              | Inline Ed25519 seed; prefer `existingSecret`                             |
+| llmGateway.registration.credentialSigner.existingSecret | string | `""`                              | Pre-created Secret holding the signer seed                               |
+| llmGateway.registration.credentialSigner.secretKey      | string | `"seed"`                          | Key within the signer Secret                                             |
+| llmGateway.authServiceBaseURL                           | string | `""`                              | Auth-service URL for API-key enroll; empty disables that path            |
 | llmGateway.authServiceIdentityIssuer                    | string | `""`                              | Registry identity issuer; defaults to `<authServiceBaseURL>/api/v1/auth` |
-| llmGateway.audit.enabled                                | bool   | `true`                            | Enable audit logging                         |
-| llmGateway.audit.queueDir                               | string | `"/var/lib/guardian/audit-queue"` | Audit queue directory (emptyDir)             |
-| llmGateway.audit.queueMaxBytes                          | int    | `10737418240`                     | Audit queue size cap (10 GiB)                |
-| llmGateway.audit.batchSize                              | int    | `100`                             | Audit batch size                             |
-| llmGateway.audit.flushInterval                          | string | `"1s"`                            | Audit flush interval                         |
-| llmGateway.audit.retentionDays                          | int    | `90`                              | Audit retention in days                      |
+| llmGateway.audit.enabled                                | bool   | `true`                            | Enable audit logging                                                     |
+| llmGateway.audit.queueDir                               | string | `"/var/lib/guardian/audit-queue"` | Audit queue directory (emptyDir)                                         |
+| llmGateway.audit.queueMaxBytes                          | int    | `10737418240`                     | Audit queue size cap (10 GiB)                                            |
+| llmGateway.audit.batchSize                              | int    | `100`                             | Audit batch size                                                         |
+| llmGateway.audit.flushInterval                          | string | `"1s"`                            | Audit flush interval                                                     |
+| llmGateway.audit.retentionDays                          | int    | `90`                              | Audit retention in days                                                  |
 
 ### LLM Gateway Plugin Runtime
 
@@ -239,14 +237,14 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 | controlPlane.auth.existingSecret            | string | `""`                            | Pre-created Secret holding auth material                                     |
 | controlPlane.auth.cookieDomain              | string | `""`                            | Session cookie domain                                                        |
 | controlPlane.auth.cookieSecure              | bool   | `true`                          | Secure session cookies                                                       |
-| controlPlane.auth.allowedEmailDomains       | list   | `[]`                            | Email domains permitted to sign in                                           |
-| controlPlane.auth.bootstrapAdminEmail       | string | `""`                            | Account granted admin on first boot                                          |
+| controlPlane.auth.allowedEmailDomains       | list   | `[]`                            | Email domains permitted for browser sign-in and bearer tokens                |
+| controlPlane.auth.bootstrapAdminEmail       | string | `""`                            | Account granted admin on first Google sign-in                                |
 | controlPlane.auth.stateSecret               | string | `""`                            | OAuth state secret                                                           |
 | controlPlane.auth.registrationTokenSecret   | string | `"change-me"`                   | Registration token secret; rejected at render time while left at `change-me` |
 | controlPlane.auth.registrationTokenIssuer   | string | `"control-plane"`               | Registration token issuer                                                    |
 | controlPlane.auth.sessionMaxAge             | string | `"12h"`                         | Session maximum age                                                          |
 | controlPlane.auth.sessionIdleTimeout        | string | `"2h"`                          | Session idle timeout                                                         |
-| controlPlane.auth.uiBaseURL                 | string | `""`                            | Console base URL                                                             |
+| controlPlane.auth.uiBaseURL                 | string | `""`                            | UI base URL for auth callback redirects                                      |
 | controlPlane.auth.localDevEnabled           | bool   | `false`                         | Route OAuth callbacks to a local dev server; never enable in production      |
 | controlPlane.auth.bearer.enabled            | bool   | `false`                         | Enable bearer token verification                                             |
 | controlPlane.auth.bearer.mode               | string | `""`                            | `oidc` (default) or `auth_service`                                           |
@@ -296,28 +294,6 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 | controlPlane.virusTotal.existingSecret                    | string | `""`                                       | Secret holding the VirusTotal API key                                                  |
 | controlPlane.virusTotal.secretKey                         | string | `"api-key"`                                | Key within the VirusTotal Secret                                                       |
 
-### Guardian Console
-
-| Key                            | Type   | Default                              | Description                                            |
-| ------------------------------ | ------ | ------------------------------------ | ------------------------------------------------------ |
-| guardianUI.enabled             | bool   | `false`                              | Enable the Guardian console                            |
-| guardianUI.replicaCount        | int    | `1`                                  | Number of replicas to deploy                           |
-| guardianUI.image.repository    | string | `"ghcr.io/eqtylab/guardian-console"` | Container image repository                             |
-| guardianUI.image.tag           | string | `""`                                 | Overrides the image tag (default is chart appVersion)  |
-| guardianUI.image.digest        | string | `""`                                 | Immutable sha256 digest; takes precedence over the tag |
-| guardianUI.image.pullPolicy    | string | `"IfNotPresent"`                     | Image pull policy                                      |
-| guardianUI.containerPort       | int    | `80`                                 | Container port                                         |
-| guardianUI.service.enabled     | bool   | `true`                               | Create a Service resource                              |
-| guardianUI.service.type        | string | `"ClusterIP"`                        | Kubernetes service type                                |
-| guardianUI.service.port        | int    | `80`                                 | Service port                                           |
-| guardianUI.runtime.environment | string | `"production"`                       | Runtime environment                                    |
-| guardianUI.runtime.appTitle    | string | `"Gateway Guardian"`                 | Application title                                      |
-| guardianUI.runtime.appHostname | string | `""`                                 | Application hostname                                   |
-| guardianUI.runtime.apiURL      | string | `""`                                 | Control-plane API URL                                  |
-| guardianUI.runtime.basePath    | string | `"/"`                                | Base path                                              |
-| guardianUI.extraEnv            | list   | `[]`                                 | Extra environment variables                            |
-| guardianUI.resources           | object | `{}`                                 | Resource requests and limits                           |
-
 ### Plugin Artifact Storage Backends
 
 These keys exist identically under both `llmGateway.plugins.artifactStorage` and `controlPlane.plugins.artifactStorage`. Replace `<workload>` with either `llmGateway` or `controlPlane`.
@@ -337,32 +313,32 @@ These keys exist identically under both `llmGateway.plugins.artifactStorage` and
 
 ### Ingress
 
-| Key                                           | Type   | Default                                            | Description                                                         |
-| --------------------------------------------- | ------ | -------------------------------------------------- | ------------------------------------------------------------------- |
-| ingress.enabled                               | bool   | `false`                                            | Enable ingress                                                      |
-| ingress.className                             | string | `"haproxy"`                                        | Ingress class name                                                  |
-| ingress.annotations                           | object | `{}`                                               | Annotations applied to both Ingress resources                       |
-| ingress.llmGatewayAnnotations                 | object | `{}`                                               | Annotations applied to the gateway Ingress only                     |
-| ingress.controlPlaneAnnotations               | object | `{}`                                               | Annotations applied to the control-plane Ingress only               |
-| ingress.controlPlanePath                      | string | `"/"`                                              | Control-plane path; the console is only routed when this is not `/` |
-| ingress.hosts.llmGateway                      | string | `"gateway.example.com"`                            | LLM gateway host                                                    |
-| ingress.hosts.controlPlane                    | string | `"control.example.com"`                            | Control-plane host                                                  |
-| ingress.tls.enabled                           | bool   | `true`                                             | Enable TLS                                                          |
-| ingress.tls.llmGatewaySecretName              | string | `""`                                               | Defaults to `{fullname}-llm-gateway-tls`                            |
-| ingress.tls.controlPlaneSecretName            | string | `""`                                               | Defaults to `{fullname}-control-plane-tls`                          |
-| ingress.certManager.enabled                   | bool   | `true`                                             | Add the cert-manager cluster-issuer annotation                      |
-| ingress.certManager.clusterIssuer             | string | `""`                                               | ClusterIssuer name                                                  |
-| ingress.certManager.createClusterIssuer       | bool   | `false`                                            | Create a cluster-scoped ClusterIssuer                               |
-| ingress.certManager.acme.email                | string | `""`                                               | ACME registration email                                             |
-| ingress.certManager.acme.server               | string | `"https://acme-v02.api.letsencrypt.org/directory"` | ACME directory server                                               |
-| ingress.certManager.acme.privateKeySecretName | string | `""`                                               | Defaults to `{fullname}-acme-account-key`                           |
-| ingress.certManager.acme.solver               | string | `"dns01"`                                          | ACME solver (`dns01` or `http01`)                                   |
-| ingress.certManager.acme.http01.ingressClass  | string | `""`                                               | HTTP-01 solver ingress class                                        |
-| ingress.certManager.acme.dns01                | object | `{}`                                               | DNS-01 solver configuration, passed through verbatim                |
+| Key                                           | Type   | Default                                            | Description                                           |
+| --------------------------------------------- | ------ | -------------------------------------------------- | ----------------------------------------------------- |
+| ingress.enabled                               | bool   | `false`                                            | Enable ingress                                        |
+| ingress.className                             | string | `"haproxy"`                                        | Ingress class name                                    |
+| ingress.annotations                           | object | `{}`                                               | Annotations applied to both Ingress resources         |
+| ingress.llmGatewayAnnotations                 | object | `{}`                                               | Annotations applied to the gateway Ingress only       |
+| ingress.controlPlaneAnnotations               | object | `{}`                                               | Annotations applied to the control-plane Ingress only |
+| ingress.controlPlanePath                      | string | `"/"`                                              | Control-plane path                                    |
+| ingress.hosts.llmGateway                      | string | `"gateway.example.com"`                            | LLM gateway host                                      |
+| ingress.hosts.controlPlane                    | string | `"control.example.com"`                            | Control-plane host                                    |
+| ingress.tls.enabled                           | bool   | `true`                                             | Enable TLS                                            |
+| ingress.tls.llmGatewaySecretName              | string | `""`                                               | Defaults to `{fullname}-llm-gateway-tls`              |
+| ingress.tls.controlPlaneSecretName            | string | `""`                                               | Defaults to `{fullname}-control-plane-tls`            |
+| ingress.certManager.enabled                   | bool   | `true`                                             | Add the cert-manager cluster-issuer annotation        |
+| ingress.certManager.clusterIssuer             | string | `""`                                               | ClusterIssuer name                                    |
+| ingress.certManager.createClusterIssuer       | bool   | `false`                                            | Create a cluster-scoped ClusterIssuer                 |
+| ingress.certManager.acme.email                | string | `""`                                               | ACME registration email                               |
+| ingress.certManager.acme.server               | string | `"https://acme-v02.api.letsencrypt.org/directory"` | ACME directory server                                 |
+| ingress.certManager.acme.privateKeySecretName | string | `""`                                               | Defaults to `{fullname}-acme-account-key`             |
+| ingress.certManager.acme.solver               | string | `"dns01"`                                          | ACME solver (`dns01` or `http01`)                     |
+| ingress.certManager.acme.http01.ingressClass  | string | `""`                                               | HTTP-01 solver ingress class                          |
+| ingress.certManager.acme.dns01                | object | `{}`                                               | DNS-01 solver configuration, passed through verbatim  |
 
 ### Service Account
 
-Each workload owns its own service account. Replace `<workload>` with `llmGateway`, `controlPlane`, or `guardianUI`.
+Each workload owns its own service account. Replace `<workload>` with either `llmGateway` or `controlPlane`.
 
 | Key                                     | Type   | Default | Description                                                                  |
 | --------------------------------------- | ------ | ------- | ---------------------------------------------------------------------------- |
@@ -382,14 +358,12 @@ Applies to `llmGateway` and `controlPlane` unless noted. Replace `<workload>` wi
 | \<workload\>.podSecurityContext                   | object | `{"runAsNonRoot":true}` | Security context for the pod                                                            |
 | \<workload\>.securityContext                      | object | see values.yaml         | Container security context; drops all capabilities and uses a read-only root filesystem |
 | controlPlane.waitForRegistryViews.securityContext | object | see values.yaml         | Init container security context, pinned to UID 999                                      |
-| guardianUI.podSecurityContext                     | object | `{}`                    | Console pod security context                                                            |
-| guardianUI.securityContext                        | object | see values.yaml         | Console container security context; retains `NET_BIND_SERVICE` for port 80              |
 
 Both workloads carry a `checksum/secrets` pod annotation, so changing a chart-managed Secret rolls the pods that read it.
 
 ### Resources
 
-These keys exist identically under `llmGateway`, `controlPlane`, and `guardianUI`. Replace `<workload>` with one of them.
+These keys exist identically under `llmGateway` and `controlPlane`. Replace `<workload>` with either key.
 
 | Key                                                        | Type   | Default | Description                          |
 | ---------------------------------------------------------- | ------ | ------- | ------------------------------------ |
@@ -507,6 +481,30 @@ When `llmGateway.registration.enabled=true`, `llm-gateway` reads `registrationTo
 
 API-key enrollment (`viper did register` with `GUARDIAN_API_KEY`) is a separate path. Set `llmGateway.authServiceBaseURL` to the auth-service that minted the key (for example the in-cluster Studio auth-service). Leaving it empty keeps that path disabled and the gateway returns `404 registration_unavailable`.
 
+## Control-Plane Google Login
+
+Google login is optional and gives the control plane its own browser session. Governance Studio does not use it; Studio calls the control plane with auth-service bearer tokens.
+
+To enable it:
+
+1. Create a Google OAuth client of type `Web application` with the redirect URI `https://<ingress.hosts.controlPlane><controlPlane.apiBasePath>/v1/auth/callback/google`.
+2. Add `stateSecret` (for example `openssl rand -base64 48`), `googleClientID`, and `googleClientSecret` to the auth Secret, or set the matching inline values.
+3. Set the Google values:
+
+```yaml
+controlPlane:
+  auth:
+    enabled: true
+    allowedEmailDomains:
+      - example.com
+    bootstrapAdminEmail: admin@example.com
+    google:
+      enabled: true
+      redirectURL: https://guardian.example.com/api/v1/auth/callback/google
+```
+
+`controlPlane.auth.uiBaseURL` prefixes the post-login redirect target; leave it empty to stay on the control-plane host.
+
 ## Gateway VC Issuer Signer Wiring
 
 When `llmGateway.registration.enabled=true`, the gateway also needs an Ed25519 seed so it can issue registration and renewal verifiable credentials. Prefer a pre-created Kubernetes Secret:
@@ -584,8 +582,6 @@ This chart creates separate Ingress resources:
 
 `control-plane` is publicly exposed when ingress is enabled.
 
-If `guardianUI.enabled=true` and `ingress.controlPlanePath` is not `/`, the chart also routes `https://<controlPlane host>/` to the Guardian console. At the default `controlPlanePath: /` the console has no ingress route, because the control-plane API already occupies the host root.
-
 When `ingress.certManager.enabled=true`, ingresses include the `cert-manager.io/cluster-issuer` annotation. If `ingress.certManager.createClusterIssuer=true`, this chart also creates a `ClusterIssuer` configured for ACME validation using either DNS-01 or HTTP-01.
 
 For GKE with Cloud DNS and DNS-01, configure:
@@ -638,7 +634,6 @@ This chart keeps args and env as the default wiring. To use TOML files in-cluste
 
 | Guide                               | Covers                                                      |
 | ----------------------------------- | ----------------------------------------------------------- |
-| `docs/google-workspace-sso.md`      | Google Workspace SSO setup for the control plane            |
 | `docs/plugin-runtime-bootstrap.md`  | Hook/plugin bootstrap and signer rotation                   |
 | `docs/prometheus-metrics.md`        | Native Prometheus metrics endpoint and scrape configuration |
 | `docs/splunk-hec-log-forwarding.md` | Splunk HEC log forwarding via an OpenTelemetry Collector    |
@@ -688,11 +683,6 @@ kubectl exec -it deployment/guardian-control-plane -n guardian -- curl -s localh
 - Check llm-gateway logs for migration progress and confirm both services share one database
 - Verify the DSN in the database Secret reaches the intended host
 
-**Guardian console not reachable**
-
-- The console is only routed when `ingress.controlPlanePath` is not `/`; set it and `controlPlane.apiBasePath` to a prefix such as `/api`
-- Verify `guardianUI.runtime.apiURL` points at the control-plane API URL
-
 **Agent registration rejected**
 
 - Confirm `llmGateway.registration.enabled=true` and a credential signer seed is present
@@ -717,7 +707,6 @@ kubectl exec -it deployment/guardian-control-plane -n guardian -- curl -s localh
 | --------------------------------------- | ------------- | --------------------------------------------------------- |
 | `GET /health`                           | llm-gateway   | Liveness, readiness, and startup probe target             |
 | `GET {controlPlane.apiBasePath}/health` | control-plane | Liveness and readiness; `/health` when no base path       |
-| `GET /`                                 | console       | Liveness and readiness for the Guardian console           |
 | `GET /metrics`                          | llm-gateway   | Prometheus metrics on a dedicated port (default `:10001`) |
 
 See `docs/prometheus-metrics.md` for enabling and scraping the metrics endpoint.

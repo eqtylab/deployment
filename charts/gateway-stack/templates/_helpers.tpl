@@ -150,13 +150,6 @@ TLS secret names
 {{- end -}}
 
 {{/*
-Guardian console resource name
-*/}}
-{{- define "gateway-stack.uiServiceName" -}}
-{{- printf "%s-ui" (include "gateway-stack.fullname" .) -}}
-{{- end -}}
-
-{{/*
 Checksums of the chart-managed Secrets each workload consumes, so a credential
 change rolls the pods that read it. Secrets supplied through existingSecret are
 rendered empty here and are not tracked; rotate those with your own rollout.
@@ -192,16 +185,6 @@ default
 {{- .Values.controlPlane.serviceAccount.name -}}
 {{- else if .Values.controlPlane.serviceAccount.create -}}
 {{- printf "%s-control-plane" (include "gateway-stack.fullname" .) -}}
-{{- else -}}
-default
-{{- end -}}
-{{- end -}}
-
-{{- define "gateway-stack.guardianUIServiceAccountName" -}}
-{{- if .Values.guardianUI.serviceAccount.name -}}
-{{- .Values.guardianUI.serviceAccount.name -}}
-{{- else if .Values.guardianUI.serviceAccount.create -}}
-{{- include "gateway-stack.uiServiceName" . -}}
 {{- else -}}
 default
 {{- end -}}
