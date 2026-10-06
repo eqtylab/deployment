@@ -79,13 +79,12 @@ which takes precedence over its tag while retaining registry mirror behavior.
 - `llmGateway.registration.credentialSigner.existingSecret` when `llmGateway.registration.enabled=true`
 - `controlPlane.image.repository`
 - `controlPlane.auth.enabled=true`
-- `controlPlane.auth.bearer.enabled=true` (for CLI/device onboarding flows)
+- `controlPlane.auth.bearer.enabled=true` (required whenever auth is enabled; bearer tokens are the only credential)
 - `controlPlane.auth.bearer.issuerURL`
 - `controlPlane.auth.bearer.clientID`
 - One of:
-  - `controlPlane.auth.existingSecret` with a `registrationTokenSecret` key (plus `stateSecret`, `googleClientID`, and `googleClientSecret` when `controlPlane.auth.google.enabled=true`)
-  - inline `controlPlane.auth.registrationTokenSecret` (plus `controlPlane.auth.stateSecret`, `controlPlane.auth.google.clientID`, and `controlPlane.auth.google.clientSecret` when `controlPlane.auth.google.enabled=true`)
-- `controlPlane.auth.google.redirectURL` when `controlPlane.auth.google.enabled=true`
+  - `controlPlane.auth.existingSecret` with a `registrationTokenSecret` key
+  - inline `controlPlane.auth.registrationTokenSecret`
 - `ingress.enabled=true` (plus `haproxyIngress.enabled=true` unless an existing ingress controller serves `ingress.className`)
 - `ingress.hosts.llmGateway`
 - `ingress.hosts.controlPlane`
@@ -231,33 +230,19 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 
 ### Control Plane Authentication
 
-| Key                                         | Type   | Default                         | Description                                                                  |
-| ------------------------------------------- | ------ | ------------------------------- | ---------------------------------------------------------------------------- |
-| controlPlane.auth.enabled                   | bool   | `false`                         | Enable authentication                                                        |
-| controlPlane.auth.existingSecret            | string | `""`                            | Pre-created Secret holding auth material                                     |
-| controlPlane.auth.cookieDomain              | string | `""`                            | Session cookie domain                                                        |
-| controlPlane.auth.cookieSecure              | bool   | `true`                          | Secure session cookies                                                       |
-| controlPlane.auth.allowedEmailDomains       | list   | `[]`                            | Email domains permitted for browser sign-in and bearer tokens                |
-| controlPlane.auth.bootstrapAdminEmail       | string | `""`                            | Account granted admin on first Google sign-in                                |
-| controlPlane.auth.stateSecret               | string | `""`                            | OAuth state secret                                                           |
-| controlPlane.auth.registrationTokenSecret   | string | `"change-me"`                   | Registration token secret; rejected at render time while left at `change-me` |
-| controlPlane.auth.registrationTokenIssuer   | string | `"control-plane"`               | Registration token issuer                                                    |
-| controlPlane.auth.sessionMaxAge             | string | `"12h"`                         | Session maximum age                                                          |
-| controlPlane.auth.sessionIdleTimeout        | string | `"2h"`                          | Session idle timeout                                                         |
-| controlPlane.auth.uiBaseURL                 | string | `""`                            | UI base URL for auth callback redirects                                      |
-| controlPlane.auth.localDevEnabled           | bool   | `false`                         | Route OAuth callbacks to a local dev server; never enable in production      |
-| controlPlane.auth.bearer.enabled            | bool   | `false`                         | Enable bearer token verification                                             |
-| controlPlane.auth.bearer.mode               | string | `""`                            | `oidc` (default) or `auth_service`                                           |
-| controlPlane.auth.bearer.issuerURL          | string | `""`                            | Bearer issuer URL (`oidc` mode)                                              |
-| controlPlane.auth.bearer.clientID           | string | `""`                            | Bearer client ID (`oidc` mode)                                               |
-| controlPlane.auth.bearer.authServiceBaseURL | string | `""`                            | Auth service URL (`auth_service` mode); falls back to the adapter URL        |
-| controlPlane.auth.bearer.scopes             | list   | `["openid","profile","email"]`  | Bearer scopes                                                                |
-| controlPlane.auth.google.enabled            | bool   | `false`                         | Enable Google sign-in                                                        |
-| controlPlane.auth.google.issuerURL          | string | `"https://accounts.google.com"` | Google issuer URL                                                            |
-| controlPlane.auth.google.clientID           | string | `""`                            | Google OAuth client ID                                                       |
-| controlPlane.auth.google.clientSecret       | string | `""`                            | Google OAuth client secret                                                   |
-| controlPlane.auth.google.redirectURL        | string | `""`                            | Google OAuth redirect URL                                                    |
-| controlPlane.auth.google.scopes             | list   | `["openid","profile","email"]`  | Google scopes                                                                |
+| Key                                         | Type   | Default                        | Description                                                                  |
+| ------------------------------------------- | ------ | ------------------------------ | ---------------------------------------------------------------------------- |
+| controlPlane.auth.enabled                   | bool   | `false`                        | Enable authentication                                                        |
+| controlPlane.auth.existingSecret            | string | `""`                           | Pre-created Secret holding auth material                                     |
+| controlPlane.auth.allowedEmailDomains       | list   | `[]`                           | Email domains permitted for bearer tokens                                    |
+| controlPlane.auth.registrationTokenSecret   | string | `"change-me"`                  | Registration token secret; rejected at render time while left at `change-me` |
+| controlPlane.auth.registrationTokenIssuer   | string | `"control-plane"`              | Registration token issuer                                                    |
+| controlPlane.auth.bearer.enabled            | bool   | `false`                        | Enable bearer token verification                                             |
+| controlPlane.auth.bearer.mode               | string | `""`                           | `oidc` (default) or `auth_service`                                           |
+| controlPlane.auth.bearer.issuerURL          | string | `""`                           | Bearer issuer URL (`oidc` mode)                                              |
+| controlPlane.auth.bearer.clientID           | string | `""`                           | Bearer client ID (`oidc` mode)                                               |
+| controlPlane.auth.bearer.authServiceBaseURL | string | `""`                           | Auth service URL (`auth_service` mode); falls back to the adapter URL        |
+| controlPlane.auth.bearer.scopes             | list   | `["openid","profile","email"]` | Bearer scopes                                                                |
 
 ### Control Plane Adapter
 
@@ -472,38 +457,11 @@ When `controlPlane.auth.enabled=true` or `llmGateway.registration.enabled=true`,
 
 Expected secret keys:
 
-- `stateSecret` (required when Google auth is enabled; override via `controlPlane.auth.secretKeys.stateSecret`)
 - `registrationTokenSecret` (override via `controlPlane.auth.secretKeys.registrationTokenSecret`)
-- `googleClientID` (required when Google auth is enabled; override via `controlPlane.auth.secretKeys.googleClientID`)
-- `googleClientSecret` (required when Google auth is enabled; override via `controlPlane.auth.secretKeys.googleClientSecret`)
 
 When `llmGateway.registration.enabled=true`, `llm-gateway` reads `registrationTokenSecret` from this secret as `LLM_GATEWAY_REGISTRATION_TOKEN_SECRET`.
 
 API-key enrollment (`viper did register` with `GUARDIAN_API_KEY`) is a separate path. Set `llmGateway.authServiceBaseURL` to the auth-service that minted the key (for example the in-cluster Studio auth-service). Leaving it empty keeps that path disabled and the gateway returns `404 registration_unavailable`.
-
-## Control-Plane Google Login
-
-Google login is optional and gives the control plane its own browser session. Governance Studio does not use it; Studio calls the control plane with auth-service bearer tokens.
-
-To enable it:
-
-1. Create a Google OAuth client of type `Web application` with the redirect URI `https://<ingress.hosts.controlPlane><controlPlane.apiBasePath>/v1/auth/callback/google`.
-2. Add `stateSecret` (for example `openssl rand -base64 48`), `googleClientID`, and `googleClientSecret` to the auth Secret, or set the matching inline values.
-3. Set the Google values:
-
-```yaml
-controlPlane:
-  auth:
-    enabled: true
-    allowedEmailDomains:
-      - example.com
-    bootstrapAdminEmail: admin@example.com
-    google:
-      enabled: true
-      redirectURL: https://guardian.example.com/api/v1/auth/callback/google
-```
-
-`controlPlane.auth.uiBaseURL` prefixes the post-login redirect target; leave it empty to stay on the control-plane host.
 
 ## Gateway VC Issuer Signer Wiring
 

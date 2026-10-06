@@ -594,35 +594,13 @@ controlPlane:
     # -- Auth Secret Keys
     # @default -- See values below
     secretKeys:
-      # -- State Secret Key
-      # @default -- `stateSecret`
-      stateSecret: stateSecret
       # -- Registration Token Secret Key
       # @default -- `registrationTokenSecret`
       registrationTokenSecret: registrationTokenSecret
-      # -- Google Client ID Key
-      # @default -- `googleClientID`
-      googleClientID: googleClientID
-      # -- Google Client Secret Key
-      # @default -- `googleClientSecret`
-      googleClientSecret: googleClientSecret
-    # -- Session Cookie Domain
-    # @default -- `""`
-    cookieDomain: ""
-    # -- Secure Session Cookies
-    # @default -- `true`
-    cookieSecure: true
     # -- Allowed Email Domains
     # @default -- `[]`
-    # Restricts browser sign-in and bearer tokens to these email domains
+    # Restricts bearer tokens to these email domains
     allowedEmailDomains: []
-    # -- Bootstrap Admin Email
-    # @default -- `""`
-    # Granted admin on first Google sign-in
-    bootstrapAdminEmail: ""
-    # -- OAuth State Secret
-    # @default -- `""` (REQUIRED when google.enabled and existingSecret is unset)
-    stateSecret: ""
     # -- Registration Token Secret
     # @default -- `change-me` (REQUIRED to change when auth or registration is enabled)
     # Rejected at render time while left at "change-me"
@@ -653,45 +631,6 @@ controlPlane:
       # @default -- `""` (falls back to the adapter auth-service URL)
       authServiceBaseURL: ""
       # -- Bearer Scopes
-      # @default -- `["openid", "profile", "email"]`
-      scopes:
-        - openid
-        - profile
-        - email
-    # -- UI Base URL
-    # @default -- `""`
-    # Base URL for auth callback redirects
-    uiBaseURL: ""
-    # -- Local Development Mode
-    # @default -- `false`
-    # Set to true only in dev to route OAuth callbacks through the local Vite
-    # dev server. Never true in production
-    localDevEnabled: false
-    # -- Session Max Age
-    # @default -- `12h`
-    sessionMaxAge: 12h
-    # -- Session Idle Timeout
-    # @default -- `2h`
-    sessionIdleTimeout: 2h
-    # -- Google OIDC Configuration
-    # @default -- See values below
-    google:
-      # -- Enable Google Sign-In
-      # @default -- `false`
-      enabled: false
-      # -- Google Issuer URL
-      # @default -- `https://accounts.google.com`
-      issuerURL: https://accounts.google.com
-      # -- Google Client ID
-      # @default -- `""` (REQUIRED when enabled and existingSecret is unset)
-      clientID: ""
-      # -- Google Client Secret
-      # @default -- `""` (REQUIRED when enabled and existingSecret is unset)
-      clientSecret: ""
-      # -- Google Redirect URL
-      # @default -- `""`
-      redirectURL: ""
-      # -- Google Scopes
       # @default -- `["openid", "profile", "email"]`
       scopes:
         - openid

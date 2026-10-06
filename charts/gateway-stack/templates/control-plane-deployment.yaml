@@ -1,4 +1,7 @@
 {{- if .Values.enabled }}
+{{- if and .Values.controlPlane.auth.enabled (not .Values.controlPlane.auth.bearer.enabled) }}
+{{- fail "controlPlane.auth.bearer.enabled must be true when controlPlane.auth.enabled=true" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -97,29 +100,16 @@ spec:
             - -db-dsn=$(DB_DSN)
             - -cors-allow-all={{ ternary "true" "false" .Values.controlPlane.corsAllowAll }}
             - -auth-enabled={{ ternary "true" "false" .Values.controlPlane.auth.enabled }}
-            - -auth-cookie-secure={{ ternary "true" "false" .Values.controlPlane.auth.cookieSecure }}
             - {{ printf "-auth-registration-token-issuer=%s" .Values.controlPlane.auth.registrationTokenIssuer | quote }}
-            - {{ printf "-auth-session-max-age=%s" .Values.controlPlane.auth.sessionMaxAge | quote }}
-            - {{ printf "-auth-session-idle-timeout=%s" .Values.controlPlane.auth.sessionIdleTimeout | quote }}
-            - -auth-google-enabled={{ ternary "true" "false" .Values.controlPlane.auth.google.enabled }}
             - -auth-bearer-enabled={{ ternary "true" "false" .Values.controlPlane.auth.bearer.enabled }}
             {{- if .Values.controlPlane.apiBasePath }}
             - -api-base-path={{ .Values.controlPlane.apiBasePath }}
-            {{- end }}
-            {{- if .Values.controlPlane.auth.cookieDomain }}
-            - {{ printf "-auth-cookie-domain=%s" .Values.controlPlane.auth.cookieDomain | quote }}
-            {{- end }}
-            {{- if .Values.controlPlane.auth.bootstrapAdminEmail }}
-            - {{ printf "-auth-bootstrap-admin-email=%s" .Values.controlPlane.auth.bootstrapAdminEmail | quote }}
             {{- end }}
             {{- if .Values.controlPlane.auth.allowedEmailDomains }}
             - {{ printf "-auth-allowed-email-domains=%s" (join "," .Values.controlPlane.auth.allowedEmailDomains) | quote }}
             {{- end }}
             {{- if .Values.controlPlane.auth.enabled }}
             - -auth-registration-token-secret=$(AUTH_REGISTRATION_TOKEN_SECRET)
-            {{- if .Values.controlPlane.auth.google.enabled }}
-            - -auth-state-secret=$(AUTH_STATE_SECRET)
-            {{- end }}
             {{- end }}
             {{- if .Values.controlPlane.auth.bearer.mode }}
             - {{ printf "-auth-bearer-mode=%s" .Values.controlPlane.auth.bearer.mode | quote }}
@@ -135,25 +125,6 @@ spec:
             {{- end }}
             {{- if .Values.controlPlane.auth.bearer.scopes }}
             - {{ printf "-auth-bearer-scopes=%s" (join "," .Values.controlPlane.auth.bearer.scopes) | quote }}
-            {{- end }}
-            {{- if .Values.controlPlane.auth.uiBaseURL }}
-            - {{ printf "-auth-ui-base-url=%s" .Values.controlPlane.auth.uiBaseURL | quote }}
-            {{- end }}
-            {{- if .Values.controlPlane.auth.localDevEnabled }}
-            - "-auth-local-dev-enabled=true"
-            {{- end }}
-            {{- if .Values.controlPlane.auth.google.issuerURL }}
-            - {{ printf "-auth-google-issuer-url=%s" .Values.controlPlane.auth.google.issuerURL | quote }}
-            {{- end }}
-            {{- if and .Values.controlPlane.auth.enabled .Values.controlPlane.auth.google.enabled }}
-            - -auth-google-client-id=$(AUTH_GOOGLE_CLIENT_ID)
-            - -auth-google-client-secret=$(AUTH_GOOGLE_CLIENT_SECRET)
-            {{- end }}
-            {{- if .Values.controlPlane.auth.google.redirectURL }}
-            - {{ printf "-auth-google-redirect-url=%s" .Values.controlPlane.auth.google.redirectURL | quote }}
-            {{- end }}
-            {{- if .Values.controlPlane.auth.google.scopes }}
-            - {{ printf "-auth-google-scopes=%s" (join "," .Values.controlPlane.auth.google.scopes) | quote }}
             {{- end }}
             {{- $adapter := .Values.controlPlane.adapter }}
             {{- if $adapter.enabled }}
@@ -226,23 +197,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
                   key: {{ .Values.controlPlane.auth.secretKeys.registrationTokenSecret }}
-            {{- if .Values.controlPlane.auth.google.enabled }}
-            - name: AUTH_STATE_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
-                  key: {{ .Values.controlPlane.auth.secretKeys.stateSecret }}
-            - name: AUTH_GOOGLE_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
-                  key: {{ .Values.controlPlane.auth.secretKeys.googleClientID }}
-            - name: AUTH_GOOGLE_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
-                  key: {{ .Values.controlPlane.auth.secretKeys.googleClientSecret }}
-            {{- end }}
             {{- end }}
             {{- if and .Values.controlPlane.virusTotal.enabled .Values.controlPlane.virusTotal.existingSecret }}
             - name: CONTROL_PLANE_VT_API_KEY

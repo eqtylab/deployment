@@ -60,8 +60,6 @@ controlPlane:
   corsAllowAll: true
   auth:
     enabled: false
-    google:
-      enabled: false
     bearer:
       enabled: false
   plugins:

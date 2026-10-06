@@ -268,8 +268,6 @@ gateway-stack:
     auth:
       enabled: true
       existingSecret: "guardian-control-plane-auth"
-      google:
-        enabled: false
       bearer:
         enabled: true
         mode: "auth_service"
