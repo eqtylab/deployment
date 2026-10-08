@@ -419,5 +419,5 @@ kubectl exec -it deployment/governance-studio -n governance -- curl -s localhost
 For issues and questions:
 
 - Email: support@eqtylab.io
-- Documentation: https://docs.eqtylab.io
+- Documentation: https://guardian.docs.eqtylab.io
 - GitHub: https://github.com/eqtylab/guardian-infrastructure

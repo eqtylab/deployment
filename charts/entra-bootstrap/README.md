@@ -341,5 +341,5 @@ kubectl logs -n governance -l app.kubernetes.io/name=entra-bootstrap
 For issues and questions:
 
 - Email: support@eqtylab.io
-- Documentation: https://docs.eqtylab.io
+- Documentation: https://guardian.docs.eqtylab.io
 - GitHub: https://github.com/eqtylab/guardian-infrastructure

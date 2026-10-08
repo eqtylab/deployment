@@ -95,19 +95,19 @@ and pod 2 after pod 1. Complete the operator steps below in order.
 
 ## Values
 
-| Key | Type | Default | Description |
-| --- | --- | --- | --- |
-| `openbao.fullnameOverride` | string | `openbao-custody` | Stable default; override updates resources, Raft joins and NOTES; also update TLS SANs and Auth address |
-| `openbao.global.tlsDisable` | bool | `false` | TLS on API and cluster listeners |
-| `openbao.server.image.tag` | string | `2.6.2` | OpenBao version, pinned |
-| `openbao.server.ha.replicas` | int | `3` | Raft voters (DECISION: failure domains) |
-| `openbao.server.ha.raft.config` | string | HCL | Listener TLS files, Raft `retry_join`, Kubernetes service registration, declarative file audit device |
-| `openbao.server.dataStorage` / `openbao.server.auditStorage` | object | Each: `enabled: true`, `size: 10Gi`, `storageClass: null`, `accessMode: ReadWriteOnce` | Persistent data and audit volumes (DECISION: class, size) |
-| `openbao.server.persistentVolumeClaimRetentionPolicy` | object | `Retain`/`Retain` | Volumes survive uninstall and scale-down |
-| `openbao.server.authDelegator.enabled` | bool | `true` | TokenReview for the Kubernetes auth method |
-| `openbao.server.volumes` / `openbao.server.volumeMounts` | list | `openbao-custody-tls` Secret | TLS material under `/openbao/userconfig/openbao-custody-tls` (also mounted in the `helm test` pod) |
-| `openbao.server.networkPolicy.enabled` | bool | `false` | Default ingress allows all namespaces on 8200/8201; see restrictive example |
-| `openbao.injector.enabled` / `openbao.csi.enabled` / `openbao.ui.enabled` | bool | `false` | Not used by Guardian |
+| Key                                                                       | Type   | Default                                                                                | Description                                                                                             |
+| ------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `openbao.fullnameOverride`                                                | string | `openbao-custody`                                                                      | Stable default; override updates resources, Raft joins and NOTES; also update TLS SANs and Auth address |
+| `openbao.global.tlsDisable`                                               | bool   | `false`                                                                                | TLS on API and cluster listeners                                                                        |
+| `openbao.server.image.tag`                                                | string | `2.6.2`                                                                                | OpenBao version, pinned                                                                                 |
+| `openbao.server.ha.replicas`                                              | int    | `3`                                                                                    | Raft voters (DECISION: failure domains)                                                                 |
+| `openbao.server.ha.raft.config`                                           | string | HCL                                                                                    | Listener TLS files, Raft `retry_join`, Kubernetes service registration, declarative file audit device   |
+| `openbao.server.dataStorage` / `openbao.server.auditStorage`              | object | Each: `enabled: true`, `size: 10Gi`, `storageClass: null`, `accessMode: ReadWriteOnce` | Persistent data and audit volumes (DECISION: class, size)                                               |
+| `openbao.server.persistentVolumeClaimRetentionPolicy`                     | object | `Retain`/`Retain`                                                                      | Volumes survive uninstall and scale-down                                                                |
+| `openbao.server.authDelegator.enabled`                                    | bool   | `true`                                                                                 | TokenReview for the Kubernetes auth method                                                              |
+| `openbao.server.volumes` / `openbao.server.volumeMounts`                  | list   | `openbao-custody-tls` Secret                                                           | TLS material under `/openbao/userconfig/openbao-custody-tls` (also mounted in the `helm test` pod)      |
+| `openbao.server.networkPolicy.enabled`                                    | bool   | `false`                                                                                | Default ingress allows all namespaces on 8200/8201; see restrictive example                             |
+| `openbao.injector.enabled` / `openbao.csi.enabled` / `openbao.ui.enabled` | bool   | `false`                                                                                | Not used by Guardian                                                                                    |
 
 Any upstream value can be set under `openbao.`; see
 `helm show values openbao/openbao --version 0.29.5`.
@@ -365,7 +365,7 @@ active node; the headless internal Service is for peer discovery.
 ## Support
 
 - **Email**: support@eqtylab.io
-- **Documentation**: https://docs.eqtylab.io
+- **Documentation**: https://guardian.docs.eqtylab.io
 - **GitHub Issues**: https://github.com/eqtylab/guardian-infrastructure/issues
 - **Local checks**: `just test-openbao-custody` (Helm, Python 3 and PyYAML);
   validates templates, NOTES, name overrides and package contents without a cluster.

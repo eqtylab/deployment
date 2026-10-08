@@ -379,5 +379,5 @@ Changing it does not require a platform version bump. See the
 ## Support
 
 - **Email**: support@eqtylab.io
-- **Documentation**: https://docs.eqtylab.io
+- **Documentation**: https://guardian.docs.eqtylab.io
 - **GitHub Issues**: https://github.com/eqtylab/guardian-infrastructure/issues

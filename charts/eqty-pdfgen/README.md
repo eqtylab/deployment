@@ -197,15 +197,15 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Application Configuration
 
-| Key                          | Type   | Default                                     | Description                                                                                                       |
-| ---------------------------- | ------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| config.host                  | string | `"0.0.0.0"`                                 | Bind address for the HTTP server                                                                                  |
-| config.port                  | int    | `8080`                                      | Container port for the HTTP server (defaults to service.port when unset)                                          |
-| config.tmpDir                | string | `"tmp"`                                     | Writable render directory under the app working directory                                                         |
-| config.typstFontPaths        | string | `"/usr/share/fonts"`                        | Font search paths for the Typst renderer                                                                          |
-| config.typstPackageCachePath | string | `"/opt/app-root/src/.cache/typst/packages"` | Typst package cache directory                                                                                     |
-| config.timestampUrl          | string | `"http://timestamp.digicert.com"`           | Timestamp authority URL; `""` omits the timestamp token with a compatible PDFgen image (see [prerequisites](#prerequisites)) |
-| config.signingUrl            | string | `""`                                        | Signing endpoint override (auto-generated as `http://{Release.Name}-auth-service:8080/api/v1/protected/sign-pdf`) |
+| Key                          | Type   | Default                                     | Description                                                                                                                                                   |
+| ---------------------------- | ------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| config.host                  | string | `"0.0.0.0"`                                 | Bind address for the HTTP server                                                                                                                              |
+| config.port                  | int    | `8080`                                      | Container port for the HTTP server (defaults to service.port when unset)                                                                                      |
+| config.tmpDir                | string | `"tmp"`                                     | Writable render directory under the app working directory                                                                                                     |
+| config.typstFontPaths        | string | `"/usr/share/fonts"`                        | Font search paths for the Typst renderer                                                                                                                      |
+| config.typstPackageCachePath | string | `"/opt/app-root/src/.cache/typst/packages"` | Typst package cache directory                                                                                                                                 |
+| config.timestampUrl          | string | `"http://timestamp.digicert.com"`           | Timestamp authority URL; `""` omits the timestamp token with a compatible PDFgen image (see [prerequisites](#prerequisites))                                  |
+| config.signingUrl            | string | `""`                                        | Signing endpoint override (auto-generated as `http://{Release.Name}-auth-service:8080/api/v1/protected/sign-pdf`)                                             |
 | config.signingBound          | bool   | `false`                                     | Version-bound signing via `<signingUrl>/certificate` (`EQTY_SIGNING_BOUND`); requires compatible Auth and PDFgen images (see [prerequisites](#prerequisites)) |
 
 ### Advanced: Network Policy Configuration
@@ -322,5 +322,5 @@ http://{service}:8080/docs
 For issues and questions:
 
 - Email: support@eqtylab.io
-- Documentation: https://docs.eqtylab.io
+- Documentation: https://guardian.docs.eqtylab.io
 - GitHub: https://github.com/eqtylab/guardian-infrastructure

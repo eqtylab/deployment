@@ -477,10 +477,10 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 **Local HTTPS artifact endpoint CA (optional, any storage provider):**
 
-| Key                          | Type   | Default    | Description                                                                          |
-| ---------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------ |
+| Key                          | Type   | Default    | Description                                                                         |
+| ---------------------------- | ------ | ---------- | ----------------------------------------------------------------------------------- |
 | localStorageCA.configMapName | string | `""`       | ConfigMap holding a public PEM CA for a local HTTPS artifact endpoint (never a key) |
-| localStorageCA.key           | string | `"ca.pem"` | ConfigMap key containing the PEM CA                                                  |
+| localStorageCA.key           | string | `"ca.pem"` | ConfigMap key containing the PEM CA                                                 |
 
 The CA is mounted read-only and exposed through `SSL_CERT_DIR`. The image keeps
 its own `SSL_CERT_FILE` public bundle and Go loads both, so public CAs stay
@@ -708,5 +708,5 @@ https://{domain}/governanceService/swagger/index.html
 For issues and questions:
 
 - Email: support@eqtylab.io
-- Documentation: https://docs.eqtylab.io
+- Documentation: https://guardian.docs.eqtylab.io
 - GitHub: https://github.com/eqtylab/guardian-infrastructure

@@ -1288,7 +1288,7 @@ Each backend service exposes Swagger/OpenAPI documentation:
 For issues and questions:
 
 - **Email**: support@eqtylab.io
-- **Documentation**: https://docs.eqtylab.io
+- **Documentation**: https://guardian.docs.eqtylab.io
 - **GitHub Issues**: https://github.com/eqtylab/guardian-infrastructure/issues
 - **Security Issues**: security@eqtylab.io
 
