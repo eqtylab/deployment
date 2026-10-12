@@ -53,8 +53,8 @@ spec:
                 echo "Updated organization to use Auth0 IDP"
               else
                 # Create new organization
-                psql -c "INSERT INTO organization (name, description, display_name, idp_provider, settings, created_at, updated_at) \
-                      VALUES ('${ORG_NAME}', '${ORG_NAME}', '{{ .Values.auth0.displayName | default .Values.auth0.organizationName }}', 'auth0', '{}', NOW(), NOW());"
+                psql -c "INSERT INTO organization (name, description, display_name, idp_provider, created_at, updated_at) \
+                      VALUES ('${ORG_NAME}', '${ORG_NAME}', '{{ .Values.auth0.displayName | default .Values.auth0.organizationName }}', 'auth0', NOW(), NOW());"
                 echo "Created organization '${ORG_NAME}'"
               fi
 

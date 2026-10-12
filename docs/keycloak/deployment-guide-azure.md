@@ -1467,10 +1467,10 @@ If you enabled `keycloak.createOrganization` in your values file (see [Section 9
 
 ```bash
 # Check the hook job status
-kubectl get jobs -n $NS -l "app.kubernetes.io/component=keycloak-setup"
+kubectl get jobs -n $NS -l "app.kubernetes.io/component=keycloak-org-setup"
 
 # View hook job logs if needed
-kubectl logs -n $NS -l "app.kubernetes.io/component=keycloak-setup" --tail=50
+kubectl logs -n $NS -l "app.kubernetes.io/component=keycloak-org-setup" --tail=50
 ```
 
 The hook:

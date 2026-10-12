@@ -167,8 +167,8 @@ create_organization() {
     echo "Updated organization to use Entra IDP"
   else
     # Create new organization
-    run_psql -c "INSERT INTO organization (name, description, display_name, idp_provider, settings, created_at, updated_at) \
-          VALUES ('$ORG_NAME', '$ORG_NAME', '$DISPLAY_NAME', 'entra', '{}', NOW(), NOW());"
+    run_psql -c "INSERT INTO organization (name, description, display_name, idp_provider, created_at, updated_at) \
+          VALUES ('$ORG_NAME', '$ORG_NAME', '$DISPLAY_NAME', 'entra', NOW(), NOW());"
     print_info "Created organization '$ORG_NAME'"
   fi
 
