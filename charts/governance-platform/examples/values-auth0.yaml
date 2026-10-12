@@ -268,6 +268,22 @@ postgresql:
         memory: 2Gi
 
 # =============================================================================
+# Auth0 Post-Install Hook
+# =============================================================================
+# Seeds the governance database with the organization and platform-admin user
+# Runs as a Helm post-install/post-upgrade hook after migrations complete
+# The admin user is looked up via the Auth0 Management API using the email below
+# ------------------------------------------------------------------------------
+auth0:
+  createOrganization: true
+  organizationName: "governance"
+  displayName: "Governance Platform"
+  createPlatformAdmin: true
+  platformAdminEmail: "admin@your-domain.com" # Must exist in your Auth0 tenant
+  domain: "your-tenant.us.auth0.com"
+
+
+# =============================================================================
 # SECRET CREATION COMMANDS
 # =============================================================================
 # Run these commands before deploying (or use secrets-sample.yaml instead):

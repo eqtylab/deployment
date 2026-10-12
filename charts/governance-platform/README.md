@@ -343,10 +343,11 @@ These global values are automatically inherited by all subcharts:
 | global.utilityImages.busybox         | string | `""`                                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
 
 `global.utilityImages` deliberately covers only the three runtime dependency wait
-containers. The post-install hook Jobs and `keycloak-bootstrap` keep their own
-pinned `postgres:17-alpine` and `busybox:1.36` images, which
-`imageRegistryOverride` does not reach either; the kind profile disables those
-hooks rather than pinning them.
+containers, and `imageRegistryOverride` does not reach the hook images either.
+The IdP post-install hooks default to `postgres:17-alpine` and take another image
+from `idpSetupImage` (see [IdP Post-Install Hook Image](#idp-post-install-hook-image));
+`keycloak-bootstrap` keeps its own pinned `busybox:1.36`. The kind profile
+disables those hooks rather than pinning them.
 
 ### Global Secret Configuration
 
@@ -494,33 +495,46 @@ Optional post-install/post-upgrade hook that seeds the governance database with 
 | auth0.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in the Auth0 tenant                    |
 | auth0.domain              | string | `""`                  | **Required** when `createPlatformAdmin` is true. Auth0 tenant domain (e.g., `tenant.us.auth0.com`) |
 
-The hook authenticates against the Auth0 Management API using `mgmt-client-id` / `mgmt-client-secret` from the `platform-auth0` secret and resolves the admin's `user_id` via `/api/v2/users-by-email`.
+The hook authenticates against the Auth0 Management API using the `global.secrets.auth.auth0` secret and its `mgmtClientId` / `mgmtClientSecret` keys (`mgmt-client-id` / `mgmt-client-secret` by default) and resolves the admin's `user_id` via `/api/v2/users-by-email`.
 
 ### Entra ID Post-Install Hook
 
 Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user for Microsoft Entra ID deployments:
 
-| Key                       | Type   | Default               | Description                                                                 |
-| ------------------------- | ------ | --------------------- | --------------------------------------------------------------------------- |
-| entra.createOrganization  | bool   | `false`               | Enable the post-install hook to create the org                              |
-| entra.organizationName    | string | `"governance"`        | Organization identifier in the database                                     |
-| entra.displayName         | string | `"Governance Studio"` | Display name for the organization                                           |
-| entra.createPlatformAdmin | bool   | `false`               | Also create the platform-admin user and membership                          |
-| entra.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in Entra tenant |
-| entra.tenantId            | string | `""`                  | Microsoft Entra tenant ID (required for Graph API user lookup)              |
+| Key                       | Type   | Default               | Description                                                                         |
+| ------------------------- | ------ | --------------------- | ----------------------------------------------------------------------------------- |
+| entra.createOrganization  | bool   | `false`               | Enable the post-install hook to create the org                                      |
+| entra.organizationName    | string | `"governance"`        | Organization identifier in the database                                             |
+| entra.displayName         | string | `"Governance Studio"` | Display name for the organization                                                   |
+| entra.createPlatformAdmin | bool   | `false`               | Also create the platform-admin user and membership                                  |
+| entra.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in Entra tenant         |
+| entra.tenantId            | string | `""`                  | Tenant ID for the Graph API lookup (empty reads the Entra secret's `tenant-id` key) |
 
 ### Keycloak Post-Install Hook
 
 Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user:
 
-| Key                          | Type   | Default                           | Description                                        |
-| ---------------------------- | ------ | --------------------------------- | -------------------------------------------------- |
-| keycloak.createOrganization  | bool   | `false`                           | Enable the post-install hook to create the org     |
-| keycloak.realmName           | string | `"governance"`                    | Keycloak realm name (used as org name in database) |
-| keycloak.displayName         | string | `"Governance Studio"`             | Display name for the organization                  |
-| keycloak.createPlatformAdmin | bool   | `false`                           | Also create the platform-admin user and membership |
-| keycloak.platformAdminEmail  | string | `""`                              | Admin email (defaults to admin@<global.domain>)    |
-| keycloak.url                 | string | `"http://keycloak:8080/keycloak"` | Internal Keycloak URL for API lookups              |
+| Key                               | Type   | Default                           | Description                                                                                        |
+| --------------------------------- | ------ | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| keycloak.createOrganization       | bool   | `false`                           | Enable the post-install hook to create the org                                                     |
+| keycloak.realmName                | string | `"governance"`                    | Keycloak realm name (used as org name in database)                                                 |
+| keycloak.displayName              | string | `"Governance Studio"`             | Display name for the organization                                                                  |
+| keycloak.createPlatformAdmin      | bool   | `false`                           | Also create the platform-admin user and membership                                                 |
+| keycloak.platformAdminEmail       | string | `""`                              | Admin email; must match keycloak-bootstrap `users.admin.email` (defaults to admin@<global.domain>) |
+| keycloak.url                      | string | `"http://keycloak:8080/keycloak"` | Keycloak URL for API lookups; set it for an external or cross-namespace Keycloak                   |
+| keycloak.adminUsername            | string | `"admin"`                         | Master realm admin; must match keycloak-bootstrap `keycloak.adminUsername`                         |
+| keycloak.adminPasswordSecret.name | string | `"keycloak-admin"`                | Secret with the admin password; must match keycloak-bootstrap `keycloak.adminPasswordSecret`       |
+| keycloak.adminPasswordSecret.key  | string | `"password"`                      | Key of the admin password in that secret                                                           |
+
+### IdP Post-Install Hook Image
+
+Shared by the Auth0, Entra ID and Keycloak post-install hooks:
+
+| Key           | Type   | Default | Description                                                                                                  |
+| ------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------ |
+| idpSetupImage | string | `""`    | Complete image reference for the IdP setup Jobs and their init containers (empty keeps `postgres:17-alpine`) |
+
+The image must provide `psql` and `pg_isready`. With `createPlatformAdmin` the hooks also need `curl` and `jq`, and install them with `apk` at runtime when the image lacks them, so air-gapped clusters need an image that includes both. `global.imageRegistryOverride` and `global.imageRepositoryPrefixOverride` do not apply to this value; give the full reference, including your registry.
 
 ## Configuration Inheritance
 
@@ -890,7 +904,7 @@ auth-service:
 Microsoft Entra ID requires an app registration with OIDC credentials and optional Microsoft Graph API access:
 
 1. **OIDC App Registration** - For token validation (`entra.values.clientId/clientSecret/tenantId`)
-2. **Graph API App Registration** (Optional) - For user management via Microsoft Graph (`entra.values.graphClientId/graphClientSecret`)
+2. **Graph API App Registration** - For user lookups via Microsoft Graph (`entra.values.graphClientId/graphClientSecret`). Required when `entra.createPlatformAdmin` is true; otherwise optional
 
 ```yaml
 global:
@@ -943,13 +957,13 @@ entra:
   createOrganization: true # Creates the organization record in the database
   organizationName: "governance"
   displayName: "Governance Studio"
-  tenantId: "your-tenant-id" # Required for Graph API user lookup
+  tenantId: "your-tenant-id" # Graph API lookup; empty reads tenant-id from the Entra secret
 
   createPlatformAdmin: true # Also create the platform-admin user
   platformAdminEmail: "admin@yourorg.onmicrosoft.com" # Must exist in your Entra tenant
 ```
 
-The hook authenticates to Microsoft Graph API using credentials from the `platform-entra` secret to look up the admin user's Entra Object ID. It waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
+The hook authenticates to Microsoft Graph API using the `graphClientId` / `graphClientSecret` keys of the `global.secrets.auth.entra` secret to look up the admin user's Entra Object ID. It waits for database migrations to complete and runs on every install and upgrade. Re-runs never create duplicates; they point the organization and the platform admin's user record at the IdP and make the admin an active `organization_owner` again (other organization roles are kept; project roles and project assignments in the organization are removed), but leave an existing organization's display name unchanged.
 
 > **Note:** Unlike Keycloak, the `platformAdminEmail` must be explicitly set and must be an email that exists in your Microsoft Entra tenant (e.g., `user@yourorg.onmicrosoft.com` or `user@yourverifieddomain.com`).
 
@@ -998,10 +1012,11 @@ keycloak:
   displayName: "Governance Studio"
 
   createPlatformAdmin: true # Also create the platform-admin user
-  platformAdminEmail: "" # Defaults to admin@<global.domain>, looked up in Keycloak automatically
+  platformAdminEmail: "admin@your-domain.com" # Must match keycloak-bootstrap users.admin.email
+  # url: "https://keycloak.your-domain.com" # Only for an external or cross-namespace Keycloak
 ```
 
-The hook waits for database migrations to complete before running and is idempotent (safe to re-run on upgrades).
+The hook looks up the admin in Keycloak by email, using the `keycloak.adminUsername` and `keycloak.adminPasswordSecret` credentials. It waits for database migrations to complete and runs on every install and upgrade. Re-runs never create duplicates; they point the organization and the platform admin's user record at the IdP and make the admin an active `organization_owner` again (other organization roles are kept; project roles and project assignments in the organization are removed), but leave an existing organization's display name unchanged.
 
 ## Environment-Specific Configurations
 

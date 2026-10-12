@@ -234,7 +234,7 @@ show_summary() {
   echo ""
   echo "  4. Update governance-studio Helm values with the frontend SPA client ID and tenant domain"
   echo "  5. Deploy the governance platform with Auth0 values"
-  echo "  6. Run the post-install setup script to create the organization and admin user"
+  echo "  6. Enable auth0.createOrganization (and createPlatformAdmin) in the platform values so the Helm hook creates the organization and admin user, or run scripts/auth0/post-install-auth0-setup.sh after deploying"
 
   echo ""
   print_info "Bootstrap process completed!"

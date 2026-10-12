@@ -286,7 +286,8 @@ keycloak:
   realmName: "governance"
   displayName: "Governance Platform"
   createPlatformAdmin: true
-  platformAdminEmail: "" # Defaults to admin@<global.domain>, looked up in Keycloak automatically
+  platformAdminEmail: "admin@your-domain.com" # Must match keycloak-bootstrap users.admin.email
+  # url: "https://keycloak.your-domain.com" # Only for an external or cross-namespace Keycloak
 
 
 # =============================================================================

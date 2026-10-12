@@ -26,159 +26,82 @@ spec:
       {{- end }}
       containers:
         - name: create-org
-          image: postgres:17-alpine
-          command: ["/bin/sh"]
+          image: {{ include "governance-platform.idpSetup.image" . }}
+          command: ["/bin/sh", "-c"]
           args:
-            - -c
             - |
-              set -e
-              echo "Waiting for database to be ready..."
-              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
-                echo "Database not ready yet..."
-                sleep 5
-              done
+              {{- include "governance-platform.idpSetup.shellLib" . | nindent 14 }}
+
+              wait_for_db
 
               echo "Creating Keycloak organization..."
-
-              # Check if organization already exists
-              EXISTS=$(psql \
-                -t -c "SELECT COUNT(*) FROM organization WHERE name = '{{ .Values.keycloak.realmName }}';" | tr -d ' ')
-
-              if [ "$EXISTS" = "1" ]; then
-                echo "Organization '{{ .Values.keycloak.realmName }}' already exists"
-                # Update to ensure idp_provider is set correctly
-                psql -c "UPDATE organization SET idp_provider = 'keycloak', updated_at = NOW() WHERE name = '{{ .Values.keycloak.realmName }}';"
-                echo "Updated organization to use Keycloak IDP"
-              else
-                # Create new organization
-                psql -c "INSERT INTO organization (name, description, display_name, idp_provider, created_at, updated_at) \
-                      VALUES ('{{ .Values.keycloak.realmName }}', '{{ .Values.keycloak.realmName }}', '{{ .Values.keycloak.displayName | default .Values.keycloak.realmName }}', 'keycloak', NOW(), NOW());"
-                echo "Created organization '{{ .Values.keycloak.realmName }}'"
-              fi
-
-              # Show the organization
-              psql \
-                -c "SELECT id, name, display_name, idp_provider FROM organization WHERE name = '{{ .Values.keycloak.realmName }}';"
+              upsert_org
 
               {{- if .Values.keycloak.createPlatformAdmin }}
-              {{- $adminEmail := .Values.keycloak.platformAdminEmail | default (printf "admin@%s" .Values.global.domain) }}
+
               echo "Creating platform-admin user..."
-
-              # Install curl and jq for Keycloak API calls
-              apk add --no-cache curl jq > /dev/null 2>&1
-
-              ADMIN_EMAIL="{{ $adminEmail }}"
+              ensure_http_tools
               echo "Looking up Keycloak user by email: $ADMIN_EMAIL"
 
-              # Get Keycloak admin token
-              KC_TOKEN=$(curl -sf -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
-                -H "Content-Type: application/x-www-form-urlencoded" \
-                -d "username=${KEYCLOAK_ADMIN_USERNAME}" \
-                -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
-                -d "grant_type=password" \
-                -d "client_id=admin-cli" | jq -r '.access_token')
+              KC_TOKEN=$(curl -sS -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+                --data-urlencode "username=${KEYCLOAK_ADMIN_USERNAME}" \
+                --data-urlencode "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+                --data-urlencode "grant_type=password" \
+                --data-urlencode "client_id=admin-cli" | jq -r '.access_token // empty') || true
 
-              if [ -z "$KC_TOKEN" ] || [ "$KC_TOKEN" = "null" ]; then
-                echo "ERROR: Failed to get Keycloak admin token"
+              if [ -z "$KC_TOKEN" ]; then
+                echo "ERROR: Failed to get Keycloak admin token from ${KEYCLOAK_URL}"
+                echo "Check keycloak.url, keycloak.adminUsername and keycloak.adminPasswordSecret"
                 exit 1
               fi
 
-              # Look up user by email in Keycloak
-              KEYCLOAK_USER_ID=$(curl -sf \
-                -H "Authorization: Bearer $KC_TOKEN" \
-                "${KEYCLOAK_URL}/admin/realms/{{ .Values.keycloak.realmName }}/users?email=${ADMIN_EMAIL}&exact=true" | jq -r '.[0].id')
+              REALM_PATH=$(jq -rn --arg realm "$ORG_NAME" '$realm | @uri')
+              KC_USER=$(curl -sS -G -H "Authorization: Bearer $KC_TOKEN" \
+                --data-urlencode "email=${ADMIN_EMAIL}" \
+                --data-urlencode "exact=true" \
+                "${KEYCLOAK_URL}/admin/realms/${REALM_PATH}/users") || true
 
-              if [ -z "$KEYCLOAK_USER_ID" ] || [ "$KEYCLOAK_USER_ID" = "null" ]; then
-                echo "ERROR: Could not find user with email $ADMIN_EMAIL in Keycloak realm '{{ .Values.keycloak.realmName }}'"
-                echo "Make sure the user has been created in Keycloak (e.g., via keycloak-bootstrap) before running this job"
+              IDP_USER_ID=$(printf '%s' "$KC_USER" | jq -r '.[0].id // empty' 2>/dev/null || true)
+              if [ -z "$IDP_USER_ID" ]; then
+                echo "ERROR: Could not find user with email $ADMIN_EMAIL in Keycloak realm '${ORG_NAME}'"
+                echo "keycloak.platformAdminEmail must match the admin email created by keycloak-bootstrap (users.admin.email)"
                 exit 1
               fi
+              echo "Found Keycloak user ID: $IDP_USER_ID"
 
-              echo "Found Keycloak user ID: $KEYCLOAK_USER_ID"
+              # Empty Keycloak profile fields count as missing
+              ADMIN_GIVEN_NAME=$(printf '%s' "$KC_USER" | jq -r '(.[0].firstName // "") | if . == "" then "Platform" else . end')
+              ADMIN_FAMILY_NAME=$(printf '%s' "$KC_USER" | jq -r '(.[0].lastName // "") | if . == "" then "Admin" else . end')
+              ADMIN_DISPLAY_NAME=$(printf '%s' "$KC_USER" | jq -r '.[0]
+                | ([.firstName, .lastName] | map(select(. != null and . != "")) | join(" ")) as $name
+                | if $name != "" then $name elif (.username // "") != "" then .username else "Platform Admin" end')
 
-              # Generate UUIDs using PostgreSQL
-              USER_ID=$(psql -t -c "SELECT gen_random_uuid();" | tr -d ' ')
-
-              # Check if user exists (by email or by idp composite key)
-              USER_EXISTS=$(psql \
-                -t -c "SELECT COUNT(*) FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID');" | tr -d ' ')
-
-              if [ "$USER_EXISTS" != "0" ]; then
-                echo "Platform admin user already exists"
-                USER_ID=$(psql -t -c "SELECT id FROM users WHERE email = '$ADMIN_EMAIL' OR (idp_provider = 'keycloak' AND idp_user_id = '$KEYCLOAK_USER_ID') LIMIT 1;" | tr -d ' ')
-              else
-                # Create user
-                psql -c "INSERT INTO users (id, idp_provider, idp_user_id, email, email_verified, display_name, given_name, family_name, active, app_metadata, created_at, updated_at, is_service_account, service_config) \
-                      VALUES ('$USER_ID', 'keycloak', '$KEYCLOAK_USER_ID', '$ADMIN_EMAIL', true, 'Platform Admin', 'Platform', 'Admin', true, '{}', NOW(), NOW(), false, '{}');"
-                echo "Created platform admin user"
-              fi
-
-              # Get organization ID
-              ORG_ID=$(psql \
-                -t -c "SELECT id FROM organization WHERE name = '{{ .Values.keycloak.realmName }}';" | tr -d ' ')
-
-              # Check if membership exists
-              MEMBERSHIP_EXISTS=$(psql \
-                -t -c "SELECT COUNT(*) FROM user_organization_memberships WHERE user_id = '$USER_ID' AND organization_id = '$ORG_ID';" | tr -d ' ')
-
-              if [ "$MEMBERSHIP_EXISTS" = "1" ]; then
-                echo "Membership already exists, updating to ensure owner role"
-                psql -c "UPDATE user_organization_memberships SET roles = '{organization_owner}', status = 'active' WHERE user_id = '$USER_ID' AND organization_id = '$ORG_ID';"
-              else
-                # Create membership
-                MEMBERSHIP_ID=$(psql -t -c "SELECT gen_random_uuid();" | tr -d ' ')
-                psql -c "INSERT INTO user_organization_memberships (id, user_id, organization_id, roles, invited_at, joined_at, status) \
-                      VALUES ('$MEMBERSHIP_ID', '$USER_ID', '$ORG_ID', '{organization_owner}', NOW(), NOW(), 'active');"
-                echo "Created organization membership"
-              fi
-
-              # Show created user and membership
-              echo "Platform admin user:"
-              psql \
-                -c "SELECT id, email, display_name, idp_provider FROM users WHERE email = '$ADMIN_EMAIL';"
+              upsert_admin
               {{- end }}
 
               echo "Setup complete!"
-          {{- $bundledPgAuth := (((.Values.postgresql).auth) | default dict) }}
-          {{- $bundledPgSecretKeys := (($bundledPgAuth.secretKeys) | default dict) }}
-          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
           env:
-            - name: PGHOST
-              value: {{ ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
-            - name: PGPORT
-              value: {{ ((.Values.global).postgresql).port | default 5432 | quote }}
-            - name: PGUSER
-              value: {{ ((.Values.global).postgresql).username | default ($bundledPgAuth.username | default "postgres") | quote }}
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ (((.Values.global).secrets).database).secretName | default ($bundledPgAuth.existingSecret | default "platform-database") | quote }}
-                  key: {{ ((((.Values.global).secrets).database).keys).password | default ($bundledPgSecretKeys.userPasswordKey | default "password") | quote }}
-            - name: PGDATABASE
-              value: {{ ((.Values.global).postgresql).database | default ($bundledPgAuth.database | default "governance") | quote }}
-            - name: PGSSLMODE
-              value: {{ ((.Values.global).postgresql).sslMode | default "disable" | quote }}
-            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
-            - name: PGSSLROOTCERT
-              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
-            {{- end }}
+            {{- include "governance-platform.idpSetup.pgEnv" . | nindent 12 }}
+            - name: IDP_PROVIDER
+              value: "keycloak"
+            - name: ORG_NAME
+              value: {{ .Values.keycloak.realmName | quote }}
+            - name: ORG_DISPLAY_NAME
+              value: {{ .Values.keycloak.displayName | default .Values.keycloak.realmName | quote }}
             {{- if .Values.keycloak.createPlatformAdmin }}
+            - name: ADMIN_EMAIL
+              value: {{ .Values.keycloak.platformAdminEmail | default (printf "admin@%s" .Values.global.domain) | quote }}
             - name: KEYCLOAK_URL
               value: {{ .Values.keycloak.url | default "http://keycloak:8080/keycloak" | quote }}
             - name: KEYCLOAK_ADMIN_USERNAME
-              value: "admin"
+              value: {{ .Values.keycloak.adminUsername | default "admin" | quote }}
             - name: KEYCLOAK_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: keycloak-admin
-                  key: password
+                  name: {{ ((.Values.keycloak.adminPasswordSecret).name) | default "keycloak-admin" | quote }}
+                  key: {{ ((.Values.keycloak.adminPasswordSecret).key) | default "password" | quote }}
             {{- end }}
-          {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
-          volumeMounts:
-            - name: postgres-ca
-              mountPath: /etc/ssl/postgres
-              readOnly: true
-          {{- end }}
+          {{- include "governance-platform.idpSetup.pgCaVolumeMounts" . | nindent 10 }}
           resources:
             requests:
               cpu: 100m
@@ -188,91 +111,6 @@ spec:
               memory: 256Mi
       # This job should run after the application starts and runs migrations
       initContainers:
-        - name: wait-for-schema
-          image: postgres:17-alpine
-          command: ['sh', '-c']
-          args:
-            - |
-              echo "Waiting for database schema to be ready..."
-
-              # Wait for database to be reachable
-              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
-                echo "Waiting for database to be ready..."
-                sleep 5
-              done
-
-              # Wait for required tables to exist (migrations run on app startup)
-              echo "Checking for required tables..."
-              REQUIRED_TABLES="organization users user_organization_memberships"
-              MAX_ATTEMPTS=30
-              ATTEMPT=1
-
-              while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-                ALL_EXIST=true
-                for TABLE in $REQUIRED_TABLES; do
-                  EXISTS=$(psql -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '$TABLE');" | tr -d ' ')
-
-                  if [ "$EXISTS" != "t" ]; then
-                    ALL_EXIST=false
-                    echo "Table $TABLE does not exist yet..."
-                    break
-                  fi
-                done
-
-                if [ "$ALL_EXIST" = "true" ]; then
-                  echo "All required tables exist!"
-                  exit 0
-                fi
-
-                echo "Attempt $ATTEMPT/$MAX_ATTEMPTS - Waiting 10 seconds for migrations..."
-                sleep 10
-                ATTEMPT=$((ATTEMPT + 1))
-              done
-
-              echo "Warning: Some tables may not exist, but proceeding..."
-              exit 0
-          {{- $bundledPgAuth := (((.Values.postgresql).auth) | default dict) }}
-          {{- $bundledPgSecretKeys := (($bundledPgAuth.secretKeys) | default dict) }}
-          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
-          env:
-            - name: PGHOST
-              value: {{ ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
-            - name: PGPORT
-              value: {{ ((.Values.global).postgresql).port | default 5432 | quote }}
-            - name: PGUSER
-              value: {{ ((.Values.global).postgresql).username | default ($bundledPgAuth.username | default "postgres") | quote }}
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ (((.Values.global).secrets).database).secretName | default ($bundledPgAuth.existingSecret | default "platform-database") | quote }}
-                  key: {{ ((((.Values.global).secrets).database).keys).password | default ($bundledPgSecretKeys.userPasswordKey | default "password") | quote }}
-            - name: PGDATABASE
-              value: {{ ((.Values.global).postgresql).database | default ($bundledPgAuth.database | default "governance") | quote }}
-            - name: PGSSLMODE
-              value: {{ ((.Values.global).postgresql).sslMode | default "disable" | quote }}
-            {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
-            - name: PGSSLROOTCERT
-              value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
-          volumeMounts:
-            - name: postgres-ca
-              mountPath: /etc/ssl/postgres
-              readOnly: true
-            {{- end }}
-      {{- if $pgSslRootCert.secretName }}
-      volumes:
-        - name: postgres-ca
-          secret:
-            secretName: {{ $pgSslRootCert.secretName | quote }}
-            items:
-              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
-                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
-      {{- else if $pgSslRootCert.configMapName }}
-      volumes:
-        - name: postgres-ca
-          configMap:
-            name: {{ $pgSslRootCert.configMapName | quote }}
-            items:
-              - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
-                path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
-      {{- end }}
+        {{- include "governance-platform.idpSetup.waitForSchema" . | nindent 8 }}
+      {{- include "governance-platform.idpSetup.pgCaVolumes" . | nindent 6 }}
 {{- end }}

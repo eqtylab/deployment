@@ -3244,6 +3244,17 @@ postgresql:
 # (development-only diagnostics; see examples/values-openbao-kind.yaml)
 openbaoKindProfile: false
 
+# ------------------------------------------------------------------------------
+# IdP Post-Install Hook Image
+# ------------------------------------------------------------------------------
+# -- IdP Setup Image
+# @default -- `""` (keeps `postgres:17-alpine`)
+# Complete image reference for the auth0/entra/keycloak post-install setup Jobs
+# Must provide psql and pg_isready. With createPlatformAdmin it also needs curl and jq;
+# if they are missing they are installed with apk at runtime, which needs internet access
+# global.imageRegistryOverride and global.imageRepositoryPrefixOverride do not apply to this value
+idpSetupImage: ""
+
 # =============================================================================
 # Auth0 Post-Install Configuration
 # =============================================================================
@@ -3331,7 +3342,8 @@ entra:
 
   # -- Tenant ID
   # @default -- `""`
-  # Microsoft Entra tenant ID (required for Graph API user lookup)
+  # Microsoft Entra tenant ID for the Graph API user lookup
+  # When empty, read from the global.secrets.auth.entra tenant ID key
   tenantId: ""
 
 # ------------------------------------------------------------------------------
@@ -3372,10 +3384,28 @@ keycloak:
   # -- Platform Admin Email
   # @default -- `""` (defaults to admin@<global.domain>)
   # Email address of the platform administrator in Keycloak created during bootstrap
+  # Must match keycloak-bootstrap users.admin.email
   # Used to look up the Keycloak user ID automatically
   platformAdminEmail: ""
 
   # -- Keycloak Internal URL
   # @default -- `http://keycloak:8080/keycloak`
   # Internal cluster URL for the Keycloak Admin REST API
+  # Set this when Keycloak runs outside the release namespace or outside the cluster
   url: "http://keycloak:8080/keycloak"
+
+  # -- Keycloak Admin Username
+  # @default -- `admin`
+  # Master realm admin used to look up the platform admin; must match keycloak-bootstrap keycloak.adminUsername
+  adminUsername: "admin"
+
+  # -- Keycloak Admin Password Secret
+  # @default -- See values below
+  # Secret holding the master realm admin password; must match keycloak-bootstrap keycloak.adminPasswordSecret
+  adminPasswordSecret:
+    # -- Secret Name
+    # @default -- `keycloak-admin`
+    name: "keycloak-admin"
+    # -- Secret Key
+    # @default -- `password`
+    key: "password"

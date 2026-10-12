@@ -1268,7 +1268,7 @@ auth0:
 | `platformAdminEmail`  | Email of the platform admin user in Auth0               | Must match `users.admin.email` from the auth0-bootstrap values |
 | `domain`              | Auth0 tenant domain used for Management API user lookup | Your Auth0 tenant domain (e.g., `your-tenant.us.auth0.com`)    |
 
-The hook runs as a Kubernetes Job after Helm install/upgrade. It waits for database migrations to complete, looks up the platform admin's Auth0 `user_id` by email via the Management API, then creates (or updates) the organization and admin user records. The hook is idempotent — it's safe to run on every upgrade.
+The hook runs as a Kubernetes Job after Helm install/upgrade. It waits for database migrations to complete, looks up the platform admin's Auth0 `user_id` by email via the Management API, then creates (or updates) the organization and admin user records. The hook runs on every install and upgrade and never creates duplicate records; see [Verify the Post-Install Hook](#verify-the-post-install-hook) for what a re-run changes.
 
 > **Important:** `platformAdminEmail` must match an existing user in your Auth0 tenant. The hook will fail if the user cannot be found via the Management API. If you set `users.admin.enabled: false` in the auth0-bootstrap values, create the admin user manually in the Auth0 Dashboard (Authentication → Database → Users) before deploying.
 
@@ -1478,7 +1478,9 @@ The hook:
 4. Creates (or updates) the platform-admin user in the database with the resolved Auth0 `user_id`
 5. Sets up the organization membership with `organization_owner` role
 
-The hook is idempotent — it runs on every `helm upgrade` and safely skips records that already exist.
+The hook runs on every `helm upgrade`. It never creates duplicate records. On an existing install it points the organization and the platform admin's user record at Auth0 and makes the admin an active `organization_owner` again: other organization roles are kept, and project roles and project assignments in the organization are removed. It does not change an existing organization's display name.
+
+> **Note:** Completed hook Jobs are deleted 5 minutes after they finish (`ttlSecondsAfterFinished: 300`). If the commands above return nothing, the Job has already been cleaned up. Check the records in the database instead, or re-run the setup with the manual script below.
 
 ### Manual Post-Install Setup (Alternative)
 
@@ -1491,14 +1493,15 @@ If you prefer to run the post-install setup manually (or need to re-run it outsi
   -e admin@your-domain.com
 ```
 
-The script waits for the governance platform to be running, verifies database migrations are complete, looks up the admin user via the Auth0 Management API, creates the organization and platform-admin user, and verifies the integration. This performs the same steps as the Helm post-install hook but can be run independently.
+The script waits for the governance platform to be running, verifies database migrations are complete, looks up the admin user via the Auth0 Management API, creates the organization and platform-admin user, and verifies the integration. This performs the same steps as the Helm post-install hook but can be run independently. It exits with an error if the admin user cannot be found in Auth0. It runs `psql` inside the bundled PostgreSQL pod, so it does not work with an external database (use the Helm hook instead). Run the script with `--help` for the environment variables that cover a non-default release name, database secret or credential secret keys.
 
-| Flag             | Short | Description                               |
-| ---------------- | ----- | ----------------------------------------- |
-| `--namespace`    | `-n`  | Kubernetes namespace (required)           |
-| `--auth0-domain` | `-d`  | Auth0 tenant domain (required)            |
-| `--admin-email`  | `-e`  | Platform admin email in Auth0 (required)  |
-| `--org-name`     | `-o`  | Organization name (default: `governance`) |
+| Flag             | Short | Description                                                                     |
+| ---------------- | ----- | ------------------------------------------------------------------------------- |
+| `--namespace`    | `-n`  | Kubernetes namespace (required)                                                 |
+| `--auth0-domain` | `-d`  | Auth0 tenant domain (required)                                                  |
+| `--admin-email`  | `-e`  | Platform admin email in Auth0 (required)                                        |
+| `--org-name`     | `-o`  | Organization name (default: `governance`)                                       |
+| `--display-name` | `-D`  | Organization display name, used when creating it (default: `Governance Studio`) |
 
 ### Verify Service Health
 

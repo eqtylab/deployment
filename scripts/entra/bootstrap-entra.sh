@@ -159,7 +159,7 @@ show_summary() {
   echo ""
   echo "  4. Update governance-studio Helm values with frontend app ID and tenant ID"
   echo "  5. Deploy the governance platform with Entra values"
-  echo "  6. Run the post-install setup script to create the organization and admin user"
+  echo "  6. Enable entra.createOrganization (and createPlatformAdmin) in the platform values so the Helm hook creates the organization and admin user, or run scripts/entra/post-install-entra-setup.sh after deploying"
 
   echo ""
   print_info "Bootstrap process completed!"
