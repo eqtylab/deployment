@@ -1349,9 +1349,9 @@ auth-service:
 # ------------------------------------------------------------------------------
 eqty-pdfgen:
   # -- Enable Service
-  # @default -- `false`
+  # @default -- `true`
   # Enable the EQTY PDF generation service
-  enabled: false
+  enabled: true
 
   # -- Replica Count
   # @default -- `2`

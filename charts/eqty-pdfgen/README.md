@@ -39,7 +39,7 @@ Bound signing is independent of the key-management provider; it is not inherentl
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, EQTY PDFGen automatically inherits image registry settings and the default signing URL from global values. The service is **disabled by default** and is enabled environment-by-environment.
+When deployed via the `governance-platform` umbrella chart, EQTY PDFGen automatically inherits image registry settings and the default signing URL from global values. The service is **enabled by default**; set `eqty-pdfgen.enabled: false` to omit it.
 
 The chart creates only an internal ClusterIP Service and intentionally does not render an Ingress; PDF generation is an internal capability consumed by other platform services.
 

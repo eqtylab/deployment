@@ -15,10 +15,9 @@ def generate_eqty_pdfgen_section(config: PlatformConfig) -> dict[str, Any]:
     # of the key-management provider; it is not inherently OpenBao-only.
     # Users can layer config.signingBound/config.timestampUrl and image overrides
     # over generated values. Full generator support for these settings is deferred.
-    # Disabled by default to match the governance-platform chart default; enable
-    # per environment as the service is rolled out.
+    # Enabled by default to match the governance-platform chart default.
     section: dict[str, Any] = {
-        "enabled": False,
+        "enabled": True,
         "replicaCount": 2,
         "image": runtime_image_values(config),
     }

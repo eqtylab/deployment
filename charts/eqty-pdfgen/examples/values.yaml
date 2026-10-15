@@ -5,7 +5,7 @@
 # Usage:
 #   Set these values under the `eqty-pdfgen:` key in your umbrella values file
 
-# EQTY PDFGen is disabled by default in the umbrella chart; enable it per environment
+# EQTY PDFGen is enabled by default in the umbrella chart
 enabled: true
 
 image:

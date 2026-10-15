@@ -41,8 +41,8 @@ flowchart TD
     GS --> AUTH[🔐 Auth Service]
     GS --> INT[🛡️ Integrity Service]
 
-    GSV -.-> PDF[📄 EQTY PDFGen - optional]
-    PDF -.-> AUTH
+    GSV --> PDF[📄 EQTY PDFGen]
+    PDF --> AUTH
 
     GWI[🚦 Ingress - HAProxy + TLS] -.-> GW[🔀 Guardian Gateway Stack - optional]
     GW -.-> AUTH
@@ -67,7 +67,7 @@ flowchart TD
 | Service                | Language | Description                                   | Ingress Path          |
 | ---------------------- | -------- | --------------------------------------------- | --------------------- |
 | **auth-service**       | Go       | Authentication, authorization, token exchange | `/authService/`       |
-| **eqty-pdfgen**        | Python   | Optional manifest → PDF/ZIP rendering         | Internal only         |
+| **eqty-pdfgen**        | Python   | Manifest → PDF/ZIP rendering                  | Internal only         |
 | **gateway-stack**      | Go       | Optional LLM gateway and control plane        | Separate hosts        |
 | **governance-service** | Go       | Backend API, workflow engine, worker          | `/governanceService/` |
 | **governance-studio**  | React    | Web UI for governance workflows               | `/`                   |
@@ -1362,6 +1362,8 @@ Expected pod status once healthy:
 ```
 NAME                                                    READY   STATUS      AGE
 governance-platform-auth-service-xxxxx-xxxxx            1/1     Running     2m
+governance-platform-eqty-pdfgen-xxxxx-xxxxx             1/1     Running     2m
+governance-platform-eqty-pdfgen-xxxxx-xxxxx             1/1     Running     2m
 governance-platform-governance-service-xxxxx-xxxxx      1/1     Running     2m
 governance-platform-governance-studio-xxxxx-xxxxx       1/1     Running     2m
 governance-platform-integrity-service-xxxxx-xxxxx       1/1     Running     2m

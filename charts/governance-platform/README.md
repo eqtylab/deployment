@@ -22,7 +22,7 @@ The platform uses a microservices architecture with the following components:
 - **Governance Service** - Go-based backend API with governance logic and workflow engine
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
-- **EQTY PDFGen** - Optional PDF and ZIP rendering service for governance manifests
+- **EQTY PDFGen** - PDF and ZIP rendering service for governance manifests
 - **Gateway Stack** - Optional LLM gateway and control plane
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
@@ -414,7 +414,7 @@ Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdf
 
 | Key                             | Type   | Default                           | Description                                                                                                                         |
 | ------------------------------- | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| eqty-pdfgen.enabled             | bool   | `false`                           | Enable EQTY PDFGen. Disabled by default and currently enabled only in dev values                                                    |
+| eqty-pdfgen.enabled             | bool   | `true`                            | Enable EQTY PDFGen                                                                                                                  |
 | eqty-pdfgen.replicaCount        | int    | `2`                               | Number of replicas                                                                                                                  |
 | eqty-pdfgen.service.port        | int    | `8080`                            | Internal ClusterIP service port                                                                                                     |
 | eqty-pdfgen.config.signingUrl   | string | `""`                              | Signing endpoint (auto-generated as auth-service internal signing URL)                                                              |
