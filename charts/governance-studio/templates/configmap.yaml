@@ -15,7 +15,8 @@ data:
   INTEGRITY_SERVICE_URL: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" (((.Values.global).domain) | default "")) | quote }}
   {{- end }}
   {{- if .Values.config.features.gateway }}
-  GATEWAY_API_URL: {{ .Values.config.gatewayApiUrl | quote }}
+  GATEWAY_API_URL: {{ required "governance-studio: config.gatewayApiUrl is required when config.features.gateway is true" .Values.config.gatewayApiUrl | quote }}
+  LLM_GATEWAY_URL: {{ .Values.config.llmGatewayUrl | quote }}
   {{- end }}
 
   # ==========================================================================

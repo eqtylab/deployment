@@ -273,6 +273,13 @@ config:
   # Only used when features.gateway is enabled
   gatewayApiUrl: ""
 
+  # -- LLM Gateway URL
+  # @default -- `""` (onboarding commands show a placeholder)
+  # Public URL of the LLM gateway that agents connect to, shown in agent
+  # onboarding commands (e.g., "https://gateway.example.com")
+  # Only used when features.gateway is enabled
+  llmGatewayUrl: ""
+
   # ---------------------------------------------------------------------------
   # Authentication Provider Configuration
   # ---------------------------------------------------------------------------

@@ -441,15 +441,18 @@ Backend API service settings. See [governance-service/README.md](../governance-s
 
 Frontend application settings. See [governance-studio/README.md](../governance-studio/README.md) for complete documentation.
 
-| Key                                      | Type   | Default               | Description                                                               |
-| ---------------------------------------- | ------ | --------------------- | ------------------------------------------------------------------------- |
-| governance-studio.enabled                | bool   | `true`                | Enable Governance Studio                                                  |
-| governance-studio.replicaCount           | int    | `1`                   | Number of replicas                                                        |
-| governance-studio.ingress.enabled        | bool   | `false`               | Enable ingress                                                            |
-| governance-studio.config.authProvider    | string | `""`                  | Auth provider (auto-configured from global.secrets.auth.provider)         |
-| governance-studio.config.appTitle        | string | `"Governance Studio"` | Application title                                                         |
-| governance-studio.config.displayTimezone | string | `"UTC"`               | Timezone used for displayed timestamps (IANA name, e.g. America/New_York) |
-| governance-studio.autoscaling.enabled    | bool   | `false`               | Enable horizontal pod autoscaling                                         |
+| Key                                       | Type   | Default               | Description                                                                                     |
+| ----------------------------------------- | ------ | --------------------- | ----------------------------------------------------------------------------------------------- |
+| governance-studio.enabled                 | bool   | `true`                | Enable Governance Studio                                                                        |
+| governance-studio.replicaCount            | int    | `1`                   | Number of replicas                                                                              |
+| governance-studio.ingress.enabled         | bool   | `false`               | Enable ingress                                                                                  |
+| governance-studio.config.authProvider     | string | `""`                  | Auth provider (auto-configured from global.secrets.auth.provider)                               |
+| governance-studio.config.appTitle         | string | `"Governance Studio"` | Application title                                                                               |
+| governance-studio.config.displayTimezone  | string | `"UTC"`               | Timezone used for displayed timestamps (IANA name, e.g. America/New_York)                       |
+| governance-studio.config.gatewayApiUrl    | string | `""`                  | Gateway control-plane API URL (**must be set** when `features.gateway` is true)                 |
+| governance-studio.config.llmGatewayUrl    | string | `""`                  | Public LLM gateway URL shown in agent onboarding commands (optional; blank shows a placeholder) |
+| governance-studio.config.features.gateway | bool   | `false`               | Enable Gateway features in Studio                                                               |
+| governance-studio.autoscaling.enabled     | bool   | `false`               | Enable horizontal pod autoscaling                                                               |
 
 ### Integrity Service Configuration
 

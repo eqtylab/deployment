@@ -11,7 +11,7 @@ Key capabilities:
 - **Governance Management**: Create, review, and manage governance policies and workflows
 - **Data Lineage**: Visualize provenance and transformation history of data assets
 - **Multi-Provider Auth**: Native support for Auth0, Microsoft Entra ID, and Keycloak authentication
-- **Feature Flags**: Configurable feature toggles for governance and lineage
+- **Feature Flags**: Configurable feature toggles for governance, lineage, and Gateway
 - **Runtime Configuration**: Single immutable image with environment-driven configuration
 
 ## Configuration Model
@@ -281,15 +281,17 @@ When deployed via the umbrella chart, these global values are automatically used
 
 All config values support global fallbacks when deployed via umbrella chart.
 
-| Key                        | Type   | Default               | Description                                                                                                                        |
-| -------------------------- | ------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| config.basePath            | string | `"/"`                 | Base path for application routing                                                                                                  |
-| config.apiUrl              | string | `""`                  | Backend API URL (auto-generated from global.domain)                                                                                |
-| config.authServiceUrl      | string | `""`                  | Auth service URL (auto-generated from global.domain)                                                                               |
-| config.integrityServiceUrl | string | `""`                  | Integrity service URL (auto-generated from global.domain)                                                                          |
-| config.environment         | string | `""`                  | Environment (auto-configured from global.environmentType)                                                                          |
-| config.appTitle            | string | `"Governance Studio"` | Application title displayed in browser                                                                                             |
-| config.displayTimezone     | string | `"UTC"`               | Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London) |
+| Key                        | Type   | Default               | Description                                                                                                                                  |
+| -------------------------- | ------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| config.basePath            | string | `"/"`                 | Base path for application routing                                                                                                            |
+| config.apiUrl              | string | `""`                  | Backend API URL (auto-generated from global.domain)                                                                                          |
+| config.authServiceUrl      | string | `""`                  | Auth service URL (auto-generated from global.domain)                                                                                         |
+| config.integrityServiceUrl | string | `""`                  | Integrity service URL (auto-generated from global.domain)                                                                                    |
+| config.gatewayApiUrl       | string | `""`                  | Gateway control-plane API URL (**must be set** when `config.features.gateway` is true, e.g., "https://guardian.example.com/api")             |
+| config.llmGatewayUrl       | string | `""`                  | Public LLM gateway URL shown in agent onboarding commands (optional, used when `config.features.gateway` is true; blank shows a placeholder) |
+| config.environment         | string | `""`                  | Environment (auto-configured from global.environmentType)                                                                                    |
+| config.appTitle            | string | `"Governance Studio"` | Application title displayed in browser                                                                                                       |
+| config.displayTimezone     | string | `"UTC"`               | Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London)           |
 
 The container also receives an `APP_VERSION` environment variable, auto-populated from `Chart.Version`. This is intended for display purposes (e.g. an app footer) and is not user-configurable.
 
@@ -336,10 +338,11 @@ Authentication is automatically configured from global values in umbrella deploy
 
 ### Feature Flags
 
-| Key                        | Type | Default | Description                |
-| -------------------------- | ---- | ------- | -------------------------- |
-| config.features.governance | bool | `true`  | Enable governance features |
-| config.features.lineage    | bool | `true`  | Enable lineage features    |
+| Key                        | Type | Default | Description                                               |
+| -------------------------- | ---- | ------- | --------------------------------------------------------- |
+| config.features.governance | bool | `true`  | Enable governance features                                |
+| config.features.lineage    | bool | `true`  | Enable lineage features                                   |
+| config.features.gateway    | bool | `false` | Enable Gateway features (requires `config.gatewayApiUrl`) |
 
 ## Configuration Inheritance
 

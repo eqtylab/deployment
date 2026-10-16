@@ -9,7 +9,7 @@
 # The umbrella chart's gateway-stack defaults already wire the platform database
 # Secret, the control-plane adapter, and auth-service bearer verification, so
 # this overlay only turns the stack on, sets its API path and routes, and points
-# Governance Studio at the control-plane API
+# Governance Studio at the control-plane API and the LLM gateway
 #
 # If global.secrets.create=true, also set
 # global.secrets.database.values.gatewayDsn to the guardian_gateway DSN
@@ -22,7 +22,8 @@ gateway-stack:
     apiBasePath: "/api"
 
   # Public routes stay off until hostnames and TLS are chosen. Replace both
-  # hosts and governance-studio.config.gatewayApiUrl, then set enabled: true
+  # hosts and the governance-studio.config.gatewayApiUrl and llmGatewayUrl
+  # values, then set enabled: true
   ingress:
     enabled: false
     className: "nginx"
@@ -31,9 +32,11 @@ gateway-stack:
       llmGateway: "gateway.example.com"
       controlPlane: "guardian.example.com"
 
-# Governance Studio calls the control-plane API on the controlPlane host
+# Governance Studio calls the control-plane API on the controlPlane host and
+# shows the llmGateway host in agent onboarding commands
 governance-studio:
   config:
     gatewayApiUrl: "https://guardian.example.com/api"
+    llmGatewayUrl: "https://gateway.example.com"
     features:
       gateway: true
