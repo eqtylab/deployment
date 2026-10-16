@@ -22,8 +22,6 @@ NS=custody
 cleanup() { echo "== cleanup"; $KIND delete cluster --name "$CLUSTER" >/dev/null 2>&1 || true; rm -rf "$WORK"; }
 trap cleanup EXIT
 
-helm repo add openbao https://openbao.github.io/openbao-helm
-
 echo "== create kind cluster $CLUSTER"
 $KIND create cluster --name "$CLUSTER" --kubeconfig "$KUBECONFIG" --wait 90s
 kubectl create namespace $NS

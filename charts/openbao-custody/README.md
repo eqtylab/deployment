@@ -82,7 +82,6 @@ configure the auth mount, policy and role separately with temporary credentials.
 ## Deployment
 
 ```bash
-helm repo add openbao https://openbao.github.io/openbao-helm
 helm dependency build charts/openbao-custody
 helm upgrade --install openbao-custody charts/openbao-custody \
   --namespace custody --create-namespace \
@@ -110,7 +109,7 @@ and pod 2 after pod 1. Complete the operator steps below in order.
 | `openbao.injector.enabled` / `openbao.csi.enabled` / `openbao.ui.enabled` | bool   | `false`                                                                                | Not used by Guardian                                                                                    |
 
 Any upstream value can be set under `openbao.`; see
-`helm show values openbao/openbao --version 0.29.5`.
+`helm show values oci://ghcr.io/openbao/charts/openbao --version 0.29.5`.
 `examples/values-dev-kind.yaml` is a single-node, TLS-disabled profile for
 disposable development clusters only. `examples/values-kind-tls.yaml` keeps the
 wrapper's TLS/Raft/audit settings with three voters on one disposable host (a

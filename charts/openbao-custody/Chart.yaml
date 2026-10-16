@@ -18,5 +18,5 @@ maintainers:
 dependencies:
   # Upstream chart pinned exactly; bump deliberately with the runbook's upgrade steps.
   - name: openbao
-    repository: https://openbao.github.io/openbao-helm
+    repository: oci://ghcr.io/openbao/charts
     version: "0.29.5"

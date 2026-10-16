@@ -13,12 +13,12 @@ maintainers:
 dependencies:
   # PostgreSQL - registry and audit store for llm-gateway and control-plane
   - name: postgresql
-    repository: https://charts.bitnami.com/bitnami
+    repository: oci://registry-1.docker.io/bitnamicharts
     version: ">=16.0.0 <17.0.0"
     condition: postgresql.enabled
   # HAProxy ingress controller - opt-in, for installs without an existing controller
   - name: kubernetes-ingress
     alias: haproxyIngress
-    repository: https://haproxytech.github.io/helm-charts
+    repository: oci://ghcr.io/haproxytech/helm-charts
     version: ">=1.0.0 <2.0.0"
     condition: haproxyIngress.enabled

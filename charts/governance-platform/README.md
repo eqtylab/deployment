@@ -73,8 +73,7 @@ helm upgrade --install ingress-nginx ingress-nginx \
 **Option A: cert-manager (Recommended)**
 
 ```bash
-helm upgrade --install cert-manager cert-manager \
-  --repo https://charts.jetstack.io \
+helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
   --namespace cert-manager \
   --create-namespace \
   --set installCRDs=true

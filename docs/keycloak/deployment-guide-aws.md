@@ -534,12 +534,8 @@ kubectl create namespace $NS
 
 ### Deploy Keycloak with Bitnami Helm Chart
 
-The recommended approach for in-cluster Keycloak is the Bitnami Helm chart:
-
-```bash
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
-```
+The recommended approach for in-cluster Keycloak is the Bitnami Helm chart
+(`oci://registry-1.docker.io/bitnamicharts/keycloak`).
 
 Create a values file for your Keycloak deployment (e.g., `keycloak-values.yaml`):
 
@@ -603,7 +599,7 @@ kubectl create secret generic platform-admin \
 ### Install Keycloak
 
 ```bash
-helm upgrade --install keycloak bitnami/keycloak \
+helm upgrade --install keycloak oci://registry-1.docker.io/bitnamicharts/keycloak \
   --namespace $NS \
   --values keycloak-values.yaml \
   --wait \
