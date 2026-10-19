@@ -600,6 +600,11 @@ config:
   # PDF generation service base URL for policy report rendering
   pdfgenServiceUrl: ""
 
+  # -- Control Plane URL
+  # @default -- `""` (e.g., "http://{Release.Name}-gateway-stack-control-plane:10010")
+  # Gateway control plane base URL for agent assessments and certifications
+  controlPlaneUrl: ""
+
   # ---------------------------------------------------------------------------
   # Service Account Configuration
   # ---------------------------------------------------------------------------

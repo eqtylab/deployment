@@ -521,11 +521,12 @@ trusted; the local CA is additive.
 
 #### Integration URLs
 
-| Key                        | Type   | Default | Description                                                                            |
-| -------------------------- | ------ | ------- | -------------------------------------------------------------------------------------- |
-| config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated as http://{Release.Name}-integrity-service:3050) |
-| config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080)           |
-| config.pdfgenServiceUrl    | string | `""`    | PDF Generation Service URL (auto-generated as http://{Release.Name}-eqty-pdfgen:8080)  |
+| Key                        | Type   | Default | Description                                                                                                                        |
+| -------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated as http://{Release.Name}-integrity-service:3050)                                             |
+| config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080)                                                       |
+| config.pdfgenServiceUrl    | string | `""`    | PDF Generation Service URL (auto-generated as http://{Release.Name}-eqty-pdfgen:8080)                                              |
+| config.controlPlaneUrl     | string | `""`    | Gateway control plane URL for agent assessments and certifications (e.g., http://{Release.Name}-gateway-stack-control-plane:10010) |
 
 #### Worker Service Account Configuration
 

@@ -31,7 +31,8 @@ All services communicate via REST APIs and share authentication through the Auth
 
 The Gateway stack is disabled by default for upgrade compatibility. Enable it
 with `examples/values-gateway.yaml`; its control-plane adapter then resolves the
-umbrella Auth, Governance, and Integrity services automatically. The gateway
+umbrella Auth, Governance, and Integrity services automatically, and the overlay
+points Governance Service at the control plane for agent assessments. The gateway
 reuses `platform-database` and expects a `gateway-dsn` key for the
 `guardian_gateway` database.
 

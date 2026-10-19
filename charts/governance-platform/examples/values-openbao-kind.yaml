@@ -140,6 +140,7 @@ governance-service:
     azureStorageAccountName: "guardian"
     azureStorageContainerName: "governance"
     azureUseManagedIdentity: false
+    controlPlaneUrl: "http://{{ .Release.Name }}-gateway-stack-control-plane:10010"
     serviceAccount:
       enabled: true
   migrations:

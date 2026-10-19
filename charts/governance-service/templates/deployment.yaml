@@ -324,6 +324,10 @@ spec:
             value: {{ .Values.config.authServiceUrl | default (printf "http://%s-auth-service:8080" .Release.Name) | quote }}
           - name: PDFGEN_SERVICE_URL
             value: {{ .Values.config.pdfgenServiceUrl | default (printf "http://%s-eqty-pdfgen:8080" .Release.Name) | quote }}
+          {{- with .Values.config.controlPlaneUrl }}
+          - name: CONTROL_PLANE_URL
+            value: {{ tpl . $ | quote }}
+          {{- end }}
 
           {{- if .Values.config.serviceAccount.enabled }}
 
