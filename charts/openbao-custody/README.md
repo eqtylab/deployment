@@ -29,7 +29,7 @@ configure the auth mount, policy and role separately with temporary credentials.
 
 ## Prerequisites
 
-- Helm 4.0+ and `kubectl`; the operator steps also require the `bao` CLI.
+- Helm 3.20+ and `kubectl`; the operator steps also require the `bao` CLI.
 - Kubernetes 1.30+ for **this supplied custody chart**: pinned upstream chart
   0.29.5 itself declares `kubeVersion: ">= 1.30.0-0"`. The platform minimum
   remains 1.29, and external OpenBao support does not require this chart.

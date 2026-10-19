@@ -56,7 +56,7 @@ charts/
 ### Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - kubectl configured for your cluster
 - Registry access: Cloudsmith prod entitlement for verified deliveries; existing GHCR credentials otherwise
 
@@ -306,8 +306,7 @@ helm unittest ./governance-platform
 helm upgrade --install governance-platform ./governance-platform \
   --namespace governance \
   --values values.yaml \
-  --dry-run \
-  --validate
+  --dry-run=server
 ```
 
 ## Publishing Charts

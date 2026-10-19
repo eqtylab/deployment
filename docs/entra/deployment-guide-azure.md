@@ -240,7 +240,7 @@ Before proceeding, confirm:
 - [ ] Azure Key Vault is provisioned with a service principal
 - [ ] DNS domain is available and you can create records
 - [ ] Cloudsmith prod entitlement token is available
-- [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
+- [ ] Helm 3.20+ and kubectl 1.29+ are installed locally
 - [ ] Azure CLI (`az`) is installed locally
 
 ---

@@ -28,7 +28,7 @@ This allows:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - Authentication provider (Auth0, Microsoft Entra ID, or Keycloak)
 - Ingress controller (NGINX, Traefik, etc.)
 - TLS certificates (manual or via cert-manager)
@@ -66,7 +66,7 @@ governance-studio:
     authProvider: "auth0"
     auth0Domain: "your-tenant.us.auth0.com"
     auth0ClientId: "your-spa-client-id"
-    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+    auth0Audience: "https://governance.your-domain.com"
 ```
 
 **Microsoft Entra ID:**
@@ -134,7 +134,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 
 - `config.auth0Domain` - Auth0 tenant domain (e.g., `your-tenant.us.auth0.com`)
 - `config.auth0ClientId` - Auth0 SPA client ID (public, not a secret)
-- `config.auth0Audience` - Auth0 API audience (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
+- `config.auth0Audience` - Auth0 API audience; the same value as Auth Service's `apiIdentifier` (e.g., `https://governance.your-domain.com`)
 
 **Microsoft Entra ID:**
 
@@ -305,7 +305,7 @@ Authentication is automatically configured from global values in umbrella deploy
 
 - `config.auth0Domain` - Auth0 tenant domain (e.g., `your-tenant.us.auth0.com`)
 - `config.auth0ClientId` - Auth0 SPA client ID (public, not a secret)
-- `config.auth0Audience` - Auth0 API audience (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
+- `config.auth0Audience` - Auth0 API audience; the same value as Auth Service's `apiIdentifier` (e.g., `https://governance.your-domain.com`)
 
 **Microsoft Entra ID:**
 

@@ -48,8 +48,8 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
             "frontend": {
                 "name": "Governance Platform Frontend",
                 "callbacks": [
-                    f"https://{domain}/callback",
-                    "http://localhost:5173/callback",
+                    f"https://{domain}",
+                    "http://localhost:5173",
                 ],
                 "logoutUrls": [
                     f"https://{domain}",
@@ -74,10 +74,17 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
                 ],
                 "managementApiScopes": [
                     "read:users",
-                    "update:users",
                     "create:users",
-                    "read:roles",
-                    "create:role_members",
+                    "update:users",
+                    "delete:users",
+                    "create:user_tickets",
+                    "read:organizations",
+                    "create:organizations",
+                    "update:organizations",
+                    "read:organization_members",
+                    "create:organization_members",
+                    "delete:organization_members",
+                    "update:clients",
                 ],
             },
             "worker": {

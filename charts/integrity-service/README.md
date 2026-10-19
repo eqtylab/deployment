@@ -29,7 +29,7 @@ This allows:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - PostgreSQL database (provided by umbrella chart or external)
 - Azure Blob Storage, AWS S3, or Google Cloud Storage account (with container/bucket created)
 - Ingress controller (NGINX, Traefik, etc.)

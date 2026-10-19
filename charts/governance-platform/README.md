@@ -51,7 +51,7 @@ This allows:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - Persistent Volume Provisioner for database storage
 - Registry access: a Cloudsmith prod entitlement for a verified delivery, or existing GHCR credentials before that version is delivered
 - Ingress controller (NGINX, Traefik, etc.)
@@ -593,7 +593,7 @@ governance-studio:
     # Auth0 settings must be explicitly set (SPA client ID is public, not a secret)
     auth0Domain: "mycompany.us.auth0.com"
     auth0ClientId: "my-spa-client-id"
-    auth0Audience: "https://mycompany.us.auth0.com/api/v2/"
+    auth0Audience: "https://governance.mycompany.com"
     # Override specific settings
     appTitle: "My Company Governance"
 
@@ -890,7 +890,7 @@ governance-studio:
     # SPA settings must be explicitly set (public, not secrets)
     auth0Domain: "your-tenant.us.auth0.com"
     auth0ClientId: "your-spa-client-id"
-    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+    auth0Audience: "https://governance.your-domain.com"
 
 auth-service:
   config:
@@ -898,7 +898,7 @@ auth-service:
       auth0:
         domain: "your-tenant.us.auth0.com"
         managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
-        apiIdentifier: "https://your-tenant.us.auth0.com/api/v2/"
+        apiIdentifier: "https://governance.your-domain.com"
 ```
 
 ### Microsoft Entra ID Configuration

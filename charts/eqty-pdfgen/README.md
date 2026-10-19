@@ -27,7 +27,7 @@ This allows:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - Container registry access to `ghcr.io/eqtylab/eqty-pdfgen`
 - Auth Service (only required when signed PDFs are needed)
 

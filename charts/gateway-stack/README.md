@@ -35,7 +35,7 @@ Both backend services also support TOML runtime files with `--config`, which thi
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - PostgreSQL database (bundled with this chart, or provided by the umbrella chart or external)
 - Ingress controller (bundled HAProxy, NGINX, Traefik, etc.) when `ingress.enabled=true`
 - TLS certificates (manual or via cert-manager) when `ingress.tls.enabled=true`

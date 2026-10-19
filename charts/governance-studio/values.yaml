@@ -304,7 +304,7 @@ config:
 
   # -- Auth0 Audience
   # @default -- `""`
-  # **REQUIRED for Auth0**: API audience (e.g., "https://your-tenant.us.auth0.com/api/v2/")
+  # **REQUIRED for Auth0**: Auth Service's apiIdentifier (e.g., "https://governance.your-domain.com")
   # Only used when authProvider is "auth0"
   auth0Audience: ""
 

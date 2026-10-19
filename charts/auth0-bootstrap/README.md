@@ -20,7 +20,7 @@ Key capabilities:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - An Auth0 tenant
 - A Machine-to-Machine (M2M) application in the Auth0 Dashboard authorized for the **Auth0 Management API** with at least the following scopes:
   - `read:clients`, `create:clients`, `update:clients`
@@ -44,8 +44,8 @@ auth0:
 applications:
   frontend:
     callbacks:
-      - "https://governance.example.com/callback"
-      - "http://localhost:5173/callback"
+      - "https://governance.example.com"
+      - "http://localhost:5173"
     logoutUrls:
       - "https://governance.example.com"
       - "http://localhost:5173"
@@ -345,7 +345,7 @@ secrets:
 config:
   auth0Domain: "your-tenant.us.auth0.com"
   auth0ClientId: "your-spa-client-id"
-  auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+  auth0Audience: "https://governance.your-domain.com"
 ```
 
 The `platform-auth0` secret should contain these keys after bootstrap:

@@ -242,7 +242,7 @@ Before proceeding, confirm:
 - [ ] AWS KMS IAM user/role is provisioned with signing permissions
 - [ ] DNS domain is available and you can create records
 - [ ] Cloudsmith prod entitlement token is available
-- [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
+- [ ] Helm 3.20+ and kubectl 1.29+ are installed locally
 - [ ] AWS CLI (`aws`) is installed locally
 
 ---
