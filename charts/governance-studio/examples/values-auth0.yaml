@@ -29,7 +29,7 @@ config:
   # Auth0 Configuration
   auth0Domain: "your-tenant.us.auth0.com"
   auth0ClientId: "YOUR_AUTH0_SPA_CLIENT_ID"
-  auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+  auth0Audience: "https://governance.your-domain.com"
 
   # Application Settings
   appTitle: "Governance Studio"

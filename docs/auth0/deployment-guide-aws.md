@@ -250,7 +250,7 @@ Before proceeding, confirm:
 - [ ] AWS KMS IAM user/role is provisioned with signing permissions
 - [ ] DNS domain is available and you can create records
 - [ ] Cloudsmith prod entitlement token is available
-- [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
+- [ ] Helm 3.20+ and kubectl 1.29+ are installed locally
 - [ ] AWS CLI (`aws`) is installed locally
 
 ---
@@ -713,8 +713,8 @@ applications:
   frontend:
     name: "Governance Platform Frontend"
     callbacks:
-      - "https://governance.your-domain.com/callback"
-      - "http://localhost:5173/callback"
+      - "https://governance.your-domain.com"
+      - "http://localhost:5173"
     logoutUrls:
       - "https://governance.your-domain.com"
       - "http://localhost:5173"
@@ -791,19 +791,19 @@ auth0-bootstrap   1/1           45s        1m
 
 ### What the Bootstrap Creates
 
-| Resource                                   | Details                                                                                                                                                                                  |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Frontend application (SPA)**             | Public client; `token_endpoint_auth_method: none`; PKCE auth code flow; `oidc_conformant: true`; grants: `authorization_code`, `implicit`, `refresh_token`                               |
-| **Backend application (M2M)**              | Confidential client; `token_endpoint_auth_method: client_secret_post`; `client_credentials` grant; client secret printed once in job logs                                                |
-| **Worker application (M2M)**               | Confidential client; `client_credentials` grant; client secret printed once in job logs                                                                                                  |
-| **Governance Platform API**                | Resource server identified by your `auth0.api.identifier` (e.g., `https://governance.your-domain.com`) with custom scopes                                                                |
-| **Custom scopes**                          | `governance:declarations:create`, `integrity:statements:create`, `read:organizations`, `write:organizations`, `read:projects`, `write:projects`, `read:evaluations`, `write:evaluations` |
-| **Backend client grant** on platform API   | Backend M2M granted the configured `apiScopes`                                                                                                                                           |
-| **Backend client grant** on Management API | Backend M2M granted limited Management API scopes (`read:users`, `update:users`, `create:users`, `read:roles`, `create:role_members`) so the platform can perform user lookups           |
-| **Worker client grant** on platform API    | Worker M2M granted the configured `apiScopes`                                                                                                                                            |
-| **Platform admin user**                    | Created in the configured database connection with the password from the `platform-admin` secret (when `users.admin.enabled: true`)                                                      |
-| **Post-login Action**                      | Enriches user tokens via the auth-service claims-enrichment endpoint; bound to the `post-login` trigger                                                                                  |
-| **Client-credentials-exchange Action**     | Enriches M2M tokens with service-account user claims; bound to the `credentials-exchange` trigger                                                                                        |
+| Resource                                   | Details                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frontend application (SPA)**             | Public client; `token_endpoint_auth_method: none`; PKCE auth code flow; `oidc_conformant: true`; grants: `authorization_code`, `implicit`, `refresh_token`                                                                                                                                                                                                                                     |
+| **Backend application (M2M)**              | Confidential client; `token_endpoint_auth_method: client_secret_post`; `client_credentials` grant; client secret printed once in job logs                                                                                                                                                                                                                                                      |
+| **Worker application (M2M)**               | Confidential client; `client_credentials` grant; client secret printed once in job logs                                                                                                                                                                                                                                                                                                        |
+| **Governance Platform API**                | Resource server identified by your `auth0.api.identifier` (e.g., `https://governance.your-domain.com`) with custom scopes                                                                                                                                                                                                                                                                      |
+| **Custom scopes**                          | `governance:declarations:create`, `integrity:statements:create`, `read:organizations`, `write:organizations`, `read:projects`, `write:projects`, `read:evaluations`, `write:evaluations`                                                                                                                                                                                                       |
+| **Backend client grant** on platform API   | Backend M2M granted the configured `apiScopes`                                                                                                                                                                                                                                                                                                                                                 |
+| **Backend client grant** on Management API | Backend M2M granted the Management API scopes Auth Service calls (`read:users`, `create:users`, `update:users`, `delete:users`, `create:user_tickets`, `read:organizations`, `create:organizations`, `update:organizations`, `read:organization_members`, `create:organization_members`, `delete:organization_members`, `update:clients`) for user, organization, and worker client management |
+| **Worker client grant** on platform API    | Worker M2M granted the configured `apiScopes`                                                                                                                                                                                                                                                                                                                                                  |
+| **Platform admin user**                    | Created in the configured database connection with the password from the `platform-admin` secret (when `users.admin.enabled: true`)                                                                                                                                                                                                                                                            |
+| **Post-login Action**                      | Enriches user tokens via the auth-service claims-enrichment endpoint; bound to the `post-login` trigger                                                                                                                                                                                                                                                                                        |
+| **Client-credentials-exchange Action**     | Enriches M2M tokens with service-account user claims; bound to the `credentials-exchange` trigger                                                                                                                                                                                                                                                                                              |
 
 ### Bootstrap Execution Order
 
@@ -1168,7 +1168,7 @@ governance-studio:
     # Auth0
     auth0Domain: "your-tenant.us.auth0.com"
     auth0ClientId: "your-frontend-spa-client-id" # Frontend application client ID from bootstrap logs
-    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+    auth0Audience: "https://governance.your-domain.com"
 
     # Feature flags
     features:
@@ -1288,7 +1288,7 @@ Before deploying, verify your values file has:
 - [ ] `governance-service.config.awsS3Region` and `awsS3BucketName` set
 - [ ] `governance-studio.config.auth0Domain` set to your Auth0 tenant domain
 - [ ] `governance-studio.config.auth0ClientId` set to the **Frontend SPA** client ID
-- [ ] `governance-studio.config.auth0Audience` set to `https://<your-tenant>.auth0.com/api/v2/`
+- [ ] `governance-studio.config.auth0Audience` set to the same value as `auth-service.config.idp.auth0.apiIdentifier`
 - [ ] `integrity-service.config.integrityAppBlobStoreType` set to `aws_s3`
 - [ ] `integrity-service.config.integrityAppBlobStoreAwsRegion` and `integrityAppBlobStoreAwsBucket` set
 - [ ] All ingress `host` fields set to your domain

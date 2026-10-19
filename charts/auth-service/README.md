@@ -30,7 +30,7 @@ This allows:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - PostgreSQL database (provided by umbrella chart or external)
 - Authentication provider (Auth0, Entra ID, or Keycloak)
 - Key management provider: AWS KMS, Azure Key Vault, or GCP KMS (for DID key signing)
@@ -632,7 +632,7 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 
 1. **Create a Regular Web Application** for user authentication
 2. **Create a Machine-to-Machine Application** for Management API access
-3. **Enable Management API** permissions for the M2M application. Required scopes: `read:users`, `update:users`, `create:users`, `read:roles`, `create:role_members`
+3. **Enable Management API** permissions for the M2M application. Required scopes: `read:users`, `create:users`, `update:users`, `delete:users`, `create:user_tickets`, `read:organizations`, `create:organizations`, `update:organizations`, `read:organization_members`, `create:organization_members`, `delete:organization_members`, `update:clients`
 4. **Create an API** for the governance platform (this becomes your `apiIdentifier`)
 
 ### Example Configuration

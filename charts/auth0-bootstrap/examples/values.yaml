@@ -65,8 +65,8 @@ applications:
   frontend:
     name: "Governance Platform Frontend"
     callbacks:
-      - "https://CHANGE_ME_DOMAIN_HERE/callback"
-      - "http://localhost:5173/callback"
+      - "https://CHANGE_ME_DOMAIN_HERE"
+      - "http://localhost:5173"
     logoutUrls:
       - "https://CHANGE_ME_DOMAIN_HERE"
       - "http://localhost:5173"
@@ -88,10 +88,17 @@ applications:
       - "integrity:statements:create"
     managementApiScopes:
       - "read:users"
-      - "update:users"
       - "create:users"
-      - "read:roles"
-      - "create:role_members"
+      - "update:users"
+      - "delete:users"
+      - "create:user_tickets"
+      - "read:organizations"
+      - "create:organizations"
+      - "update:organizations"
+      - "read:organization_members"
+      - "create:organization_members"
+      - "delete:organization_members"
+      - "update:clients"
 
   # Worker M2M
   worker:

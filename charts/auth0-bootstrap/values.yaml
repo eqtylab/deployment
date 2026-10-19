@@ -167,8 +167,8 @@ applications:
     # @default -- See values below
     # Allowed callback URLs after authentication
     callbacks:
-      - "http://localhost:5173/callback"
-      - "https://governance.example.com/callback"
+      - "http://localhost:5173"
+      - "https://governance.example.com"
     # -- Logout URLs
     # @default -- See values below
     # Allowed logout redirect URLs
@@ -210,10 +210,17 @@ applications:
     # Scopes to grant on the Auth0 Management API (for user management)
     managementApiScopes:
       - "read:users"
-      - "update:users"
       - "create:users"
-      - "read:roles"
-      - "create:role_members"
+      - "update:users"
+      - "delete:users"
+      - "create:user_tickets"
+      - "read:organizations"
+      - "create:organizations"
+      - "update:organizations"
+      - "read:organization_members"
+      - "create:organization_members"
+      - "delete:organization_members"
+      - "update:clients"
 
   # ---------------------------------------------------------------------------
   # Worker Application (M2M)

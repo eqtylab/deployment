@@ -242,7 +242,7 @@ Before proceeding, confirm:
 - [ ] Google Cloud KMS key ring is provisioned with appropriate permissions
 - [ ] DNS domain is available and you can create records
 - [ ] Cloudsmith prod entitlement token is available
-- [ ] Helm 4.0+ and kubectl 1.29+ are installed locally
+- [ ] Helm 3.20+ and kubectl 1.29+ are installed locally
 - [ ] Google Cloud CLI (`gcloud`) is installed locally
 
 ---

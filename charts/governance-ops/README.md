@@ -20,7 +20,7 @@ Key capabilities:
 **Required:**
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - kube-prometheus-stack deployed with:
   - Prometheus for metrics collection
   - Grafana with sidecar enabled for dashboard auto-discovery

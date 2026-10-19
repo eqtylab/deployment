@@ -179,7 +179,7 @@ governance-studio:
     # Auth0 Configuration
     auth0Domain: "your-tenant.us.auth0.com"
     auth0ClientId: "your-spa-client-id"
-    auth0Audience: "https://your-tenant.us.auth0.com/api/v2/"
+    auth0Audience: "https://governance.your-domain.com"
     # Feature Flags
     features:
       governance: true
@@ -281,7 +281,6 @@ auth0:
   createPlatformAdmin: true
   platformAdminEmail: "admin@your-domain.com" # Must exist in your Auth0 tenant
   domain: "your-tenant.us.auth0.com"
-
 
 # =============================================================================
 # SECRET CREATION COMMANDS

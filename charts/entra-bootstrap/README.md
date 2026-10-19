@@ -19,7 +19,7 @@ Key capabilities:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - A Microsoft Entra ID tenant
 - A service principal with the following Microsoft Graph API permissions (Application type):
   - `Application.ReadWrite.All` — create and update app registrations

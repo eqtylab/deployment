@@ -395,7 +395,7 @@ global:
         # Only used if create=true
         values:
           # -- GCS Service Account JSON
-          # @default -- `""` (REQUIRED if create=true, base64-encoded)
+          # @default -- `""` (REQUIRED if create=true, raw service account JSON)
           serviceAccountJson: ""
 
 # =============================================================================
@@ -2575,7 +2575,7 @@ governance-studio:
 
     # -- Auth0 Audience
     # @default -- `""`
-    # **REQUIRED for Auth0**: API audience (e.g., "https://your-tenant.us.auth0.com/api/v2/")
+    # **REQUIRED for Auth0**: Auth Service's apiIdentifier (e.g., "https://governance.your-domain.com")
     # Only used when authProvider is "auth0"
     auth0Audience: ""
 

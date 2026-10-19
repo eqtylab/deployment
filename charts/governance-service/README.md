@@ -29,7 +29,7 @@ This allows:
 ## Prerequisites
 
 - Kubernetes 1.29+
-- Helm 4.0+
+- Helm 3.20+
 - PostgreSQL database (provided by umbrella chart or external)
 - Storage provider (GCS, Azure Blob Storage, or AWS S3)
 - Authentication provider (Auth0, Entra ID, or Keycloak)
