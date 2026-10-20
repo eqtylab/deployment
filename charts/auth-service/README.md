@@ -533,6 +533,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.keyManagement.aws_kms.secretAccessKey             | string | `""`           | AWS secret access key (secret - auto-configured from global.secrets.keyManagement.aws_kms)                                                                                                           |
 | config.keyManagement.aws_kms.sessionToken                | string | `""`           | AWS session token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)                                                                                                     |
 | config.keyManagement.aws_kms.deletionWindowDays          | int    | `7`            | AWS KMS deletion window in days                                                                                                                                                                      |
+| config.keyManagement.aws_kms.keyPolicyPrincipalArn       | string | `""`           | IAM user or role ARN granted use of new DID keys (optional, derived from the running credentials; set for a role with a path, or when STS is unreachable)                                            |
 | config.keyManagement.azure_key_vault.vaultUrl            | string | `""`           | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)                                                                                              |
 | config.keyManagement.azure_key_vault.tenantId            | string | `""`           | Azure tenant ID (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)                                                                                                  |
 | config.keyManagement.azure_key_vault.clientId            | string | `""`           | Azure client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                                                                                                         |
@@ -772,7 +773,7 @@ Choose one key management provider for DID credential signing: AWS KMS, Azure Ke
 #### Required AWS Setup
 
 1. **Create an IAM user or role** with KMS permissions
-2. **Grant KMS permissions** (CreateKey, Sign, Verify, GetPublicKey, DescribeKey, CreateAlias, ScheduleKeyDeletion)
+2. **Grant KMS permissions** (CreateKey, plus CreateAlias and DeleteAlias on `alias/eqtylab/did/*`; the key policy the auth-service sets on each key grants the rest)
 
 #### Example Configuration
 
@@ -784,6 +785,7 @@ config:
       region: "us-east-1"
       # endpoint: ""           # Optional: custom endpoint (e.g., for LocalStack)
       # aliasPrefix: "alias/eqtylab/did"  # Optional: defaults to alias/eqtylab/did
+      # keyPolicyPrincipalArn: ""        # Optional: only for an IAM role with a path, or when STS is unreachable
 
 secrets:
   keyManagement:
@@ -1105,6 +1107,8 @@ kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/he
 - Verify AWS region and credentials (access key ID, secret access key)
 - Check IAM user/role has required KMS permissions
 - If using a custom endpoint, verify it is reachable
+- `MalformedPolicyDocumentException` when creating a key: set `config.keyManagement.aws_kms.keyPolicyPrincipalArn` to the full ARN of the IAM user or role the auth-service runs as
+- `AccessDeniedException` on a key created before upgrading: it still has the account's default key policy, so restore the previous IAM policy until the key has the new key policy
 
 **Key management errors (GCP KMS)**
 

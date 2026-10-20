@@ -67,6 +67,7 @@ auth-service:
       #   region: "us-east-1"
       #   endpoint: ""
       #   aliasPrefix: "alias/eqtylab/did"
+      #   keyPolicyPrincipalArn: "" # Only for an IAM role with a path, or when STS is unreachable
 
       provider: "azure_key_vault"
       azure_key_vault:

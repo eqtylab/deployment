@@ -159,6 +159,9 @@ data:
   AWS_KMS_ALIAS_PREFIX: "{{ $awsAliasPrefix }}"
   {{- $awsDeletionDays := .Values.config.keyManagement.aws_kms.deletionWindowDays | default 7 }}
   AWS_KMS_DELETION_WINDOW_DAYS: "{{ $awsDeletionDays }}"
+  {{- if .Values.config.keyManagement.aws_kms.keyPolicyPrincipalArn }}
+  AWS_KMS_KEY_POLICY_PRINCIPAL_ARN: "{{ .Values.config.keyManagement.aws_kms.keyPolicyPrincipalArn }}"
+  {{- end }}
   {{- end }}
 
   {{- if eq $keyMgmtProvider "gcp_kms" }}

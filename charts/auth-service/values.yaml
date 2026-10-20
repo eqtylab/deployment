@@ -763,6 +763,9 @@ config:
       # -- AWS KMS Deletion Window Days
       # @default -- `7`
       deletionWindowDays: 7
+      # -- IAM user or role ARN granted use of new DID keys (optional, derived from the running credentials; set for a role with a path, or when STS is unreachable)
+      # @default -- `""`
+      keyPolicyPrincipalArn: ""
 
     # -- Azure Key Vault Configuration
     # @default -- See values below

@@ -210,7 +210,7 @@ For versions with a verified Cloudsmith delivery, customer platform images are h
 Provision the following **before** deployment:
 
 - **AWS S3** — bucket(s) + IAM user/role with read/write access for governance artifacts and integrity store
-- **AWS KMS** — IAM user/role with kms:CreateKey, kms:Sign, kms:Verify, kms:DescribeKey, kms:GetPublicKey, kms:CreateAlias, kms:ScheduleKeyDeletion permissions
+- **AWS KMS** — IAM user/role with kms:CreateKey, plus kms:CreateAlias and kms:DeleteAlias on alias/eqtylab/did/\*; each key's key policy grants the rest
 
 ### DNS
 
@@ -304,23 +304,20 @@ aws iam create-policy \
   --policy-name governance-kms-signing \
   --policy-document '{
     "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Action": [
-        "kms:CreateKey",
-        "kms:CreateAlias",
-        "kms:DeleteAlias",
-        "kms:DescribeKey",
-        "kms:GetPublicKey",
-        "kms:ListAliases",
-        "kms:ListKeys",
-        "kms:ScheduleKeyDeletion",
-        "kms:Sign",
-        "kms:Verify",
-        "kms:TagResource"
-      ],
-      "Resource": "*"
-    }]
+    "Statement": [
+      {
+        "Sid": "AllowKMSKeyCreation",
+        "Effect": "Allow",
+        "Action": "kms:CreateKey",
+        "Resource": "*"
+      },
+      {
+        "Sid": "AllowPrefixedAliases",
+        "Effect": "Allow",
+        "Action": ["kms:CreateAlias", "kms:DeleteAlias"],
+        "Resource": "arn:aws:kms:YOUR_AWS_REGION:YOUR_ACCOUNT_ID:alias/eqtylab/did/*"
+      }
+    ]
   }'
 
 # Create IAM user and attach policy
@@ -333,23 +330,28 @@ aws iam attach-user-policy \
 aws iam create-access-key --user-name governance-kms-user
 ```
 
+The IAM policy grants no operations on existing keys. The auth-service sets a key policy on each key it creates that grants its own IAM user or role describe, public key, sign, tag, alias, and deletion operations on that key only, plus the key policy update AWS requires of a key's creator, so it cannot sign with, tag, alias, or delete any other key in the account. Change `alias/eqtylab/did` if you set a different `aliasPrefix`. The auth-service finds its IAM user or role from its credentials; for an IAM role with a path, or when STS is unreachable, set `auth-service.config.keyManagement.aws_kms.keyPolicyPrincipalArn` to the full ARN of the IAM user or role. See [AWS KMS](https://guardian.docs.eqtylab.io/deployment/aws-kms/) for the key policy.
+
+> **Upgrading an existing deployment:** keys created by an earlier auth-service have the account's default key policy and need the previous IAM policy. Keep it until each key under `alias/eqtylab/did/` has the new key policy; EQTY Lab can apply it with you.
+
 You'll need these values for your `values.yaml` and `secrets.yaml`:
 
-| Value             | Field                                                   |
-| ----------------- | ------------------------------------------------------- |
-| Region            | `auth-service.config.keyManagement.aws_kms.region`      |
-| Access Key ID     | Secret: `platform-aws-kms` → `access-key-id`            |
-| Secret Access Key | Secret: `platform-aws-kms` → `secret-access-key`        |
-| Session Token     | Secret: `platform-aws-kms` → `session-token` (optional) |
+| Value                           | Field                                                             |
+| ------------------------------- | ----------------------------------------------------------------- |
+| Region                          | `auth-service.config.keyManagement.aws_kms.region`                |
+| Key policy principal (optional) | `auth-service.config.keyManagement.aws_kms.keyPolicyPrincipalArn` |
+| Access Key ID                   | Secret: `platform-aws-kms` → `access-key-id`                      |
+| Secret Access Key               | Secret: `platform-aws-kms` → `secret-access-key`                  |
+| Session Token                   | Secret: `platform-aws-kms` → `session-token` (optional)           |
 
 ### Summary of Provisioned Resources
 
 After completing this section, you should have:
 
-| Resource | What You Need for Later                                  |
-| -------- | -------------------------------------------------------- |
-| AWS S3   | Region, access key ID, secret access key, 2 bucket names |
-| AWS KMS  | Region, access key ID, secret access key                 |
+| Resource | What You Need for Later                                                       |
+| -------- | ----------------------------------------------------------------------------- |
+| AWS S3   | Region, access key ID, secret access key, 2 bucket names                      |
+| AWS KMS  | Region, access key ID, secret access key, key policy principal ARN (optional) |
 
 These values will be used in [Section 8 (Creating Secrets)](#8-creating-kubernetes-secrets) and [Section 9 (Configuring values.yaml)](#9-configuring-valuesyaml).
 
@@ -1059,14 +1061,16 @@ auth-service:
       provider: "aws_kms"
       aws_kms:
         region: "us-east-1"
+        # keyPolicyPrincipalArn: "" # Only for an IAM role with a path, or when STS is unreachable
 ```
 
-| Field                                    | Description                   | Where to Get It                                      |
-| ---------------------------------------- | ----------------------------- | ---------------------------------------------------- |
-| `idp.issuer`                             | Entra ID v2.0 issuer URL      | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
-| `idp.entra.tenantId`                     | Entra Directory (tenant) ID   | Azure Portal > Entra ID > Overview                   |
-| `keyManagement.aws_kms.region`           | AWS KMS region                | Your AWS region (e.g., `us-east-1`)                  |
-| `serviceAccounts.governanceWorker.scope` | OAuth scope for worker tokens | `api://<backend-app-id>/.default` (see note)         |
+| Field                                         | Description                                                                                                 | Where to Get It                                      |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `idp.issuer`                                  | Entra ID v2.0 issuer URL                                                                                    | `https://login.microsoftonline.com/{tenant-id}/v2.0` |
+| `idp.entra.tenantId`                          | Entra Directory (tenant) ID                                                                                 | Azure Portal > Entra ID > Overview                   |
+| `keyManagement.aws_kms.region`                | AWS KMS region                                                                                              | Your AWS region (e.g., `us-east-1`)                  |
+| `keyManagement.aws_kms.keyPolicyPrincipalArn` | IAM user or role ARN for new keys' key policy; only for an IAM role with a path, or when STS is unreachable | IAM console → the user's or role's ARN               |
+| `serviceAccounts.governanceWorker.scope`      | OAuth scope for worker tokens                                                                               | `api://<backend-app-id>/.default` (see note)         |
 
 > **The worker scope must be set.** The bootstrap creates the `Governance Worker`
 > app with no Application ID URI, so auth-service's default of
@@ -1214,6 +1218,7 @@ Before deploying, verify your values file has:
 - [ ] `auth-service.config.idp.entra.tenantId` set to your Entra tenant ID
 - [ ] `auth-service.config.keyManagement.provider` set to `aws_kms`
 - [ ] `auth-service.config.keyManagement.aws_kms.region` set
+- [ ] `auth-service.config.keyManagement.aws_kms.keyPolicyPrincipalArn` set if the auth-service runs as an IAM role with a path or cannot reach STS
 - [ ] `governance-service.config.storageProvider` set to `aws_s3`
 - [ ] `governance-service.config.awsS3Region` and `awsS3BucketName` set
 - [ ] `governance-service.config.entraTenantId` set
