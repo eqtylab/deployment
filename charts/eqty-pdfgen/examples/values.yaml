@@ -1,18 +1,18 @@
-# EQTY PDFGen Configuration Example
-# Minimal configuration for deploying the EQTY PDF generation service
+# PDFGen Configuration Example
+# Minimal configuration for deploying the PDF generation service
 # For all available values, see the chart's values.yaml and README.md
 #
 # Usage:
 #   Set these values under the `eqty-pdfgen:` key in your umbrella values file
 
-# EQTY PDFGen is enabled by default in the umbrella chart
+# PDFGen is enabled by default in the umbrella chart
 enabled: true
 
 image:
   tag: ""
   pullPolicy: Always
 
-# EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
+# PDFGen is intentionally cluster-internal and does not render an Ingress.
 # It is reached over the internal ClusterIP service by other platform services.
 service:
   type: ClusterIP

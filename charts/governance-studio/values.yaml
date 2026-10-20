@@ -16,7 +16,7 @@ enabled: true
 global:
   # -- Replace only the image registry host, for example registry.customer.example
   imageRegistryOverride: ""
-  # -- Replace the full EQTY image repository prefix, for example registry.customer.example/eqtylab
+  # -- Replace the full EQTY Lab image repository prefix, for example registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
 
 # -- Replica Count

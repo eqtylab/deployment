@@ -1,6 +1,6 @@
 # Auth0 Bootstrap
 
-A Helm chart for deploying the EQTY Lab Auth0 Bootstrap on Kubernetes.
+A Helm chart for deploying the Auth0 Bootstrap on Kubernetes.
 
 ## Description
 

@@ -1,7 +1,7 @@
 # =============================================================================
 # GATEWAY STACK - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the Guardian Gateway stack: the LLM gateway,
+# This values file configures the Agent Gateway stack: the LLM gateway,
 # the control plane, and the bundled PostgreSQL and HAProxy ingress
 # dependencies
 #
@@ -21,7 +21,7 @@ global:
   imagePullSecrets: []
   # -- Replace only the image registry host, for example registry.customer.example
   imageRegistryOverride: ""
-  # -- Replace the full EQTY image repository prefix, for example registry.customer.example/eqtylab
+  # -- Replace the full EQTY Lab image repository prefix, for example registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
 
 # -- Image Pull Secrets
@@ -802,7 +802,7 @@ controlPlane:
     enabled: true
     # -- Wait Container Image
     # @default -- See values below
-    # Supplies psql; the global host override applies, but the EQTY prefix override does not
+    # Supplies psql; the global host override applies, but the EQTY Lab prefix override does not
     image:
       # -- Image Repository
       # @default -- `docker.io/library/postgres`

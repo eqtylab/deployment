@@ -47,7 +47,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Resolve the image repository, honoring customer registry mirror overrides.
 This chart deploys several images, so callers pass a dict of the root context
 and the image block to resolve: (dict "root" . "image" .Values.<workload>.image)
-The EQTY prefix override must not redirect upstream database helper images.
+The EQTY Lab prefix override must not redirect upstream database helper images.
 */}}
 {{- define "gateway-stack.imageRepository" -}}
 {{- $root := .root -}}

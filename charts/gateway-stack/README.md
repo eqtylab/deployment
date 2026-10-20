@@ -1,6 +1,6 @@
 # Gateway Stack
 
-A Helm chart for deploying the EQTY Lab Guardian Gateway stack on Kubernetes.
+A Helm chart for deploying the Agent Gateway stack on Kubernetes.
 
 ## Description
 
@@ -105,13 +105,13 @@ To have this chart create the ACME issuer for you, also set:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                     | Type   | Description                                                                   |
-| --------------------------------------- | ------ | ----------------------------------------------------------------------------- |
-| global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)      |
-| global.imageRepositoryPrefixOverride    | string | Replace the full EQTY image repository prefix (e.g., `registry.example/eqty`) |
-| global.imagePullPolicy                  | string | Default image pull policy for platform installs                               |
-| global.imagePullSecrets                 | list   | Image pull secrets applied to every workload in this chart                    |
-| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                     |
+| Key                                     | Type   | Description                                                                       |
+| --------------------------------------- | ------ | --------------------------------------------------------------------------------- |
+| global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)          |
+| global.imageRepositoryPrefixOverride    | string | Replace the full EQTY Lab image repository prefix (e.g., `registry.example/eqty`) |
+| global.imagePullPolicy                  | string | Default image pull policy for platform installs                                   |
+| global.imagePullSecrets                 | list   | Image pull secrets applied to every workload in this chart                        |
+| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                         |
 
 ### Chart-Specific Parameters
 
@@ -461,7 +461,7 @@ Expected secret keys:
 
 When `llmGateway.registration.enabled=true`, `llm-gateway` reads `registrationTokenSecret` from this secret as `LLM_GATEWAY_REGISTRATION_TOKEN_SECRET`.
 
-API-key enrollment (`viper did register` with `GUARDIAN_API_KEY`) is a separate path. Set `llmGateway.authServiceBaseURL` to the auth-service that minted the key (for example the in-cluster Studio auth-service). Leaving it empty keeps that path disabled and the gateway returns `404 registration_unavailable`.
+API-key enrollment (`viper did register` with `GUARDIAN_API_KEY`) is a separate path. Set `llmGateway.authServiceBaseURL` to the auth-service that minted the key (for example the in-cluster auth-service Guardian uses). Leaving it empty keeps that path disabled and the gateway returns `404 registration_unavailable`.
 
 ## Gateway VC Issuer Signer Wiring
 
@@ -570,7 +570,7 @@ When exposing control-plane behind a path prefix (for example `/api`), set both:
 
 The chart pins PostgreSQL to `bitnamilegacy/postgresql` by default because versioned tags for `bitnami/postgresql` may not be available on Docker Hub.
 
-For air-gapped installs, `global.imageRegistryOverride` redirects the registry host for images this chart owns, including the `psql` init container. `global.imageRepositoryPrefixOverride` now redirects only EQTY images whose source begins with `ghcr.io/eqtylab/`; it leaves upstream images at their existing sources. Installations that previously used the prefix alone to mirror `psql` must also set the host override or `controlPlane.waitForRegistryViews.image.repository` explicitly. Neither override reaches the bundled Bitnami subchart, which reads its own `global.imageRegistry`; mirror that image separately or set `postgresql.image.repository` directly.
+For air-gapped installs, `global.imageRegistryOverride` redirects the registry host for images this chart owns, including the `psql` init container. `global.imageRepositoryPrefixOverride` now redirects only EQTY Lab images whose source begins with `ghcr.io/eqtylab/`; it leaves upstream images at their existing sources. Installations that previously used the prefix alone to mirror `psql` must also set the host override or `controlPlane.waitForRegistryViews.image.repository` explicitly. Neither override reaches the bundled Bitnami subchart, which reads its own `global.imageRegistry`; mirror that image separately or set `postgresql.image.repository` directly.
 
 ## Optional TOML Runtime Files
 

@@ -1,6 +1,6 @@
 # Governance Service
 
-A Helm chart for deploying the EQTY Lab Governance Service on Kubernetes.
+A Helm chart for deploying the Governance Service on Kubernetes.
 
 ## Description
 

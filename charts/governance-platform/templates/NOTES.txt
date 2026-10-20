@@ -135,10 +135,10 @@ Revision:         {{ .Release.Revision }}
 
 {{- $eqtyPdfgen := index .Values "eqty-pdfgen" }}
 {{- if $eqtyPdfgen.enabled }}
-🔸 **EQTY PDFGen API:**
+🔸 **PDFGen API:**
     Internal: http://{{ printf "%s-eqty-pdfgen" .Release.Name }}:8080
 {{- else }}
-🔸 **EQTY PDFGen API:** Disabled
+🔸 **PDFGen API:** Disabled
 {{- end }}
 
 ---------------------------------------------------------------------------------

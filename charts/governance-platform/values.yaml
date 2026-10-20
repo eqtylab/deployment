@@ -36,11 +36,11 @@ global:
   # - Never: Never pull, use local image only
   imagePullPolicy: "IfNotPresent"
 
-  # -- Replace only the image registry host for EQTY runtime images
+  # -- Replace only the image registry host for EQTY Lab runtime images
   # Example: registry.customer.example
   imageRegistryOverride: ""
 
-  # -- Replace the full EQTY image repository prefix for mirrored installs
+  # -- Replace the full EQTY Lab image repository prefix for mirrored installs
   # Example: registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
 
@@ -217,7 +217,7 @@ global:
       keys:
         username: "username"
         password: "password"
-        # DSN consumed by Guardian Gateway services when gateway-stack is enabled
+        # DSN consumed by Agent Gateway services when gateway-stack is enabled
         gatewayDsn: "gateway-dsn"
       # Only used if create=true
       values:
@@ -227,7 +227,7 @@ global:
         # -- Database Password
         # @default -- `""` (REQUIRED if create=true)
         password: ""
-        # -- Guardian Gateway database DSN
+        # -- Agent Gateway database DSN
         # @default -- `""` (REQUIRED if create=true and gateway-stack.enabled=true)
         # URL-encode credentials that contain reserved URI characters
         gatewayDsn: ""
@@ -1346,14 +1346,14 @@ auth-service:
   hostAliases: []
 
 # =============================================================================
-# EQTY PDFGen
+# PDFGen
 # =============================================================================
 # Default values for the eqty-pdfgen Helm chart
 # ------------------------------------------------------------------------------
 eqty-pdfgen:
   # -- Enable Service
   # @default -- `true`
-  # Enable the EQTY PDF generation service
+  # Enable the PDF generation service
   enabled: true
 
   # -- Replica Count
@@ -1363,7 +1363,7 @@ eqty-pdfgen:
 
   # -- Image Configuration
   # @default -- See values below
-  # Container image settings for EQTY PDFGen
+  # Container image settings for PDFGen
   image:
     # -- Image Repository
     # @default -- `ghcr.io/eqtylab/eqty-pdfgen`
@@ -1606,7 +1606,7 @@ eqty-pdfgen:
   extraEnvVarsConfigMap: ""
 
 # =============================================================================
-# Guardian Gateway
+# Agent Gateway
 # =============================================================================
 # The gateway remains opt-in for the first consolidated release so existing
 # Guardian Platform installations are not changed by an upgrade. The example

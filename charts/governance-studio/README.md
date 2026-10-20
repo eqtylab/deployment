@@ -1,6 +1,6 @@
 # Guardian
 
-A Helm chart for deploying the EQTY Lab Guardian frontend application on Kubernetes.
+A Helm chart for deploying the Guardian web app on Kubernetes.
 
 ## Description
 

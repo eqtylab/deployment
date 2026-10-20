@@ -1,6 +1,6 @@
 # Microsoft Entra ID Bootstrap
 
-A Helm chart for deploying the EQTY Lab Entra ID Bootstrap on Kubernetes.
+A Helm chart for deploying the Entra ID Bootstrap on Kubernetes.
 
 ## Description
 
