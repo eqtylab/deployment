@@ -182,25 +182,7 @@ Only includes secrets relevant to your configuration:
 
 ## Next Steps
 
-After generating your files, follow the deployment guide for your auth provider and cloud platform:
-
-**Auth0**
-
-- [Auth0 + AWS](../docs/auth0/deployment-guide-aws.md)
-- [Auth0 + Azure](../docs/auth0/deployment-guide-azure.md)
-- [Auth0 + GCP](../docs/auth0/deployment-guide-gcp.md)
-
-**Entra ID**
-
-- [Entra ID + AWS](../docs/entra/deployment-guide-aws.md)
-- [Entra ID + Azure](../docs/entra/deployment-guide-azure.md)
-- [Entra ID + GCP](../docs/entra/deployment-guide-gcp.md)
-
-**Keycloak**
-
-- [Keycloak + AWS](../docs/keycloak/deployment-guide-aws.md)
-- [Keycloak + Azure](../docs/keycloak/deployment-guide-azure.md)
-- [Keycloak + GCP](../docs/keycloak/deployment-guide-gcp.md)
+After generating your files, fill in the placeholders described on the docs site's [govctl](https://guardian.docs.eqtylab.io/deployment/govctl/) page, then continue with [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) and your identity provider's page: [Auth0](https://guardian.docs.eqtylab.io/deployment/auth0/), [Microsoft Entra ID](https://guardian.docs.eqtylab.io/deployment/microsoft-entra-id/), or [Keycloak](https://guardian.docs.eqtylab.io/deployment/keycloak/).
 
 ## OpenBao workflow
 

@@ -119,7 +119,7 @@ cp <provider>-bootstrap/examples/values.yaml bootstrap-values.yaml
 cp governance-platform/examples/secrets-sample.yaml secrets.yaml
 ```
 
-Edit each file with your environment-specific settings. See the [deployment guides](../docs/) for field-by-field details.
+Edit each file with your environment-specific settings. See [Chart Values](https://guardian.docs.eqtylab.io/deployment/chart-values/) for field-by-field details.
 
 **6. Create Kubernetes secrets**
 
@@ -149,7 +149,7 @@ helm upgrade --install keycloak-bootstrap ./keycloak-bootstrap \
   --wait --timeout 10m
 ```
 
-Helper scripts are also available in `scripts/auth0/`, `scripts/entra/`, and `scripts/keycloak/` — see the [deployment guides](../docs/) for details.
+Helper scripts are also available in `scripts/auth0/`, `scripts/entra/`, and `scripts/keycloak/` — see the identity provider pages on the [docs site](https://guardian.docs.eqtylab.io/deployment/authentication/) for details.
 
 **8. Deploy**
 
@@ -171,7 +171,7 @@ externally managed Secret.
 kubectl get pods -n governance
 ```
 
-For complete documentation, see the [deployment guides](../docs/) and [governance-platform/README.md](governance-platform/README.md).
+For complete documentation, see [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) and [governance-platform/README.md](governance-platform/README.md).
 
 ## Installation Methods
 
@@ -233,33 +233,16 @@ The `governance-platform/examples/` directory contains complete deployment examp
 | [values-openbao.yaml](governance-platform/examples/values-openbao.yaml)           | Optional development OpenBao Transit overlay for Auth signing keys                                          |
 | [values-openbao-kind.yaml](governance-platform/examples/values-openbao-kind.yaml) | Disposable local-kind OpenBao diagnostic profile (not standalone; needs launcher-supplied publisher values) |
 
-## Deployment Guides
+## Deployment Documentation
 
-The `docs/` directory contains step-by-step deployment guides organized by auth provider and cloud platform:
+The deployment guides are on the docs site. [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) is the full checklist; its steps in order:
 
-**Auth0**
-
-| Guide                                                                | Cloud Platform                          |
-| -------------------------------------------------------------------- | --------------------------------------- |
-| [deployment-guide-aws.md](../docs/auth0/deployment-guide-aws.md)     | Auth0 + AWS (S3, KMS)                   |
-| [deployment-guide-azure.md](../docs/auth0/deployment-guide-azure.md) | Auth0 + Azure (Blob Storage, Key Vault) |
-| [deployment-guide-gcp.md](../docs/auth0/deployment-guide-gcp.md)     | Auth0 + GCP (GCS, GCP KMS)              |
-
-**Entra ID**
-
-| Guide                                                                | Cloud Platform                             |
-| -------------------------------------------------------------------- | ------------------------------------------ |
-| [deployment-guide-aws.md](../docs/entra/deployment-guide-aws.md)     | Entra ID + AWS (S3, KMS)                   |
-| [deployment-guide-azure.md](../docs/entra/deployment-guide-azure.md) | Entra ID + Azure (Blob Storage, Key Vault) |
-| [deployment-guide-gcp.md](../docs/entra/deployment-guide-gcp.md)     | Entra ID + GCP (GCS, GCP KMS)              |
-
-**Keycloak**
-
-| Guide                                                                   | Cloud Platform                             |
-| ----------------------------------------------------------------------- | ------------------------------------------ |
-| [deployment-guide-aws.md](../docs/keycloak/deployment-guide-aws.md)     | Keycloak + AWS (S3, KMS)                   |
-| [deployment-guide-azure.md](../docs/keycloak/deployment-guide-azure.md) | Keycloak + Azure (Blob Storage, Key Vault) |
-| [deployment-guide-gcp.md](../docs/keycloak/deployment-guide-gcp.md)     | Keycloak + GCP (GCS, GCP KMS)              |
+1. [Prerequisites](https://guardian.docs.eqtylab.io/deployment/prerequisites/)
+2. [Domain and TLS](https://guardian.docs.eqtylab.io/deployment/domain-and-tls/)
+3. [Object storage](https://guardian.docs.eqtylab.io/deployment/object-storage/) and [key management](https://guardian.docs.eqtylab.io/deployment/key-management/)
+4. [govctl](https://guardian.docs.eqtylab.io/deployment/govctl/) or [Chart Values](https://guardian.docs.eqtylab.io/deployment/chart-values/)
+5. The identity provider: [Auth0](https://guardian.docs.eqtylab.io/deployment/auth0/), [Microsoft Entra ID](https://guardian.docs.eqtylab.io/deployment/microsoft-entra-id/), or [Keycloak](https://guardian.docs.eqtylab.io/deployment/keycloak/)
+6. [Helm Deployment](https://guardian.docs.eqtylab.io/deployment/helm-deployment/)
 
 ## Development
 
