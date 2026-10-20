@@ -20,7 +20,7 @@ Cloudsmith while the flag is disabled.
 
 ## Required configuration
 
-Following [EQTY's Cloudsmith conventions](https://github.com/eqtylab/cloudsmith),
+Following [EQTY Lab's Cloudsmith conventions](https://github.com/eqtylab/cloudsmith),
 create service account `github_deployment_ci` with download and upload access to
 `eqtylab/prod`. Do not grant package deletion or overwrite privileges. Configure
 two OIDC policies with provider `https://token.actions.githubusercontent.com`,
