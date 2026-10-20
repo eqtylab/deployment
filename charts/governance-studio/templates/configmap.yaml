@@ -34,6 +34,7 @@ data:
   FEATURE_GOVERNANCE: {{ .Values.config.features.governance | quote }}
   FEATURE_LINEAGE: {{ .Values.config.features.lineage | quote }}
   FEATURE_GATEWAY: {{ .Values.config.features.gateway | quote }}
+  FEATURE_AGENT_CERTIFICATION: {{ .Values.config.features.agentCertification | quote }}
 
   # ==========================================================================
   # Authentication Configuration

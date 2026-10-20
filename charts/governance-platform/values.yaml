@@ -2671,6 +2671,11 @@ governance-studio:
       # Enable Gateway features (requires config.gatewayApiUrl)
       gateway: false
 
+      # -- Agent Certification Features
+      # @default -- `false`
+      # Enable Governance Programs and agent certification (requires features.gateway)
+      agentCertification: false
+
 # =============================================================================
 # Integrity Service
 # =============================================================================

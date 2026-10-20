@@ -50,3 +50,4 @@ governance-studio:
     llmGatewayUrl: "https://gateway.example.com"
     features:
       gateway: true
+      agentCertification: true

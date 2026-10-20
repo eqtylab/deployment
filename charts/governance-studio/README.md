@@ -11,7 +11,7 @@ Key capabilities:
 - **Governance Management**: Create, review, and manage governance policies and workflows
 - **Data Lineage**: Visualize provenance and transformation history of data assets
 - **Multi-Provider Auth**: Native support for Auth0, Microsoft Entra ID, and Keycloak authentication
-- **Feature Flags**: Configurable feature toggles for governance, lineage, and Gateway
+- **Feature Flags**: Configurable feature toggles for governance, lineage, Gateway, and agent certification
 - **Runtime Configuration**: Single immutable image with environment-driven configuration
 
 ## Configuration Model
@@ -338,11 +338,12 @@ Authentication is automatically configured from global values in umbrella deploy
 
 ### Feature Flags
 
-| Key                        | Type | Default | Description                                               |
-| -------------------------- | ---- | ------- | --------------------------------------------------------- |
-| config.features.governance | bool | `true`  | Enable governance features                                |
-| config.features.lineage    | bool | `true`  | Enable lineage features                                   |
-| config.features.gateway    | bool | `false` | Enable Gateway features (requires `config.gatewayApiUrl`) |
+| Key                                | Type | Default | Description                                                                             |
+| ---------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------- |
+| config.features.governance         | bool | `true`  | Enable governance features                                                              |
+| config.features.lineage            | bool | `true`  | Enable lineage features                                                                 |
+| config.features.gateway            | bool | `false` | Enable Gateway features (requires `config.gatewayApiUrl`)                               |
+| config.features.agentCertification | bool | `false` | Enable Governance Programs and agent certification (requires `config.features.gateway`) |
 
 ## Configuration Inheritance
 
