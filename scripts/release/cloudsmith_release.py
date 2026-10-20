@@ -233,7 +233,7 @@ def validate_manifest(manifest, version):
     )
     require(
         manifest["sources"]["guardian"]["repository"] == "eqtylab/guardian",
-        "Only Guardian platform releases are supported",
+        "Only Guardian Platform releases are supported",
     )
 
 
