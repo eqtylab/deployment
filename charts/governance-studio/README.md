@@ -1,10 +1,10 @@
-# Governance Studio
+# Guardian
 
-A Helm chart for deploying the EQTY Lab Governance Studio frontend application on Kubernetes.
+A Helm chart for deploying the EQTY Lab Guardian frontend application on Kubernetes.
 
 ## Description
 
-Governance Studio provides a web-based interface for managing governance, compliance, and data lineage workflows.
+Guardian provides a web-based interface for managing governance, compliance, and data lineage workflows.
 
 Key capabilities:
 
@@ -16,7 +16,7 @@ Key capabilities:
 
 ## Configuration Model
 
-Governance Studio uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
+Guardian uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
 This allows:
 
@@ -35,7 +35,7 @@ This allows:
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, Governance Studio automatically inherits configuration from global values with no additional configuration required.
+When deployed via the `governance-platform` umbrella chart, Guardian automatically inherits configuration from global values with no additional configuration required.
 
 ### Quick Start
 

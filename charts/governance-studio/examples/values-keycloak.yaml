@@ -1,5 +1,5 @@
 # Keycloak Configuration Example
-# Minimal configuration for deploying Governance Studio with Keycloak
+# Minimal configuration for deploying Guardian with Keycloak
 # For all available values, see the chart's values.yaml and README.md
 #
 # Usage:

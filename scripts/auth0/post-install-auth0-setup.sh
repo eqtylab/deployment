@@ -99,7 +99,7 @@ show_summary() {
   echo "Next Steps:"
   echo "  1. Test login with the platform admin user via Auth0"
   echo "  2. Verify token exchange with auth service"
-  echo "  3. Check that users can access the governance platform"
+  echo "  3. Check that users can access the Guardian Platform"
 }
 
 # Orchestrate the full post-install setup workflow
@@ -109,7 +109,7 @@ main() {
   print_warn "Prerequisites:"
   echo "  - Auth0 bootstrap must be complete (applications, API, scopes created)"
   echo "  - $AUTH0_SECRET secret must exist with Management API credentials"
-  echo "  - Governance platform must be deployed"
+  echo "  - Guardian Platform must be deployed"
   echo ""
 
   wait_for_platform

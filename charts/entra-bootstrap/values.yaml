@@ -2,7 +2,7 @@
 # ENTRA BOOTSTRAP - HELM VALUES CONFIGURATION
 # =============================================================================
 # This values file configures the Entra ID Bootstrap job for creating
-# app registrations and configuring OAuth for the Governance Platform
+# app registrations and configuring OAuth for the Guardian Platform
 #
 # The bootstrap job runs as a Kubernetes Job that configures Microsoft Entra ID
 # via the Azure CLI and Microsoft Graph API. It is typically run once during

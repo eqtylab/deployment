@@ -1,7 +1,7 @@
 # =============================================================================
 # GATEWAY STACK - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the Guardian gateway stack: the LLM gateway,
+# This values file configures the Guardian Gateway stack: the LLM gateway,
 # the control plane, and the bundled PostgreSQL and HAProxy ingress
 # dependencies
 #
@@ -455,7 +455,7 @@ llmGateway:
 
 # -- Control Plane Configuration
 # @default -- See values below
-# The management API behind Governance Studio and the CLI onboarding flows
+# The management API behind Guardian and the CLI onboarding flows
 controlPlane:
   # -- Replica Count
   # @default -- `1`
@@ -617,7 +617,7 @@ controlPlane:
       # -- Bearer Verification Mode
       # @default -- `""` (treated as "oidc")
       # "oidc" verifies bearer tokens locally against issuerURL/clientID;
-      # "auth_service" delegates verification to the Governance Studio
+      # "auth_service" delegates verification to the Guardian Platform
       # auth-service validate endpoint (authServiceBaseURL, falling back to
       # adapter CONTROL_PLANE_ADAPTER_AUTH_SERVICE_BASE_URL)
       mode: ""
@@ -636,9 +636,9 @@ controlPlane:
         - openid
         - profile
         - email
-  # -- Governance Studio Adapter Configuration
+  # -- Guardian Adapter Configuration
   # @default -- See values below
-  # Resolves platform identity, project, and integrity data for Governance Studio
+  # Resolves platform identity, project, and integrity data for Guardian
   adapter:
     # -- Enable Adapter
     # @default -- `false` (set to true by the umbrella chart)

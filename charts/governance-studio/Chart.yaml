@@ -1,6 +1,6 @@
 apiVersion: v2
 name: governance-studio
-description: A Helm chart for deploying the EQTY Lab Governance Studio UI - frontend application for the Governance Platform
+description: A Helm chart for deploying the EQTY Lab Guardian frontend application for the Guardian Platform
 type: application
 version: 1.2.1
 appVersion: "1.2.1"

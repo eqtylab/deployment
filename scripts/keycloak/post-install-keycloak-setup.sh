@@ -108,7 +108,7 @@ show_summary() {
   echo "Next Steps:"
   echo "  1. Test login with the platform admin user"
   echo "  2. Verify token exchange with auth service"
-  echo "  3. Check that users can access the governance platform"
+  echo "  3. Check that users can access the Guardian Platform"
 }
 
 # Orchestrate the full post-install setup workflow
@@ -118,7 +118,7 @@ main() {
   print_warn "Prerequisites:"
   echo "  - Keycloak must be deployed and running"
   echo "  - Keycloak bootstrap must be complete (realm, clients, users created)"
-  echo "  - Governance platform must be deployed"
+  echo "  - Guardian Platform must be deployed"
   echo ""
 
   wait_for_platform

@@ -4,7 +4,7 @@ A Helm chart for deploying the EQTY Lab Integrity Service on Kubernetes.
 
 ## Description
 
-The Integrity Service provides verifiable credentials, data lineage tracking, and statement registry capabilities for the Governance Platform.
+The Integrity Service provides verifiable credentials, data lineage tracking, and statement registry capabilities for the Guardian Platform.
 
 Key capabilities:
 

@@ -126,7 +126,7 @@ auth0:
 
   # -- API Configuration
   # @default -- See values below
-  # The governance platform API (resource server) to create in Auth0
+  # The Governance Platform API (resource server) to create in Auth0
   api:
     # -- Name
     # @default -- `Governance Platform API`
@@ -158,7 +158,7 @@ applications:
 
   # -- Frontend Application
   # @default -- See values below
-  # Single Page Application for the governance studio frontend
+  # Single Page Application for the Guardian frontend
   frontend:
     # -- Name
     # @default -- `Governance Platform Frontend`
@@ -195,7 +195,7 @@ applications:
     name: "Governance Platform Backend"
     # -- API Scopes
     # @default -- See values below
-    # Scopes to grant on the governance platform API
+    # Scopes to grant on the Governance Platform API
     apiScopes:
       - "read:organizations"
       - "write:organizations"
@@ -235,7 +235,7 @@ applications:
     name: "Governance Worker"
     # -- API Scopes
     # @default -- See values below
-    # Scopes to grant on the governance platform API
+    # Scopes to grant on the Governance Platform API
     apiScopes:
       - "governance:declarations:create"
       - "integrity:statements:create"
@@ -344,7 +344,7 @@ actions:
 
 # -- Custom Scopes
 # @default -- See values below
-# Permissions to create on the governance platform API
+# Permissions to create on the Governance Platform API
 scopes:
   - name: "governance:declarations:create"
     description: "Create governance declarations"

@@ -4,7 +4,7 @@ A Helm chart for deploying the EQTY Lab PDF generation service on Kubernetes.
 
 ## Description
 
-EQTY PDFGen renders governance manifests into PDF files or ZIP bundles for the Governance Platform. When a request includes an authorization bearer token, the service can delegate PDF signing to Auth Service.
+EQTY PDFGen renders governance manifests into PDF files or ZIP bundles for the Guardian Platform. When a request includes an authorization bearer token, the service can delegate PDF signing to Auth Service.
 
 Key capabilities:
 
@@ -31,7 +31,7 @@ This allows:
 - Container registry access to `ghcr.io/eqtylab/eqty-pdfgen`
 - Auth Service (only required when signed PDFs are needed)
 
-For `config.signingBound: true`, select **both** a PDFgen image implementing the version-bound client and an Auth Service image implementing `GET <signingUrl>/certificate` plus signing-key reference validation/echo ([Guardian #234](https://github.com/eqtylab/guardian/pull/234)). Auth also needs the curve-correct PDF certificates from [Guardian #233](https://github.com/eqtylab/guardian/pull/233), included in #234's dependency chain. Chart defaults and image tags alone do not establish these capabilities; verify the selected builds before opting in. A compatible PDFgen client fails closed if Auth lacks the bound contract.
+For `config.signingBound: true`, select **both** a PDFgen image implementing the version-bound client and an Auth Service image implementing `GET <signingUrl>/certificate` plus signing-key reference validation/echo ([guardian#234](https://github.com/eqtylab/guardian/pull/234)). Auth also needs the curve-correct PDF certificates from [guardian#233](https://github.com/eqtylab/guardian/pull/233), included in #234's dependency chain. Chart defaults and image tags alone do not establish these capabilities; verify the selected builds before opting in. A compatible PDFgen client fails closed if Auth lacks the bound contract.
 
 Signing without a timestamp token also requires the PDFgen implementation from #234: [`sign_pdf` in P2's `_signer.py`](https://github.com/eqtylab/guardian/blob/0cb3d484cc0ec7febbab381e86a55b9c392c11c8/services/pdfgen/eqty_pdfgen/_signer.py#L308) supplies no timestamper when the URL is empty. This applies to both legacy and bound signing; Helm only passes the configured URL to the image.
 

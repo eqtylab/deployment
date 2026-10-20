@@ -96,7 +96,7 @@ show_summary() {
   echo "Next Steps:"
   echo "  1. Test login with the platform admin user via Entra"
   echo "  2. Verify token exchange with auth service"
-  echo "  3. Check that users can access the governance platform"
+  echo "  3. Check that users can access the Guardian Platform"
 }
 
 # Orchestrate the full post-install setup workflow
@@ -106,7 +106,7 @@ main() {
   print_warn "Prerequisites:"
   echo "  - Entra app registrations must be complete"
   echo "  - $ENTRA_SECRET secret must exist with Graph API credentials and tenant ID"
-  echo "  - Governance platform must be deployed"
+  echo "  - Guardian Platform must be deployed"
   echo ""
 
   wait_for_platform

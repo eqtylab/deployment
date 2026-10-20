@@ -1,10 +1,10 @@
 # Governance Ops
 
-A Helm chart for deploying operational monitoring resources for the EQTY Lab Governance Platform on Kubernetes.
+A Helm chart for deploying operational monitoring resources for the EQTY Lab Guardian Platform on Kubernetes.
 
 ## Description
 
-Governance Ops provides Grafana dashboards and Prometheus alerts for monitoring Governance Platform deployments. It enables comprehensive observability of platform health, service availability, resource usage, and error rates.
+Governance Ops provides Grafana dashboards and Prometheus alerts for monitoring Guardian Platform deployments. It enables comprehensive observability of platform health, service availability, resource usage, and error rates.
 
 Key capabilities:
 
@@ -142,9 +142,9 @@ This removes all monitoring resources (ConfigMaps and PrometheusRules) but does 
 | dashboards.enabled                  | bool | `true`  | Enable dashboard provisioning                   |
 | dashboards.labels                   | map  | `{}`    | Additional labels for dashboard ConfigMaps      |
 | dashboards.annotations              | map  | `{}`    | Additional annotations for dashboard ConfigMaps |
-| dashboards.platformOverview.enabled | bool | `true`  | Enable Governance Platform Overview dashboard   |
+| dashboards.platformOverview.enabled | bool | `true`  | Enable the Guardian Platform Overview dashboard |
 
-**Governance Platform Dashboard** includes:
+**Guardian Platform Dashboard** includes:
 
 - Platform Health: Service uptime gauges and replica counts
 - Service Readiness Timeline: Real-time readiness status
@@ -209,7 +209,7 @@ kubectl logs -n monitoring deployment/kube-prometheus-stack-grafana -c grafana-s
 
 1. Access your Grafana instance
 2. Navigate to **Dashboards** → **Browse**
-3. Look for **Governance Platform** dashboard
+3. Look for the **Guardian Platform** dashboard
 4. Use the **Namespace** dropdown to select your deployment namespace
 
 ### Check Prometheus Alerts
@@ -332,7 +332,7 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:909
 
 **Generate traffic to populate panels:**
 
-Request/Error rate panels require active traffic. Access your governance platform to generate initial metrics.
+Request/Error rate panels require active traffic. Access your Guardian Platform to generate initial metrics.
 
 ### AlertManager Not Sending Notifications
 

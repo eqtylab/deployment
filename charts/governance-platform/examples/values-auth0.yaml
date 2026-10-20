@@ -1,5 +1,5 @@
 # Auth0 Configuration Example
-# Complete example for deploying the Governance Platform with Auth0
+# Complete example for deploying the Guardian Platform with Auth0
 # For all available values, see the chart's values.yaml and README.md
 #
 # Secrets:
@@ -151,7 +151,7 @@ governance-service:
       memory: 512Mi
 
 # =============================================================================
-# Governance Studio
+# Guardian
 # =============================================================================
 # Override values for the governance-studio Helm chart
 # ------------------------------------------------------------------------------

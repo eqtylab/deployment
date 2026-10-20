@@ -75,7 +75,7 @@ sql_lit() {
 
 # Wait for governance-service deployment and database pod to be ready
 wait_for_platform() {
-  print_warn "Waiting for governance platform components..."
+  print_warn "Waiting for Guardian Platform components..."
 
   echo "Checking for governance service deployment..."
   if ! kubectl get deployment "$PLATFORM_RELEASE-governance-service" -n "$NAMESPACE" &>/dev/null; then

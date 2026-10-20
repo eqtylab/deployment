@@ -13,7 +13,7 @@ source "$ROOTDIR/scripts/helpers/assert.sh"
 # Function to display usage
 usage() {
   echo -e "\
-Bootstrap Microsoft Entra ID app registrations for the Governance Platform
+Bootstrap Microsoft Entra ID app registrations for the Guardian Platform
 
 Usage: $0 -f <values-file> [options]
   -c, --chart-dir <dir>           Chart directory (default: $CHART_DIR)
@@ -158,7 +158,7 @@ show_summary() {
   echo "       -n $NAMESPACE"
   echo ""
   echo "  4. Update governance-studio Helm values with frontend app ID and tenant ID"
-  echo "  5. Deploy the governance platform with Entra values"
+  echo "  5. Deploy the Guardian Platform with Entra values"
   echo "  6. Enable entra.createOrganization (and createPlatformAdmin) in the platform values so the Helm hook creates the organization and admin user, or run scripts/entra/post-install-entra-setup.sh after deploying"
 
   echo ""

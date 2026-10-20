@@ -1,5 +1,5 @@
 # Microsoft Entra ID Configuration Example
-# Minimal configuration for deploying Governance Studio with Microsoft Entra ID
+# Minimal configuration for deploying Guardian with Microsoft Entra ID
 # For all available values, see the chart's values.yaml and README.md
 #
 # Usage:
@@ -29,7 +29,7 @@ config:
   # Microsoft Entra ID Configuration
   entraClientId: "your-entra-client-id"
   entraTenantId: "your-tenant-id"
-  entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user" # Replace <backend-client-id> with Governance Platform Backemd app registration ID
+  entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user" # Replace <backend-client-id> with Governance Platform Backend app registration ID
   # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional, defaults to https://login.microsoftonline.com/<tenantId>
 
   # Application Settings

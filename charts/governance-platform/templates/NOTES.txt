@@ -9,7 +9,7 @@
 
 #################################################################################
 #                                                                               #
-#                   Governance Platform Successfully Deployed!                  #
+#                    Guardian Platform Successfully Deployed!                   #
 #                                                                               #
 #################################################################################
 
@@ -22,24 +22,24 @@ Revision:         {{ .Release.Revision }}
 {{- $globalDomain := .Values.global.domain | default "PLEASE_CONFIGURE_GLOBAL_DOMAIN" }}
 
 ---------------------------------------------------------------------------------
-➡️ Accessing Your Governance Platform:
+➡️ Accessing Your Guardian Platform:
 ---------------------------------------------------------------------------------
 
 {{- $governanceStudio := index .Values "governance-studio" }}
 {{- if $governanceStudio.enabled }}
   {{- if $governanceStudio.ingress.enabled }}
     {{- $host := (first $governanceStudio.ingress.hosts).host | default $globalDomain }}
-🔹 **Governance Studio UI:**
+🔹 **Guardian:**
     URL: https://{{ $host }}
     (Note: It might take a few minutes for Ingress and DNS to fully propagate.)
   {{- else }}
-🔹 **Governance Studio UI:**
+🔹 **Guardian:**
     Enabled, but Ingress is not configured. Use port-forwarding:
     kubectl port-forward -n {{ .Release.Namespace }} svc/{{ printf "%s-governance-studio" .Release.Name }} 8080:80
     Then visit: http://localhost:8080
   {{- end }}
 {{- else }}
-🔹 **Governance Studio UI:** Disabled
+🔹 **Guardian:** Disabled
 {{- end }}
 
 ---------------------------------------------------------------------------------
@@ -214,9 +214,9 @@ Revision:         {{ .Release.Revision }}
 📚 Further Documentation:
 ---------------------------------------------------------------------------------
 For detailed configuration options, architecture, and troubleshooting, please refer to
-the official Governance Platform deployment documentation.
+the official Guardian Platform deployment documentation.
 
-Enjoy using the Governance Platform!
+Enjoy using the Guardian Platform!
 #################################################################################
 {{- end }}
 

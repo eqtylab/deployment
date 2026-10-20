@@ -13,7 +13,7 @@ source "$ROOTDIR/scripts/helpers/assert.sh"
 # Function to display usage
 usage() {
   echo -e "\
-Bootstrap Keycloak realm, clients, scopes, and users for the Governance Platform
+Bootstrap Keycloak realm, clients, scopes, and users for the Guardian Platform
 
 Usage: $0 -f <values-file> [options]
   -c, --chart-dir <dir>           Chart directory (default: $CHART_DIR)

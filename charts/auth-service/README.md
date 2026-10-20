@@ -4,7 +4,7 @@ A Helm chart for deploying the EQTY Lab Auth Service on Kubernetes.
 
 ## Description
 
-The Auth Service provides centralized authentication, authorization, and identity management for the Governance Platform. It acts as the security gateway for all platform services, handling user authentication, RBAC permissions, and service-to-service authentication.
+The Auth Service provides centralized authentication, authorization, and identity management for the Guardian Platform. It acts as the security gateway for all platform services, handling user authentication, RBAC permissions, and service-to-service authentication.
 
 Key capabilities:
 
@@ -192,7 +192,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 
 - `config.idp.auth0.domain` - Auth0 tenant domain (e.g., `your-tenant.us.auth0.com`)
 - `config.idp.auth0.managementAudience` - Management API audience, the URL of your Auth0 tenant's Management API (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
-- `config.idp.auth0.apiIdentifier` - API identifier, the logical identifier for your governance platform API registered in Auth0 (e.g., `https://governance.yourcompany.com`). This is distinct from `managementAudience`; it identifies _your_ API, not Auth0's Management API.
+- `config.idp.auth0.apiIdentifier` - API identifier, the logical identifier for your Governance Platform API registered in Auth0 (e.g., `https://governance.yourcompany.com`). This is distinct from `managementAudience`; it identifies _your_ API, not Auth0's Management API.
 
 **Microsoft Entra ID:**
 
@@ -634,7 +634,7 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 1. **Create a Regular Web Application** for user authentication
 2. **Create a Machine-to-Machine Application** for Management API access
 3. **Enable Management API** permissions for the M2M application. Required scopes: `read:users`, `create:users`, `update:users`, `delete:users`, `create:user_tickets`, `read:organizations`, `create:organizations`, `update:organizations`, `read:organization_members`, `create:organization_members`, `delete:organization_members`, `update:clients`
-4. **Create an API** for the governance platform (this becomes your `apiIdentifier`)
+4. **Create an API** for the Guardian Platform (this becomes your `apiIdentifier`)
 
 ### Example Configuration
 
@@ -735,7 +735,7 @@ kubectl create secret generic platform-entra \
 
 ### Required Keycloak Setup
 
-1. **Create a Realm** for the governance platform
+1. **Create a Realm** for the Guardian Platform
 2. **Create a Confidential Client** for backend authentication
 3. **Create a Public Client** for frontend authentication
 4. **Configure Token Exchange** (if using federated auth)

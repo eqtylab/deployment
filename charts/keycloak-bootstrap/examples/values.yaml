@@ -167,7 +167,7 @@ userProfile:
 
 # Initial users
 users:
-  # Governance Studio admin user (for logging into Governance Studio)
+  # Guardian admin user (for logging into Guardian)
   admin:
     enabled: true
     username: "platform-admin"

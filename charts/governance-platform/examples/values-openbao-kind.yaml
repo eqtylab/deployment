@@ -147,7 +147,7 @@ governance-service:
     runAtStartup: true
 
 # =============================================================================
-# Governance Studio
+# Guardian
 # =============================================================================
 governance-studio:
   enabled: true
