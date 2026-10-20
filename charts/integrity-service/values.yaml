@@ -402,7 +402,7 @@ config:
 
   # -- Service Log Level
   # @default -- `trace`
-  # Integrity service specific log level
+  # Integrity Service specific log level
   # Options: trace, debug, info, warn, error
   integrityAppLoggingLogLevelIntegrityService: "trace"
 

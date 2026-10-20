@@ -1,4 +1,4 @@
-"""Integrity service section generator."""
+"""Integrity Service section generator."""
 
 from typing import Any
 

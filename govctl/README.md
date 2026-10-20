@@ -149,7 +149,7 @@ Configures all platform services based on your selections:
 - **global** — environment name, domain. Also `global.postgresql.{host, port, database, username, sslMode, sslRootCert}` placeholders when database mode is `external`
 - **auth-service** — IDP provider config, token exchange, ingress
 - **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: true` by default, image tag/pull policy; no ingress)
-- **gateway-stack** — LLM gateway and control plane (`enabled: false` by default, image tags/pull policies only; hostnames, TLS, and plugin storage are not prompted for)
+- **gateway-stack** — LLM Gateway and Control Plane (`enabled: false` by default, image tags/pull policies only; hostnames, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **governance-studio** — frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, persistence, ingress
@@ -174,7 +174,7 @@ Pre-configured values for the matching `<provider>-bootstrap` chart with your do
 Only includes secrets relevant to your configuration:
 
 - **Database** — PostgreSQL credentials, plus a `gatewayDsn` connection string for the `guardian_gateway` database (only consumed when `gateway-stack` is enabled; it repeats the generated password, so change both together)
-- **Auth service** — API secret, JWT secret
+- **Auth Service** — API secret, JWT secret
 - **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three)
 - **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials (S3 credentials are omitted when using IAM role / IRSA access)
 - **Image registry** — pull secret for container images

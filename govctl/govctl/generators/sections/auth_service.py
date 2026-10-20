@@ -1,4 +1,4 @@
-"""Auth service section generator."""
+"""Auth Service section generator."""
 
 from typing import Any
 

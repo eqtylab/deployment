@@ -1,8 +1,8 @@
 # =============================================================================
 # GATEWAY STACK - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the Agent Gateway stack: the LLM gateway,
-# the control plane, and the bundled PostgreSQL and HAProxy ingress
+# This values file configures the Agent Gateway stack: the LLM Gateway,
+# the Control Plane, and the bundled PostgreSQL and HAProxy ingress
 # dependencies
 #
 # When deployed via the umbrella chart (governance-platform), the database and
@@ -11,7 +11,7 @@
 
 # -- Enable Gateway Stack
 # @default -- `true`
-# Enable the LLM gateway and control plane
+# Enable the LLM Gateway and Control Plane
 enabled: true
 
 # -- Global values shared by umbrella and standalone installs
@@ -861,7 +861,7 @@ controlPlane:
 
 # -- Ingress Configuration
 # @default -- See values below
-# Creates separate Ingress resources for the gateway and the control plane
+# Creates separate Ingress resources for the gateway and the Control Plane
 ingress:
   # -- Enable Ingress
   # @default -- `false`

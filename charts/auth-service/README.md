@@ -264,7 +264,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                                           |
 | global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                                        |
 | global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                                        |
-| global.secrets.authService.secretName                   | string | Auth service security secrets name                                      |
+| global.secrets.authService.secretName                   | string | Auth Service security secrets name                                      |
 | global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, gcp_kms, or openbao) |
 | global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                                         |
 | global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                                 |

@@ -23,7 +23,7 @@ The platform uses a microservices architecture with the following components:
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
 - **PDFGen** - PDF and ZIP rendering service for governance manifests
-- **Gateway Stack** - Optional LLM gateway and control plane
+- **Gateway Stack** - Optional LLM Gateway and Control Plane
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
 
@@ -32,7 +32,7 @@ All services communicate via REST APIs and share authentication through the Auth
 The Gateway stack is disabled by default for upgrade compatibility. Enable it
 with `examples/values-gateway.yaml`; its control-plane adapter then resolves the
 umbrella Auth, Governance, and Integrity services automatically, and the overlay
-points Governance Service at the control plane for agent assessments. The gateway
+points Governance Service at the Control Plane for agent assessments. The gateway
 reuses `platform-database` and expects a `gateway-dsn` key for the
 `guardian_gateway` database.
 
@@ -369,7 +369,7 @@ Centralized secret configuration for all platform components:
 | global.secrets.keyManagement.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name                                                                              |
 | global.secrets.keyManagement.gcp_kms.secretName         | string | `"platform-gcp-kms"`           | GCP KMS credentials secret name                                                                                      |
 | global.secrets.keyManagement.openbao.secretName         | string | `""`                           | Operator-managed OpenBao token Secret (token_file auth only; never created by the umbrella)                          |
-| global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth service secrets (session, JWT, API keys)                                                                        |
+| global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth Service secrets (session, JWT, API keys)                                                                        |
 | global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"` | Governance worker credentials secret name                                                                            |
 | global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"` | Container registry credentials secret name                                                                           |
 
@@ -451,7 +451,7 @@ Frontend application settings. See [governance-studio/README.md](../governance-s
 | governance-studio.config.appTitle                    | string | `"Guardian"`          | Application title                                                                               |
 | governance-studio.config.displayTimezone             | string | `"UTC"`               | Timezone used for displayed timestamps (IANA name, e.g. America/New_York)                       |
 | governance-studio.config.gatewayApiUrl               | string | `""`                  | Gateway control-plane API URL (**must be set** when `features.gateway` is true)                 |
-| governance-studio.config.llmGatewayUrl               | string | `""`                  | Public LLM gateway URL shown in agent onboarding commands (optional; blank shows a placeholder) |
+| governance-studio.config.llmGatewayUrl               | string | `""`                  | Public LLM Gateway URL shown in agent onboarding commands (optional; blank shows a placeholder) |
 | governance-studio.config.features.gateway            | bool   | `false`               | Enable Gateway features in Guardian                                                             |
 | governance-studio.config.features.agentCertification | bool   | `false`               | Enable Governance Programs and agent certification in Guardian (requires `features.gateway`)    |
 | governance-studio.autoscaling.enabled                | bool   | `false`               | Enable horizontal pod autoscaling                                                               |
@@ -1247,7 +1247,7 @@ kubectl exec -it deployment/governance-platform-governance-service -n governance
 - For Auth0: check domain, client ID, and client secret
 - For Entra: check tenant ID, client ID, client secret, and issuer URL
 - For Keycloak: check URL, realm, and client credentials
-- Ensure auth service is running and accessible
+- Ensure Auth Service is running and accessible
 
 **Configuration not applying**
 

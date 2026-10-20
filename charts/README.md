@@ -10,7 +10,7 @@ This repository contains Helm charts for deploying the Guardian Platform on Kube
 | [auth0-bootstrap](auth0-bootstrap/)         | Utility  | Auth0 application, API, and user configuration job           |
 | [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job        |
 | [eqty-pdfgen](eqty-pdfgen/)                 | Subchart | PDF and ZIP rendering service for governance manifests       |
-| [gateway-stack](gateway-stack/)             | Subchart | LLM gateway and control plane                                |
+| [gateway-stack](gateway-stack/)             | Subchart | LLM Gateway and Control Plane                                |
 | [governance-ops](governance-ops/)           | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
 | [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)                   |
 | [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine                     |

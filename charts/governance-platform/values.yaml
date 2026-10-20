@@ -1077,7 +1077,7 @@ auth-service:
           # -- Kubernetes auth mount (OPENBAO_AUTH_MOUNT)
           # @default -- `kubernetes`
           mount: ""
-          # -- OpenBao role bound to the Auth service account (OPENBAO_AUTH_ROLE)
+          # -- OpenBao role bound to the Auth Service account (OPENBAO_AUTH_ROLE)
           # @default -- `""` (**REQUIRED for kubernetes**)
           role: ""
           # -- Projected token audience (OPENBAO_KUBERNETES_AUDIENCE)
@@ -2005,7 +2005,7 @@ governance-service:
 
     # -- Auth Service Secret
     # @default -- See values below
-    # Secret containing the auth service API key for worker authentication
+    # Secret containing the Auth Service API key for worker authentication
     authService:
       # -- Secret Name
       # @default -- `""` (auto-configured from global.secrets.authService.secretName)
@@ -2239,7 +2239,7 @@ governance-service:
 
     # -- Control Plane URL
     # @default -- `""` (e.g., "http://{Release.Name}-gateway-stack-control-plane:10010")
-    # Gateway control plane base URL for agent assessments and certifications
+    # Control Plane base URL for agent assessments and certifications
     controlPlaneUrl: ""
 
     # ---------------------------------------------------------------------------
@@ -2256,7 +2256,7 @@ governance-service:
       enabled: true
       # -- Auth Service URL
       # @default -- `""`
-      # Auth service URL for token retrieval (falls back to config.authServiceUrl)
+      # Auth Service URL for token retrieval (falls back to config.authServiceUrl)
       authServiceUrl: ""
       # -- Auth Service API Key
       # @default -- `""` (auto-configured from global.secrets.authService)
@@ -2534,7 +2534,7 @@ governance-studio:
 
     # -- API URL
     # @default -- `""` (auto-generated: "https://{global.domain}/governanceService")
-    # Base API URL for the governance service
+    # Base API URL for the Governance Service
     apiUrl: ""
 
     # -- Auth Service URL
@@ -2554,7 +2554,7 @@ governance-studio:
 
     # -- LLM Gateway URL
     # @default -- `""` (onboarding commands show a placeholder)
-    # Public URL of the LLM gateway that agents connect to, shown in agent
+    # Public URL of the LLM Gateway that agents connect to, shown in agent
     # onboarding commands (e.g., "https://gateway.example.com")
     # Only used when features.gateway is enabled
     llmGatewayUrl: ""
@@ -3064,7 +3064,7 @@ integrity-service:
 
     # -- Service Log Level
     # @default -- `trace`
-    # Integrity service specific log level
+    # Integrity Service specific log level
     # Options: trace, debug, info, warn, error
     integrityAppLoggingLogLevelIntegrityService: "trace"
 
@@ -3313,7 +3313,7 @@ auth0:
 
   # -- Create Platform Admin
   # @default -- `false`
-  # Create platform-admin user in auth service tables
+  # Create platform-admin user in Auth Service tables
   # Set to true to create an initial platform administrator
   # The Auth0 user ID is automatically resolved by looking up the user by email via the Management API
   createPlatformAdmin: false
@@ -3359,7 +3359,7 @@ entra:
 
   # -- Create Platform Admin
   # @default -- `false`
-  # Create platform-admin user in auth service tables
+  # Create platform-admin user in Auth Service tables
   # Set to true to create an initial platform administrator
   # The Entra user ID is automatically resolved by looking up the user by email via Graph API
   createPlatformAdmin: false
@@ -3408,7 +3408,7 @@ keycloak:
 
   # -- Create Platform Admin
   # @default -- `false`
-  # Create platform-admin user in auth service tables
+  # Create platform-admin user in Auth Service tables
   # Set to true to create an initial platform administrator
   # The Keycloak user ID is automatically resolved by looking up the user by email
   createPlatformAdmin: false

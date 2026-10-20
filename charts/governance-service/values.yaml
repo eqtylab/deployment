@@ -368,7 +368,7 @@ secrets:
 
   # -- Auth Service Secret
   # @default -- See values below
-  # Secret containing the auth service API key for worker authentication
+  # Secret containing the Auth Service API key for worker authentication
   authService:
     # -- Secret Name
     # @default -- `""` (auto-configured from global.secrets.authService.secretName)
@@ -602,7 +602,7 @@ config:
 
   # -- Control Plane URL
   # @default -- `""` (e.g., "http://{Release.Name}-gateway-stack-control-plane:10010")
-  # Gateway control plane base URL for agent assessments and certifications
+  # Control Plane base URL for agent assessments and certifications
   controlPlaneUrl: ""
 
   # ---------------------------------------------------------------------------
@@ -619,7 +619,7 @@ config:
     enabled: true
     # -- Auth Service URL
     # @default -- `""`
-    # Auth service URL for token retrieval (falls back to config.authServiceUrl)
+    # Auth Service URL for token retrieval (falls back to config.authServiceUrl)
     authServiceUrl: ""
     # -- Auth Service API Key
     # @default -- `""` (auto-configured from global.secrets.authService)

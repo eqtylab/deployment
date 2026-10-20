@@ -95,7 +95,7 @@ show_summary() {
   echo ""
   echo "Next Steps:"
   echo "  1. Test login with the platform admin user via Entra"
-  echo "  2. Verify token exchange with auth service"
+  echo "  2. Verify token exchange with Auth Service"
   echo "  3. Check that users can access the Guardian Platform"
 }
 

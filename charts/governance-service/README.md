@@ -219,7 +219,7 @@ From global values:
 - Database connection (host, port, credentials from `global.postgresql.*` and `global.secrets.database`)
 - Auth provider configuration (from `global.secrets.auth.provider`)
 - Storage credentials (from `global.secrets.storage.*`)
-- Auth service credentials for worker authentication (from `global.secrets.authService`)
+- Auth Service credentials for worker authentication (from `global.secrets.authService`)
 - Environment type (from `global.environmentType`)
 - Image pull secrets (from `global.secrets.imageRegistry`)
 
@@ -252,7 +252,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                       |
 | global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                |
 | global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                    |
-| global.secrets.authService.secretName        | string | Auth service API key secret name                  |
+| global.secrets.authService.secretName        | string | Auth Service API key secret name                  |
 | global.secrets.imageRegistry.secretName      | string | Image registry credentials secret name            |
 
 ### Chart-Specific Parameters
@@ -521,12 +521,12 @@ trusted; the local CA is additive.
 
 #### Integration URLs
 
-| Key                        | Type   | Default | Description                                                                                                                        |
-| -------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated as http://{Release.Name}-integrity-service:3050)                                             |
-| config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080)                                                       |
-| config.pdfgenServiceUrl    | string | `""`    | PDF Generation Service URL (auto-generated as http://{Release.Name}-eqty-pdfgen:8080)                                              |
-| config.controlPlaneUrl     | string | `""`    | Gateway control plane URL for agent assessments and certifications (e.g., http://{Release.Name}-gateway-stack-control-plane:10010) |
+| Key                        | Type   | Default | Description                                                                                                                |
+| -------------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| config.integrityServiceUrl | string | `""`    | Integrity Service URL (auto-generated as http://{Release.Name}-integrity-service:3050)                                     |
+| config.authServiceUrl      | string | `""`    | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080)                                               |
+| config.pdfgenServiceUrl    | string | `""`    | PDF Generation Service URL (auto-generated as http://{Release.Name}-eqty-pdfgen:8080)                                      |
+| config.controlPlaneUrl     | string | `""`    | Control Plane URL for agent assessments and certifications (e.g., http://{Release.Name}-gateway-stack-control-plane:10010) |
 
 #### Worker Service Account Configuration
 
@@ -671,14 +671,14 @@ kubectl exec -it deployment/governance-service -n governance -- curl localhost:1
 - For Auth0: check domain, client ID, and client secret are correct
 - For Entra: check tenant ID, client ID, and client secret are correct
 - For Keycloak: check URL, realm, client ID, and client secret are correct
-- Ensure auth service is running and accessible
+- Ensure Auth Service is running and accessible
 - Check worker credentials are properly configured
 
 **Worker authentication failures**
 
-- Check auth service secret exists (`secrets.authService.name`)
-- Verify service account is configured in auth service
-- Ensure auth service API key is valid
+- Check Auth Service secret exists (`secrets.authService.name`)
+- Verify service account is configured in Auth Service
+- Ensure Auth Service API key is valid
 - Check `config.serviceAccount.authServiceUrl` is accessible
 
 **Configuration not applying**

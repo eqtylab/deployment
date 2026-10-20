@@ -160,7 +160,7 @@ From global values:
 
 - Database connection (host, port, credentials from `global.postgresql.*` and `global.secrets.database`)
 - Storage credentials (from `global.secrets.storage.aws_s3`, `global.secrets.storage.azure_blob`, or `global.secrets.storage.gcs`)
-- Auth service URL (generated as `http://{Release.Name}-auth-service:8080`)
+- Auth Service URL (generated as `http://{Release.Name}-auth-service:8080`)
 - Environment type (from `global.environmentType`)
 - Image pull secrets (from `global.secrets.imageRegistry`)
 - Public service URL (from `global.domain`)
@@ -168,7 +168,7 @@ From global values:
 Generated defaults:
 
 - Database host defaults to `{Release.Name}-postgresql` (co-deployed PostgreSQL)
-- Integrity service URL defaults to `https://{global.domain}/integrityService`
+- Integrity Service URL defaults to `https://{global.domain}/integrityService`
 
 ## Values
 
@@ -373,14 +373,14 @@ All config values support global fallbacks when deployed via umbrella chart.
 | Key                                                | Type   | Default   | Description                                               |
 | -------------------------------------------------- | ------ | --------- | --------------------------------------------------------- |
 | config.integrityAppLoggingLogLevelDefault          | string | `"warn"`  | Default log level (trace/debug/info/warn/error)           |
-| config.integrityAppLoggingLogLevelIntegrityService | string | `"trace"` | Integrity service log level (trace/debug/info/warn/error) |
+| config.integrityAppLoggingLogLevelIntegrityService | string | `"trace"` | Integrity Service log level (trace/debug/info/warn/error) |
 
 #### Authentication Configuration
 
 | Key                         | Type   | Default          | Description                                                                  |
 | --------------------------- | ------ | ---------------- | ---------------------------------------------------------------------------- |
 | config.integrityAppAuthType | string | `"auth_service"` | Authentication type                                                          |
-| config.integrityAppAuthUrl  | string | `""`             | Auth service URL (auto-generated as http://{Release.Name}-auth-service:8080) |
+| config.integrityAppAuthUrl  | string | `""`             | Auth Service URL (auto-generated as http://{Release.Name}-auth-service:8080) |
 
 ## Configuration Inheritance
 
@@ -548,9 +548,9 @@ kubectl exec -it deployment/integrity-service -n governance -- curl -s localhost
 
 **Authentication fails**
 
-- Verify auth service is running and accessible
+- Verify Auth Service is running and accessible
 - Check `integrityAppAuthUrl` points to correct service
-- Ensure auth service URL is reachable from integrity service pods
+- Ensure Auth Service URL is reachable from Integrity Service pods
 
 **Configuration not applying**
 

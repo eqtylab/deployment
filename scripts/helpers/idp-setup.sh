@@ -77,7 +77,7 @@ sql_lit() {
 wait_for_platform() {
   print_warn "Waiting for Guardian Platform components..."
 
-  echo "Checking for governance service deployment..."
+  echo "Checking for Governance Service deployment..."
   if ! kubectl get deployment "$PLATFORM_RELEASE-governance-service" -n "$NAMESPACE" &>/dev/null; then
     print_error "Deployment $PLATFORM_RELEASE-governance-service not found (set PLATFORM_RELEASE for a different release name)"
     echo "Available deployments:"
@@ -126,7 +126,7 @@ wait_for_platform() {
 ensure_database_ready() {
   print_warn "Ensuring database is ready..."
 
-  echo "Waiting for governance service to be available..."
+  echo "Waiting for Governance Service to be available..."
   kubectl wait --for=condition=available --timeout=300s \
     "deployment/$PLATFORM_RELEASE-governance-service" \
     -n "$NAMESPACE" 2>/dev/null || true

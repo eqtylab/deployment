@@ -1,4 +1,4 @@
-"""Governance service section generator."""
+"""Governance Service section generator."""
 
 from typing import Any
 

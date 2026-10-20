@@ -4,7 +4,7 @@ A Helm chart for deploying the Agent Gateway stack on Kubernetes.
 
 ## Description
 
-The Gateway Stack provides a signing proxy in front of upstream model providers and a management control plane for the Guardian Platform.
+The Gateway Stack runs the Agent Gateway for the Guardian Platform: the LLM Gateway, a signing proxy in front of upstream model providers, and the Control Plane, its management API.
 
 Key capabilities:
 
@@ -241,7 +241,7 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 | controlPlane.auth.bearer.mode               | string | `""`                           | `oidc` (default) or `auth_service`                                           |
 | controlPlane.auth.bearer.issuerURL          | string | `""`                           | Bearer issuer URL (`oidc` mode)                                              |
 | controlPlane.auth.bearer.clientID           | string | `""`                           | Bearer client ID (`oidc` mode)                                               |
-| controlPlane.auth.bearer.authServiceBaseURL | string | `""`                           | Auth service URL (`auth_service` mode); falls back to the adapter URL        |
+| controlPlane.auth.bearer.authServiceBaseURL | string | `""`                           | Auth Service URL (`auth_service` mode); falls back to the adapter URL        |
 | controlPlane.auth.bearer.scopes             | list   | `["openid","profile","email"]` | Bearer scopes                                                                |
 
 ### Control Plane Adapter
@@ -306,7 +306,7 @@ These keys exist identically under both `llmGateway.plugins.artifactStorage` and
 | ingress.llmGatewayAnnotations                 | object | `{}`                                               | Annotations applied to the gateway Ingress only       |
 | ingress.controlPlaneAnnotations               | object | `{}`                                               | Annotations applied to the control-plane Ingress only |
 | ingress.controlPlanePath                      | string | `"/"`                                              | Control-plane path                                    |
-| ingress.hosts.llmGateway                      | string | `"gateway.example.com"`                            | LLM gateway host                                      |
+| ingress.hosts.llmGateway                      | string | `"gateway.example.com"`                            | LLM Gateway host                                      |
 | ingress.hosts.controlPlane                    | string | `"control.example.com"`                            | Control-plane host                                    |
 | ingress.tls.enabled                           | bool   | `true`                                             | Enable TLS                                            |
 | ingress.tls.llmGatewaySecretName              | string | `""`                                               | Defaults to `{fullname}-llm-gateway-tls`              |
