@@ -81,7 +81,8 @@ def _gateway_dsn(config: PlatformConfig, password: str) -> str:
     """
     if config.database_mode == DatabaseMode.EXTERNAL:
         host = "TODO-set-managed-pg-host.example.com"
-        ssl_mode = "verify-full"
+        # Encrypted, server certificate not verified
+        ssl_mode = "require"
     else:
         # Bundled Bitnami PostgreSQL resolves to "{Release.Name}-postgresql".
         # Adjust the host if the release is not named governance-platform.
