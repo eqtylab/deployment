@@ -357,7 +357,7 @@ jobs:
             --values values.yaml
           \`\`\`
 
-          GHCR installs require GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json confirms this version is delivered, follow https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md to install from Cloudsmith with the packaged values-cloudsmith.yaml and your EQTY-issued prod entitlement token. A GitHub release or enabled publishing flag alone does not prove delivery. Prereleases remain in GitHub.
+          GHCR installs require GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json confirms this version is delivered, follow https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md to install from Cloudsmith with the packaged values-cloudsmith.yaml and your prod entitlement token from EQTY Lab. A GitHub release or enabled publishing flag alone does not prove delivery. Prereleases remain in GitHub.
 
           See OPENBAO.md for the optional, independently versioned custody release and operator setup. Custody is included only when release-manifest.yaml contains charts.openbaoCustody; its absence requires customer-managed OpenBao if that backend is selected. Inclusion does not enable OpenBao in the platform.
           EOF
@@ -441,7 +441,7 @@ jobs:
           - Chart digests: \`chart-digests.yaml\`
           - Runtime image tags: \`${VERSION}\`
 
-          The GHCR installation above remains available with GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json appears on this release, use the Cloudsmith installation guide at https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md with the packaged values-cloudsmith.yaml and an EQTY prod entitlement token. Prereleases and internal installations continue using GHCR.
+          The GHCR installation above remains available with GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json appears on this release, use the Cloudsmith installation guide at https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md with the packaged values-cloudsmith.yaml and an EQTY Lab prod entitlement token. Prereleases and internal installations continue using GHCR.
           EOF
 
       - name: Publish GitHub release

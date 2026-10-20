@@ -3,7 +3,7 @@
 [![Helm CI](https://github.com/eqtylab/deployment/actions/workflows/helm-ci.yaml/badge.svg)](https://github.com/eqtylab/deployment/actions/workflows/helm-ci.yaml)
 [![Release Platform Package](https://github.com/eqtylab/deployment/actions/workflows/release-platform-package.yaml/badge.svg)](https://github.com/eqtylab/deployment/actions/workflows/release-platform-package.yaml)
 
-> Helm charts and helper tooling for deploying the **EQTY Lab Guardian Platform** on Kubernetes. Supports Auth0, Microsoft Entra ID, and Keycloak as identity providers, with cloud-agnostic storage and key vault integration (AWS, Azure, GCP).
+> Helm charts and helper tooling for deploying the **Guardian Platform** on Kubernetes. Supports Auth0, Microsoft Entra ID, and Keycloak as identity providers, with cloud-agnostic storage and key vault integration (AWS, Azure, GCP).
 
 ## 🚀 Quick Start
 
@@ -17,7 +17,7 @@
 - Kubernetes **1.29+**
 - Helm **3.20+**
 - `kubectl` configured for your target cluster
-- GitHub package read credentials for GHCR, or an EQTY-issued Cloudsmith prod entitlement for a version with verified delivery
+- GitHub package read credentials for GHCR, or a Cloudsmith prod entitlement from EQTY Lab for a version with verified delivery
 - A configured identity provider (Auth0, Microsoft Entra ID, or Keycloak)
 - A cloud account (AWS, Azure, or GCP) with object storage and a key/secret vault provisioned for the platform
 
