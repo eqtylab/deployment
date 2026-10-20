@@ -3,13 +3,13 @@
 [![Helm CI](https://github.com/eqtylab/deployment/actions/workflows/helm-ci.yaml/badge.svg)](https://github.com/eqtylab/deployment/actions/workflows/helm-ci.yaml)
 [![Release Platform Package](https://github.com/eqtylab/deployment/actions/workflows/release-platform-package.yaml/badge.svg)](https://github.com/eqtylab/deployment/actions/workflows/release-platform-package.yaml)
 
-> Helm charts, deployment guides, and helper tooling for deploying the **EQTY Lab Governance Platform** on Kubernetes. Supports Auth0, Microsoft Entra ID, and Keycloak as identity providers, with cloud-agnostic storage and key vault integration (AWS, Azure, GCP).
+> Helm charts and helper tooling for deploying the **EQTY Lab Governance Platform** on Kubernetes. Supports Auth0, Microsoft Entra ID, and Keycloak as identity providers, with cloud-agnostic storage and key vault integration (AWS, Azure, GCP).
 
 ## 🚀 Quick Start
 
-1. Review the [prerequisites](#-prerequisites). Use the existing GHCR installation path until your version has a verified `cloudsmith-delivery.json`; then follow [Cloudsmith setup](docs/cloudsmith.md).
-2. Pick your identity provider and follow the matching guide in [`docs/`](./docs/):
-   - [Auth0](./docs/auth0/) · [Microsoft Entra ID](./docs/entra/) · [Keycloak](./docs/keycloak/)
+1. Review the [prerequisites](#-prerequisites). Use the existing GHCR installation path until your version has a verified `cloudsmith-delivery.json`; then follow [Cloudsmith setup](./docs/cloudsmith.md).
+2. Follow [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) on the docs site, including your identity provider's page:
+   - [Auth0](https://guardian.docs.eqtylab.io/deployment/auth0/) · [Microsoft Entra ID](https://guardian.docs.eqtylab.io/deployment/microsoft-entra-id/) · [Keycloak](https://guardian.docs.eqtylab.io/deployment/keycloak/)
 3. Use [`govctl`](./govctl/README.md) to generate Helm values and secrets (`--artifact-source github` for GHCR; the Cloudsmith default only for verified deliveries), then install the [`governance-platform`](./charts/governance-platform/) umbrella chart.
 
 ## ✅ Prerequisites
@@ -24,7 +24,7 @@
 ## 📁 Repository Structure
 
 - **[`charts/`](./charts/README.md)** — Helm charts for the Governance Platform services (auth, governance, integrity, studio) plus per-IdP bootstrap charts.
-- **[`docs/`](./docs/)** — Step-by-step deployment guides for each identity provider, with per-cloud variants (AWS, Azure, GCP), plus the optional [OpenBao custody delivery](./docs/openbao-delivery.md) notes.
+- **[`docs/`](./docs/)** — [Cloudsmith setup](./docs/cloudsmith.md), the [Cloudsmith release runbook](./docs/cloudsmith-release.md), and the optional [OpenBao custody delivery](./docs/openbao-delivery.md) notes. Deployment guides are on the [docs site](https://guardian.docs.eqtylab.io/deployment/deployment-process/).
 - **[`govctl/`](./govctl/README.md)** — CLI tool for generating Helm values, bootstrap configs, and secrets files interactively.
 - **[`scripts/`](./scripts/README.md)** — Helper scripts for NGINX ingress setup, cert-manager installation, IdP bootstrap, post-install database seeding, OpenBao operator setup, and release packaging checks.
 - **[`releases/`](./releases/)** — Per-version release manifests pinning chart versions, image digests, and source refs for each platform release.
@@ -35,6 +35,8 @@
 
 Each platform release has a manifest under [`releases/`](./releases/) that pins the exact chart versions, image digests, and source refs that make up that release. Match the release version to the chart and image versions you deploy — do not mix versions across releases.
 
+The docs site's deployment pages describe the latest release; earlier releases are archived on the site under `/v<version>/`. Releases from before the guides moved to the docs site also have them in this repository at their `platform/v<version>` tag.
+
 The optional [`openbao-custody` delivery](./docs/openbao-delivery.md) has its own
 wrapper version and Kubernetes 1.30+ minimum. It is published and packaged only
 when explicitly selected in the release manifest; it is never an umbrella
@@ -44,5 +46,5 @@ dependency. OpenBao application use remains development-only.
 
 For questions, deployment assistance, or issues, contact your EQTY Lab representative or open an issue in this repository.
 
-Release operators: [Cloudsmith mirroring and activation](docs/cloudsmith-release.md).
+Release operators: [Cloudsmith mirroring and activation](./docs/cloudsmith-release.md).
 Internal infrastructure continues to use GHCR; use `govctl init --artifact-source github`.
