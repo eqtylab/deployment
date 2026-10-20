@@ -345,7 +345,7 @@ jobs:
           python -B scripts/release/custody_distribution.py stage "$package_root"
 
           cat > "$package_root/INSTALL.md" <<EOF
-          # Governance Platform v${VERSION}
+          # Guardian Platform v${VERSION}
 
           Until this version has a verified Cloudsmith delivery, use its existing GHCR chart and image credentials:
 
@@ -420,7 +420,7 @@ jobs:
         run: |
           notes="dist/release-notes.md"
           cat > "$notes" <<EOF
-          ## Governance Platform v${VERSION}
+          ## Guardian Platform v${VERSION}
 
           Release type: \`${RELEASE_TYPE}\`
 
@@ -476,12 +476,12 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "${assets[@]}" --clobber
             gh release edit "$tag" \
-              --title "Governance Platform v${VERSION}" \
+              --title "Guardian Platform v${VERSION}" \
               --notes-file dist/release-notes.md \
               "${flags[@]}"
           else
             gh release create "$tag" "${assets[@]}" \
-              --title "Governance Platform v${VERSION}" \
+              --title "Guardian Platform v${VERSION}" \
               --notes-file dist/release-notes.md \
               --verify-tag \
               "${flags[@]}"

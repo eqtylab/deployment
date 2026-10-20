@@ -380,7 +380,7 @@ def verify_checksums(work):
 def inventory_provenance(image):
     source_repository, digest = image["source"].split("@")
     destination_repository = image["destination"].rsplit(":", 1)[0]
-    # Guardian currently signs with Cosign 2.x. OCI recursive copy alone misses these tags.
+    # eqtylab/guardian currently signs with Cosign 2.x. OCI recursive copy alone misses these tags.
     attachments = []
     for kind in ("sig", "att", "sbom"):
         tag = digest.replace(":", "-") + "." + kind

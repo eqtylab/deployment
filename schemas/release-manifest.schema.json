@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/eqtylab/deployment/schemas/release-manifest.schema.json",
-  "title": "Governance Platform Release Manifest",
+  "title": "Guardian Platform Release Manifest",
   "type": "object",
   "required": ["platform", "sources", "images", "charts", "validation", "docs"],
   "properties": {

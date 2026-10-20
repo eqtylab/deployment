@@ -37,11 +37,11 @@ that account, and these claims (one policy per event):
 ```
 
 The second policy uses `"event_name": "workflow_dispatch"`; all other claims
-are identical. Do not reuse Guardian's Viper account or broaden its policy.
+are identical. Do not reuse the `eqtylab/guardian` Viper account or broaden its policy.
 The Cloudsmith repository's policy README is generated from live settings;
 it must not be edited to pretend a policy is installed.
 
-Grant deployment Actions read access to the Guardian runtime image packages in
+Grant deployment Actions read access to the `eqtylab/guardian` runtime image packages in
 GHCR, including their signature/attestation tags. The workflow uses its own
 `GITHUB_TOKEN` with `packages: read`, not a personal registry token. Its publishing
 job additionally uses `contents: write` for additive delivery/provenance assets
@@ -96,7 +96,7 @@ mirror workflow commit on main, never from the triggering run's artifacts.
 
 There is no automatic historical backfill. Manual promotion enforces the same
 stable version, approved tagged manifest, published release, and main ancestry
-requirements as automatic promotion. Historical releases without Guardian source
+requirements as automatic promotion. Historical releases without `eqtylab/guardian` source
 metadata or GitHub asset checksums need a new release, not a bypass.
 
 ## Retry a failed delivery or mirror a historical release
@@ -134,7 +134,7 @@ For a historical release, replace `1.2.1` in both dispatches with its version
 (for example, `1.2.0`), keeping `--ref main`. Manual dispatch reads that version's
 existing release assets and approved tagged manifest; it does not require the
 original Actions run or publication receipt to remain available. The same
-integrity requirements apply, including Guardian source metadata, image
+integrity requirements apply, including `eqtylab/guardian` source metadata, image
 signatures, asset checksums, and recorded chart OCI digests. Older releases that
 lack these inputs cannot be backfilled by bypassing verification.
 
@@ -164,7 +164,7 @@ Helm OCI endpoint. The original release archives and checksums remain unchanged.
 
 Images are copied by digest with ORAS, including all platforms and OCI
 referrers. Cosign 2.x `.sig`, `.att`, and `.sbom` tags are inventoried and copied
-explicitly. Source signatures must verify against Guardian's image build
+explicitly. Source signatures must verify against the `eqtylab/guardian` image build
 workflow. Charts use their released archive bytes and recorded GHCR digests;
 the delivery manifest records each native Helm package ID, repository, name,
 version, and identical archive checksum alongside its original GHCR source.
