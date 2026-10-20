@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
-    { name = "EQTYLab" }
+    { name = "EQTY Lab" }
 ]
 dependencies = [
     "click>=8.1.0",

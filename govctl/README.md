@@ -54,7 +54,7 @@ Set up one of the following before deployment:
 ### Container Registry
 
 - Access to a container registry (default: `docker.cloudsmith.io`) with the platform images
-- A Cloudsmith prod entitlement token from EQTY
+- A Cloudsmith prod entitlement token from EQTY Lab
 
 ## Usage
 
@@ -208,7 +208,7 @@ with a stable chart version whose `cloudsmith-delivery.json` confirms delivery.
 Generated Cloudsmith values inherit that chart’s released image tags and digests;
 they do not override images to `latest`. Use
 `--artifact-source github` for internal GHCR installations or versions not yet delivered to Cloudsmith. Cloudsmith output
-sets the EQTY image prefix, pull-secret registry, and entitlement username
+sets the EQTY Lab image prefix, pull-secret registry, and entitlement username
 (`eqtylab/prod`) together. Fill the token placeholder through your existing
 secret-management process. Custom registry hosts prompt for the full image
 repository prefix as well. See [Cloudsmith installation](../docs/cloudsmith.md).

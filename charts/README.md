@@ -1,6 +1,6 @@
 # Guardian Platform Helm Charts
 
-This repository contains Helm charts for deploying the EQTY Lab Guardian Platform on Kubernetes.
+This repository contains Helm charts for deploying the Guardian Platform on Kubernetes.
 
 ## Chart Catalog
 
@@ -160,7 +160,7 @@ helm upgrade --install governance-platform ./governance-platform \
   --values values.yaml
 ```
 
-The Guardian Gateway is opt-in for upgrade safety. Add
+The Agent Gateway is opt-in for upgrade safety. Add
 `governance-platform/examples/values-gateway.yaml` to the Helm command to enable
 it, and provide the `gateway-dsn` key in `platform-database` when using an
 externally managed Secret.

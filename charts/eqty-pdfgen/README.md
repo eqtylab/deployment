@@ -1,10 +1,10 @@
-# EQTY PDFGen
+# PDFGen
 
-A Helm chart for deploying the EQTY Lab PDF generation service on Kubernetes.
+A Helm chart for deploying the PDFGen service on Kubernetes.
 
 ## Description
 
-EQTY PDFGen renders governance manifests into PDF files or ZIP bundles for the Guardian Platform. When a request includes an authorization bearer token, the service can delegate PDF signing to Auth Service.
+PDFGen renders governance manifests into PDF files or ZIP bundles for the Guardian Platform. When a request includes an authorization bearer token, the service can delegate PDF signing to Auth Service.
 
 Key capabilities:
 
@@ -15,7 +15,7 @@ Key capabilities:
 
 ## Configuration Model
 
-EQTY PDFGen uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
+PDFGen uses runtime configuration injected via environment variables. Application configuration is provided through Helm values and injected into the container at startup.
 
 This allows:
 
@@ -39,7 +39,7 @@ Bound signing is independent of the key-management provider; it is not inherentl
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, EQTY PDFGen automatically inherits image registry settings and the default signing URL from global values. The service is **enabled by default**; set `eqty-pdfgen.enabled: false` to omit it.
+When deployed via the `governance-platform` umbrella chart, PDFGen automatically inherits image registry settings and the default signing URL from global values. The service is **enabled by default**; set `eqty-pdfgen.enabled: false` to omit it.
 
 The chart creates only an internal ClusterIP Service and intentionally does not render an Ingress; PDF generation is an internal capability consumed by other platform services.
 
@@ -93,12 +93,12 @@ Generated defaults:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                     | Type   | Description                                                                   |
-| --------------------------------------- | ------ | ----------------------------------------------------------------------------- |
-| global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)      |
-| global.imageRepositoryPrefixOverride    | string | Replace the full EQTY image repository prefix (e.g., `registry.example/eqty`) |
-| global.imagePullPolicy                  | string | Default image pull policy for platform installs                               |
-| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                     |
+| Key                                     | Type   | Description                                                                       |
+| --------------------------------------- | ------ | --------------------------------------------------------------------------------- |
+| global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)          |
+| global.imageRepositoryPrefixOverride    | string | Replace the full EQTY Lab image repository prefix (e.g., `registry.example/eqty`) |
+| global.imagePullPolicy                  | string | Default image pull policy for platform installs                                   |
+| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                         |
 
 ### Chart-Specific Parameters
 

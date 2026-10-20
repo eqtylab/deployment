@@ -16,7 +16,7 @@ dependencies:
     version: "1.2.1"
     repository: "file://../auth-service"
     condition: auth-service.enabled
-  # EQTY PDFGen
+  # PDFGen
   - name: eqty-pdfgen
     version: "1.2.1"
     repository: "file://../eqty-pdfgen"

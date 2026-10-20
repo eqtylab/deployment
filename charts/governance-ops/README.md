@@ -1,6 +1,6 @@
 # Governance Ops
 
-A Helm chart for deploying operational monitoring resources for the EQTY Lab Guardian Platform on Kubernetes.
+A Helm chart for deploying operational monitoring resources for the Guardian Platform on Kubernetes.
 
 ## Description
 

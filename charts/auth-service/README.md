@@ -1,6 +1,6 @@
 # Auth Service
 
-A Helm chart for deploying the EQTY Lab Auth Service on Kubernetes.
+A Helm chart for deploying the Auth Service on Kubernetes.
 
 ## Description
 

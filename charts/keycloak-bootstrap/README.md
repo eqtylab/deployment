@@ -1,6 +1,6 @@
 # Keycloak Bootstrap
 
-A Helm chart for deploying the EQTY Lab Keycloak Bootstrap on Kubernetes.
+A Helm chart for deploying the Keycloak Bootstrap on Kubernetes.
 
 ## Description
 

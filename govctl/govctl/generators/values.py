@@ -51,7 +51,7 @@ def generate_values(config: PlatformConfig) -> str:
         ),
         (
             "eqty-pdfgen",
-            "EQTY PDFGen",
+            "PDFGen",
             "Override values for the eqty-pdfgen Helm chart.",
             generate_eqty_pdfgen_section(config),
         ),

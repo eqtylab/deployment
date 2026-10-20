@@ -1,6 +1,6 @@
 # The Guardian Platform
 
-A comprehensive Helm umbrella chart for deploying the complete EQTY Lab Guardian Platform on Kubernetes.
+A comprehensive Helm umbrella chart for deploying the complete Guardian Platform on Kubernetes.
 
 ## Description
 
@@ -22,7 +22,7 @@ The platform uses a microservices architecture with the following components:
 - **Governance Service** - Go-based backend API with governance logic and workflow engine
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
-- **EQTY PDFGen** - PDF and ZIP rendering service for governance manifests
+- **PDFGen** - PDF and ZIP rendering service for governance manifests
 - **Gateway Stack** - Optional LLM gateway and control plane
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
@@ -338,7 +338,7 @@ These global values are automatically inherited by all subcharts:
 | global.environmentType               | string | `"production"`                             | Environment type (development/staging/production)                                                            |
 | global.imagePullPolicy               | string | `"IfNotPresent"`                           | Default image pull policy for all containers                                                                 |
 | global.imageRegistryOverride         | string | `""`                                       | Override runtime image registry hosts; upstream dependencies have their own settings                         |
-| global.imageRepositoryPrefixOverride | string | `""`                                       | Replace the EQTY image prefix, preserving upstream sources                                                   |
+| global.imageRepositoryPrefixOverride | string | `""`                                       | Replace the EQTY Lab image prefix, preserving upstream sources                                               |
 | global.imagePullSecrets              | list   | `[{"name": "platform-image-pull-secret"}]` | Pull secrets shared by subcharts                                                                             |
 | global.utilityImages.busybox         | string | `""`                                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
 
@@ -408,13 +408,13 @@ Authentication and authorization service settings. See [auth-service/README.md](
 | auth-service.ingress.enabled                                        | bool   | `false`    | Enable ingress                                                                                                                   |
 | auth-service.autoscaling.enabled                                    | bool   | `false`    | Enable horizontal pod autoscaling                                                                                                |
 
-### EQTY PDFGen Configuration
+### PDFGen Configuration
 
 Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdfgen/README.md) for complete documentation.
 
 | Key                             | Type   | Default                           | Description                                                                                                                         |
 | ------------------------------- | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| eqty-pdfgen.enabled             | bool   | `true`                            | Enable EQTY PDFGen                                                                                                                  |
+| eqty-pdfgen.enabled             | bool   | `true`                            | Enable PDFGen                                                                                                                       |
 | eqty-pdfgen.replicaCount        | int    | `2`                               | Number of replicas                                                                                                                  |
 | eqty-pdfgen.service.port        | int    | `8080`                            | Internal ClusterIP service port                                                                                                     |
 | eqty-pdfgen.config.signingUrl   | string | `""`                              | Signing endpoint (auto-generated as auth-service internal signing URL)                                                              |
@@ -422,7 +422,7 @@ Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdf
 | eqty-pdfgen.config.timestampUrl | string | `"http://timestamp.digicert.com"` | Timestamp authority URL; `""` omits the timestamp token with the PDFgen empty-URL behavior from guardian#234                        |
 | eqty-pdfgen.autoscaling.enabled | bool   | `false`                           | Enable horizontal pod autoscaling                                                                                                   |
 
-EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
+PDFGen is intentionally cluster-internal and does not render an Ingress.
 
 Before opting into bound signing, verify that both selected images include the [guardian#234](https://github.com/eqtylab/guardian/pull/234) contract and Auth includes the curve-correct certificates from [#233](https://github.com/eqtylab/guardian/pull/233). The chart does not select a supporting image release automatically. Empty timestamp URLs require P2's [`_signer.py` behavior](../eqty-pdfgen/README.md#prerequisites). Bound signing is independent of the key-management provider; OpenBao remains optional.
 
@@ -452,8 +452,8 @@ Frontend application settings. See [governance-studio/README.md](../governance-s
 | governance-studio.config.displayTimezone             | string | `"UTC"`               | Timezone used for displayed timestamps (IANA name, e.g. America/New_York)                       |
 | governance-studio.config.gatewayApiUrl               | string | `""`                  | Gateway control-plane API URL (**must be set** when `features.gateway` is true)                 |
 | governance-studio.config.llmGatewayUrl               | string | `""`                  | Public LLM gateway URL shown in agent onboarding commands (optional; blank shows a placeholder) |
-| governance-studio.config.features.gateway            | bool   | `false`               | Enable Gateway features in Studio                                                               |
-| governance-studio.config.features.agentCertification | bool   | `false`               | Enable Governance Programs and agent certification in Studio (requires `features.gateway`)      |
+| governance-studio.config.features.gateway            | bool   | `false`               | Enable Gateway features in Guardian                                                             |
+| governance-studio.config.features.agentCertification | bool   | `false`               | Enable Governance Programs and agent certification in Guardian (requires `features.gateway`)    |
 | governance-studio.autoscaling.enabled                | bool   | `false`               | Enable horizontal pod autoscaling                                                               |
 
 ### Integrity Service Configuration
@@ -1163,7 +1163,7 @@ kubectl get pods -n governance -w
 kubectl rollout status deployment/governance-platform-governance-service -n governance
 kubectl rollout status deployment/governance-platform-governance-studio -n governance
 kubectl rollout status deployment/governance-platform-integrity-service -n governance
-# If EQTY PDFGen is enabled
+# If PDFGen is enabled
 kubectl rollout status deployment/governance-platform-eqty-pdfgen -n governance
 ```
 
@@ -1197,7 +1197,7 @@ kubectl logs -f deployment/governance-platform-governance-studio -n governance
 # Integrity Service
 kubectl logs -f deployment/governance-platform-integrity-service -n governance
 
-# EQTY PDFGen, if enabled
+# PDFGen, if enabled
 kubectl logs -f deployment/governance-platform-eqty-pdfgen -n governance
 ```
 
@@ -1279,14 +1279,14 @@ integrity-service:
 | Service            | Health (Liveness)                           | Readiness                              | Identity Provider                    |
 | ------------------ | ------------------------------------------- | -------------------------------------- | ------------------------------------ |
 | Auth Service       | `GET /authService/health`                   | `GET /authService/health/ready`        | `GET /authService/health/auth`       |
-| EQTY PDFGen        | `GET /health/ready` (internal service)      | `GET /health/ready` (internal service) | -                                    |
+| PDFGen             | `GET /health/ready` (internal service)      | `GET /health/ready` (internal service) | -                                    |
 | Governance Service | `GET /governanceService/health`             | `GET /governanceService/health/ready`  | `GET /governanceService/health/auth` |
 | Guardian           | `GET /`                                     | `GET /`                                | —                                    |
 | Integrity Service  | `GET /integrityService/health/v1`           | `GET /integrityService/health/v1`      | —                                    |
 | Service            | Endpoint                                    |
 | ------------------ | ------------------------------------------- |
 | Auth Service       | `GET /authService/health`                   |
-| EQTY PDFGen        | `GET /health/ready` on the internal service |
+| PDFGen             | `GET /health/ready` on the internal service |
 | Governance Service | `GET /governanceService/health`             |
 | Guardian           | `GET /`                                     |
 | Integrity Service  | `GET /integrityService/health/v1`           |
@@ -1298,7 +1298,7 @@ Each backend service exposes Swagger/OpenAPI documentation:
 | Service            | Swagger UI                                  |
 | ------------------ | ------------------------------------------- |
 | Auth Service       | `GET /authService/swagger/index.html`       |
-| EQTY PDFGen        | `GET /docs` on the internal service         |
+| PDFGen             | `GET /docs` on the internal service         |
 | Governance Service | `GET /governanceService/swagger/index.html` |
 | Integrity Service  | `GET /integrityService/swagger/index.html`  |
 

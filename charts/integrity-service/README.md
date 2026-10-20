@@ -1,6 +1,6 @@
 # Integrity Service
 
-A Helm chart for deploying the EQTY Lab Integrity Service on Kubernetes.
+A Helm chart for deploying the Integrity Service on Kubernetes.
 
 ## Description
 

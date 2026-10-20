@@ -1,6 +1,6 @@
 # Prometheus Metrics
 
-The Guardian Gateway exposes a native Prometheus metrics endpoint on a dedicated port (default `:10001`), separate from the main API port. No sidecar exporter is required.
+The LLM Gateway exposes a native Prometheus metrics endpoint on a dedicated port (default `:10001`), separate from the main API port. No sidecar exporter is required.
 
 ## Metrics Reference
 

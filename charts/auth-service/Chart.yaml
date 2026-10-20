@@ -1,6 +1,6 @@
 apiVersion: v2
 name: auth-service
-description: A Helm chart for deploying the EQTY Lab Auth Service - the authentication and authorization backbone
+description: A Helm chart for deploying the Auth Service - the authentication and authorization backbone
 type: application
 version: 1.2.1
 appVersion: "1.2.1"

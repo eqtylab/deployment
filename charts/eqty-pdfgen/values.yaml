@@ -1,7 +1,7 @@
 # =============================================================================
-# EQTY PDFGEN - HELM VALUES CONFIGURATION
+# PDFGEN - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the EQTY PDF generation service, which renders
+# This values file configures the PDF generation service, which renders
 # governance manifests into PDF files or ZIP bundles
 #
 # When deployed via the umbrella chart (governance-platform), image registry
@@ -10,14 +10,14 @@
 
 # -- Enable Service
 # @default -- `false`
-# Enable the EQTY PDF generation service
+# Enable the PDF generation service
 enabled: false
 
 # -- Global values shared by umbrella and standalone installs
 global:
   # -- Replace only the image registry host, for example registry.customer.example
   imageRegistryOverride: ""
-  # -- Replace the full EQTY image repository prefix, for example registry.customer.example/eqtylab
+  # -- Replace the full EQTY Lab image repository prefix, for example registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
   # -- Default image pull policy for platform installs
   imagePullPolicy: IfNotPresent
@@ -29,7 +29,7 @@ replicaCount: 2
 
 # -- Image Configuration
 # @default -- See values below
-# Container image settings for EQTY PDFGen
+# Container image settings for PDFGen
 image:
   # -- Image Repository
   # @default -- `ghcr.io/eqtylab/eqty-pdfgen`
