@@ -19,7 +19,7 @@ python3Packages.buildPythonApplication {
   ];
 
   meta = {
-    description = "CLI tool for generating Governance Platform Helm values";
+    description = "CLI tool for generating Guardian Platform Helm values";
     license = lib.licenses.mit;
     mainProgram = "govctl";
   };

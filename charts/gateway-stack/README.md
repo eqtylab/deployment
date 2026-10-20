@@ -1,10 +1,10 @@
 # Gateway Stack
 
-A Helm chart for deploying the EQTY Lab Guardian gateway stack on Kubernetes.
+A Helm chart for deploying the EQTY Lab Guardian Gateway stack on Kubernetes.
 
 ## Description
 
-The Gateway Stack provides a signing proxy in front of upstream model providers and a management control plane for the Governance Platform.
+The Gateway Stack provides a signing proxy in front of upstream model providers and a management control plane for the Guardian Platform.
 
 Key capabilities:
 
@@ -248,7 +248,7 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 
 | Key                                                   | Type   | Default | Description                                                  |
 | ----------------------------------------------------- | ------ | ------- | ------------------------------------------------------------ |
-| controlPlane.adapter.enabled                          | bool   | `false` | Enable the Governance Studio adapter                         |
+| controlPlane.adapter.enabled                          | bool   | `false` | Enable the Guardian adapter                                  |
 | controlPlane.adapter.authServiceBaseURL               | string | `""`    | Defaults to `http://{Release.Name}-auth-service:8080`        |
 | controlPlane.adapter.governanceServiceBaseURL         | string | `""`    | Defaults to `http://{Release.Name}-governance-service:10001` |
 | controlPlane.adapter.integrityBaseURL                 | string | `""`    | Defaults to `http://{Release.Name}-integrity-service:3050`   |

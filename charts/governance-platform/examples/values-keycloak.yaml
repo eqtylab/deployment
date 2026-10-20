@@ -1,5 +1,5 @@
 # Keycloak Configuration Example
-# Complete example for deploying the Governance Platform with Keycloak
+# Complete example for deploying the Guardian Platform with Keycloak
 # For all available values, see the chart's values.yaml and README.md
 #
 # Secrets:
@@ -159,7 +159,7 @@ governance-service:
       memory: 512Mi
 
 # =============================================================================
-# Governance Studio
+# Guardian
 # =============================================================================
 # Override values for the governance-studio Helm chart
 # ------------------------------------------------------------------------------

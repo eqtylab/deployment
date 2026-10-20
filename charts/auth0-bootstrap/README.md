@@ -4,7 +4,7 @@ A Helm chart for deploying the EQTY Lab Auth0 Bootstrap on Kubernetes.
 
 ## Description
 
-The Auth0 Bootstrap provides automated application, API, permission, and user configuration for the Governance Platform using Auth0. It runs as a Kubernetes Job that configures Auth0 via the [Auth0 Management API](https://auth0.com/docs/api/management/v2).
+The Auth0 Bootstrap provides automated application, API, permission, and user configuration for the Guardian Platform using Auth0. It runs as a Kubernetes Job that configures Auth0 via the [Auth0 Management API](https://auth0.com/docs/api/management/v2).
 
 Key capabilities:
 

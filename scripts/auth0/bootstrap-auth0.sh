@@ -13,7 +13,7 @@ source "$ROOTDIR/scripts/helpers/assert.sh"
 # Function to display usage
 usage() {
   echo -e "\
-Bootstrap Auth0 tenant (applications, API, scopes, users, actions) for the Governance Platform
+Bootstrap Auth0 tenant (applications, API, scopes, users, actions) for the Guardian Platform
 
 Usage: $0 -f <values-file> -n <namespace> [options]
   -c, --chart-dir <dir>           Chart directory (default: $CHART_DIR)
@@ -233,7 +233,7 @@ show_summary() {
   echo "       -n $NAMESPACE"
   echo ""
   echo "  4. Update governance-studio Helm values with the frontend SPA client ID and tenant domain"
-  echo "  5. Deploy the governance platform with Auth0 values"
+  echo "  5. Deploy the Guardian Platform with Auth0 values"
   echo "  6. Enable auth0.createOrganization (and createPlatformAdmin) in the platform values so the Helm hook creates the organization and admin user, or run scripts/auth0/post-install-auth0-setup.sh after deploying"
 
   echo ""

@@ -19,7 +19,7 @@ Monitoring for:   {{ $targetRelease }}
 {{- if .Values.dashboards.enabled }}
 ✓ Grafana Dashboards:
   {{- if .Values.dashboards.platformOverview.enabled }}
-  - Governance Platform Overview Dashboard
+  - Guardian Platform Overview Dashboard
   {{- end }}
 {{- end }}
 
@@ -39,7 +39,7 @@ Monitoring for:   {{ $targetRelease }}
    kubectl get configmaps -n {{ .Release.Namespace }} -l grafana_dashboard=1
 
 2. Access Grafana and navigate to Dashboards → Browse
-   Look for "Governance Platform" dashboard
+   Look for "Guardian Platform" dashboard
 
 3. Verify Prometheus discovered the alerts:
    kubectl get prometheusrule -n {{ .Release.Namespace }}

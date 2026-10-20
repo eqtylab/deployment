@@ -4,7 +4,7 @@ A Helm chart for deploying the EQTY Lab Entra ID Bootstrap on Kubernetes.
 
 ## Description
 
-The Entra ID Bootstrap provides automated app registration and OAuth configuration for the Governance Platform using Microsoft Entra ID. It runs as a Kubernetes Job that configures Entra ID via the Azure CLI and Microsoft Graph API.
+The Entra ID Bootstrap provides automated app registration and OAuth configuration for the Guardian Platform using Microsoft Entra ID. It runs as a Kubernetes Job that configures Entra ID via the Azure CLI and Microsoft Graph API.
 
 Key capabilities:
 

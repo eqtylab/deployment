@@ -1,4 +1,4 @@
-# Guardian gateway overlay
+# Guardian Gateway overlay
 #
 # Use with a complete provider values file, for example:
 #   helm upgrade --install governance-platform ./charts/governance-platform \
@@ -9,7 +9,7 @@
 # The umbrella chart's gateway-stack defaults already wire the platform database
 # Secret, the control-plane adapter, and auth-service bearer verification, so
 # this overlay only turns the stack on, sets its API path and routes, points
-# Governance Service at the control plane, and points Governance Studio at the
+# Governance Service at the control plane, and points Guardian at the
 # control-plane API and the LLM gateway
 #
 # The governance-service control plane URL follows the release name and the
@@ -42,7 +42,7 @@ governance-service:
   config:
     controlPlaneUrl: "http://{{ .Release.Name }}-gateway-stack-control-plane:10010"
 
-# Governance Studio calls the control-plane API on the controlPlane host and
+# Guardian calls the control-plane API on the controlPlane host and
 # shows the llmGateway host in agent onboarding commands
 governance-studio:
   config:

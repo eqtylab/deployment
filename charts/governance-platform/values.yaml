@@ -1,7 +1,7 @@
 # =============================================================================
-# GOVERNANCE PLATFORM - HELM VALUES CONFIGURATION
+# GUARDIAN PLATFORM - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the complete Governance Platform including
+# This values file configures the complete Guardian Platform including
 # all microservices, databases, and infrastructure components
 #
 # IMPORTANT: This file contains example values. For production deployments:
@@ -217,7 +217,7 @@ global:
       keys:
         username: "username"
         password: "password"
-        # DSN consumed by Guardian gateway services when gateway-stack is enabled
+        # DSN consumed by Guardian Gateway services when gateway-stack is enabled
         gatewayDsn: "gateway-dsn"
       # Only used if create=true
       values:
@@ -227,7 +227,7 @@ global:
         # -- Database Password
         # @default -- `""` (REQUIRED if create=true)
         password: ""
-        # -- Guardian database DSN
+        # -- Guardian Gateway database DSN
         # @default -- `""` (REQUIRED if create=true and gateway-stack.enabled=true)
         # URL-encode credentials that contain reserved URI characters
         gatewayDsn: ""
@@ -1567,14 +1567,14 @@ eqty-pdfgen:
     # -- RFC 3161 timestamp authority URL used during PDF signing
     # @default -- `http://timestamp.digicert.com`
     # Set to an empty string to sign without a timestamp token. Requires the
-    # PDFgen empty-URL behavior from Guardian #234; see eqty-pdfgen README.
+    # PDFgen empty-URL behavior from guardian#234; see eqty-pdfgen README.
     timestampUrl: http://timestamp.digicert.com
     # -- Auth-service signing endpoint
     # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080/api/v1/protected/sign-pdf")
     signingUrl: ""
     # -- Version-bound signing (EQTY_SIGNING_BOUND)
     # @default -- `false`
-    # Requires compatible PDFgen and Auth images from Guardian #234, including
+    # Requires compatible PDFgen and Auth images from guardian#234, including
     # Auth's curve-correct certificates from #233. See eqty-pdfgen README.
     # The supporting PDFgen client fails closed against incompatible Auth images.
     # Independent of key-management provider; OpenBao is optional and dev-only.
@@ -1609,7 +1609,7 @@ eqty-pdfgen:
 # Guardian Gateway
 # =============================================================================
 # The gateway remains opt-in for the first consolidated release so existing
-# Governance Platform installations are not changed by an upgrade. The example
+# Guardian Platform installations are not changed by an upgrade. The example
 # overlay in examples/values-gateway.yaml enables the complete integration
 # ------------------------------------------------------------------------------
 gateway-stack:
@@ -2294,14 +2294,14 @@ governance-service:
   hostAliases: []
 
 # =============================================================================
-# Governance Studio
+# Guardian
 # =============================================================================
 # Default values for the governance-studio Helm chart
 # ------------------------------------------------------------------------------
 governance-studio:
   # -- Enable Service
   # @default -- `true`
-  # Enable the Governance Studio frontend application
+  # Enable the Guardian frontend application
   enabled: true
 
   # -- Replica Count
@@ -2311,7 +2311,7 @@ governance-studio:
 
   # -- Image Configuration
   # @default -- See values below
-  # Container image settings for Governance Studio
+  # Container image settings for Guardian
   image:
     # -- Image Repository
     # @default -- `ghcr.io/eqtylab/governance-studio`

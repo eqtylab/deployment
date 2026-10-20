@@ -1,6 +1,6 @@
 # OpenBao operator scripts
 
-Administrative setup for Guardian Auth's OpenBao Transit provider. These run
+Administrative setup for Auth Service's OpenBao Transit provider. These run
 with operator credentials; the Auth runtime never holds them.
 
 ## `configure-auth.sh`

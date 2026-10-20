@@ -40,7 +40,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "# \ud83c\udf10 Governance Studio Instance\n\n## [https://${instance_url}](https://${instance_url})\n\nClick the URL above to access this instance of Governance Studio.",
+        "content": "# \ud83c\udf10 Guardian Instance\n\n## [https://${instance_url}](https://${instance_url})\n\nClick the URL above to access this instance of Guardian.",
         "mode": "markdown"
       },
       "pluginVersion": "10.0.0",
@@ -1836,7 +1836,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Governance Platform",
+  "title": "Guardian Platform",
   "uid": "platform-overview",
   "version": 1,
   "weekStart": ""

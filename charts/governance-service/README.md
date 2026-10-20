@@ -4,7 +4,7 @@ A Helm chart for deploying the EQTY Lab Governance Service on Kubernetes.
 
 ## Description
 
-The Governance Service provides governance validation, analysis capabilities, and workflow processing for the Governance Platform. It includes REST API endpoints for governance operations and a background worker service for processing governance workflows.
+The Governance Service provides governance validation, analysis capabilities, and workflow processing for the Guardian Platform. It includes REST API endpoints for governance operations and a background worker service for processing governance workflows.
 
 Key capabilities:
 

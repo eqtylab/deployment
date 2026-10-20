@@ -1,6 +1,6 @@
-# Governance Platform CLI (govctl)
+# The Guardian Platform CLI (govctl)
 
-CLI tool for generating Governance Platform Helm values and secrets files.
+CLI tool for generating Guardian Platform Helm values and secrets files.
 
 > **Note:** This tool generates the minimum viable configuration to get up and running. For advanced or service-specific options, refer to the individual chart READMEs under `charts/`.
 

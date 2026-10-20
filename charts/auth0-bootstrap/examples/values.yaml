@@ -1,5 +1,5 @@
 # Auth0 Bootstrap values example
-# This configures the bootstrap job to set up Auth0 for the Governance Platform
+# This configures the bootstrap job to set up Auth0 for the Guardian Platform
 #
 # PREREQUISITE: Before running this chart, you must:
 # 1. Create an Auth0 tenant (if you don't have one)

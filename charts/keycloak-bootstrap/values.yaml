@@ -427,17 +427,17 @@ userProfile:
 # @default -- See values below
 users:
   # ---------------------------------------------------------------------------
-  # Governance Studio Admin User
+  # Guardian Admin User
   # ---------------------------------------------------------------------------
 
   # -- Admin User
   # @default -- See values below
-  # This user is the initial admin account for logging into Governance Studio
+  # This user is the initial admin account for logging into Guardian
   # It is created in the Keycloak governance realm (not the Keycloak server admin)
   admin:
     # -- Enabled
     # @default -- `true`
-    # Enable creation of the Governance Studio admin user
+    # Enable creation of the Guardian admin user
     enabled: true
     # -- Username
     # @default -- `platform-admin`
@@ -461,11 +461,11 @@ users:
     temporaryPassword: false
     # -- Secret Name
     # @default -- `platform-admin`
-    # Secret containing the Governance Studio admin user password
+    # Secret containing the Guardian admin user password
     secretName: "platform-admin"
     # -- Secret Key
     # @default -- `password`
-    # Key within the secret for the Governance Studio admin user password
+    # Key within the secret for the Guardian admin user password
     secretKey: "password"
 
   # ---------------------------------------------------------------------------

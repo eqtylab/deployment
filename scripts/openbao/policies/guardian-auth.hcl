@@ -1,7 +1,7 @@
-# Guardian Auth runtime policy for a dedicated Transit mount.
+# Auth Service runtime policy for a dedicated Transit mount.
 # Rendered by configure-auth.sh with the mount path substituted for @TRANSIT_MOUNT@.
 #
-# The entire mount is allocated exclusively to Guardian Auth. A single-segment
+# The entire mount is allocated exclusively to Auth Service. A single-segment
 # wildcard avoids accidentally granting key child operations. required_parameters
 # closes the ACL's "no data fields" allowance: without it an empty or type-less
 # create would provision Transit's default AES key under a name that Auth can

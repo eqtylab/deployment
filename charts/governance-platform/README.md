@@ -1,10 +1,10 @@
-# Governance Platform
+# The Guardian Platform
 
-A comprehensive Helm umbrella chart for deploying the complete EQTY Lab Governance Platform on Kubernetes.
+A comprehensive Helm umbrella chart for deploying the complete EQTY Lab Guardian Platform on Kubernetes.
 
 ## Description
 
-The Governance Platform is an enterprise-grade governance, compliance, and integrity management system. This umbrella chart orchestrates the deployment of all platform components including microservices, databases, and supporting infrastructure.
+The Guardian Platform is an enterprise-grade governance, compliance, and integrity management system. This umbrella chart orchestrates the deployment of all platform components including microservices, databases, and supporting infrastructure.
 
 The platform provides:
 
@@ -18,7 +18,7 @@ The platform provides:
 
 The platform uses a microservices architecture with the following components:
 
-- **Governance Studio** - React-based frontend application for managing governance
+- **Guardian** - React-based frontend application for managing governance
 - **Governance Service** - Go-based backend API with governance logic and workflow engine
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
@@ -38,7 +38,7 @@ reuses `platform-database` and expects a `gateway-dsn` key for the
 
 ## Configuration Model
 
-The Governance Platform uses **centralized configuration inheritance** through Helm's global values system. Application configuration is defined once at the umbrella chart level and automatically cascades to all subcharts.
+The Guardian Platform uses **centralized configuration inheritance** through Helm's global values system. Application configuration is defined once at the umbrella chart level and automatically cascades to all subcharts.
 
 This allows:
 
@@ -110,7 +110,7 @@ kubectl create secret tls platform-tls \
 
 ### Quick Start
 
-The recommended way to generate configuration is with [`govctl`](../../govctl/README.md), the Governance Platform CLI:
+The recommended way to generate configuration is with [`govctl`](../../govctl/README.md), the Guardian Platform CLI:
 
 ```bash
 # Install govctl (from the govctl/ directory)
@@ -419,12 +419,12 @@ Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdf
 | eqty-pdfgen.service.port        | int    | `8080`                            | Internal ClusterIP service port                                                                                                     |
 | eqty-pdfgen.config.signingUrl   | string | `""`                              | Signing endpoint (auto-generated as auth-service internal signing URL)                                                              |
 | eqty-pdfgen.config.signingBound | bool   | `false`                           | Version-bound PDF signing; requires compatible Auth and PDFgen images (see [prerequisites](../eqty-pdfgen/README.md#prerequisites)) |
-| eqty-pdfgen.config.timestampUrl | string | `"http://timestamp.digicert.com"` | Timestamp authority URL; `""` omits the timestamp token with the PDFgen empty-URL behavior from Guardian #234                       |
+| eqty-pdfgen.config.timestampUrl | string | `"http://timestamp.digicert.com"` | Timestamp authority URL; `""` omits the timestamp token with the PDFgen empty-URL behavior from guardian#234                        |
 | eqty-pdfgen.autoscaling.enabled | bool   | `false`                           | Enable horizontal pod autoscaling                                                                                                   |
 
 EQTY PDFGen is intentionally cluster-internal and does not render an Ingress.
 
-Before opting into bound signing, verify that both selected images include the [Guardian #234](https://github.com/eqtylab/guardian/pull/234) contract and Auth includes the curve-correct certificates from [#233](https://github.com/eqtylab/guardian/pull/233). The chart does not select a supporting image release automatically. Empty timestamp URLs require P2's [`_signer.py` behavior](../eqty-pdfgen/README.md#prerequisites). Bound signing is independent of the key-management provider; OpenBao remains optional.
+Before opting into bound signing, verify that both selected images include the [guardian#234](https://github.com/eqtylab/guardian/pull/234) contract and Auth includes the curve-correct certificates from [#233](https://github.com/eqtylab/guardian/pull/233). The chart does not select a supporting image release automatically. Empty timestamp URLs require P2's [`_signer.py` behavior](../eqty-pdfgen/README.md#prerequisites). Bound signing is independent of the key-management provider; OpenBao remains optional.
 
 ### Governance Service Configuration
 
@@ -438,13 +438,13 @@ Backend API service settings. See [governance-service/README.md](../governance-s
 | governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs) |
 | governance-service.autoscaling.enabled    | bool   | `false` | Enable horizontal pod autoscaling                      |
 
-### Governance Studio Configuration
+### Guardian Configuration
 
 Frontend application settings. See [governance-studio/README.md](../governance-studio/README.md) for complete documentation.
 
 | Key                                                  | Type   | Default               | Description                                                                                     |
 | ---------------------------------------------------- | ------ | --------------------- | ----------------------------------------------------------------------------------------------- |
-| governance-studio.enabled                            | bool   | `true`                | Enable Governance Studio                                                                        |
+| governance-studio.enabled                            | bool   | `true`                | Enable Guardian                                                                                 |
 | governance-studio.replicaCount                       | int    | `1`                   | Number of replicas                                                                              |
 | governance-studio.ingress.enabled                    | bool   | `false`               | Enable ingress                                                                                  |
 | governance-studio.config.authProvider                | string | `""`                  | Auth provider (auto-configured from global.secrets.auth.provider)                               |
@@ -874,7 +874,7 @@ Auth0 requires two M2M (Machine-to-Machine) applications plus a SPA application:
 
 1. **EQTYLab Platform API** (M2M) - For token validation (`auth0.values.clientId/clientSecret`)
 2. **Auth Service Backend** (M2M) - For Management API calls (`auth0.values.mgmtClientId/mgmtClientSecret`)
-3. **Governance Studio** (SPA) - For frontend authentication (configured via `governance-studio.config`)
+3. **Guardian** (SPA) - For frontend authentication (configured via `governance-studio.config`)
 
 ```yaml
 global:
@@ -976,7 +976,7 @@ The hook authenticates to Microsoft Graph API using the `graphClientId` / `graph
 Keycloak requires a service account (confidential) client and a SPA (public) client:
 
 1. **Service Account** (Confidential) - For backend API calls (`keycloak.values.serviceAccountClientId/serviceAccountClientSecret`)
-2. **Governance Studio** (SPA/Public) - For frontend authentication (configured via `auth-service.config` and `governance-studio.config`)
+2. **Guardian** (SPA/Public) - For frontend authentication (configured via `auth-service.config` and `governance-studio.config`)
 
 ```yaml
 global:
@@ -1191,7 +1191,7 @@ kubectl logs -f deployment/governance-platform-auth-service -n governance
 # Governance Service
 kubectl logs -f deployment/governance-platform-governance-service -n governance
 
-# Governance Studio
+# Guardian
 kubectl logs -f deployment/governance-platform-governance-studio -n governance
 
 # Integrity Service
@@ -1281,14 +1281,14 @@ integrity-service:
 | Auth Service       | `GET /authService/health`                   | `GET /authService/health/ready`        | `GET /authService/health/auth`       |
 | EQTY PDFGen        | `GET /health/ready` (internal service)      | `GET /health/ready` (internal service) | -                                    |
 | Governance Service | `GET /governanceService/health`             | `GET /governanceService/health/ready`  | `GET /governanceService/health/auth` |
-| Governance Studio  | `GET /`                                     | `GET /`                                | —                                    |
+| Guardian           | `GET /`                                     | `GET /`                                | —                                    |
 | Integrity Service  | `GET /integrityService/health/v1`           | `GET /integrityService/health/v1`      | —                                    |
 | Service            | Endpoint                                    |
 | ------------------ | ------------------------------------------- |
 | Auth Service       | `GET /authService/health`                   |
 | EQTY PDFGen        | `GET /health/ready` on the internal service |
 | Governance Service | `GET /governanceService/health`             |
-| Governance Studio  | `GET /`                                     |
+| Guardian           | `GET /`                                     |
 | Integrity Service  | `GET /integrityService/health/v1`           |
 
 ### API Documentation

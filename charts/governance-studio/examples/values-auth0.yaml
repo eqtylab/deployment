@@ -1,5 +1,5 @@
 # Auth0 Configuration Example
-# Minimal configuration for deploying Governance Studio with Auth0
+# Minimal configuration for deploying Guardian with Auth0
 # For all available values, see the chart's values.yaml and README.md
 #
 # Usage:

@@ -1,7 +1,7 @@
 # =============================================================================
-# GOVERNANCE STUDIO - HELM VALUES CONFIGURATION
+# GUARDIAN - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the Governance Studio frontend application
+# This values file configures the Guardian frontend application
 #
 # When deployed via the umbrella chart (governance-platform), most values
 # are auto-configured from global settings
@@ -9,7 +9,7 @@
 
 # -- Enable Service
 # @default -- `true`
-# Enable the Governance Studio frontend application
+# Enable the Guardian frontend application
 enabled: true
 
 # -- Global values shared by umbrella and standalone installs
@@ -26,7 +26,7 @@ replicaCount: 1
 
 # -- Image Configuration
 # @default -- See values below
-# Container image settings for Governance Studio
+# Container image settings for Guardian
 image:
   # -- Image Repository
   # @default -- `ghcr.io/eqtylab/governance-studio`

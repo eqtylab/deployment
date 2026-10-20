@@ -4,7 +4,7 @@ A Helm chart for deploying the EQTY Lab Keycloak Bootstrap on Kubernetes.
 
 ## Description
 
-The Keycloak Bootstrap provides automated realm and client configuration for the Governance Platform. It runs as a Kubernetes Job that configures Keycloak with the necessary settings for the platform to function.
+The Keycloak Bootstrap provides automated realm and client configuration for the Guardian Platform. It runs as a Kubernetes Job that configures Keycloak with the necessary settings for the platform to function.
 
 Key capabilities:
 
@@ -76,7 +76,7 @@ kubectl create secret generic keycloak-admin \
   --from-literal=password=YOUR_ADMIN_PASSWORD \
   --namespace governance
 
-# Governance Studio admin user password (for logging into Governance Studio)
+# Guardian admin user password (for logging into Guardian)
 kubectl create secret generic platform-admin \
   --from-literal=password=$(openssl rand -base64 16) \
   --namespace governance
@@ -248,21 +248,21 @@ Keycloak provides `username`, `email`, `firstName`, and `lastName` as built-in u
 
 Attributes that already exist in the realm user profile are left unchanged.
 
-### Governance Studio Admin User Configuration
+### Guardian Admin User Configuration
 
-The admin user is the initial account for logging into Governance Studio. This is a realm user in Keycloak, not the Keycloak server admin.
+The admin user is the initial account for logging into Guardian. This is a realm user in Keycloak, not the Keycloak server admin.
 
-| Key                           | Type   | Default                    | Description                                        |
-| ----------------------------- | ------ | -------------------------- | -------------------------------------------------- |
-| users.admin.enabled           | bool   | `true`                     | Enable creation of Governance Studio admin user    |
-| users.admin.username          | string | `"platform-admin"`         | Admin username                                     |
-| users.admin.email             | string | `"admin@governance.local"` | Admin email address                                |
-| users.admin.firstName         | string | `"Platform"`               | Admin first name                                   |
-| users.admin.lastName          | string | `"Admin"`                  | Admin last name                                    |
-| users.admin.emailVerified     | bool   | `true`                     | Mark email as verified                             |
-| users.admin.temporaryPassword | bool   | `false`                    | Require password change on login                   |
-| users.admin.secretName        | string | `"platform-admin"`         | Secret containing Governance Studio admin password |
-| users.admin.secretKey         | string | `"password"`               | Secret key for the password                        |
+| Key                           | Type   | Default                    | Description                               |
+| ----------------------------- | ------ | -------------------------- | ----------------------------------------- |
+| users.admin.enabled           | bool   | `true`                     | Enable creation of Guardian admin user    |
+| users.admin.username          | string | `"platform-admin"`         | Admin username                            |
+| users.admin.email             | string | `"admin@governance.local"` | Admin email address                       |
+| users.admin.firstName         | string | `"Platform"`               | Admin first name                          |
+| users.admin.lastName          | string | `"Admin"`                  | Admin last name                           |
+| users.admin.emailVerified     | bool   | `true`                     | Mark email as verified                    |
+| users.admin.temporaryPassword | bool   | `false`                    | Require password change on login          |
+| users.admin.secretName        | string | `"platform-admin"`         | Secret containing Guardian admin password |
+| users.admin.secretKey         | string | `"password"`               | Secret key for the password               |
 
 ### Test Users Configuration
 

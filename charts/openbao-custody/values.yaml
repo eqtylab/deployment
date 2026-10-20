@@ -1,4 +1,4 @@
-# OpenBao custody release for Guardian Auth signing keys.
+# OpenBao custody release for Auth Service signing keys.
 #
 # This chart only pins and configures the upstream OpenBao chart (values under
 # `openbao`). It is installed as its own Helm release, in its own namespace,

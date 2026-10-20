@@ -1,4 +1,4 @@
-# Governance Platform with Auth signing keys in OpenBao Transit.
+# Guardian Platform with Auth signing keys in OpenBao Transit.
 #
 # Layer this over an identity-provider example (values-keycloak.yaml for a
 # fully local stack) and a database example. It selects the OpenBao provider

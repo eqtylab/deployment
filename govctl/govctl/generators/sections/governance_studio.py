@@ -1,4 +1,4 @@
-"""Governance studio section generator."""
+"""Guardian (governance-studio chart) section generator."""
 
 from typing import Any
 

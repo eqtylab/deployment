@@ -8,7 +8,7 @@ The bootstrap job will:
    - Frontend: {{ .Values.clients.frontend.clientId }}
    - Backend: {{ .Values.clients.backend.clientId }}
    - Worker: {{ .Values.clients.worker.clientId }}
-4. Create custom scopes for governance platform
+4. Create custom scopes for the Guardian Platform
 {{- if .Values.users.admin.enabled }}
 5. Create admin user: {{ .Values.users.admin.username }}
 {{- end }}

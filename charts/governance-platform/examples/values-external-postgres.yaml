@@ -1,6 +1,6 @@
 # Cloud-Managed PostgreSQL — Database Overlay
 # -----------------------------------------------------------------------------
-# This file is a DATABASE-CONFIG OVERLAY for pointing the Governance Platform
+# This file is a DATABASE-CONFIG OVERLAY for pointing the Guardian Platform
 # at a cloud-managed PostgreSQL instance (AWS RDS, Azure Database for
 # PostgreSQL — Flexible Server, or GCP Cloud SQL for PostgreSQL)
 #

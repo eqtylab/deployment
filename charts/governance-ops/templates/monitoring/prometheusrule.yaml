@@ -29,7 +29,7 @@ spec:
             severity: {{ .Values.alerts.rules.serviceDown.severity }}
             namespace: "{{ "{{ $labels.namespace }}" }}"
           annotations:
-            summary: "Governance Platform service {{ "{{ $labels.deployment }}" }} has no available replicas"
+            summary: "Guardian Platform service {{ "{{ $labels.deployment }}" }} has no available replicas"
             description: "Deployment {{ "{{ $labels.deployment }}" }} in namespace {{ "{{ $labels.namespace }}" }} has been unavailable for {{ .Values.alerts.rules.serviceDown.for }}."
         {{- end }}
 

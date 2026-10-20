@@ -27,7 +27,7 @@ DRY_RUN=false
 
 usage() {
   echo -e "\
-Configure an OpenBao server for Guardian Auth: a dedicated Transit mount, the
+Configure an OpenBao server for Auth Service: a dedicated Transit mount, the
 scoped runtime policy, the Kubernetes auth method and one role bound to Auth's
 ServiceAccount, namespace and audience. Idempotent: rerunning updates the
 policy and role in place and leaves existing keys untouched.
