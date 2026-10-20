@@ -19,7 +19,7 @@ RUN apt-get update \
 
 ARG PATCH_IMAGE_SOURCE=https://github.com/eqtylab/deployment/tree/main/containers/postgresql-legacy-patch
 LABEL org.opencontainers.image.title="postgresql-legacy-patch" \
-      org.opencontainers.image.description="Temporary patched fork of Bitnami Legacy PostgreSQL 17 for Governance Platform client deployments" \
+      org.opencontainers.image.description="Temporary patched fork of Bitnami Legacy PostgreSQL 17 for Guardian Platform client deployments" \
       org.opencontainers.image.source="${PATCH_IMAGE_SOURCE}" \
       org.opencontainers.image.base.name="${BASE_IMAGE}"
 
