@@ -1107,8 +1107,8 @@ kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/he
 - Verify AWS region and credentials (access key ID, secret access key)
 - Check IAM user/role has required KMS permissions
 - If using a custom endpoint, verify it is reachable
-- `MalformedPolicyDocumentException` when creating a key: set `config.keyManagement.aws_kms.keyPolicyPrincipalArn` to the full ARN of the IAM user or role the auth-service runs as
-- `AccessDeniedException` on a key created before upgrading: it still has the account's default key policy, so restore the previous IAM policy until the key has the new key policy
+- `MalformedPolicyDocumentException` when creating a key: set `config.keyManagement.aws_kms.keyPolicyPrincipalArn` to the full ARN of the IAM user or role the auth-service runs as; if it is already set, check that it names an existing user or role, since a new one can take a few minutes to become usable
+- `AccessDeniedException` on `CreateKey` that names `kms:BypassPolicyLockoutSafetyCheck`: an SCP or IAM policy denies the lockout check bypass the auth-service uses for new keys
 
 **Key management errors (GCP KMS)**
 

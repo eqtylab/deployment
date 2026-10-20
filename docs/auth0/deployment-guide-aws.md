@@ -339,9 +339,7 @@ aws iam attach-user-policy \
 aws iam create-access-key --user-name governance-kms-user
 ```
 
-The IAM policy grants no operations on existing keys. The auth-service sets a key policy on each key it creates that grants its own IAM user or role describe, public key, sign, tag, alias, and deletion operations on that key only, plus the key policy update AWS requires of a key's creator, so it cannot sign with, tag, alias, or delete any other key in the account. Change `alias/eqtylab/did` if you set a different `aliasPrefix`. The auth-service finds its IAM user or role from its credentials; for an IAM role with a path, or when STS is unreachable, set `auth-service.config.keyManagement.aws_kms.keyPolicyPrincipalArn` to the full ARN of the IAM user or role. See [AWS KMS](https://guardian.docs.eqtylab.io/deployment/aws-kms/) for the key policy.
-
-> **Upgrading an existing deployment:** keys created by an earlier auth-service have the account's default key policy and need the previous IAM policy. Keep it until each key under `alias/eqtylab/did/` has the new key policy; EQTY Lab can apply it with you.
+The IAM policy grants no operations on existing keys. The auth-service sets a key policy on each key it creates that grants its own IAM user or role describe, public key, sign, tag, alias, and deletion operations on that key only, so it cannot sign with, tag, alias, or delete any other key in the account. Change `alias/eqtylab/did` if you set a different `aliasPrefix`. The auth-service finds its IAM user or role from its credentials; for an IAM role with a path, or when STS is unreachable, set `auth-service.config.keyManagement.aws_kms.keyPolicyPrincipalArn` to the full ARN of the IAM user or role. See [AWS KMS](https://guardian.docs.eqtylab.io/deployment/aws-kms/) for the key policy.
 
 You'll need these values for your `values.yaml` and `secrets.yaml`:
 
