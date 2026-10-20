@@ -17,7 +17,7 @@
           azure-cli
           kubernetes-helm
           kubectl
-          yq
+          yq-go
         ];
       in
       {
