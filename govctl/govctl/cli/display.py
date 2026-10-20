@@ -97,9 +97,15 @@ def show_next_steps(
     console.print()
     step += 1
 
+    idp_pages = {
+        AuthProvider.AUTH0: "auth0",
+        AuthProvider.ENTRA: "microsoft-entra-id",
+        AuthProvider.KEYCLOAK: "keycloak",
+    }
     console.print(
         f"  {step}. Follow the deployment guide for your auth provider before deploying"
-        f"\n     See: https://github.com/eqtylab/deployment/tree/main/docs"
+        "\n     See: https://guardian.docs.eqtylab.io/deployment/"
+        f"{idp_pages[config.auth_provider]}/"
     )
     console.print()
     step += 1
