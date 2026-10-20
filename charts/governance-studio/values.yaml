@@ -361,9 +361,9 @@ config:
   environment: ""
 
   # -- App Title
-  # @default -- `Governance Studio`
+  # @default -- `Guardian`
   # Application title displayed in browser and UI
-  appTitle: "Governance Studio"
+  appTitle: "Guardian"
 
   # -- Display Timezone
   # @default -- `UTC`

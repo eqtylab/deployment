@@ -290,7 +290,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.gatewayApiUrl       | string | `""`                  | Gateway control-plane API URL (**must be set** when `config.features.gateway` is true, e.g., "https://guardian.example.com/api")             |
 | config.llmGatewayUrl       | string | `""`                  | Public LLM gateway URL shown in agent onboarding commands (optional, used when `config.features.gateway` is true; blank shows a placeholder) |
 | config.environment         | string | `""`                  | Environment (auto-configured from global.environmentType)                                                                                    |
-| config.appTitle            | string | `"Governance Studio"` | Application title displayed in browser                                                                                                       |
+| config.appTitle            | string | `"Guardian"`          | Application title displayed in browser                                                                                                       |
 | config.displayTimezone     | string | `"UTC"`               | Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London)           |
 
 The container also receives an `APP_VERSION` environment variable, auto-populated from `Chart.Version`. This is intended for display purposes (e.g. an app footer) and is not user-configurable.

@@ -32,7 +32,7 @@ config:
   keycloakRealm: "governance"
 
   # Application Settings
-  appTitle: "Governance Studio"
+  appTitle: "Guardian"
   displayTimezone: "UTC"
 
   # Feature Flags

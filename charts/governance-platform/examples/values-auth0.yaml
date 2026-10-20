@@ -278,7 +278,7 @@ postgresql:
 auth0:
   createOrganization: true
   organizationName: "governance"
-  displayName: "Governance Platform"
+  displayName: "Guardian Platform"
   createPlatformAdmin: true
   platformAdminEmail: "admin@your-domain.com" # Must exist in your Auth0 tenant
   domain: "your-tenant.us.auth0.com"

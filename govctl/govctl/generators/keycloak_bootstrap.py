@@ -40,7 +40,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
             },
             "realm": {
                 "name": realm,
-                "displayName": "Governance Platform",
+                "displayName": "Guardian Platform",
                 "loginWithEmailAllowed": True,
                 "registrationAllowed": False,
                 "resetPasswordAllowed": False,

@@ -285,7 +285,7 @@ postgresql:
 keycloak:
   createOrganization: true
   realmName: "governance"
-  displayName: "Governance Platform"
+  displayName: "Guardian Platform"
   createPlatformAdmin: true
   platformAdminEmail: "admin@your-domain.com" # Must match keycloak-bootstrap users.admin.email
   # url: "https://keycloak.your-domain.com" # Only for an external or cross-namespace Keycloak

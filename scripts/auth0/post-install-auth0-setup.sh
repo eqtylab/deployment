@@ -133,7 +133,7 @@ main() {
 # shellcheck disable=SC2034 # read by helpers/idp-setup.sh
 IDP_PROVIDER="auth0"
 ORG_NAME="governance"
-DISPLAY_NAME="Governance Studio"
+DISPLAY_NAME="Guardian"
 
 NAMESPACE=""
 AUTH0_DOMAIN=""

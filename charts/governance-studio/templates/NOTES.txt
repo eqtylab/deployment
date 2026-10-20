@@ -1,5 +1,5 @@
 {{- if .Values.enabled }}
-Governance Studio has been deployed!
+Guardian has been deployed!
 
 Service URL (internal): http://{{ include "governance-studio.fullname" . }}:{{ .Values.service.port }}
 

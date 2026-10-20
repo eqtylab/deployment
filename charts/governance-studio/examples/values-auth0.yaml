@@ -32,7 +32,7 @@ config:
   auth0Audience: "https://governance.your-domain.com"
 
   # Application Settings
-  appTitle: "Governance Studio"
+  appTitle: "Guardian"
   displayTimezone: "UTC"
 
   # Feature Flags

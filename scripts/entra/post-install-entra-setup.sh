@@ -130,7 +130,7 @@ main() {
 # shellcheck disable=SC2034 # read by helpers/idp-setup.sh
 IDP_PROVIDER="entra"
 ORG_NAME="governance"
-DISPLAY_NAME="Governance Studio"
+DISPLAY_NAME="Guardian"
 
 NAMESPACE=""
 ADMIN_EMAIL=""

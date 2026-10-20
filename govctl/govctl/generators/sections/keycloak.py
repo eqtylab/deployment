@@ -10,7 +10,7 @@ def generate_keycloak_section(config: PlatformConfig) -> dict[str, Any]:
     return {
         "createOrganization": True,
         "realmName": config.keycloak_realm,
-        "displayName": "Governance Platform",
+        "displayName": "Guardian Platform",
         "createPlatformAdmin": True,
         "platformAdminEmail": f"admin@{config.domain}",
     }

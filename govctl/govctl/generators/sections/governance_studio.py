@@ -65,7 +65,7 @@ def generate_governance_studio_section(config: PlatformConfig) -> dict[str, Any]
     # Application settings
     section["config"][
         "appTitle"
-    ] = f"Governance Studio - {config.environment.capitalize()}"
+    ] = f"Guardian - {config.environment.capitalize()}"
 
     # Feature flags
     section["config"]["features"] = {

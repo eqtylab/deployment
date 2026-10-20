@@ -276,7 +276,7 @@ postgresql:
 entra:
   createOrganization: true
   organizationName: "governance"
-  displayName: "Governance Platform"
+  displayName: "Guardian Platform"
   tenantId: "your-tenant-id"
   createPlatformAdmin: true
   platformAdminEmail: "admin@yourorg.onmicrosoft.com" # Must exist in your Entra tenant

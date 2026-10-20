@@ -10,7 +10,7 @@ def generate_auth0_section(config: PlatformConfig) -> dict[str, Any]:
     return {
         "createOrganization": True,
         "organizationName": "governance",
-        "displayName": "Governance Platform",
+        "displayName": "Guardian Platform",
         "createPlatformAdmin": True,
         "platformAdminEmail": f"admin@{config.domain}",
         "domain": config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com",

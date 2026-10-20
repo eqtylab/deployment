@@ -448,7 +448,7 @@ Frontend application settings. See [governance-studio/README.md](../governance-s
 | governance-studio.replicaCount                       | int    | `1`                   | Number of replicas                                                                              |
 | governance-studio.ingress.enabled                    | bool   | `false`               | Enable ingress                                                                                  |
 | governance-studio.config.authProvider                | string | `""`                  | Auth provider (auto-configured from global.secrets.auth.provider)                               |
-| governance-studio.config.appTitle                    | string | `"Governance Studio"` | Application title                                                                               |
+| governance-studio.config.appTitle                    | string | `"Guardian"`          | Application title                                                                               |
 | governance-studio.config.displayTimezone             | string | `"UTC"`               | Timezone used for displayed timestamps (IANA name, e.g. America/New_York)                       |
 | governance-studio.config.gatewayApiUrl               | string | `""`                  | Gateway control-plane API URL (**must be set** when `features.gateway` is true)                 |
 | governance-studio.config.llmGatewayUrl               | string | `""`                  | Public LLM gateway URL shown in agent onboarding commands (optional; blank shows a placeholder) |
@@ -494,7 +494,7 @@ Optional post-install/post-upgrade hook that seeds the governance database with 
 | ------------------------- | ------ | --------------------- | -------------------------------------------------------------------------------------------------- |
 | auth0.createOrganization  | bool   | `false`               | Enable the post-install hook to create the org                                                     |
 | auth0.organizationName    | string | `"governance"`        | Organization identifier in the database                                                            |
-| auth0.displayName         | string | `"Governance Studio"` | Display name for the organization                                                                  |
+| auth0.displayName         | string | `"Guardian"`          | Display name for the organization                                                                  |
 | auth0.createPlatformAdmin | bool   | `false`               | Also create the platform-admin user and membership                                                 |
 | auth0.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in the Auth0 tenant                    |
 | auth0.domain              | string | `""`                  | **Required** when `createPlatformAdmin` is true. Auth0 tenant domain (e.g., `tenant.us.auth0.com`) |
@@ -509,7 +509,7 @@ Optional post-install/post-upgrade hook that seeds the governance database with 
 | ------------------------- | ------ | --------------------- | ----------------------------------------------------------------------------------- |
 | entra.createOrganization  | bool   | `false`               | Enable the post-install hook to create the org                                      |
 | entra.organizationName    | string | `"governance"`        | Organization identifier in the database                                             |
-| entra.displayName         | string | `"Governance Studio"` | Display name for the organization                                                   |
+| entra.displayName         | string | `"Guardian"`          | Display name for the organization                                                   |
 | entra.createPlatformAdmin | bool   | `false`               | Also create the platform-admin user and membership                                  |
 | entra.platformAdminEmail  | string | `""`                  | **Required** when `createPlatformAdmin` is true. Must exist in Entra tenant         |
 | entra.tenantId            | string | `""`                  | Tenant ID for the Graph API lookup (empty reads the Entra secret's `tenant-id` key) |
@@ -522,7 +522,7 @@ Optional post-install/post-upgrade hook that seeds the governance database with 
 | --------------------------------- | ------ | --------------------------------- | -------------------------------------------------------------------------------------------------- |
 | keycloak.createOrganization       | bool   | `false`                           | Enable the post-install hook to create the org                                                     |
 | keycloak.realmName                | string | `"governance"`                    | Keycloak realm name (used as org name in database)                                                 |
-| keycloak.displayName              | string | `"Governance Studio"`             | Display name for the organization                                                                  |
+| keycloak.displayName              | string | `"Guardian"`                      | Display name for the organization                                                                  |
 | keycloak.createPlatformAdmin      | bool   | `false`                           | Also create the platform-admin user and membership                                                 |
 | keycloak.platformAdminEmail       | string | `""`                              | Admin email; must match keycloak-bootstrap `users.admin.email` (defaults to admin@<global.domain>) |
 | keycloak.url                      | string | `"http://keycloak:8080/keycloak"` | Keycloak URL for API lookups; set it for an external or cross-namespace Keycloak                   |
@@ -960,7 +960,7 @@ When using Entra ID, the chart includes an optional post-install/post-upgrade ho
 entra:
   createOrganization: true # Creates the organization record in the database
   organizationName: "governance"
-  displayName: "Governance Studio"
+  displayName: "Guardian"
   tenantId: "your-tenant-id" # Graph API lookup; empty reads tenant-id from the Entra secret
 
   createPlatformAdmin: true # Also create the platform-admin user
@@ -1013,7 +1013,7 @@ When using Keycloak, the chart includes an optional post-install/post-upgrade ho
 keycloak:
   createOrganization: true # Creates the organization record in the database
   realmName: "governance" # Must match your Keycloak realm name
-  displayName: "Governance Studio"
+  displayName: "Guardian"
 
   createPlatformAdmin: true # Also create the platform-admin user
   platformAdminEmail: "admin@your-domain.com" # Must match keycloak-bootstrap users.admin.email

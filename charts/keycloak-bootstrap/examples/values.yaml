@@ -45,7 +45,7 @@ keycloak:
   # Realm configuration
   realm:
     name: "governance"
-    displayName: "Governance Platform"
+    displayName: "Guardian Platform"
     loginWithEmailAllowed: true
     registrationAllowed: false
     resetPasswordAllowed: false

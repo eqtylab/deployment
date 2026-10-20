@@ -152,9 +152,9 @@ keycloak:
     # Realm name
     name: "governance"
     # -- Display Name
-    # @default -- `Governance Platform`
+    # @default -- `Guardian Platform`
     # Realm display name
-    displayName: "Governance Platform"
+    displayName: "Guardian Platform"
     # -- Display Name HTML
     # @default -- `'<div class="kc-logo-text"><span>Keycloak</span></div>'`
     # HTML display name shown on Keycloak login page

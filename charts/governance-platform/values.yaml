@@ -2640,9 +2640,9 @@ governance-studio:
     environment: ""
 
     # -- App Title
-    # @default -- `Governance Studio`
+    # @default -- `Guardian`
     # Application title displayed in browser and UI
-    appTitle: "Governance Studio"
+    appTitle: "Guardian"
 
     # -- Display Timezone
     # @default -- `UTC`
@@ -3307,9 +3307,9 @@ auth0:
   organizationName: "governance"
 
   # -- Display Name
-  # @default -- `Governance Studio`
+  # @default -- `Guardian`
   # Human-readable display name for the organization
-  displayName: "Governance Studio"
+  displayName: "Guardian"
 
   # -- Create Platform Admin
   # @default -- `false`
@@ -3353,9 +3353,9 @@ entra:
   organizationName: "governance"
 
   # -- Display Name
-  # @default -- `Governance Studio`
+  # @default -- `Guardian`
   # Human-readable display name for the organization
-  displayName: "Governance Studio"
+  displayName: "Guardian"
 
   # -- Create Platform Admin
   # @default -- `false`
@@ -3401,10 +3401,10 @@ keycloak:
   realmName: "governance"
 
   # -- Display Name
-  # @default -- `Governance Studio`
+  # @default -- `Guardian`
   # Human-readable display name for the organization
   # Shown in UI and organization management interfaces
-  displayName: "Governance Studio"
+  displayName: "Guardian"
 
   # -- Create Platform Admin
   # @default -- `false`

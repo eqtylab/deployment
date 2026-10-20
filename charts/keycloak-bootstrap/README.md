@@ -157,7 +157,7 @@ This removes all Kubernetes components associated with the chart and deletes the
 | Key                                  | Type   | Default                                                   | Description                          |
 | ------------------------------------ | ------ | --------------------------------------------------------- | ------------------------------------ |
 | keycloak.realm.name                  | string | `"governance"`                                            | Realm name                           |
-| keycloak.realm.displayName           | string | `"Governance Platform"`                                   | Realm display name                   |
+| keycloak.realm.displayName           | string | `"Guardian Platform"`                                     | Realm display name                   |
 | keycloak.realm.displayNameHtml       | string | `'<div class="kc-logo-text"><span>Keycloak</span></div>'` | HTML display name for login page     |
 | keycloak.realm.loginWithEmailAllowed | bool   | `true`                                                    | Allow login with email               |
 | keycloak.realm.registrationAllowed   | bool   | `false`                                                   | Allow user self-registration         |
