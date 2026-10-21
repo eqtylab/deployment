@@ -49,6 +49,12 @@ def latest_manifest():
     return read_yaml(max(manifest_paths(), key=release_order))
 
 
+CHART_RENAMES = {
+    "governance-platform": "guardian-platform",
+    "governance-studio": "guardian",
+}
+
+
 class ManifestTests(unittest.TestCase):
     def test_every_historical_manifest_remains_external_only(self):
         manifests = manifest_paths()
@@ -125,6 +131,7 @@ class PackageTests(unittest.TestCase):
         # downloading unrelated dependencies or claiming platform qualification.
         for chart in self.manifest["charts"].values():
             chart["version"] = "9.8.7"
+            chart["name"] = CHART_RENAMES.get(chart["name"], chart["name"])
             directory = self.root / "charts" / chart["name"]
             directory.mkdir(parents=True)
             (directory / "Chart.yaml").write_text(
@@ -137,11 +144,11 @@ class PackageTests(unittest.TestCase):
                     }
                 )
             )
-        examples = self.root / "charts/governance-platform/examples"
+        examples = self.root / "charts/guardian-platform/examples"
         examples.mkdir()
         (examples / "values.yaml").write_text("{}\n")
         shutil.copy2(
-            ROOT / "charts/governance-platform/examples/values-cloudsmith.yaml",
+            ROOT / "charts/guardian-platform/examples/values-cloudsmith.yaml",
             examples,
         )
         shutil.copytree(
@@ -221,7 +228,7 @@ class PackageTests(unittest.TestCase):
         digests = read_yaml(package / "chart-digests.yaml")["charts"]
         self.assertEqual(digests["openbao-custody"]["version"], "0.1.0")
         self.assertEqual(digests["openbao-custody"]["ociDigest"], "dry-run")
-        self.assertEqual(digests["governance-platform"]["version"], "9.8.7")
+        self.assertEqual(digests["guardian-platform"]["version"], "9.8.7")
         self.assertTrue((package / "charts/openbao-custody-0.1.0.tgz").is_file())
         self.assertFalse((package / "charts/openbao-custody-9.8.7.tgz").exists())
 

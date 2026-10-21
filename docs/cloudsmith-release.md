@@ -54,7 +54,7 @@ from `eqtylab/guardian` does not grant the deployment workflow access. A success
 
 - [auth-service](https://github.com/orgs/eqtylab/packages/container/auth-service/settings)
 - [governance-service](https://github.com/orgs/eqtylab/packages/container/governance-service/settings)
-- [governance-studio](https://github.com/orgs/eqtylab/packages/container/governance-studio/settings)
+- [guardian](https://github.com/orgs/eqtylab/packages/container/guardian/settings)
 - [integrity-service](https://github.com/orgs/eqtylab/packages/container/integrity-service/settings)
 - [eqty-pdfgen](https://github.com/orgs/eqtylab/packages/container/eqty-pdfgen/settings)
 - [guardian-llm-gateway](https://github.com/orgs/eqtylab/packages/container/guardian-llm-gateway/settings)

@@ -108,7 +108,7 @@ jobs:
           if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
           fi
-          helm dependency build charts/governance-platform
+          helm dependency build charts/guardian-platform
 
       - name: Validate custody renders and distribution
         run: |
@@ -131,27 +131,27 @@ jobs:
           if [ -d charts/eqty-pdfgen ]; then
             optional_args+=(--set 'eqty-pdfgen.enabled=true')
           fi
-          if [ -f charts/governance-platform/examples/values-gateway.yaml ]; then
-            optional_args+=(--values charts/governance-platform/examples/values-gateway.yaml)
+          if [ -f charts/guardian-platform/examples/values-gateway.yaml ]; then
+            optional_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
           fi
 
-          helm template governance-platform charts/governance-platform >/dev/null
+          helm template governance-platform charts/guardian-platform >/dev/null
           if [ "${#optional_args[@]}" -gt 0 ]; then
-            helm template governance-platform charts/governance-platform \
+            helm template governance-platform charts/guardian-platform \
               "${optional_args[@]}" \
               >/dev/null
           fi
 
           for idp in keycloak auth0 entra; do
-            helm template governance-platform charts/governance-platform \
-              --values "charts/governance-platform/examples/values-${idp}.yaml" \
-              --values charts/governance-platform/examples/values-external-postgres.yaml \
+            helm template governance-platform charts/guardian-platform \
+              --values "charts/guardian-platform/examples/values-${idp}.yaml" \
+              --values charts/guardian-platform/examples/values-external-postgres.yaml \
               >/dev/null
             if [ "${#optional_args[@]}" -gt 0 ]; then
-              helm template governance-platform charts/governance-platform \
+              helm template governance-platform charts/guardian-platform \
                 "${optional_args[@]}" \
-                --values "charts/governance-platform/examples/values-${idp}.yaml" \
-                --values charts/governance-platform/examples/values-external-postgres.yaml \
+                --values "charts/guardian-platform/examples/values-${idp}.yaml" \
+                --values charts/guardian-platform/examples/values-external-postgres.yaml \
                 >/dev/null
             fi
           done
@@ -162,20 +162,20 @@ jobs:
           if [ -d charts/eqty-pdfgen ]; then
             template_args+=(--set 'eqty-pdfgen.enabled=true')
           fi
-          if [ -f charts/governance-platform/examples/values-gateway.yaml ]; then
-            template_args+=(--values charts/governance-platform/examples/values-gateway.yaml)
+          if [ -f charts/guardian-platform/examples/values-gateway.yaml ]; then
+            template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
           fi
 
-          helm template governance-platform charts/governance-platform \
+          helm template governance-platform charts/guardian-platform \
             "${template_args[@]}" \
             --set global.imageRegistryOverride=registry.customer.example \
             >/tmp/registry-override.yaml
-          helm template governance-platform charts/governance-platform \
+          helm template governance-platform charts/guardian-platform \
             "${template_args[@]}" \
             --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
             >/tmp/repository-prefix-override.yaml
 
-          grep -q 'registry.customer.example/eqtylab/governance-studio' /tmp/repository-prefix-override.yaml
+          grep -q 'registry.customer.example/eqtylab/guardian' /tmp/repository-prefix-override.yaml
           grep -q 'registry.customer.example/eqtylab/governance-service' /tmp/repository-prefix-override.yaml
           grep -q 'registry.customer.example/eqtylab/auth-service' /tmp/repository-prefix-override.yaml
           grep -q 'registry.customer.example/eqtylab/integrity-service' /tmp/repository-prefix-override.yaml
@@ -199,7 +199,7 @@ jobs:
         run: |
           shopt -s nullglob
 
-          current_chart_version="$(yq '.version' charts/governance-platform/Chart.yaml)"
+          current_chart_version="$(yq '.version' charts/guardian-platform/Chart.yaml)"
           matched_manifest=""
 
           for manifest in releases/v*/release-manifest.yaml; do
@@ -261,11 +261,11 @@ jobs:
               if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$manifest")" = "eqty-pdfgen" ]; then
                 charts+=(eqty-pdfgen)
               fi
-              charts+=(governance-service governance-studio integrity-service)
+              charts+=(governance-service guardian integrity-service)
               if [ "$(yq '.charts.gatewayStack.name // ""' "$manifest")" = "gateway-stack" ]; then
                 charts+=(gateway-stack)
               fi
-              charts+=(governance-platform)
+              charts+=(guardian-platform)
 
               for chart in "${charts[@]}"; do
                 chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"

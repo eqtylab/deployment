@@ -10,7 +10,7 @@
 1. Review the [prerequisites](#-prerequisites). Use the existing GHCR installation path until your version has a verified `cloudsmith-delivery.json`; then follow [Cloudsmith setup](./docs/cloudsmith.md).
 2. Follow [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) on the docs site, including your identity provider's page:
    - [Auth0](https://guardian.docs.eqtylab.io/deployment/auth0/) · [Microsoft Entra ID](https://guardian.docs.eqtylab.io/deployment/microsoft-entra-id/) · [Keycloak](https://guardian.docs.eqtylab.io/deployment/keycloak/)
-3. Use [`govctl`](./govctl/README.md) to generate Helm values and secrets (`--artifact-source github` for GHCR; the Cloudsmith default only for verified deliveries), then install the [`governance-platform`](./charts/governance-platform/) umbrella chart.
+3. Use [`govctl`](./govctl/README.md) to generate Helm values and secrets (`--artifact-source github` for GHCR; the Cloudsmith default only for verified deliveries), then install the [`guardian-platform`](./charts/guardian-platform/) umbrella chart.
 
 ## ✅ Prerequisites
 

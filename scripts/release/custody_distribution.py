@@ -218,7 +218,7 @@ def main():
         if args.command == "selected-version":
             print(custody_version(read_yaml(args.manifest), args.source) or "")
         elif args.command == "validate-manifests":
-            current = read_yaml(args.source / "charts/governance-platform/Chart.yaml")[
+            current = read_yaml(args.source / "charts/guardian-platform/Chart.yaml")[
                 "version"
             ]
             for path in args.manifests:
