@@ -1752,7 +1752,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["platform-overview", "governance-platform"],
+  "tags": ["platform-overview", "guardian"],
   "templating": {
     "list": [
       {

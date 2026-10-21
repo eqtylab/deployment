@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "governance-ops.targetRelease" . }}-governance-platform-dashboard
+  name: {{ include "governance-ops.targetRelease" . }}-guardian-platform-dashboard
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "governance-ops.labels" . | nindent 4 }}
@@ -16,7 +16,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 data:
-  governance-platform.json: |-
-{{ .Files.Get "dashboards/governance-platform.json" | replace "\"guardian-platform\"" (include "governance-ops.targetRelease" . | quote) | indent 4 }}
+  guardian-platform.json: |-
+{{ .Files.Get "dashboards/guardian-platform.json" | replace "\"guardian-platform\"" (include "governance-ops.targetRelease" . | quote) | indent 4 }}
 {{- end }}
 {{- end }}

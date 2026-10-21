@@ -47,7 +47,7 @@ dashboards:
   platformOverview:
     # -- Enable Guardian Platform Dashboard
     # @default -- `true`
-    # Provision the governance-platform.json dashboard
+    # Provision the guardian-platform.json dashboard
     # Requirements: kube-state-metrics, nginx-ingress-controller metrics
     enabled: true
 
