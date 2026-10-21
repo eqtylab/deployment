@@ -307,7 +307,7 @@ def validate_inventory(inventory, work):
     digests = yaml.safe_load((work / "assets/chart-digests.yaml").read_text())
     with tempfile.TemporaryDirectory() as directory:
         expected_charts = unpack_charts(
-            work / f"assets/governance-platform-v{version}.tar.gz",
+            work / f"assets/guardian-platform-v{version}.tar.gz",
             manifest,
             digests,
             Path(directory),

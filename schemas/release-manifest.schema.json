@@ -4,6 +4,14 @@
   "title": "Guardian Platform Release Manifest",
   "type": "object",
   "required": ["platform", "sources", "images", "charts", "validation", "docs"],
+  "$comment": "guardian-platform manifests (1.3 and later) name Guardian's image and chart guardian and the umbrella chart guardianPlatform.",
+  "if": { "properties": { "platform": { "properties": { "name": { "const": "guardian-platform" } } } } },
+  "then": {
+    "properties": {
+      "images": { "required": ["guardian"] },
+      "charts": { "required": ["guardian", "guardianPlatform"] }
+    }
+  },
   "properties": {
     "platform": {
       "type": "object",
@@ -19,7 +27,7 @@
     },
     "images": {
       "type": "object",
-      "required": ["authService", "governanceService", "governanceStudio", "integrityService"],
+      "required": ["authService", "governanceService", "integrityService"],
       "properties": {
         "eqtyPdfgen": {
           "type": "object",

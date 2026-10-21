@@ -234,13 +234,8 @@ jobs:
                 ;;
             esac
 
-            images=(authService governanceService governanceStudio integrityService)
-            if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$manifest")" = "eqty-pdfgen" ]; then
-              images+=(eqtyPdfgen)
-            fi
-            if [ "$(yq '.charts.gatewayStack.name // ""' "$manifest")" = "gateway-stack" ]; then
-              images+=(llmGateway controlPlane)
-            fi
+            # The schema check above requires the core images; every image listed must match the release
+            mapfile -t images < <(yq '.images | keys | .[]' "$manifest")
 
             for image in "${images[@]}"; do
               tag="$(yq ".images.${image}.tag" "$manifest")"
