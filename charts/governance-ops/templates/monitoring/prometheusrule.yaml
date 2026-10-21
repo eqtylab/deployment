@@ -21,7 +21,7 @@ spec:
       interval: {{ .Values.alerts.interval }}
       rules:
         {{- if .Values.alerts.rules.serviceDown.enabled }}
-        - alert: GovernancePlatformServiceDown
+        - alert: GuardianPlatformServiceDown
           expr: |
             kube_deployment_status_replicas_available{deployment=~"{{ include "governance-ops.targetRelease" . }}.*"} == 0
           for: {{ .Values.alerts.rules.serviceDown.for }}
@@ -34,7 +34,7 @@ spec:
         {{- end }}
 
         {{- if .Values.alerts.rules.podNotReady.enabled }}
-        - alert: GovernancePlatformPodNotReady
+        - alert: GuardianPlatformPodNotReady
           expr: |
             kube_pod_status_ready{pod=~"{{ include "governance-ops.targetRelease" . }}.*",condition="true"} == 0
           for: {{ .Values.alerts.rules.podNotReady.for }}
@@ -47,7 +47,7 @@ spec:
         {{- end }}
 
         {{- if .Values.alerts.rules.highErrorRate.enabled }}
-        - alert: GovernancePlatformErrorRateWarning
+        - alert: GuardianPlatformErrorRateWarning
           expr: |
             (
               sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{ingress=~"{{ include "governance-ops.targetRelease" . }}.*", status=~"5.."}[5m]))
@@ -63,7 +63,7 @@ spec:
             summary: "Elevated 5xx error rate - {{ "{{ $labels.ingress }}" }}"
             description: 'Service {{ "{{ $labels.ingress }}" }} in namespace {{ "{{ $labels.exported_namespace }}" }} is experiencing {{ "{{ humanizePercentage $value }}" }} error rate (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highErrorRate.warningThreshold | float64) 100) }}). Investigation recommended.'
 
-        - alert: GovernancePlatformErrorRateCritical
+        - alert: GuardianPlatformErrorRateCritical
           expr: |
             (
               sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{ingress=~"{{ include "governance-ops.targetRelease" . }}.*", status=~"5.."}[5m]))
@@ -81,7 +81,7 @@ spec:
         {{- end }}
 
         {{- if .Values.alerts.rules.podCrashLooping.enabled }}
-        - alert: GovernancePlatformPodCrashLooping
+        - alert: GuardianPlatformPodCrashLooping
           expr: |
             rate(kube_pod_container_status_restarts_total{pod=~"{{ include "governance-ops.targetRelease" . }}.*"}[15m]) > 0
           for: {{ .Values.alerts.rules.podCrashLooping.for }}
@@ -94,7 +94,7 @@ spec:
         {{- end }}
 
         {{- if .Values.alerts.rules.highMemoryUsage.enabled }}
-        - alert: GovernancePlatformMemoryUsageWarning
+        - alert: GuardianPlatformMemoryUsageWarning
           expr: |
             (
               sum(container_memory_working_set_bytes{pod=~"{{ include "governance-ops.targetRelease" . }}.*", container!=""}) by (pod, namespace)
@@ -109,7 +109,7 @@ spec:
             summary: "Pod {{ "{{ $labels.pod }}" }} elevated memory usage"
             description: 'Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} is using {{ "{{ humanizePercentage $value }}" }} of its memory limit (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highMemoryUsage.warningThreshold | float64) 100) }}). May indicate capacity issues or memory leak.'
 
-        - alert: GovernancePlatformMemoryUsageCritical
+        - alert: GuardianPlatformMemoryUsageCritical
           expr: |
             (
               sum(container_memory_working_set_bytes{pod=~"{{ include "governance-ops.targetRelease" . }}.*", container!=""}) by (pod, namespace)
@@ -126,7 +126,7 @@ spec:
         {{- end }}
 
         {{- if .Values.alerts.rules.memorySpike.enabled }}
-        - alert: GovernancePlatformMemorySpike
+        - alert: GuardianPlatformMemorySpike
           expr: |
             (
               sum(container_memory_working_set_bytes{pod=~"{{ include "governance-ops.targetRelease" . }}.*", container!=""}) by (pod, namespace)
@@ -144,7 +144,7 @@ spec:
         {{- end }}
 
         {{- if .Values.alerts.rules.highCpuUsage.enabled }}
-        - alert: GovernancePlatformCPUUsageWarning
+        - alert: GuardianPlatformCPUUsageWarning
           expr: |
             (
               sum(rate(container_cpu_usage_seconds_total{pod=~"{{ include "governance-ops.targetRelease" . }}.*", container!=""}[5m])) by (pod, namespace)
@@ -159,7 +159,7 @@ spec:
             summary: "Pod {{ "{{ $labels.pod }}" }} elevated CPU usage"
             description: 'Pod {{ "{{ $labels.pod }}" }} in namespace {{ "{{ $labels.namespace }}" }} is using {{ "{{ humanizePercentage $value }}" }} of its CPU limit (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highCpuUsage.warningThreshold | float64) 100) }}). May indicate capacity issues.'
 
-        - alert: GovernancePlatformCPUUsageCritical
+        - alert: GuardianPlatformCPUUsageCritical
           expr: |
             (
               sum(rate(container_cpu_usage_seconds_total{pod=~"{{ include "governance-ops.targetRelease" . }}.*", container!=""}[5m])) by (pod, namespace)
@@ -176,7 +176,7 @@ spec:
         {{- end }}
 
         {{- if .Values.alerts.rules.persistentVolumeUsage.enabled }}
-        - alert: GovernancePlatformPersistentVolumeWarning
+        - alert: GuardianPlatformPersistentVolumeWarning
           expr: |
             (
               kubelet_volume_stats_used_bytes{persistentvolumeclaim=~".*{{ include "governance-ops.targetRelease" . }}.*"}
@@ -191,7 +191,7 @@ spec:
             summary: "PersistentVolume {{ "{{ $labels.persistentvolumeclaim }}" }} elevated usage"
             description: 'PersistentVolume {{ "{{ $labels.persistentvolumeclaim }}" }} in namespace {{ "{{ $labels.namespace }}" }} is {{ "{{ humanizePercentage $value }}" }} full. Consider planning storage expansion.'
 
-        - alert: GovernancePlatformPersistentVolumeCritical
+        - alert: GuardianPlatformPersistentVolumeCritical
           expr: |
             (
               kubelet_volume_stats_used_bytes{persistentvolumeclaim=~".*{{ include "governance-ops.targetRelease" . }}.*"}
@@ -209,7 +209,7 @@ spec:
 
         {{- /* Only create endpoint down alert if blackbox-exporter is available */ -}}
         {{- if and .Values.alerts.rules.endpointDown.enabled (include "governance-ops.blackboxAvailable" $) }}
-        - alert: GovernancePlatformEndpointDown
+        - alert: GuardianPlatformEndpointDown
           expr: |
             probe_success{job=~"probe/monitoring/governance-ops-.*"} == 0
           for: {{ .Values.alerts.rules.endpointDown.for }}
