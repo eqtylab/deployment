@@ -135,20 +135,20 @@ jobs:
             optional_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
           fi
 
-          helm template governance-platform charts/guardian-platform >/dev/null
+          helm template guardian-platform charts/guardian-platform >/dev/null
           if [ "${#optional_args[@]}" -gt 0 ]; then
-            helm template governance-platform charts/guardian-platform \
+            helm template guardian-platform charts/guardian-platform \
               "${optional_args[@]}" \
               >/dev/null
           fi
 
           for idp in keycloak auth0 entra; do
-            helm template governance-platform charts/guardian-platform \
+            helm template guardian-platform charts/guardian-platform \
               --values "charts/guardian-platform/examples/values-${idp}.yaml" \
               --values charts/guardian-platform/examples/values-external-postgres.yaml \
               >/dev/null
             if [ "${#optional_args[@]}" -gt 0 ]; then
-              helm template governance-platform charts/guardian-platform \
+              helm template guardian-platform charts/guardian-platform \
                 "${optional_args[@]}" \
                 --values "charts/guardian-platform/examples/values-${idp}.yaml" \
                 --values charts/guardian-platform/examples/values-external-postgres.yaml \
@@ -166,11 +166,11 @@ jobs:
             template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
           fi
 
-          helm template governance-platform charts/guardian-platform \
+          helm template guardian-platform charts/guardian-platform \
             "${template_args[@]}" \
             --set global.imageRegistryOverride=registry.customer.example \
             >/tmp/registry-override.yaml
-          helm template governance-platform charts/guardian-platform \
+          helm template guardian-platform charts/guardian-platform \
             "${template_args[@]}" \
             --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
             >/tmp/repository-prefix-override.yaml
