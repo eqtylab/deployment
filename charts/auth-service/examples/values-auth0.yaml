@@ -21,14 +21,14 @@ ingress:
     nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
     nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
   hosts:
-    - host: "governance.your-domain.com"
+    - host: "guardian.your-domain.com"
       paths:
         - path: "/authService(/|$)(.*)"
           pathType: "ImplementationSpecific"
   tls:
     - secretName: "auth-service-tls"
       hosts:
-        - "governance.your-domain.com"
+        - "guardian.your-domain.com"
 
 config:
   # Auth0 Configuration
@@ -39,7 +39,7 @@ config:
     auth0:
       domain: "your-tenant.us.auth0.com"
       managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
-      apiIdentifier: "https://governance.your-domain.com"
+      apiIdentifier: "https://guardian.your-domain.com"
 
   # Key Management Configuration (for DID keys)
   keyManagement:
@@ -67,4 +67,4 @@ config:
   # Service Account Configuration
   serviceAccounts:
     governanceWorker:
-      audience: "https://governance.your-domain.com"
+      audience: "https://guardian.your-domain.com"

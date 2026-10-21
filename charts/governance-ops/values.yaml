@@ -4,15 +4,15 @@
 # This chart provides monitoring and observability resources for Guardian
 # Platform deployments, including Grafana dashboards and Prometheus alerts
 #
-# Deploy this chart alongside your governance-platform deployment to enable
+# Deploy this chart alongside your Guardian Platform deployment to enable
 # comprehensive monitoring capabilities
 # =============================================================================
 
 # -- Target Release Name
-# @default -- `governance-platform`
-# The Helm release name of the governance-platform deployment to monitor
+# @default -- `guardian-platform`
+# The Helm release name of the Guardian Platform deployment to monitor
 # Used to construct resource selectors and labels
-targetRelease: "governance-platform"
+targetRelease: "guardian-platform"
 
 # =============================================================================
 # GRAFANA DASHBOARDS
@@ -47,7 +47,7 @@ dashboards:
   platformOverview:
     # -- Enable Guardian Platform Dashboard
     # @default -- `true`
-    # Provision governance-platform.json dashboard
+    # Provision the governance-platform.json dashboard
     # Requirements: kube-state-metrics, nginx-ingress-controller metrics
     enabled: true
 
@@ -263,7 +263,7 @@ probes:
   # -- Enable Probes
   # @default -- `true`
   # Enable blackbox exporter probes (only created if Probe CRD and blackbox-exporter exist)
-  # Uses Ingress service discovery to automatically probe governance-platform endpoints
+  # Uses Ingress service discovery to automatically probe Guardian Platform endpoints
   enabled: true
 
   # -- Probe Labels
@@ -296,7 +296,7 @@ probes:
   # -- Ingress Discovery
   # @default -- `true`
   # Automatically discover and probe ingress resources from targetRelease
-  # When enabled, probes all ingress hosts created by the governance-platform chart
+  # When enabled, probes all ingress hosts created by the guardian-platform chart
   ingressDiscovery:
     enabled: true
     # -- Namespace Selector

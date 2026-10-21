@@ -23,8 +23,8 @@ Usage: $0 -f <values-file> [options]
   -r, --release <name>            Helm release name (default: $BOOTSTRAP_RELEASE)
 
 Examples:
-  $0 -f $CHART_DIR/examples/values.yaml -n governance
-  $0 -f my-values.yaml --namespace governance-stag
+  $0 -f $CHART_DIR/examples/values.yaml -n guardian
+  $0 -f my-values.yaml --namespace guardian-stag
 "
 }
 
@@ -133,14 +133,29 @@ run_bootstrap() {
   kubectl delete job "$job_name" -n "$NAMESPACE" --ignore-not-found
 }
 
+# Read a key from the values file with yq, falling back to the chart default
+values_get() {
+  local value=""
+  if command -v yq &>/dev/null; then
+    value=$(yq "$1 // \"\"" "$VALUES_FILE" 2>/dev/null)
+  fi
+  echo "${value:-$2}"
+}
+
 # Display credentials, OAuth clients, and Keycloak URLs
 show_summary() {
+  local realm frontend_client backend_client worker_client
+  realm=$(values_get '.keycloak.realm.name' guardian)
+  frontend_client=$(values_get '.clients.frontend.clientId' guardian-platform-frontend)
+  backend_client=$(values_get '.clients.backend.clientId' guardian-platform-backend)
+  worker_client=$(values_get '.clients.worker.clientId' governance-worker)
+
   echo ""
   print_info "Bootstrap Complete!"
   echo ""
   echo "Keycloak URLs:"
   echo "- Admin Console: https://DOMAIN/keycloak/admin"
-  echo "- Governance Realm: https://DOMAIN/keycloak/admin/governance/console"
+  echo "- Platform Realm: https://DOMAIN/keycloak/admin/${realm}/console"
   echo ""
 
   # Show credentials
@@ -156,16 +171,16 @@ show_summary() {
   if kubectl get secret platform-admin -n "$NAMESPACE" &>/dev/null; then
     local platform_admin_password
     platform_admin_password=$(kubectl get secret --namespace "$NAMESPACE" platform-admin -o jsonpath="{.data.password}" | base64 -d)
-    echo "Platform Admin (governance realm):"
+    echo "Platform Admin (${realm} realm):"
     echo "  Username: platform-admin"
     echo "  Password: $platform_admin_password"
     echo ""
   fi
 
   echo "OAuth Clients:"
-  echo "- Frontend: governance-platform-frontend (public client)"
-  echo "- Backend: governance-platform-backend (confidential with service account)"
-  echo "- Worker: governance-worker (service account only)"
+  echo "- Frontend: ${frontend_client} (public client)"
+  echo "- Backend: ${backend_client} (confidential with service account)"
+  echo "- Worker: ${worker_client} (service account only)"
   echo ""
   echo "Backend service account roles: query-users, view-users (realm-management)"
 
@@ -233,7 +248,7 @@ Chart:        $CHART_DIR
 Values:       $VALUES_FILE
 
 This will create:
-- Governance realm
+- Platform realm
 - Platform admin user
 - Three OAuth clients:
   - Frontend (public client)

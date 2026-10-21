@@ -39,7 +39,7 @@ Bound signing is independent of the key-management provider; it is not inherentl
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, PDFGen automatically inherits image registry settings and the default signing URL from global values. The service is **enabled by default**; set `eqty-pdfgen.enabled: false` to omit it.
+When deployed via the `guardian-platform` umbrella chart, PDFGen automatically inherits image registry settings and the default signing URL from global values. The service is **enabled by default**; set `eqty-pdfgen.enabled: false` to omit it.
 
 The chart creates only an internal ClusterIP Service and intentionally does not render an Ingress; PDF generation is an internal capability consumed by other platform services.
 
@@ -237,14 +237,14 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/eqty-pdfgen -n governance
+kubectl logs -f deployment/eqty-pdfgen -n guardian
 ```
 
 ### Checking Pod Status
 
 ```bash
-kubectl get pods -n governance -l app.kubernetes.io/name=eqty-pdfgen
-kubectl describe pod <pod-name> -n governance
+kubectl get pods -n guardian -l app.kubernetes.io/name=eqty-pdfgen
+kubectl describe pod <pod-name> -n guardian
 ```
 
 ### Verifying Configuration
@@ -252,19 +252,19 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/eqty-pdfgen -n governance -- env | grep -E 'PDFGEN|TYPST|EQTY_'
+kubectl exec -it deployment/eqty-pdfgen -n guardian -- env | grep -E 'PDFGEN|TYPST|EQTY_'
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/eqty-pdfgen -n governance -- env | sort
+kubectl exec -it deployment/eqty-pdfgen -n guardian -- env | sort
 ```
 
 Test health endpoint:
 
 ```bash
-kubectl exec -it deployment/eqty-pdfgen -n governance -- curl -s localhost:8080/health/ready
+kubectl exec -it deployment/eqty-pdfgen -n guardian -- curl -s localhost:8080/health/ready
 ```
 
 ### Common Issues
@@ -291,7 +291,7 @@ kubectl exec -it deployment/eqty-pdfgen -n governance -- curl -s localhost:8080/
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/eqty-pdfgen -n governance`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/eqty-pdfgen -n guardian`
 
 ## Health Endpoints
 

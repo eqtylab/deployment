@@ -13,10 +13,10 @@ def generate_gateway_stack_section(config: PlatformConfig) -> dict[str, Any]:
     # and ingress class rather than the shared platform domain, so enabling it
     # needs deployment-specific decisions that govctl does not prompt for:
     # hostnames, TLS, a registration credential signer, and plugin artifact
-    # storage. Disabled by default to match the governance-platform chart
+    # storage. Disabled by default to match the guardian-platform chart
     # default.
     #
-    # To enable it, layer charts/governance-platform/examples/values-gateway.yaml
+    # To enable it, layer charts/guardian-platform/examples/values-gateway.yaml
     # over this file and see charts/gateway-stack/README.md for the full setup.
     # The generated secrets file already carries the gateway-dsn value the
     # umbrella needs for the guardian_gateway database.

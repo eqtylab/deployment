@@ -1,0 +1,53 @@
+# Agent Gateway overlay
+#
+# Use with a complete provider values file, for example:
+#   helm upgrade --install guardian-platform ./charts/guardian-platform \
+#     --namespace guardian \
+#     --values examples/values-auth0.yaml \
+#     --values examples/values-gateway.yaml
+#
+# The umbrella chart's gateway-stack defaults already wire the platform database
+# Secret, the control-plane adapter, and auth-service bearer verification, so
+# this overlay only turns the stack on, sets its API path and routes, points
+# Governance Service at the Control Plane, and points Guardian at the
+# control-plane API and the LLM Gateway
+#
+# The governance-service Control Plane URL follows the release name and the
+# default gateway-stack Service name and port; change it if you set
+# gateway-stack.fullnameOverride, gateway-stack.nameOverride, or
+# gateway-stack.controlPlane.service.port
+#
+# If global.secrets.create=true, also set
+# global.secrets.database.values.gatewayDsn to the guardian_gateway DSN
+
+gateway-stack:
+  enabled: true
+
+  # Serve the control-plane API under /api
+  controlPlane:
+    apiBasePath: "/api"
+
+  # Public routes stay off until hostnames and TLS are chosen. Replace both
+  # hosts and the guardian.config.gatewayApiUrl and llmGatewayUrl
+  # values, then set enabled: true
+  ingress:
+    enabled: false
+    className: "nginx"
+    controlPlanePath: "/api"
+    hosts:
+      llmGateway: "gateway.example.com"
+      controlPlane: "control-plane.example.com"
+
+governance-service:
+  config:
+    controlPlaneUrl: "http://{{ .Release.Name }}-gateway-stack-control-plane:10010"
+
+# Guardian calls the control-plane API on the controlPlane host and
+# shows the llmGateway host in agent onboarding commands
+guardian:
+  config:
+    gatewayApiUrl: "https://control-plane.example.com/api"
+    llmGatewayUrl: "https://gateway.example.com"
+    features:
+      gateway: true
+      agentCertification: true

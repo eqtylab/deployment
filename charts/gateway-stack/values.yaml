@@ -5,7 +5,7 @@
 # the Control Plane, and the bundled PostgreSQL and HAProxy ingress
 # dependencies
 #
-# When deployed via the umbrella chart (governance-platform), the database and
+# When deployed via the umbrella chart (guardian-platform), the database and
 # control-plane adapter values are auto-configured from the platform release
 # =============================================================================
 

@@ -16,7 +16,7 @@ source "$ROOTDIR/scripts/helpers/idp-setup.sh"
 usage() {
   echo -e "\
 Post-install database setup for Entra ID integration
-Performs the same steps as the governance-platform entra.createOrganization Helm hook.
+Performs the same steps as the guardian-platform chart's entra.createOrganization Helm hook.
 
 Usage: $0 -n <namespace> -e <admin-email> [options]
   -D, --display-name <name>       Organization display name, used when creating it (default: $DISPLAY_NAME)
@@ -34,8 +34,8 @@ Graph API credentials:
 $(idp_setup_env_usage)
 
 Examples:
-  $0 -n governance -e admin@contoso.com
-  $0 -n governance-stag --admin-email admin@contoso.com --org-name my-org
+  $0 -n guardian -e admin@contoso.com
+  $0 -n guardian-stag --admin-email admin@contoso.com --org-name my-org
 "
 }
 
@@ -129,7 +129,7 @@ main() {
 
 # shellcheck disable=SC2034 # read by helpers/idp-setup.sh
 IDP_PROVIDER="entra"
-ORG_NAME="governance"
+ORG_NAME="guardian"
 DISPLAY_NAME="Guardian"
 
 NAMESPACE=""

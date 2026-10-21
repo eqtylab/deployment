@@ -4,7 +4,7 @@
 # This values file configures the Auth Service for identity provider
 # integration and authentication management
 #
-# When deployed via the umbrella chart (governance-platform), most values
+# When deployed via the umbrella chart (guardian-platform), most values
 # are auto-configured from global settings
 # =============================================================================
 
@@ -528,7 +528,7 @@ config:
       managementAudience: ""
       # -- API Identifier
       # @default -- `""`
-      # **REQUIRED for Auth0**: API identifier (e.g., "https://governance.yourcompany.com")
+      # **REQUIRED for Auth0**: API identifier (e.g., "https://guardian.yourcompany.com")
       apiIdentifier: ""
       # -- Default Connection
       # @default -- `Username-Password-Authentication`
@@ -591,7 +591,7 @@ config:
     keycloak:
       # -- Realm
       # @default -- `""`
-      # **REQUIRED for Keycloak**: Realm name (e.g., "governance")
+      # **REQUIRED for Keycloak**: Realm name (e.g., "guardian")
       realm: ""
       # -- Admin URL
       # @default -- `""`
@@ -607,7 +607,7 @@ config:
       enableGroupSync: false
       # -- Client ID
       # @default -- `""`
-      # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "governance-platform-frontend")
+      # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "guardian-platform-frontend")
       clientId: ""
       # -- Service Account Client ID
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
@@ -831,7 +831,7 @@ config:
         - "integrity:statements:create"
       # -- Audience
       # @default -- `""`
-      # **REQUIRED for Auth0**: API audience for worker (e.g., "https://governance.yourcompany.com")
+      # **REQUIRED for Auth0**: API audience for worker (e.g., "https://guardian.yourcompany.com")
       audience: ""
       # -- Scope
       # @default -- `""` (auth-service falls back to `api://<clientId>/.default`)

@@ -21,7 +21,7 @@ To view the job logs:
   kubectl logs -l "app.kubernetes.io/name={{ include "auth0-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
 
 IMPORTANT: After the job completes, retrieve the M2M client secrets from the job logs
-and create the required Kubernetes secrets before deploying the governance-platform chart.
+and create the required Kubernetes secrets before deploying the guardian-platform chart.
 
 {{- else }}
 Auth0 Bootstrap is disabled. To enable it, set bootstrap.enabled=true

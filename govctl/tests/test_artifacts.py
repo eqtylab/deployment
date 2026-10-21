@@ -155,7 +155,7 @@ class ArtifactProfileTests(unittest.TestCase):
                 if host == "docker.cloudsmith.io":
                     self.assertIn("helm repo add cloudsmith-prod", result.output)
                     self.assertIn(
-                        "cloudsmith-prod/governance-platform",
+                        "cloudsmith-prod/guardian-platform",
                         "".join(result.output.split()),
                     )
 

@@ -9,7 +9,7 @@ Namespace:        {{ .Release.Namespace }}
 Chart Version:    {{ .Chart.Version }}
 Status:           {{ .Release.Status }}
 Revision:         {{ .Release.Revision }}
-{{- $targetRelease := .Values.targetRelease | default "governance-platform" }}
+{{- $targetRelease := .Values.targetRelease | default "guardian-platform" }}
 
 Monitoring for:   {{ $targetRelease }}
 

@@ -39,7 +39,7 @@ This allows:
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, Auth Service automatically inherits configuration from global values with no additional configuration required.
+When deployed via the `guardian-platform` umbrella chart, Auth Service automatically inherits configuration from global values with no additional configuration required.
 
 ### Quick Start
 
@@ -63,14 +63,14 @@ auth-service:
       nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
       nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/authService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "auth-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     idp:
       provider: "auth0"
@@ -78,7 +78,7 @@ auth-service:
       auth0:
         domain: "your-tenant.us.auth0.com"
         managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
-        apiIdentifier: "https://governance.yourcompany.com"
+        apiIdentifier: "https://guardian.yourcompany.com"
     # Key Management Configuration (for DID keys)
     keyManagement:
       provider: "azure_key_vault"
@@ -87,8 +87,8 @@ auth-service:
         tenantId: "your-azure-tenant-id"
     # Service Account Configuration
     serviceAccounts:
-      governanceWorker:
-        audience: "https://governance.yourcompany.com"
+      guardianWorker:
+        audience: "https://guardian.yourcompany.com"
 ```
 
 **Microsoft Entra ID:**
@@ -109,14 +109,14 @@ auth-service:
       nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
       nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/authService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "auth-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     idp:
       provider: "entra"
@@ -150,22 +150,22 @@ auth-service:
       nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
       nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/authService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "auth-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     idp:
       provider: "keycloak"
-      issuer: "https://keycloak.yourcompany.com/realms/governance"
+      issuer: "https://keycloak.yourcompany.com/realms/guardian"
       keycloak:
-        realm: "governance"
+        realm: "guardian"
         adminUrl: "https://keycloak.yourcompany.com"
-        clientId: "governance-platform-frontend"
+        clientId: "guardian-platform-frontend"
         enableUserManagement: true
         enableGroupSync: false
     # Key Management Configuration (for DID keys)
@@ -176,8 +176,8 @@ auth-service:
         tenantId: "your-azure-tenant-id"
     # Service Account Configuration
     serviceAccounts:
-      governanceWorker:
-        audience: "https://keycloak.yourcompany.com/realms/governance"
+      guardianWorker:
+        audience: "https://keycloak.yourcompany.com/realms/guardian"
     tokenExchange:
       enabled: true
       keyId: "auth-service-prod-001"
@@ -192,7 +192,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 
 - `config.idp.auth0.domain` - Auth0 tenant domain (e.g., `your-tenant.us.auth0.com`)
 - `config.idp.auth0.managementAudience` - Management API audience, the URL of your Auth0 tenant's Management API (e.g., `https://your-tenant.us.auth0.com/api/v2/`)
-- `config.idp.auth0.apiIdentifier` - API identifier, the logical identifier for your Governance Platform API registered in Auth0 (e.g., `https://governance.yourcompany.com`). This is distinct from `managementAudience`; it identifies _your_ API, not Auth0's Management API.
+- `config.idp.auth0.apiIdentifier` - API identifier, the logical identifier for your Guardian Platform API registered in Auth0 (e.g., `https://guardian.yourcompany.com`). This is distinct from `managementAudience`; it identifies _your_ API, not Auth0's Management API.
 
 **Microsoft Entra ID:**
 
@@ -203,10 +203,10 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 
 **Keycloak:**
 
-- `config.idp.keycloak.realm` - Realm name (e.g., `governance`)
+- `config.idp.keycloak.realm` - Realm name (e.g., `guardian`)
 - `config.idp.keycloak.adminUrl` - Keycloak server URL (e.g., `https://keycloak.example.com`)
-- `config.idp.keycloak.clientId` - Frontend SPA client ID (public, e.g., `governance-platform-frontend`)
-- `config.idp.issuer` - Recommended: OIDC issuer URL (e.g., `https://keycloak.example.com/realms/governance`)
+- `config.idp.keycloak.clientId` - Frontend SPA client ID (public, e.g., `guardian-platform-frontend`)
+- `config.idp.issuer` - Recommended: OIDC issuer URL (e.g., `https://keycloak.example.com/realms/guardian`)
 
 **Key Management (AWS KMS):**
 
@@ -510,15 +510,15 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 **Keycloak Configuration (only used when provider is "keycloak"):**
 
-| Key                                            | Type   | Default | Description                                                                                                             |
-| ---------------------------------------------- | ------ | ------- | ----------------------------------------------------------------------------------------------------------------------- |
-| config.idp.keycloak.realm                      | string | `""`    | Realm name (**must be set**, e.g., "governance")                                                                        |
-| config.idp.keycloak.adminUrl                   | string | `""`    | Admin URL (**must be set**, e.g., "https://keycloak.example.com")                                                       |
-| config.idp.keycloak.clientId                   | string | `""`    | Frontend SPA client ID (**must be set**, public client used for user-facing auth, e.g., "governance-platform-frontend") |
-| config.idp.keycloak.enableUserManagement       | bool   | `false` | Enable user management                                                                                                  |
-| config.idp.keycloak.enableGroupSync            | bool   | `false` | Enable group sync                                                                                                       |
-| config.idp.keycloak.serviceAccountClientId     | string | `""`    | Service account client ID (auto-configured from global.secrets.auth.keycloak)                                           |
-| config.idp.keycloak.serviceAccountClientSecret | string | `""`    | Service account client secret (auto-configured from global.secrets.auth.keycloak)                                       |
+| Key                                            | Type   | Default | Description                                                                                                           |
+| ---------------------------------------------- | ------ | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| config.idp.keycloak.realm                      | string | `""`    | Realm name (**must be set**, e.g., "guardian")                                                                        |
+| config.idp.keycloak.adminUrl                   | string | `""`    | Admin URL (**must be set**, e.g., "https://keycloak.example.com")                                                     |
+| config.idp.keycloak.clientId                   | string | `""`    | Frontend SPA client ID (**must be set**, public client used for user-facing auth, e.g., "guardian-platform-frontend") |
+| config.idp.keycloak.enableUserManagement       | bool   | `false` | Enable user management                                                                                                |
+| config.idp.keycloak.enableGroupSync            | bool   | `false` | Enable group sync                                                                                                     |
+| config.idp.keycloak.serviceAccountClientId     | string | `""`    | Service account client ID (auto-configured from global.secrets.auth.keycloak)                                         |
+| config.idp.keycloak.serviceAccountClientSecret | string | `""`    | Service account client secret (auto-configured from global.secrets.auth.keycloak)                                     |
 
 #### Key Management Configuration
 
@@ -646,7 +646,7 @@ config:
     auth0:
       domain: "your-tenant.us.auth0.com"
       managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
-      apiIdentifier: "https://governance.yourcompany.com"
+      apiIdentifier: "https://guardian.yourcompany.com"
       defaultConnection: "Username-Password-Authentication"
       defaultRoles: ["user"]
 
@@ -662,7 +662,7 @@ secrets:
 kubectl create secret generic platform-auth0 \
   --from-literal=client-id=YOUR_AUTH0_CLIENT_ID \
   --from-literal=client-secret=YOUR_AUTH0_CLIENT_SECRET \
-  --namespace governance
+  --namespace guardian
 ```
 
 ## Microsoft Entra ID Configuration
@@ -728,7 +728,7 @@ kubectl create secret generic platform-entra \
   --from-literal=client-secret=YOUR_OIDC_CLIENT_SECRET \
   --from-literal=graph-client-id=YOUR_GRAPH_API_CLIENT_ID \
   --from-literal=graph-client-secret=YOUR_GRAPH_API_CLIENT_SECRET \
-  --namespace governance
+  --namespace guardian
 ```
 
 ## Keycloak Configuration
@@ -746,11 +746,11 @@ kubectl create secret generic platform-entra \
 config:
   idp:
     provider: "keycloak"
-    issuer: "https://keycloak.example.com/realms/governance"
+    issuer: "https://keycloak.example.com/realms/guardian"
     keycloak:
-      realm: "governance"
+      realm: "guardian"
       adminUrl: "https://keycloak.example.com"
-      clientId: "governance-platform-frontend"
+      clientId: "guardian-platform-frontend"
       enableUserManagement: true
 
   tokenExchange:
@@ -800,7 +800,7 @@ kubectl create secret generic platform-aws-kms \
   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
   --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
   --from-literal=session-token="" \
-  --namespace governance
+  --namespace guardian
 ```
 
 ### Azure Key Vault
@@ -835,7 +835,7 @@ kubectl create secret generic platform-azure-key-vault \
   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
-  --namespace governance
+  --namespace guardian
 ```
 
 ### GCP KMS
@@ -872,7 +872,7 @@ secrets:
 ```bash
 kubectl create secret generic platform-gcp-kms \
   --from-literal=service-account-json="$(cat gcp-service-account.json)" \
-  --namespace governance
+  --namespace guardian
 ```
 
 ### OpenBao Transit
@@ -960,7 +960,7 @@ secrets:
 ```bash
 kubectl create secret generic platform-openbao-token \
   --from-file=token=./auth.token \
-  --namespace governance
+  --namespace guardian
 ```
 
 #### Kubernetes auth integration (scoped identity, reviewer, network policy)
@@ -993,12 +993,12 @@ other API permissions from this chart.
 ```bash
 # in-cluster OpenBao (uses its own projected token and CA for TokenReview)
 BAO_ADDR=https://openbao-custody-active.custody.svc.cluster.local:8200 BAO_TOKEN=... \
-  scripts/openbao/configure-auth.sh -s governance-auth-service -n governance -a openbao
+  scripts/openbao/configure-auth.sh -s guardian-platform-auth-service -n guardian -a openbao
 
 # external OpenBao: export the reviewer credential created by reviewer.tokenSecret
-kubectl -n governance get secret governance-auth-service-openbao-reviewer-token \
+kubectl -n guardian get secret guardian-platform-auth-service-openbao-reviewer-token \
   -o jsonpath='{.data.token}' | base64 -d > reviewer.jwt
-scripts/openbao/configure-auth.sh -s governance-auth-service -n governance -a openbao \
+scripts/openbao/configure-auth.sh -s guardian-platform-auth-service -n guardian -a openbao \
   --kubernetes-host https://<api-server>:6443 --kubernetes-ca-file ./ca.crt \
   --reviewer-jwt-file ./reviewer.jwt
 ```
@@ -1042,14 +1042,14 @@ selected.
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/auth-service -n governance
+kubectl logs -f deployment/auth-service -n guardian
 ```
 
 ### Checking Pod Status
 
 ```bash
-kubectl get pods -n governance -l app.kubernetes.io/name=auth-service
-kubectl describe pod <pod-name> -n governance
+kubectl get pods -n guardian -l app.kubernetes.io/name=auth-service
+kubectl describe pod <pod-name> -n guardian
 ```
 
 ### Verifying Configuration
@@ -1057,25 +1057,25 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/auth-service -n governance -- env | grep -E 'IDP|AUTH0|ENTRA|KEYCLOAK|VAULT|KMS|GCP|KEY_MANAGEMENT|DATABASE|DB_'
+kubectl exec -it deployment/auth-service -n guardian -- env | grep -E 'IDP|AUTH0|ENTRA|KEYCLOAK|VAULT|KMS|GCP|KEY_MANAGEMENT|DATABASE|DB_'
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/auth-service -n governance -- env | sort
+kubectl exec -it deployment/auth-service -n guardian -- env | sort
 ```
 
 Test health endpoint (liveness):
 
 ```bash
-kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/health
+kubectl exec -it deployment/auth-service -n guardian -- curl localhost:8080/health
 ```
 
 Test readiness endpoint:
 
 ```bash
-kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/health/ready
+kubectl exec -it deployment/auth-service -n guardian -- curl localhost:8080/health/ready
 ```
 
 ### Common Issues
@@ -1128,7 +1128,7 @@ kubectl exec -it deployment/auth-service -n governance -- curl localhost:8080/he
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/auth-service -n governance`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/auth-service -n guardian`
 
 ## Health Endpoints
 

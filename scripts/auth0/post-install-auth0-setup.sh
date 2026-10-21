@@ -16,7 +16,7 @@ source "$ROOTDIR/scripts/helpers/idp-setup.sh"
 usage() {
   echo -e "\
 Post-install database setup for Auth0 integration
-Performs the same steps as the governance-platform auth0.createOrganization Helm hook.
+Performs the same steps as the guardian-platform chart's auth0.createOrganization Helm hook.
 
 Usage: $0 -n <namespace> -d <auth0-domain> -e <admin-email> [options]
   -D, --display-name <name>       Organization display name, used when creating it (default: $DISPLAY_NAME)
@@ -34,8 +34,8 @@ Auth0 Management API credentials:
 $(idp_setup_env_usage)
 
 Examples:
-  $0 -n governance -d tenant.us.auth0.com -e admin@example.com
-  $0 -n governance-stag --auth0-domain tenant.us.auth0.com --admin-email admin@example.com --org-name my-org
+  $0 -n guardian -d tenant.us.auth0.com -e admin@example.com
+  $0 -n guardian-stag --auth0-domain tenant.us.auth0.com --admin-email admin@example.com --org-name my-org
 "
 }
 
@@ -132,7 +132,7 @@ main() {
 
 # shellcheck disable=SC2034 # read by helpers/idp-setup.sh
 IDP_PROVIDER="auth0"
-ORG_NAME="governance"
+ORG_NAME="guardian"
 DISPLAY_NAME="Guardian"
 
 NAMESPACE=""

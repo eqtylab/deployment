@@ -16,7 +16,7 @@ source "$ROOTDIR/scripts/helpers/idp-setup.sh"
 usage() {
   echo -e "\
 Post-install database setup for Keycloak integration
-Performs the same steps as the governance-platform keycloak.createOrganization Helm hook.
+Performs the same steps as the guardian-platform chart's keycloak.createOrganization Helm hook.
 
 Usage: $0 -n <namespace> -k <keycloak-url> -e <admin-email> [options]
   -D, --display-name <name>       Organization display name, used when creating it (default: $DISPLAY_NAME)
@@ -34,8 +34,8 @@ Keycloak admin credentials (must match keycloak-bootstrap keycloak.adminUsername
 $(idp_setup_env_usage)
 
 Examples:
-  $0 -k https://governance.example.com/keycloak -n governance -e admin@example.com
-  $0 -k https://governance.example.com/keycloak -n governance-stag --admin-email admin@example.com --realm my-realm
+  $0 -k https://guardian.example.com/keycloak -n guardian -e admin@example.com
+  $0 -k https://guardian.example.com/keycloak -n guardian-stag --admin-email admin@example.com --realm my-realm
 "
 }
 
@@ -141,7 +141,7 @@ main() {
 
 # shellcheck disable=SC2034 # read by helpers/idp-setup.sh
 IDP_PROVIDER="keycloak"
-ORG_NAME="governance"
+ORG_NAME="guardian"
 DISPLAY_NAME="Guardian"
 
 NAMESPACE=""

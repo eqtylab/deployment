@@ -33,7 +33,7 @@ requires Python 3 (standard library only). Use `--help` for all options.
 
 ```bash
 BAO_ADDR=https://openbao-custody-active.custody.svc.cluster.local:8200 BAO_TOKEN=... \
-  ./configure-auth.sh --service-account governance-auth-service --namespace governance \
+  ./configure-auth.sh --service-account guardian-platform-auth-service --namespace guardian \
   --audience openbao --transit-mount guardian-did --auth-mount kubernetes --role guardian-auth
 ```
 
@@ -62,7 +62,7 @@ of where the operator runs the script:
 
 ```bash
 BAO_ADDR=https://openbao.example.internal:8200 \
-  ./configure-auth.sh -s governance-auth-service -n governance \
+  ./configure-auth.sh -s guardian-platform-auth-service -n guardian \
   --kubernetes-host https://api.example.internal:6443 \
   --reviewer-jwt-file ./reviewer.jwt --kubernetes-ca-file ./ca.crt
 ```

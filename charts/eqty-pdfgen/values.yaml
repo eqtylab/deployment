@@ -4,7 +4,7 @@
 # This values file configures the PDF generation service, which renders
 # governance manifests into PDF files or ZIP bundles
 #
-# When deployed via the umbrella chart (governance-platform), image registry
+# When deployed via the umbrella chart (guardian-platform), image registry
 # settings and the default signing URL are auto-configured from global settings
 # =============================================================================
 

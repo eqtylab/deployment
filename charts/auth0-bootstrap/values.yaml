@@ -126,14 +126,14 @@ auth0:
 
   # -- API Configuration
   # @default -- See values below
-  # The Governance Platform API (resource server) to create in Auth0
+  # The Guardian Platform API (resource server) to create in Auth0
   api:
     # -- Name
-    # @default -- `Governance Platform API`
-    name: "Governance Platform API"
+    # @default -- `Guardian Platform API`
+    name: "Guardian Platform API"
     # -- Identifier
     # @default -- `""`
-    # API identifier / audience (e.g., "https://governance.your-domain.com")
+    # API identifier / audience (e.g., "https://guardian.your-domain.com")
     # REQUIRED: Must be set before running bootstrap
     identifier: ""
     # -- Token Lifetime
@@ -161,26 +161,26 @@ applications:
   # Single Page Application for the Guardian frontend
   frontend:
     # -- Name
-    # @default -- `Governance Platform Frontend`
-    name: "Governance Platform Frontend"
+    # @default -- `Guardian Platform Frontend`
+    name: "Guardian Platform Frontend"
     # -- Callbacks
     # @default -- See values below
     # Allowed callback URLs after authentication
     callbacks:
       - "http://localhost:5173"
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
     # -- Logout URLs
     # @default -- See values below
     # Allowed logout redirect URLs
     logoutUrls:
       - "http://localhost:5173"
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
     # -- Web Origins
     # @default -- See values below
     # Allowed web origins for CORS
     webOrigins:
       - "http://localhost:5173"
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
 
   # ---------------------------------------------------------------------------
   # Backend Application (M2M)
@@ -191,11 +191,11 @@ applications:
   # Machine-to-Machine application for the backend service
   backend:
     # -- Name
-    # @default -- `Governance Platform Backend`
-    name: "Governance Platform Backend"
+    # @default -- `Guardian Platform Backend`
+    name: "Guardian Platform Backend"
     # -- API Scopes
     # @default -- See values below
-    # Scopes to grant on the Governance Platform API
+    # Scopes to grant on the Guardian Platform API
     apiScopes:
       - "read:organizations"
       - "write:organizations"
@@ -235,7 +235,7 @@ applications:
     name: "Governance Worker"
     # -- API Scopes
     # @default -- See values below
-    # Scopes to grant on the Governance Platform API
+    # Scopes to grant on the Guardian Platform API
     apiScopes:
       - "governance:declarations:create"
       - "integrity:statements:create"
@@ -344,7 +344,7 @@ actions:
 
 # -- Custom Scopes
 # @default -- See values below
-# Permissions to create on the Governance Platform API
+# Permissions to create on the Guardian Platform API
 scopes:
   - name: "governance:declarations:create"
     description: "Create governance declarations"

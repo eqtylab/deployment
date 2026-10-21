@@ -38,7 +38,7 @@ This allows:
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, Governance Service automatically inherits configuration from global values with no additional configuration required.
+When deployed via the `guardian-platform` umbrella chart, Governance Service automatically inherits configuration from global values with no additional configuration required.
 
 ### Quick Start
 
@@ -64,14 +64,14 @@ governance-service:
       nginx.ingress.kubernetes.io/rewrite-target: "/$2"
       nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/governanceService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "governance-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     auth0Domain: "your-tenant.us.auth0.com"
 
@@ -110,14 +110,14 @@ governance-service:
       nginx.ingress.kubernetes.io/rewrite-target: "/$2"
       nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/governanceService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "governance-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     entraTenantId: "your-tenant-id"
 
@@ -156,17 +156,17 @@ governance-service:
       nginx.ingress.kubernetes.io/rewrite-target: "/$2"
       nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/governanceService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "governance-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     keycloakUrl: "https://keycloak.yourcompany.com"
-    keycloakRealm: "governance"
+    keycloakRealm: "guardian"
 
     # Storage Configuration - GCS
     storageProvider: "gcs"
@@ -207,7 +207,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 **Keycloak:**
 
 - `config.keycloakUrl` - Keycloak server URL (e.g., `https://keycloak.yourcompany.com`)
-- `config.keycloakRealm` - Keycloak realm name (e.g., `governance`)
+- `config.keycloakRealm` - Keycloak realm name (e.g., `guardian`)
 - Service account client ID and secret are auto-configured from the `global.secrets.auth.keycloak` secret
 
 Only one authentication provider should be configured at a time, set via `global.secrets.auth.provider` in the umbrella chart.
@@ -297,13 +297,13 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Ingress
 
-| Key                 | Type   | Default                                                                                                                     | Description                 |
-| ------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| ingress.enabled     | bool   | `false`                                                                                                                     | Enable ingress              |
-| ingress.className   | string | `""`                                                                                                                        | Ingress class name          |
-| ingress.annotations | object | `{}`                                                                                                                        | Ingress annotations         |
-| ingress.hosts       | list   | `[{"host":"governance.example.com","paths":[{"path":"/governanceService(/\|$)(.*)","pathType":"ImplementationSpecific"}]}]` | Ingress hosts configuration |
-| ingress.tls         | list   | `[]`                                                                                                                        | Ingress TLS configuration   |
+| Key                 | Type   | Default                                                                                                                   | Description                 |
+| ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| ingress.enabled     | bool   | `false`                                                                                                                   | Enable ingress              |
+| ingress.className   | string | `""`                                                                                                                      | Ingress class name          |
+| ingress.annotations | object | `{}`                                                                                                                      | Ingress annotations         |
+| ingress.hosts       | list   | `[{"host":"guardian.example.com","paths":[{"path":"/governanceService(/\|$)(.*)","pathType":"ImplementationSpecific"}]}]` | Ingress hosts configuration |
+| ingress.tls         | list   | `[]`                                                                                                                      | Ingress TLS configuration   |
 
 ### Resources
 
@@ -515,7 +515,7 @@ trusted; the local CA is additive.
 | Key                         | Type   | Default | Description                                                                                |
 | --------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------ |
 | config.keycloakUrl          | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                |
-| config.keycloakRealm        | string | `""`    | Keycloak realm name (**must be set**, e.g., "governance")                                  |
+| config.keycloakRealm        | string | `""`    | Keycloak realm name (**must be set**, e.g., "guardian")                                    |
 | config.keycloakClientId     | string | `""`    | Keycloak service account client ID (auto-configured from global.secrets.auth.keycloak)     |
 | config.keycloakClientSecret | string | `""`    | Keycloak service account client secret (auto-configured from global.secrets.auth.keycloak) |
 
@@ -603,14 +603,14 @@ governance-service:
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/governance-service -n governance
+kubectl logs -f deployment/governance-service -n guardian
 ```
 
 ### Checking Pod Status
 
 ```bash
-kubectl get pods -n governance -l app.kubernetes.io/name=governance-service
-kubectl describe pod <pod-name> -n governance
+kubectl get pods -n guardian -l app.kubernetes.io/name=governance-service
+kubectl describe pod <pod-name> -n guardian
 ```
 
 ### Verifying Configuration
@@ -618,25 +618,25 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/governance-service -n governance -- env | grep -E 'STORAGE|AUTH|ENTRA|KEYCLOAK|DATABASE|DB_'
+kubectl exec -it deployment/governance-service -n guardian -- env | grep -E 'STORAGE|AUTH|ENTRA|KEYCLOAK|DATABASE|DB_'
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/governance-service -n governance -- env | sort
+kubectl exec -it deployment/governance-service -n guardian -- env | sort
 ```
 
 Test health endpoint (liveness):
 
 ```bash
-kubectl exec -it deployment/governance-service -n governance -- curl localhost:10001/health
+kubectl exec -it deployment/governance-service -n guardian -- curl localhost:10001/health
 ```
 
 Test readiness endpoint:
 
 ```bash
-kubectl exec -it deployment/governance-service -n governance -- curl localhost:10001/health/ready
+kubectl exec -it deployment/governance-service -n guardian -- curl localhost:10001/health/ready
 ```
 
 ### Common Issues
@@ -685,7 +685,7 @@ kubectl exec -it deployment/governance-service -n governance -- curl localhost:1
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/governance-service -n governance`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/governance-service -n guardian`
 - Use `-debug-config` or `-debug-config-only` args to see loaded configuration
 
 ## Health Endpoints

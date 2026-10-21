@@ -1,0 +1,1357 @@
+# The Guardian Platform
+
+A comprehensive Helm umbrella chart for deploying the complete Guardian Platform on Kubernetes.
+
+## Description
+
+The Guardian Platform is an enterprise-grade governance, compliance, and integrity management system. This umbrella chart orchestrates the deployment of all platform components including microservices, databases, and supporting infrastructure.
+
+The platform provides:
+
+- **Governance Management**: Policy management, compliance tracking, and governance workflows
+- **Integrity & Lineage**: Verifiable credentials, data lineage, and audit trails
+- **Multi-Tenancy**: Organization-based access control and isolation
+- **Flexible Authentication**: Support for Auth0, Microsoft Entra ID, and Keycloak
+- **Cloud-Native**: Kubernetes-native with horizontal scaling and high availability
+
+## Architecture
+
+The platform uses a microservices architecture with the following components:
+
+- **Guardian** - React-based frontend application for managing governance
+- **Governance Service** - Go-based backend API with governance logic and workflow engine
+- **Integrity Service** - Rust-based service for verifiable credentials and data integrity
+- **Auth Service** - Go-based authentication and authorization service with IDP integration
+- **PDFGen** - PDF and ZIP rendering service for governance manifests
+- **Gateway Stack** - Optional LLM Gateway and Control Plane
+- **PostgreSQL** - Shared relational database for all services
+- **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
+
+All services communicate via REST APIs and share authentication through the Auth Service.
+
+The Gateway stack is disabled by default for upgrade compatibility. Enable it
+with `examples/values-gateway.yaml`; its control-plane adapter then resolves the
+umbrella Auth, Governance, and Integrity services automatically, and the overlay
+points Governance Service at the Control Plane for agent assessments. The gateway
+reuses `platform-database` and expects a `gateway-dsn` key for the
+`guardian_gateway` database.
+
+## Configuration Model
+
+The Guardian Platform uses **centralized configuration inheritance** through Helm's global values system. Application configuration is defined once at the umbrella chart level and automatically cascades to all subcharts.
+
+This allows:
+
+- A single configuration point for shared infrastructure settings
+- Automatic cascade of settings to all subcharts
+- Service-specific overrides when needed
+- Consistent configuration across environments
+
+**Key principle**: Define infrastructure concerns (domains, secrets, databases) globally, and service-specific settings (storage providers, feature flags) at the service level.
+
+## Prerequisites
+
+- Kubernetes 1.29+
+- Helm 3.20+
+- Persistent Volume Provisioner for database storage
+- Registry access: a Cloudsmith prod entitlement for a verified delivery, or existing GHCR credentials before that version is delivered
+- Ingress controller (NGINX, Traefik, etc.)
+- TLS certificate management (cert-manager or manual)
+
+### Infrastructure Dependencies
+
+#### Ingress Controller (Required)
+
+```bash
+helm upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace
+```
+
+#### TLS Certificate Management (Required for Production)
+
+**Option A: cert-manager (Recommended)**
+
+```bash
+helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set installCRDs=true
+
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: your-email@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+EOF
+```
+
+**Option B: Manual TLS Secrets**
+
+```bash
+kubectl create secret tls platform-tls \
+  --cert=path/to/tls.crt \
+  --key=path/to/tls.key \
+  --namespace guardian
+```
+
+## Deployment
+
+### Quick Start
+
+The recommended way to generate configuration is with [`govctl`](../../govctl/README.md), the Guardian Platform CLI:
+
+```bash
+# Install govctl (from the govctl/ directory)
+uv pip install -e .
+
+# Generate values and secrets files
+govctl init
+
+# Fill in any remaining secrets
+# Review generated files for correctness
+
+# Deploy
+helm upgrade --install guardian-platform ./charts/guardian-platform \
+  -f output/values-staging.yaml \
+  -f output/secrets-staging.yaml \
+  -n guardian --create-namespace
+```
+
+See the [govctl README](../../govctl/README.md) for full usage and options.
+
+### Required Configuration
+
+Whether using `govctl` or manual configuration, these values **must** be set:
+
+- **`global.domain`** - Base domain for all services
+- **`global.secrets.auth.provider`** - Auth provider (`auth0`, `entra`, or `keycloak`)
+- **Storage provider** per service (`governance-service.config.storageProvider`, `integrity-service.config.integrityAppBlobStoreType`)
+- **Storage bucket/container names** per service
+- **Auth provider public settings** - SPA client IDs, domains, tenant IDs (varies by provider)
+- **All secret values** in the secrets file (database, auth, storage, encryption, registry)
+
+See the [examples/](examples/) directory for complete configuration examples:
+
+- [values-cloudsmith.yaml](examples/values-cloudsmith.yaml) - Registry overlay for verified Cloudsmith deliveries
+- [values-auth0.yaml](examples/values-auth0.yaml) - Auth0 deployment
+- [values-entra.yaml](examples/values-entra.yaml) - Entra ID deployment
+- [values-keycloak.yaml](examples/values-keycloak.yaml) - Keycloak deployment
+- [values-openbao.yaml](examples/values-openbao.yaml) - Optional OpenBao Transit overlay (manual Helm values)
+- [values-openbao-kind.yaml](examples/values-openbao-kind.yaml) - Disposable local-kind OpenBao diagnostic profile; layer after `values-keycloak.yaml` and `values-openbao.yaml`. It cannot `helm template` on its own because the `openbaoKindProfile` guard needs launcher-supplied publisher values
+- [secrets-sample.yaml](examples/secrets-sample.yaml) - Complete secrets template
+
+### Verify
+
+```bash
+kubectl get pods -n guardian
+kubectl get ingress -n guardian
+```
+
+### Installing from a hosted chart repository
+
+Until your version has a verified Cloudsmith delivery, use the GHCR command below.
+For a stable version with `cloudsmith-delivery.json`, follow [Cloudsmith setup](../../docs/cloudsmith.md)
+and use the delivered chart with its overlay. With Helm 3.20 or later, load your
+prod entitlement into `CLOUDSMITH_ENTITLEMENT_TOKEN` through your secret manager:
+
+```bash
+printf '%s' "$CLOUDSMITH_ENTITLEMENT_TOKEN" | helm repo add cloudsmith-prod \
+  https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ \
+  --username token --password-stdin
+helm repo update cloudsmith-prod
+helm upgrade --install guardian-platform cloudsmith-prod/guardian-platform \
+  --version <released-version> --namespace guardian --create-namespace \
+  --values values.yaml --values values-cloudsmith.yaml
+```
+
+Existing GHCR installation:
+
+```bash
+helm upgrade --install guardian-platform oci://ghcr.io/eqtylab/charts/guardian-platform \
+  --version 0.1.0 \
+  --create-namespace \
+  --namespace guardian \
+  --values values.yaml
+```
+
+### Upgrading from 1.2.x
+
+Releases installed before 1.3 are named `governance-platform`, in the `governance` namespace. Keep both: a new release name re-creates every resource and leaves the bundled PostgreSQL volume behind. Before upgrading, change `values.yaml`:
+
+1. Rename the `governance-studio:` key to `guardian:`. The chart fails to render while the old key is set.
+2. Set both name overrides, so every resource keeps its current name and the post-install Job names stay within 63 characters:
+
+   ```yaml
+   nameOverride: governance-platform
+   guardian:
+     nameOverride: governance-studio
+   ```
+
+3. Set any of these that your values leave to the chart default, since 1.3 changes their defaults to `guardian`: `keycloak.realmName` (`governance`), `global.secrets.auth.keycloak.values.serviceAccountClientId` (`governance-platform-backend`), and `auth0.organizationName` or `entra.organizationName` (`governance`).
+4. If you re-run a bootstrap chart or a post-install script, pin the names it finds existing objects by. With the 1.3 defaults it creates new ones:
+   - `auth0-bootstrap`: `auth0.api.name` (`Governance Platform API`), and `applications.frontend.name` and `applications.backend.name` (`Governance Platform Frontend`, `Governance Platform Backend`)
+   - `entra-bootstrap`: `apps.frontend.displayName` and `apps.backend.displayName` (`Governance Platform Frontend`, `Governance Platform Backend`)
+   - `keycloak-bootstrap`: `keycloak.realm.name` (`governance`), `clients.frontend.clientId` and `clients.backend.clientId` (`governance-platform-frontend`, `governance-platform-backend`), and the frontend audience mapper's `included.client.audience` (`governance-platform-frontend`)
+   - `scripts/{auth0,entra,keycloak}/post-install-*-setup.sh`: pass `-o governance` (Auth0, Entra) or `-r governance` (Keycloak), and set `PLATFORM_RELEASE=governance-platform`
+
+Then upgrade the existing release in its namespace:
+
+```bash
+helm upgrade governance-platform oci://ghcr.io/eqtylab/charts/guardian-platform \
+  --version <version> \
+  --namespace governance \
+  --values values.yaml \
+  --values secrets.yaml
+```
+
+### Uninstalling
+
+```bash
+helm uninstall guardian-platform --namespace guardian
+```
+
+> **Warning**: This deletes all resources including persistent volumes. Backup your database before uninstalling.
+
+## Secrets Management
+
+The platform supports two approaches for managing secrets:
+
+### Option 1: Secrets Values File (Recommended)
+
+Use `govctl init` to generate a secrets file, or create one manually. Secrets are passed to Helm as a separate values file.
+
+```bash
+helm upgrade --install guardian-platform ./charts/guardian-platform \
+  --namespace guardian \
+  --values values.yaml \
+  --values secrets.yaml
+```
+
+See [examples/secrets-sample.yaml](examples/secrets-sample.yaml) for a complete template.
+
+### Option 2: Pre-Created Kubernetes Secrets
+
+Create secrets manually in Kubernetes before deploying. This approach avoids secrets touching your filesystem.
+
+```yaml
+# values.yaml
+global:
+  secrets:
+    create: false # Use pre-created secrets
+```
+
+### Encrypting Secrets for Version Control
+
+If you need to store secrets in version control (for GitOps workflows), **always encrypt them first**. Several tools are available:
+
+#### SOPS (Recommended)
+
+[SOPS](https://github.com/getsops/sops) encrypts YAML values while keeping keys readable. Works with AWS KMS, Azure Key Vault, GCP KMS, and PGP.
+
+```bash
+# Install SOPS
+brew install sops  # macOS
+# or: apt install sops  # Ubuntu
+
+# Encrypt with GCP KMS
+sops --encrypt --gcp-kms projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key \
+  secrets.yaml > secrets.enc.yaml
+
+# Encrypt with AWS KMS
+sops --encrypt --kms arn:aws:kms:us-east-1:123456789:key/your-key-id \
+  secrets.yaml > secrets.enc.yaml
+
+# Decrypt for deployment
+sops --decrypt secrets.enc.yaml > secrets.yaml
+helm upgrade --install ... --values secrets.yaml
+rm secrets.yaml  # Clean up unencrypted file
+```
+
+#### Helm Secrets Plugin
+
+[helm-secrets](https://github.com/jkroepke/helm-secrets) integrates SOPS directly with Helm:
+
+```bash
+# Install
+helm plugin install https://github.com/jkroepke/helm-secrets
+
+# Deploy directly with encrypted files
+helm secrets upgrade --install guardian-platform ./charts/guardian-platform \
+  --namespace guardian \
+  --values ./configs/values.yaml \
+  --values ./secrets/secrets.enc.yaml
+```
+
+#### Sealed Secrets
+
+[Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) encrypts secrets that can only be decrypted by the cluster:
+
+```bash
+# Install kubeseal
+brew install kubeseal
+
+# Create sealed secret
+kubectl create secret generic platform-database \
+  --from-literal=password=your-password \
+  --dry-run=client -o yaml | \
+  kubeseal --format yaml > sealed-database-secret.yaml
+
+# Apply sealed secret (controller decrypts it)
+kubectl apply -f sealed-database-secret.yaml
+```
+
+#### git-crypt
+
+[git-crypt](https://github.com/AGWA/git-crypt) provides transparent encryption for git repositories:
+
+```bash
+# Initialize
+git-crypt init
+
+# Add files to encrypt in .gitattributes
+echo "secrets/*.yaml filter=git-crypt diff=git-crypt" >> .gitattributes
+
+# Files are automatically encrypted on commit
+git add secrets/secrets.yaml
+git commit -m "Add encrypted secrets"
+```
+
+### Best Practices
+
+1. **Never commit unencrypted secrets** - Add `**/secrets.yaml` to `.gitignore`
+2. **Use environment-specific secrets** - Separate files for dev/staging/prod
+3. **Rotate secrets regularly** - Especially for production environments
+4. **Audit access** - Track who has access to encryption keys
+5. **Use managed identity where possible** - Prefer workload identity over static credentials
+6. **Limit secret scope** - Only include secrets needed for each environment
+
+### Preserving Database Passwords on Upgrade
+
+When upgrading an existing deployment, the database password must remain consistent. If using `secrets.create: true`, ensure the same password is provided on each upgrade.
+
+For automated deployments, you can extract and reuse the existing password:
+
+```bash
+# Extract existing password
+PASSWORD=$(kubectl get secret platform-database -n guardian \
+  -o jsonpath="{.data.password}" | base64 -d)
+
+# Use in upgrade (both parameters required for Bitnami PostgreSQL chart)
+helm upgrade guardian-platform ./charts/guardian-platform \
+  --namespace guardian \
+  --values ./configs/values.yaml \
+  --values ./secrets/secrets.yaml \
+  --set global.secrets.database.values.password=$PASSWORD
+```
+
+## Values
+
+### Global Parameters
+
+These global values are automatically inherited by all subcharts:
+
+| Key                                  | Type   | Default                                    | Description                                                                                                  |
+| ------------------------------------ | ------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| global.domain                        | string | `"guardian.example.com"`                   | Base domain for all services (**MUST override**)                                                             |
+| global.environmentType               | string | `"production"`                             | Environment type (development/staging/production)                                                            |
+| global.imagePullPolicy               | string | `"IfNotPresent"`                           | Default image pull policy for all containers                                                                 |
+| global.imageRegistryOverride         | string | `""`                                       | Override runtime image registry hosts; upstream dependencies have their own settings                         |
+| global.imageRepositoryPrefixOverride | string | `""`                                       | Replace the EQTY Lab image prefix, preserving upstream sources                                               |
+| global.imagePullSecrets              | list   | `[{"name": "platform-image-pull-secret"}]` | Pull secrets shared by subcharts                                                                             |
+| global.utilityImages.busybox         | string | `""`                                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
+
+`global.utilityImages` deliberately covers only the three runtime dependency wait
+containers, and `imageRegistryOverride` does not reach the hook images either.
+The IdP post-install hooks default to `postgres:17-alpine` and take another image
+from `idpSetupImage` (see [IdP Post-Install Hook Image](#idp-post-install-hook-image));
+`keycloak-bootstrap` keeps its own pinned `busybox:1.36`. The kind profile
+disables those hooks rather than pinning them.
+
+### Global Secret Configuration
+
+Centralized secret configuration for all platform components:
+
+| Key                                                     | Type   | Default                        | Description                                                                                                          |
+| ------------------------------------------------------- | ------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| global.secrets.create                                   | bool   | `false`                        | Auto-create secrets from values (dev only)                                                                           |
+| global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name                                                                                     |
+| global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, entra, or keycloak)                                                                            |
+| global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`             | Auth0 credentials secret name                                                                                        |
+| global.secrets.auth.entra.secretName                    | string | `"platform-entra"`             | Microsoft Entra ID credentials secret name                                                                           |
+| global.secrets.auth.keycloak.secretName                 | string | `"platform-keycloak"`          | Keycloak credentials secret name                                                                                     |
+| global.secrets.storage.aws_s3.secretName                | string | `"platform-aws-s3"`            | AWS S3 credentials secret name (not required when services use IAM role access — see Storage Provider Configuration) |
+| global.secrets.storage.azure_blob.secretName            | string | `"platform-azure-blob"`        | Azure Blob credentials secret name                                                                                   |
+| global.secrets.storage.gcs.secretName                   | string | `"platform-gcs"`               | GCS credentials secret name                                                                                          |
+| global.secrets.keyManagement.provider                   | string | `"azure_key_vault"`            | Key management provider for credential signing (aws_kms, azure_key_vault, gcp_kms, or openbao)                       |
+| global.secrets.keyManagement.aws_kms.secretName         | string | `"platform-aws-kms"`           | AWS KMS credentials secret name                                                                                      |
+| global.secrets.keyManagement.azure_key_vault.secretName | string | `"platform-azure-key-vault"`   | Azure Key Vault credentials secret name                                                                              |
+| global.secrets.keyManagement.gcp_kms.secretName         | string | `"platform-gcp-kms"`           | GCP KMS credentials secret name                                                                                      |
+| global.secrets.keyManagement.openbao.secretName         | string | `""`                           | Operator-managed OpenBao token Secret (token_file auth only; never created by the umbrella)                          |
+| global.secrets.authService.secretName                   | string | `"platform-auth-service"`      | Auth Service secrets (session, JWT, API keys)                                                                        |
+| global.secrets.governanceWorker.secretName              | string | `"platform-governance-worker"` | Governance worker credentials secret name                                                                            |
+| global.secrets.imageRegistry.secretName                 | string | `"platform-image-pull-secret"` | Container registry credentials secret name                                                                           |
+
+### Global Database Configuration
+
+Shared PostgreSQL connection settings:
+
+| Key                                         | Type   | Default        | Description                                                                                              |
+| ------------------------------------------- | ------ | -------------- | -------------------------------------------------------------------------------------------------------- |
+| global.postgresql.host                      | string | `""`           | Database host (auto-generated as {Release.Name}-postgresql when bundled; set explicitly for external DB) |
+| global.postgresql.port                      | int    | `5432`         | Database port                                                                                            |
+| global.postgresql.database                  | string | `"governance"` | Default database name                                                                                    |
+| global.postgresql.username                  | string | `"postgres"`   | Database username                                                                                        |
+| global.postgresql.sslMode                   | string | `"disable"`    | Shared SSL mode for all services. Options: disable, require, verify-ca, verify-full                      |
+| global.postgresql.sslRootCert.secretName    | string | `""`           | Secret holding the CA bundle (mounted at `/etc/ssl/postgres/<key>` when set)                             |
+| global.postgresql.sslRootCert.configMapName | string | `""`           | ConfigMap holding the CA bundle (alternative to secretName)                                              |
+| global.postgresql.sslRootCert.key           | string | `"ca.crt"`     | Key within the Secret/ConfigMap holding the PEM-encoded CA bundle                                        |
+
+### Auth Service Configuration
+
+Authentication and authorization service settings. See [auth-service/README.md](../auth-service/README.md) for complete documentation.
+
+| Key                                                                 | Type   | Default    | Description                                                                                                                      |
+| ------------------------------------------------------------------- | ------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| auth-service.enabled                                                | bool   | `true`     | Enable Auth Service                                                                                                              |
+| auth-service.replicaCount                                           | int    | `2`        | Number of replicas                                                                                                               |
+| auth-service.config.idp.provider                                    | string | `""`       | IDP provider (auto-configured from global.secrets.auth.provider)                                                                 |
+| auth-service.config.keyManagement.provider                          | string | `""`       | Key management provider (auto-configured from global.secrets.keyManagement.provider)                                             |
+| auth-service.secrets.keyManagement.openbao.name                     | string | `""`       | Operator-managed token Secret override; takes precedence over global.secrets.keyManagement.openbao.secretName (token_file only). |
+| auth-service.config.keyManagement.openbao                           | object | see values | OpenBao Transit endpoint, CA and workload-auth settings (provider `openbao`; see the auth-service chart README)                  |
+| auth-service.config.keyManagement.openbao.auth.reviewer.create      | bool   | `false`    | Create a separate reviewer ServiceAccount and system:auth-delegator binding; never grant Auth TokenReview permissions.           |
+| auth-service.config.keyManagement.openbao.auth.reviewer.name        | string | `""`       | Reviewer name; defaults to <release>-auth-service-openbao-reviewer.                                                              |
+| auth-service.config.keyManagement.openbao.auth.reviewer.tokenSecret | bool   | `false`    | Create a long-lived reviewer token Secret for external OpenBao. Leave false when OpenBao uses its local projected token.         |
+| auth-service.config.keyManagement.openbao.networkPolicy.to          | list   | `[]`       | OpenBao egress peers (namespaceSelector, podSelector or ipBlock); requires networkPolicy.enabled. Empty adds no rule.            |
+| auth-service.config.keyManagement.openbao.networkPolicy.port        | int    | `8200`     | OpenBao egress TCP port; applies to networkPolicy.to.                                                                            |
+| auth-service.ingress.enabled                                        | bool   | `false`    | Enable ingress                                                                                                                   |
+| auth-service.autoscaling.enabled                                    | bool   | `false`    | Enable horizontal pod autoscaling                                                                                                |
+
+### PDFGen Configuration
+
+Manifest PDF rendering service settings. See [eqty-pdfgen/README.md](../eqty-pdfgen/README.md) for complete documentation.
+
+| Key                             | Type   | Default                           | Description                                                                                                                         |
+| ------------------------------- | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| eqty-pdfgen.enabled             | bool   | `true`                            | Enable PDFGen                                                                                                                       |
+| eqty-pdfgen.replicaCount        | int    | `2`                               | Number of replicas                                                                                                                  |
+| eqty-pdfgen.service.port        | int    | `8080`                            | Internal ClusterIP service port                                                                                                     |
+| eqty-pdfgen.config.signingUrl   | string | `""`                              | Signing endpoint (auto-generated as auth-service internal signing URL)                                                              |
+| eqty-pdfgen.config.signingBound | bool   | `false`                           | Version-bound PDF signing; requires compatible Auth and PDFgen images (see [prerequisites](../eqty-pdfgen/README.md#prerequisites)) |
+| eqty-pdfgen.config.timestampUrl | string | `"http://timestamp.digicert.com"` | Timestamp authority URL; `""` omits the timestamp token with the PDFgen empty-URL behavior from guardian#234                        |
+| eqty-pdfgen.autoscaling.enabled | bool   | `false`                           | Enable horizontal pod autoscaling                                                                                                   |
+
+PDFGen is intentionally cluster-internal and does not render an Ingress.
+
+Before opting into bound signing, verify that both selected images include the [guardian#234](https://github.com/eqtylab/guardian/pull/234) contract and Auth includes the curve-correct certificates from [#233](https://github.com/eqtylab/guardian/pull/233). The chart does not select a supporting image release automatically. Empty timestamp URLs require P2's [`_signer.py` behavior](../eqty-pdfgen/README.md#prerequisites). Bound signing is independent of the key-management provider; OpenBao remains optional.
+
+### Governance Service Configuration
+
+Backend API service settings. See [governance-service/README.md](../governance-service/README.md) for complete documentation.
+
+| Key                                       | Type   | Default | Description                                            |
+| ----------------------------------------- | ------ | ------- | ------------------------------------------------------ |
+| governance-service.enabled                | bool   | `true`  | Enable Governance Service                              |
+| governance-service.replicaCount           | int    | `2`     | Number of replicas                                     |
+| governance-service.ingress.enabled        | bool   | `false` | Enable ingress                                         |
+| governance-service.config.storageProvider | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs) |
+| governance-service.autoscaling.enabled    | bool   | `false` | Enable horizontal pod autoscaling                      |
+
+### Guardian Configuration
+
+Frontend application settings. See [guardian/README.md](../guardian/README.md) for complete documentation.
+
+| Key                                         | Type   | Default      | Description                                                                                     |
+| ------------------------------------------- | ------ | ------------ | ----------------------------------------------------------------------------------------------- |
+| guardian.enabled                            | bool   | `true`       | Enable Guardian                                                                                 |
+| guardian.replicaCount                       | int    | `1`          | Number of replicas                                                                              |
+| guardian.ingress.enabled                    | bool   | `false`      | Enable ingress                                                                                  |
+| guardian.config.authProvider                | string | `""`         | Auth provider (auto-configured from global.secrets.auth.provider)                               |
+| guardian.config.appTitle                    | string | `"Guardian"` | Application title                                                                               |
+| guardian.config.displayTimezone             | string | `"UTC"`      | Timezone used for displayed timestamps (IANA name, e.g. America/New_York)                       |
+| guardian.config.gatewayApiUrl               | string | `""`         | Gateway control-plane API URL (**must be set** when `features.gateway` is true)                 |
+| guardian.config.llmGatewayUrl               | string | `""`         | Public LLM Gateway URL shown in agent onboarding commands (optional; blank shows a placeholder) |
+| guardian.config.features.gateway            | bool   | `false`      | Enable Gateway features in Guardian                                                             |
+| guardian.config.features.agentCertification | bool   | `false`      | Enable Governance Programs and agent certification in Guardian (requires `features.gateway`)    |
+| guardian.autoscaling.enabled                | bool   | `false`      | Enable horizontal pod autoscaling                                                               |
+
+### Integrity Service Configuration
+
+Credential and lineage service settings. See [integrity-service/README.md](../integrity-service/README.md) for complete documentation.
+
+| Key                                                | Type   | Default | Description                                                     |
+| -------------------------------------------------- | ------ | ------- | --------------------------------------------------------------- |
+| integrity-service.enabled                          | bool   | `true`  | Enable Integrity Service                                        |
+| integrity-service.replicaCount                     | int    | `2`     | Number of replicas                                              |
+| integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                                  |
+| integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs/local_fs) |
+| integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                               |
+
+### PostgreSQL Configuration
+
+Bitnami PostgreSQL chart configuration:
+
+| Key                                                           | Type   | Default                              | Description                                       |
+| ------------------------------------------------------------- | ------ | ------------------------------------ | ------------------------------------------------- |
+| postgresql.enabled                                            | bool   | `true`                               | Enable PostgreSQL database                        |
+| postgresql.global.postgresql.auth.database                    | string | `"governance"`                       | Database name                                     |
+| postgresql.global.postgresql.auth.username                    | string | `"postgres"`                         | Database username                                 |
+| postgresql.global.postgresql.auth.postgresPassword            | string | `"placeholder-overridden-by-secret"` | Placeholder for validation (overridden by secret) |
+| postgresql.global.postgresql.auth.existingSecret              | string | `"platform-database"`                | Secret name for credentials                       |
+| postgresql.global.postgresql.auth.secretKeys.adminPasswordKey | string | `"password"`                         | Key for admin password in secret                  |
+| postgresql.global.postgresql.auth.secretKeys.userPasswordKey  | string | `"password"`                         | Key for user password in secret                   |
+| postgresql.primary.persistence.enabled                        | bool   | `true`                               | Enable persistent storage                         |
+| postgresql.primary.persistence.size                           | string | `"10Gi"`                             | Storage size                                      |
+
+> **Note:** The `postgresPassword` is a placeholder that satisfies Bitnami chart validation during upgrades. The actual password is read from `existingSecret` at runtime. The secret is created via `global.secrets.database` when `global.secrets.create: true`.
+
+### Auth0 Post-Install Hook
+
+Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user for Auth0 deployments:
+
+| Key                       | Type   | Default      | Description                                                                                        |
+| ------------------------- | ------ | ------------ | -------------------------------------------------------------------------------------------------- |
+| auth0.createOrganization  | bool   | `false`      | Enable the post-install hook to create the org                                                     |
+| auth0.organizationName    | string | `"guardian"` | Organization identifier in the database                                                            |
+| auth0.displayName         | string | `"Guardian"` | Display name for the organization                                                                  |
+| auth0.createPlatformAdmin | bool   | `false`      | Also create the platform-admin user and membership                                                 |
+| auth0.platformAdminEmail  | string | `""`         | **Required** when `createPlatformAdmin` is true. Must exist in the Auth0 tenant                    |
+| auth0.domain              | string | `""`         | **Required** when `createPlatformAdmin` is true. Auth0 tenant domain (e.g., `tenant.us.auth0.com`) |
+
+The hook authenticates against the Auth0 Management API using the `global.secrets.auth.auth0` secret and its `mgmtClientId` / `mgmtClientSecret` keys (`mgmt-client-id` / `mgmt-client-secret` by default) and resolves the admin's `user_id` via `/api/v2/users-by-email`.
+
+### Entra ID Post-Install Hook
+
+Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user for Microsoft Entra ID deployments:
+
+| Key                       | Type   | Default      | Description                                                                         |
+| ------------------------- | ------ | ------------ | ----------------------------------------------------------------------------------- |
+| entra.createOrganization  | bool   | `false`      | Enable the post-install hook to create the org                                      |
+| entra.organizationName    | string | `"guardian"` | Organization identifier in the database                                             |
+| entra.displayName         | string | `"Guardian"` | Display name for the organization                                                   |
+| entra.createPlatformAdmin | bool   | `false`      | Also create the platform-admin user and membership                                  |
+| entra.platformAdminEmail  | string | `""`         | **Required** when `createPlatformAdmin` is true. Must exist in Entra tenant         |
+| entra.tenantId            | string | `""`         | Tenant ID for the Graph API lookup (empty reads the Entra secret's `tenant-id` key) |
+
+### Keycloak Post-Install Hook
+
+Optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user:
+
+| Key                               | Type   | Default                           | Description                                                                                        |
+| --------------------------------- | ------ | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| keycloak.createOrganization       | bool   | `false`                           | Enable the post-install hook to create the org                                                     |
+| keycloak.realmName                | string | `"guardian"`                      | Keycloak realm name (used as org name in database)                                                 |
+| keycloak.displayName              | string | `"Guardian"`                      | Display name for the organization                                                                  |
+| keycloak.createPlatformAdmin      | bool   | `false`                           | Also create the platform-admin user and membership                                                 |
+| keycloak.platformAdminEmail       | string | `""`                              | Admin email; must match keycloak-bootstrap `users.admin.email` (defaults to admin@<global.domain>) |
+| keycloak.url                      | string | `"http://keycloak:8080/keycloak"` | Keycloak URL for API lookups; set it for an external or cross-namespace Keycloak                   |
+| keycloak.adminUsername            | string | `"admin"`                         | Master realm admin; must match keycloak-bootstrap `keycloak.adminUsername`                         |
+| keycloak.adminPasswordSecret.name | string | `"keycloak-admin"`                | Secret with the admin password; must match keycloak-bootstrap `keycloak.adminPasswordSecret`       |
+| keycloak.adminPasswordSecret.key  | string | `"password"`                      | Key of the admin password in that secret                                                           |
+
+### IdP Post-Install Hook Image
+
+Shared by the Auth0, Entra ID and Keycloak post-install hooks:
+
+| Key           | Type   | Default | Description                                                                                                  |
+| ------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------ |
+| idpSetupImage | string | `""`    | Complete image reference for the IdP setup Jobs and their init containers (empty keeps `postgres:17-alpine`) |
+
+The image must provide `psql` and `pg_isready`. With `createPlatformAdmin` the hooks also need `curl` and `jq`, and install them with `apk` at runtime when the image lacks them, so air-gapped clusters need an image that includes both. `global.imageRegistryOverride` and `global.imageRepositoryPrefixOverride` do not apply to this value; give the full reference, including your registry.
+
+### Name Overrides
+
+| Key              | Type   | Default | Description                                               |
+| ---------------- | ------ | ------- | --------------------------------------------------------- |
+| nameOverride     | string | `""`    | Replaces the chart name in the IdP post-install Job names |
+| fullnameOverride | string | `""`    | Replaces the release-and-chart prefix of those Job names  |
+
+## Configuration Inheritance
+
+When deployed via the umbrella chart, configuration follows this precedence (highest to lowest):
+
+1. **Service-level values** - Explicitly set in subchart config (e.g., `governance-service.config.logLevel`)
+2. **Global values** - Set in `global.*` (e.g., `global.environmentType`)
+3. **Chart defaults** - Default values from subchart `values.yaml`
+
+### What Gets Auto-Configured
+
+When services are deployed via the umbrella chart, they automatically inherit:
+
+- Domain and environment type
+- Database connection details and credentials
+- Authentication provider configuration
+- Storage credentials (credentials only, not provider/bucket selection)
+- Encryption keys and key management credentials
+- Service-to-service URLs
+- Image pull secrets
+- Worker authentication credentials
+- AI API credentials
+
+### What Must Be Explicitly Configured
+
+Services require explicit configuration for:
+
+- Storage provider type (`storageProvider`, `integrityAppBlobStoreType`)
+- Storage account/bucket/container names (`awsS3BucketName`, `azureStorageAccountName`, `azureStorageContainerName`, `gcsBucketName`, etc.)
+- Feature flags (guardian)
+- Service-specific settings (AI config, indicator settings, etc.)
+
+### Example Configuration Flow
+
+```yaml
+global:
+  domain: "guardian.prod.company.com"
+  environmentType: "production"
+  secrets:
+    auth:
+      provider: "auth0"
+      auth0:
+        secretName: "platform-auth0"
+    storage:
+      gcs:
+        secretName: "platform-gcs"
+
+guardian:
+  enabled: true
+  # config.environment automatically becomes: production
+  # config.authProvider automatically becomes: auth0
+
+  config:
+    # Auth0 settings must be explicitly set (SPA client ID is public, not a secret)
+    auth0Domain: "mycompany.us.auth0.com"
+    auth0ClientId: "my-spa-client-id"
+    auth0Audience: "https://guardian.mycompany.com"
+    # Override specific settings
+    appTitle: "My Company Guardian"
+
+governance-service:
+  enabled: true
+  # config.environment automatically becomes: production
+  # Database credentials auto-configured from global.secrets.database
+  # Storage credentials auto-configured from global.secrets.storage
+
+  config:
+    # Must explicitly set storage provider and bucket
+    storageProvider: "gcs"
+    gcsBucketName: "your-guardian-artifacts-bucket"
+
+integrity-service:
+  enabled: true
+  # rustEnv automatically becomes: production
+  # Database credentials auto-configured from global.secrets.database
+  # Storage credentials auto-configured from global.secrets.storage
+
+  config:
+    # Must explicitly set storage provider and container
+    integrityAppBlobStoreType: "azure_blob"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
+```
+
+## Cloud-Managed PostgreSQL Configuration
+
+The platform can run against an external, cloud-managed PostgreSQL instance instead of the bundled Bitnami subchart. Supported providers: AWS RDS / Aurora PostgreSQL, Azure Database for PostgreSQL — Flexible Server, GCP Cloud SQL for PostgreSQL.
+
+### How it works
+
+- `postgresql.enabled: false` disables the bundled subchart.
+- `global.postgresql.host`, `port`, `username`, `database` are shared by all platform services (auth-service, governance-service, integrity-service).
+- `global.postgresql.sslMode` and `global.postgresql.sslRootCert` configure TLS to the managed instance.
+- `global.secrets.database.secretName` is the Secret name all platform components use for the DB password. If `global.secrets.create: true`, the chart can create it from `global.secrets.database.values`; if `false`, pre-create it in the release namespace.
+
+A pre-install guardrail aborts with a clear message if `postgresql.enabled=false` and `global.postgresql.host` is empty (no database configured). Setting `global.postgresql.host` alongside the bundled chart is allowed — it lets you point services at a renamed in-cluster Service (e.g., when also using `postgresql.fullnameOverride`); NOTES.txt will emit a soft warning to make sure the override is intentional.
+
+### Prerequisites (all providers)
+
+1. The managed Postgres instance is reachable from the cluster (VPC peering, private link, VNet integration, or a connection proxy as a sidecar — provider-specific).
+2. Create the two databases the platform expects:
+   ```sql
+   CREATE DATABASE governance;
+   CREATE DATABASE "IntegrityServiceDB";
+   ```
+3. If you are deploying with `global.secrets.create: false` (the default in this chart and in the example values files), create the password Secret in the release namespace:
+   ```sh
+   kubectl create secret generic platform-database \
+     --from-literal=password='<your-db-password>' \
+     --namespace guardian
+   ```
+   If you are deploying with `global.secrets.create: true` instead, the chart can create `platform-database` for you from `global.secrets.database.values`.
+4. (For `sslMode: verify-ca` or `verify-full`) create a Secret or ConfigMap holding the provider's CA bundle:
+   ```sh
+   kubectl create secret generic postgres-ca \
+     --from-file=ca.crt=<bundle>.pem \
+     --namespace guardian
+   ```
+
+### Example values
+
+A ready-to-use overlay lives at [examples/values-external-postgres.yaml](./examples/values-external-postgres.yaml). Combine it with one of the auth-flavored examples:
+
+```sh
+helm upgrade --install guardian-platform ./charts/guardian-platform \
+  --namespace guardian \
+  --create-namespace \
+  --values examples/values-auth0.yaml \
+  --values examples/values-external-postgres.yaml
+```
+
+### Provider-specific notes
+
+**AWS RDS / Aurora PostgreSQL**
+
+- Host: `<instance>.<region>.rds.amazonaws.com` (or the Aurora cluster endpoint)
+- CA bundle: <https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem>
+- TLS: every RDS instance supports TLS; `verify-full` is recommended
+
+**Azure Database for PostgreSQL — Flexible Server**
+
+- Host: `<server>.postgres.database.azure.com`
+- Username: plain `<username>` (NOT `<username>@<server>` — that's the older Single Server)
+- CA bundle: DigiCert Global Root CA — see the Azure PostgreSQL TLS docs for the current CA URL
+- TLS: required by default
+
+**GCP Cloud SQL for PostgreSQL**
+
+- Host: the private IP, or the Cloud SQL Auth Proxy sidecar address
+- CA bundle: download the server CA from the Cloud SQL instance "Connections" tab
+- TLS: optional but recommended
+
+## Storage Provider Configuration
+
+Each service can independently choose its storage provider. Credentials are inherited from global configuration, but provider type and bucket/container names must be explicitly set.
+
+### AWS S3
+
+```yaml
+global:
+  secrets:
+    storage:
+      aws_s3:
+        secretName: "platform-aws-s3"
+
+governance-service:
+  config:
+    storageProvider: "aws_s3"
+    awsS3Region: "us-east-1"
+    awsS3BucketName: "your-guardian-artifacts-bucket"
+
+integrity-service:
+  config:
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreAwsRegion: "us-east-1"
+    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+```
+
+#### Using IAM roles instead of static credentials (IRSA)
+
+If you run on EKS and authenticate via IAM Roles for Service Accounts (IRSA) — or any other IAM identity-based mechanism such as an instance profile — you do not need to provide an access key / secret access key, and the `platform-aws-s3` secret is not required.
+
+Set `awsS3UseIamRole` (governance-service) and/or `integrityAppBlobStoreAwsUseIamRole` (integrity-service) to `true`. This omits the `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` env vars and the secret reference entirely, so the AWS SDK falls back to its default credential chain. Annotate each service's service account with the role ARN:
+
+```yaml
+governance-service:
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<guardian-s3-role>
+  config:
+    storageProvider: "aws_s3"
+    awsS3Region: "us-east-1"
+    awsS3BucketName: "your-guardian-artifacts-bucket"
+    awsS3UseIamRole: true
+
+integrity-service:
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<integrity-s3-role>
+  config:
+    integrityAppBlobStoreType: "aws_s3"
+    integrityAppBlobStoreAwsRegion: "us-east-1"
+    integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+    integrityAppBlobStoreAwsUseIamRole: true
+```
+
+With IAM roles in use, leave `global.secrets.storage.aws_s3` unset (or `global.secrets.create: false`) — no S3 credentials secret will be created or referenced.
+
+### Azure Blob Storage
+
+```yaml
+global:
+  secrets:
+    storage:
+      azure_blob:
+        secretName: "platform-azure-blob"
+
+governance-service:
+  config:
+    storageProvider: "azure_blob"
+    azureStorageAccountName: "your-storage-account"
+    azureStorageContainerName: "your-guardian-artifacts-container"
+
+integrity-service:
+  config:
+    integrityAppBlobStoreType: "azure_blob"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
+```
+
+### Google Cloud Storage
+
+```yaml
+global:
+  secrets:
+    storage:
+      gcs:
+        secretName: "platform-gcs"
+
+governance-service:
+  config:
+    storageProvider: "gcs"
+    gcsBucketName: "your-guardian-artifacts-bucket"
+```
+
+## Key Management Provider Configuration
+
+The auth-service uses a key management provider for credential signing. The provider is set globally and credentials are inherited automatically.
+
+OpenBao Transit is also selectable (`global.secrets.keyManagement.provider: openbao`).
+It needs no cloud credentials: Auth authenticates with a projected Kubernetes
+service-account token (or an operator-managed token Secret) and trusts the
+endpoint through a mounted CA bundle. It is supported for fresh installations
+with P-256/SHA-256 in any `global.environmentType`. See
+`examples/values-openbao.yaml` and the auth-service chart
+README for the endpoint, mount, role and CA values.
+
+OpenBao profiles currently use manually maintained Helm values; govctl does not generate them. See [govctl scope](../../govctl/README.md#openbao-workflow).
+
+A complete disposable local-kind diagnostic profile is
+`examples/values-openbao-kind.yaml`, documented with
+[the local qualification fixture](../../tests/fixtures/openbao-kind/README.md).
+Layer `values-keycloak.yaml`, `values-openbao.yaml`, then `values-openbao-kind.yaml`,
+and supply the immutable digest/namespace overlay last. It is development-only and
+emulated, not a supported customer database or IDP deployment. Runtime image
+objects accept `digest` in addition to `tag`.
+
+### AWS KMS
+
+```yaml
+global:
+  secrets:
+    keyManagement:
+      provider: "aws_kms"
+      aws_kms:
+        secretName: "platform-aws-kms"
+
+auth-service:
+  config:
+    keyManagement:
+      aws_kms:
+        region: "us-east-1"
+```
+
+### Azure Key Vault
+
+```yaml
+global:
+  secrets:
+    keyManagement:
+      provider: "azure_key_vault"
+      azure_key_vault:
+        secretName: "platform-azure-key-vault"
+
+auth-service:
+  config:
+    keyManagement:
+      azure_key_vault:
+        vaultUrl: "https://your-vault.vault.azure.net"
+```
+
+### GCP KMS
+
+```yaml
+global:
+  secrets:
+    keyManagement:
+      provider: "gcp_kms"
+      gcp_kms:
+        secretName: "platform-gcp-kms"
+
+auth-service:
+  config:
+    keyManagement:
+      gcp_kms:
+        projectId: "your-gcp-project-id"
+        locationId: "us-east1"
+        keyRingId: "eqtylab-did" # defaults to "eqtylab-did"
+        scheduledDestroyDays: 24 # defaults to 24
+```
+
+> **Note:** When using GCP Workload Identity or Application Default Credentials, the `gcp_kms.secretName` secret is not required. Only provide it when using explicit service account JSON credentials.
+
+## Authentication Provider Configuration
+
+### Auth0 Configuration
+
+Auth0 requires two M2M (Machine-to-Machine) applications plus a SPA application:
+
+1. **EQTYLab Platform API** (M2M) - For token validation (`auth0.values.clientId/clientSecret`)
+2. **Auth Service Backend** (M2M) - For Management API calls (`auth0.values.mgmtClientId/mgmtClientSecret`)
+3. **Guardian** (SPA) - For frontend authentication (configured via `guardian.config`)
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "auth0"
+      auth0:
+        secretName: "platform-auth0"
+
+    governanceWorker:
+      secretName: "platform-governance-worker"
+
+guardian:
+  config:
+    # SPA settings must be explicitly set (public, not secrets)
+    auth0Domain: "your-tenant.us.auth0.com"
+    auth0ClientId: "your-spa-client-id"
+    auth0Audience: "https://guardian.your-domain.com"
+
+auth-service:
+  config:
+    idp:
+      auth0:
+        domain: "your-tenant.us.auth0.com"
+        managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
+        apiIdentifier: "https://guardian.your-domain.com"
+```
+
+### Microsoft Entra ID Configuration
+
+Microsoft Entra ID requires an app registration with OIDC credentials and optional Microsoft Graph API access:
+
+1. **OIDC App Registration** - For token validation (`entra.values.clientId/clientSecret/tenantId`)
+2. **Graph API App Registration** - For user lookups via Microsoft Graph (`entra.values.graphClientId/graphClientSecret`). Required when `entra.createPlatformAdmin` is true; otherwise optional
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "entra"
+      entra:
+        secretName: "platform-entra"
+        # Credentials are stored in the secret (see below for creation)
+
+guardian:
+  config:
+    authProvider: "entra"
+    entraClientId: "your-entra-client-id"
+    entraTenantId: "your-tenant-id"
+    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user" # Replace <backend-client-id> with Guardian Platform Backend app registration ID
+    # entraAuthority: "https://login.microsoftonline.com/your-tenant-id"  # optional
+
+auth-service:
+  config:
+    idp:
+      issuer: "https://login.microsoftonline.com/your-tenant-id/v2.0"
+      entra:
+        tenantId: "your-tenant-id"
+        defaultRoles: "user"
+
+governance-service:
+  config:
+    # entraTenantId auto-configured from secret
+```
+
+**Create the Entra secret:**
+
+```bash
+kubectl create secret generic platform-entra \
+  --from-literal=client-id=YOUR_ENTRA_CLIENT_ID \
+  --from-literal=client-secret=YOUR_ENTRA_CLIENT_SECRET \
+  --from-literal=tenant-id=YOUR_ENTRA_TENANT_ID \
+  --from-literal=graph-client-id=YOUR_GRAPH_CLIENT_ID \
+  --from-literal=graph-client-secret=YOUR_GRAPH_CLIENT_SECRET \
+  --namespace guardian
+```
+
+#### Post-Install Database Seed
+
+When using Entra ID, the chart includes an optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user. Enable it by setting:
+
+```yaml
+entra:
+  createOrganization: true # Creates the organization record in the database
+  organizationName: "guardian"
+  displayName: "Guardian"
+  tenantId: "your-tenant-id" # Graph API lookup; empty reads tenant-id from the Entra secret
+
+  createPlatformAdmin: true # Also create the platform-admin user
+  platformAdminEmail: "admin@yourorg.onmicrosoft.com" # Must exist in your Entra tenant
+```
+
+The hook authenticates to Microsoft Graph API using the `graphClientId` / `graphClientSecret` keys of the `global.secrets.auth.entra` secret to look up the admin user's Entra Object ID. It waits for database migrations to complete and runs on every install and upgrade. Re-runs never create duplicates; they point the organization and the platform admin's user record at the IdP and make the admin an active `organization_owner` again (other organization roles are kept; project roles and project assignments in the organization are removed), but leave an existing organization's display name unchanged.
+
+> **Note:** Unlike Keycloak, the `platformAdminEmail` must be explicitly set and must be an email that exists in your Microsoft Entra tenant (e.g., `user@yourorg.onmicrosoft.com` or `user@yourverifieddomain.com`).
+
+### Keycloak Configuration
+
+Keycloak requires a service account (confidential) client and a SPA (public) client:
+
+1. **Service Account** (Confidential) - For backend API calls (`keycloak.values.serviceAccountClientId/serviceAccountClientSecret`)
+2. **Guardian** (SPA/Public) - For frontend authentication (configured via `auth-service.config` and `guardian.config`)
+
+```yaml
+global:
+  secrets:
+    auth:
+      provider: "keycloak"
+      keycloak:
+        secretName: "platform-keycloak"
+
+    governanceWorker:
+      secretName: "platform-governance-worker"
+
+guardian:
+  config:
+    # SPA settings must be explicitly set (public, not secrets)
+    keycloakUrl: "https://keycloak.your-domain.com"
+    keycloakClientId: "guardian-platform-frontend"
+    keycloakRealm: "guardian"
+
+auth-service:
+  config:
+    idp:
+      keycloak:
+        realm: "guardian"
+        adminUrl: "https://keycloak.your-domain.com"
+        clientId: "guardian-platform-frontend"
+```
+
+#### Post-Install Database Seed
+
+When using Keycloak, the chart includes an optional post-install/post-upgrade hook that seeds the governance database with the initial organization and platform-admin user. Enable it by setting:
+
+```yaml
+keycloak:
+  createOrganization: true # Creates the organization record in the database
+  realmName: "guardian" # Must match your Keycloak realm name
+  displayName: "Guardian"
+
+  createPlatformAdmin: true # Also create the platform-admin user
+  platformAdminEmail: "admin@your-domain.com" # Must match keycloak-bootstrap users.admin.email
+  # url: "https://keycloak.your-domain.com" # Only for an external or cross-namespace Keycloak
+```
+
+The hook looks up the admin in Keycloak by email, using the `keycloak.adminUsername` and `keycloak.adminPasswordSecret` credentials. It waits for database migrations to complete and runs on every install and upgrade. Re-runs never create duplicates; they point the organization and the platform admin's user record at the IdP and make the admin an active `organization_owner` again (other organization roles are kept; project roles and project assignments in the organization are removed), but leave an existing organization's display name unchanged.
+
+## Environment-Specific Configurations
+
+### Development
+
+```yaml
+global:
+  domain: "guardian.dev.local"
+  environmentType: "development"
+  imagePullPolicy: "Always"
+  secrets:
+    create: true
+
+guardian:
+  replicaCount: 1
+
+governance-service:
+  replicaCount: 1
+  config:
+    logLevel: "debug"
+
+integrity-service:
+  replicaCount: 1
+  config:
+    integrityAppLoggingLogLevelDefault: "debug"
+
+postgresql:
+  primary:
+    persistence:
+      size: 5Gi
+```
+
+### Production
+
+```yaml
+global:
+  domain: "guardian.company.com"
+  environmentType: "production"
+  imagePullPolicy: "IfNotPresent"
+  secrets:
+    create: false
+
+guardian:
+  replicaCount: 3
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/issuer: letsencrypt-prod
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+governance-service:
+  replicaCount: 3
+  config:
+    logLevel: "warn"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+integrity-service:
+  replicaCount: 3
+  config:
+    integrityAppLoggingLogLevelDefault: "warn"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+postgresql:
+  primary:
+    persistence:
+      size: 100Gi
+      # Uses cluster default StorageClass when set to "".
+      # Override per CSP if needed: EKS="gp3", AKS="managed-csi", GKE="standard"
+      storageClass: "fast-ssd"
+    resources:
+      requests:
+        cpu: 2000m
+        memory: 4Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+```
+
+## Upgrading
+
+### Pre-Upgrade Checklist
+
+1. **Backup Database**
+
+   ```bash
+   kubectl exec -it deployment/guardian-platform-postgresql -n guardian -- \
+     pg_dump -U postgres governance > backup-$(date +%Y%m%d).sql
+   ```
+
+2. **Review Changes**
+   ```bash
+   helm diff upgrade guardian-platform ./charts/guardian-platform \
+     --namespace guardian \
+     --values values.yaml
+   ```
+
+### Perform Upgrade
+
+```bash
+helm upgrade guardian-platform ./charts/guardian-platform \
+  --namespace guardian \
+  --values values.yaml
+```
+
+### Verify Upgrade
+
+```bash
+kubectl get pods -n guardian -w
+kubectl rollout status deployment/guardian-platform-governance-service -n guardian
+kubectl rollout status deployment/guardian-platform-guardian -n guardian
+kubectl rollout status deployment/guardian-platform-integrity-service -n guardian
+# If PDFGen is enabled
+kubectl rollout status deployment/guardian-platform-eqty-pdfgen -n guardian
+```
+
+### Rolling Back
+
+```bash
+# View release history
+helm history guardian-platform -n guardian
+
+# Rollback to previous version
+helm rollback guardian-platform -n guardian
+
+# Rollback to specific revision
+helm rollback guardian-platform 3 -n guardian
+```
+
+## Troubleshooting
+
+### Viewing Logs
+
+```bash
+# Auth Service
+kubectl logs -f deployment/guardian-platform-auth-service -n guardian
+
+# Governance Service
+kubectl logs -f deployment/guardian-platform-governance-service -n guardian
+
+# Guardian
+kubectl logs -f deployment/guardian-platform-guardian -n guardian
+
+# Integrity Service
+kubectl logs -f deployment/guardian-platform-integrity-service -n guardian
+
+# PDFGen, if enabled
+kubectl logs -f deployment/guardian-platform-eqty-pdfgen -n guardian
+```
+
+### Checking Pod Status
+
+```bash
+kubectl get pods -n guardian
+kubectl describe pod <pod-name> -n guardian
+```
+
+### Verifying Configuration
+
+View environment variables in running pod:
+
+```bash
+kubectl exec -it deployment/guardian-platform-governance-service -n guardian -- env | sort
+```
+
+### Common Issues
+
+**Application not accessible**
+
+- Verify ingress is enabled and configured correctly
+- Check DNS points to your ingress controller
+- Verify TLS certificates are valid
+- Ensure `global.domain` matches your DNS configuration
+
+**Database connection errors**
+
+- Verify PostgreSQL is running: `kubectl get pods -n guardian -l app.kubernetes.io/name=postgresql`
+- Check database credentials in secret
+- Ensure databases exist (governance, IntegrityServiceDB)
+- Verify network policies allow traffic between services
+
+**Storage errors**
+
+- Verify storage provider is explicitly set (`storageProvider`, `integrityAppBlobStoreType`)
+- Check storage credentials in secret
+- Ensure bucket/container names are set
+- For GCS: verify service account JSON is valid
+- For Azure: verify account name, key, and container exist
+- For AWS: verify access keys are valid and bucket exists
+
+**Authentication failures**
+
+- Verify auth provider matches `global.secrets.auth.provider`
+- For Auth0: check domain, client ID, and client secret
+- For Entra: check tenant ID, client ID, client secret, and issuer URL
+- For Keycloak: check URL, realm, and client credentials
+- Ensure Auth Service is running and accessible
+
+**Configuration not applying**
+
+- Remember: service-level config overrides global config
+- Check for typos in configuration keys
+- Restart pods: `kubectl rollout restart deployment/<deployment-name> -n guardian`
+
+### Debug Mode
+
+Enable debug logging for troubleshooting:
+
+```yaml
+auth-service:
+  config:
+    logging:
+      level: "debug"
+
+governance-service:
+  config:
+    logLevel: "debug"
+
+integrity-service:
+  config:
+    integrityAppLoggingLogLevelDefault: "debug"
+```
+
+## Health Endpoints
+
+| Service            | Health (Liveness)                           | Readiness                              | Identity Provider                    |
+| ------------------ | ------------------------------------------- | -------------------------------------- | ------------------------------------ |
+| Auth Service       | `GET /authService/health`                   | `GET /authService/health/ready`        | `GET /authService/health/auth`       |
+| PDFGen             | `GET /health/ready` (internal service)      | `GET /health/ready` (internal service) | -                                    |
+| Governance Service | `GET /governanceService/health`             | `GET /governanceService/health/ready`  | `GET /governanceService/health/auth` |
+| Guardian           | `GET /`                                     | `GET /`                                | —                                    |
+| Integrity Service  | `GET /integrityService/health/v1`           | `GET /integrityService/health/v1`      | —                                    |
+| Service            | Endpoint                                    |
+| ------------------ | ------------------------------------------- |
+| Auth Service       | `GET /authService/health`                   |
+| PDFGen             | `GET /health/ready` on the internal service |
+| Governance Service | `GET /governanceService/health`             |
+| Guardian           | `GET /`                                     |
+| Integrity Service  | `GET /integrityService/health/v1`           |
+
+### API Documentation
+
+Each backend service exposes Swagger/OpenAPI documentation:
+
+| Service            | Swagger UI                                  |
+| ------------------ | ------------------------------------------- |
+| Auth Service       | `GET /authService/swagger/index.html`       |
+| PDFGen             | `GET /docs` on the internal service         |
+| Governance Service | `GET /governanceService/swagger/index.html` |
+| Integrity Service  | `GET /integrityService/swagger/index.html`  |
+
+## Support
+
+For issues and questions:
+
+- **Email**: support@eqtylab.io
+- **Documentation**: https://guardian.docs.eqtylab.io
+- **GitHub Issues**: https://github.com/eqtylab/guardian-infrastructure/issues
+- **Security Issues**: security@eqtylab.io
+
+When requesting support, please include:
+
+1. Chart version: `helm list -n guardian`
+2. Kubernetes version: `kubectl version`
+3. Pod status: `kubectl get pods -n guardian`
+4. Relevant log snippets
+5. Sanitized values file (remove secrets)

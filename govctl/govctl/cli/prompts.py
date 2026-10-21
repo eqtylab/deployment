@@ -45,12 +45,12 @@ def collect_interactive_config(
         while True:
             domain_value = Prompt.ask(
                 "[bold]Domain[/bold]",
-                default=f"governance.{generate_domain_code()}.eqtylab.io",
+                default=f"guardian.{generate_domain_code()}.eqtylab.io",
             )
             if is_valid_domain(domain_value):
                 break
             console.print(
-                "[red]Invalid domain format. Please enter a valid domain (e.g. governance.example.eqtylab.io)[/red]"
+                "[red]Invalid domain format. Please enter a valid domain (e.g. guardian.example.eqtylab.io)[/red]"
             )
 
     # --- Environment ---
@@ -292,7 +292,7 @@ def collect_interactive_config(
         while True:
             keycloak_realm = Prompt.ask(
                 "  Keycloak Realm",
-                default="governance",
+                default="guardian",
             )
             if is_valid_realm(keycloak_realm):
                 break
@@ -306,10 +306,14 @@ def collect_interactive_config(
     console.print()
     console.print("[bold]Image Registry Configuration:[/bold]")
     while True:
-        registry_url = Prompt.ask(
-            "  Registry URL",
-            default=config.image_registry_url,
-        ).strip().lower()
+        registry_url = (
+            Prompt.ask(
+                "  Registry URL",
+                default=config.image_registry_url,
+            )
+            .strip()
+            .lower()
+        )
         if is_valid_domain(registry_url):
             break
         console.print(

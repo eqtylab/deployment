@@ -139,13 +139,13 @@ apps:
   # @default -- See values below
   frontend:
     # -- Display Name
-    # @default -- `Governance Platform Frontend`
-    displayName: "Governance Platform Frontend"
+    # @default -- `Guardian Platform Frontend`
+    displayName: "Guardian Platform Frontend"
     # -- Redirect URIs
     # @default -- See values below
     # SPA redirect URIs (configured as Single-page application platform)
     redirectUris:
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
       - "http://localhost:5173"
 
   # ---------------------------------------------------------------------------
@@ -156,8 +156,8 @@ apps:
   # @default -- See values below
   backend:
     # -- Display Name
-    # @default -- `Governance Platform Backend`
-    displayName: "Governance Platform Backend"
+    # @default -- `Guardian Platform Backend`
+    displayName: "Guardian Platform Backend"
 
   # ---------------------------------------------------------------------------
   # Worker App Registration (Confidential Client)

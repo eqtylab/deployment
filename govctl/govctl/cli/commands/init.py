@@ -29,7 +29,7 @@ from govctl.cli.display import show_config_summary, show_next_steps
 @click.option(
     "--domain",
     "-d",
-    help="Domain name (e.g., governance.example.com)",
+    help="Domain name (e.g., guardian.example.com)",
 )
 @click.option(
     "--environment",
@@ -88,7 +88,7 @@ def init_cmd(
         govctl init
 
         # Non-interactive mode
-        govctl init --cloud gcp --domain governance.example.com --environment staging --auth keycloak
+        govctl init --cloud gcp --domain guardian.example.com --environment staging --auth keycloak
 
         # Output to specific directory
         govctl init -o ./my-deployment

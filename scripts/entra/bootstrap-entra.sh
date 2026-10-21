@@ -23,8 +23,8 @@ Usage: $0 -f <values-file> [options]
   -r, --release <name>            Helm release name (default: $BOOTSTRAP_RELEASE)
 
 Examples:
-  $0 -f $CHART_DIR/examples/values.yaml -n governance
-  $0 -f my-values.yaml --namespace governance-stag
+  $0 -f $CHART_DIR/examples/values.yaml -n guardian
+  $0 -f my-values.yaml --namespace guardian-stag
 "
 }
 
@@ -136,8 +136,8 @@ show_summary() {
   echo "The bootstrap job created the following app registrations:"
   echo ""
   echo "App Registrations:"
-  echo "- Frontend: Governance Platform Frontend (SPA / public client)"
-  echo "- Backend:  Governance Platform Backend (confidential with service account)"
+  echo "- Frontend: Guardian Platform Frontend (SPA / public client)"
+  echo "- Backend:  Guardian Platform Backend (confidential with service account)"
   echo "- Worker:   Governance Worker (confidential, service account only)"
   echo ""
   echo "Next Steps:"
@@ -157,7 +157,7 @@ show_summary() {
   echo "       --from-literal=client-secret=<worker-secret> \\"
   echo "       -n $NAMESPACE"
   echo ""
-  echo "  4. Update governance-studio Helm values with frontend app ID and tenant ID"
+  echo "  4. Update guardian Helm values with frontend app ID and tenant ID"
   echo "  5. Deploy the Guardian Platform with Entra values"
   echo "  6. Enable entra.createOrganization (and createPlatformAdmin) in the platform values so the Helm hook creates the organization and admin user, or run scripts/entra/post-install-entra-setup.sh after deploying"
 

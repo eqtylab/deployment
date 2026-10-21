@@ -28,7 +28,7 @@ After the job completes, populate the platform-entra secret with:
   - graph-client-id:     Backend app client ID (same as client-id)
   - graph-client-secret: Backend app client secret (same as client-secret)
 
-And set these Helm values for governance-studio:
+And set these Helm values for guardian:
   - config.entraClientId:  Frontend app client ID (from logs)
   - config.entraTenantId:  {{ .Values.entra.tenantId }}
   - config.entraScopes:    openid profile email offline_access api://<backend-client-id>/access_as_user

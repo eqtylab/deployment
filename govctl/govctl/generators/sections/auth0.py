@@ -9,7 +9,7 @@ def generate_auth0_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the auth0 post-install hook section of values.yaml."""
     return {
         "createOrganization": True,
-        "organizationName": "governance",
+        "organizationName": "guardian",
         "displayName": "Guardian Platform",
         "createPlatformAdmin": True,
         "platformAdminEmail": f"admin@{config.domain}",

@@ -108,7 +108,7 @@ ingress:
   controlPlanePath: /api
   hosts:
     llmGateway: gateway.example.com
-    controlPlane: guardian.example.com
+    controlPlane: control-plane.example.com
   certManager:
     enabled: true
     clusterIssuer: letsencrypt-prod

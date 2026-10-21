@@ -51,10 +51,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Target release fullname - the governance-platform release to monitor
+Target release fullname - the Guardian Platform release to monitor
 */}}
 {{- define "governance-ops.targetRelease" -}}
-{{- .Values.targetRelease | default "governance-platform" }}
+{{- .Values.targetRelease | default "guardian-platform" }}
 {{- end }}
 
 {{/*

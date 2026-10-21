@@ -34,15 +34,15 @@ Minimum configuration required:
 ```yaml
 entra:
   tenantId: "YOUR_ENTRA_TENANT_ID"
-  domain: "governance.example.com"
+  domain: "guardian.example.com"
 
 apps:
   frontend:
     redirectUris:
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
       - "http://localhost:5173"
   backend:
-    displayName: "Governance Platform Backend"
+    displayName: "Guardian Platform Backend"
   worker:
     displayName: "Governance Worker"
 ```
@@ -50,17 +50,17 @@ apps:
 ```bash
 helm upgrade --install entra-bootstrap ./entra-bootstrap \
   -f values.yaml \
-  --namespace governance \
+  --namespace guardian \
   --create-namespace
 ```
 
 ### Creating the Service Principal
 
-Before installing, create a service principal for the bootstrap job. This is a **dedicated secret** (`entra-bootstrap-sp`) separate from `platform-entra`, which is created by the `governance-platform` chart and stores the app registration credentials for the platform services.
+Before installing, create a service principal for the bootstrap job. This is a **dedicated secret** (`entra-bootstrap-sp`) separate from `platform-entra`, which is created by the `guardian-platform` chart and stores the app registration credentials for the platform services.
 
 ```bash
 # 1. Create a new app registration for bootstrap and capture the appId
-APP_ID=$(az ad app create --display-name "Governance Bootstrap SP" --query appId -o tsv)
+APP_ID=$(az ad app create --display-name "Guardian Bootstrap SP" --query appId -o tsv)
 echo "Created app registration: $APP_ID"
 
 # 2. Create a service principal
@@ -89,7 +89,7 @@ az ad app credential reset --id $APP_ID --display-name "bootstrap" --years 2
 kubectl create secret generic entra-bootstrap-sp \
   --from-literal=client-id=$APP_ID \
   --from-literal=client-secret=<password from step 5> \
-  --namespace governance
+  --namespace guardian
 ```
 
 | Permission                               | ID                                     | Type        | Purpose                                       |
@@ -102,7 +102,7 @@ kubectl create secret generic entra-bootstrap-sp \
 ### Uninstalling
 
 ```bash
-helm uninstall entra-bootstrap --namespace governance
+helm uninstall entra-bootstrap --namespace guardian
 ```
 
 This removes all Kubernetes components associated with the chart and deletes the release.
@@ -160,10 +160,10 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Frontend App Configuration
 
-| Key                        | Type   | Default                          | Description                   |
-| -------------------------- | ------ | -------------------------------- | ----------------------------- |
-| apps.frontend.displayName  | string | `"Governance Platform Frontend"` | App registration display name |
-| apps.frontend.redirectUris | list   | See values.yaml                  | SPA redirect URIs             |
+| Key                        | Type   | Default                        | Description                   |
+| -------------------------- | ------ | ------------------------------ | ----------------------------- |
+| apps.frontend.displayName  | string | `"Guardian Platform Frontend"` | App registration display name |
+| apps.frontend.redirectUris | list   | See values.yaml                | SPA redirect URIs             |
 
 The frontend app is configured as a **Single-page application (SPA)** with:
 
@@ -175,9 +175,9 @@ The frontend app is configured as a **Single-page application (SPA)** with:
 
 ### Backend App Configuration
 
-| Key                      | Type   | Default                         | Description                   |
-| ------------------------ | ------ | ------------------------------- | ----------------------------- |
-| apps.backend.displayName | string | `"Governance Platform Backend"` | App registration display name |
+| Key                      | Type   | Default                       | Description                   |
+| ------------------------ | ------ | ----------------------------- | ----------------------------- |
+| apps.backend.displayName | string | `"Guardian Platform Backend"` | App registration display name |
 
 The backend app is configured as a **confidential client** with:
 
@@ -246,7 +246,7 @@ secrets:
       name: "platform-entra"
 ```
 
-**governance-studio:**
+**guardian:**
 
 ```yaml
 config:
@@ -271,20 +271,20 @@ The `platform-entra` secret should contain these keys after bootstrap:
 ### Viewing Job Status
 
 ```bash
-kubectl get jobs -n governance -l app.kubernetes.io/name=entra-bootstrap
+kubectl get jobs -n guardian -l app.kubernetes.io/name=entra-bootstrap
 ```
 
 ### Viewing Logs
 
 ```bash
-kubectl logs -n governance -l app.kubernetes.io/name=entra-bootstrap
+kubectl logs -n guardian -l app.kubernetes.io/name=entra-bootstrap
 ```
 
 ### Checking Pod Status
 
 ```bash
-kubectl get pods -n governance -l app.kubernetes.io/name=entra-bootstrap
-kubectl describe pod <pod-name> -n governance
+kubectl get pods -n guardian -l app.kubernetes.io/name=entra-bootstrap
+kubectl describe pod <pod-name> -n guardian
 ```
 
 ### Verifying Configuration
@@ -292,13 +292,13 @@ kubectl describe pod <pod-name> -n governance
 View the bootstrap job configuration:
 
 ```bash
-kubectl get job -n governance -l app.kubernetes.io/name=entra-bootstrap -o yaml
+kubectl get job -n guardian -l app.kubernetes.io/name=entra-bootstrap -o yaml
 ```
 
 Verify Entra resources were created by checking the job logs:
 
 ```bash
-kubectl logs -n governance -l app.kubernetes.io/name=entra-bootstrap
+kubectl logs -n guardian -l app.kubernetes.io/name=entra-bootstrap
 ```
 
 ### Common Issues

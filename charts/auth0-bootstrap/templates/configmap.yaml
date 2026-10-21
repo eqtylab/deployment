@@ -675,7 +675,7 @@ data:
       echo "Next steps:"
       echo "  1. Retrieve the client IDs and secrets from the output above"
       echo "  2. Create Kubernetes secrets with: kubectl create secret generic platform-auth0 ..."
-      echo "  3. Deploy the governance-platform chart"
+      echo "  3. Deploy the guardian-platform chart"
     }
 
     # Run main function

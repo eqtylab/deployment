@@ -1,0 +1,128 @@
+{{- if .Values.auth0.createOrganization }}
+{{- if .Values.auth0.createPlatformAdmin }}
+{{- if not .Values.auth0.platformAdminEmail }}
+{{- fail "auth0.platformAdminEmail is required when auth0.createPlatformAdmin is true. Must be an email that exists in your Auth0 tenant." }}
+{{- end }}
+{{- if not .Values.auth0.domain }}
+{{- fail "auth0.domain is required when auth0.createPlatformAdmin is true." }}
+{{- end }}
+{{- end }}
+{{- $auth0Secret := ((((.Values.global).secrets).auth).auth0) | default dict }}
+{{- $auth0SecretKeys := $auth0Secret.keys | default dict }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "guardian-platform.fullname" . }}-post-install-auth0-setup
+  labels:
+    {{- include "guardian-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth0-org-setup
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "20"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "guardian-platform.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: auth0-org-setup
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: create-org
+          image: {{ include "guardian-platform.idpSetup.image" . }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              {{- include "guardian-platform.idpSetup.shellLib" . | nindent 14 }}
+
+              wait_for_db
+
+              echo "Creating Auth0 organization..."
+              upsert_org
+
+              {{- if .Values.auth0.createPlatformAdmin }}
+
+              echo "Creating platform-admin user..."
+              ensure_http_tools
+              echo "Looking up Auth0 user by email: $ADMIN_EMAIL"
+
+              TOKEN_REQUEST=$(jq -n \
+                --arg client_id "$AUTH0_MGMT_CLIENT_ID" \
+                --arg client_secret "$AUTH0_MGMT_CLIENT_SECRET" \
+                --arg audience "https://${AUTH0_DOMAIN}/api/v2/" \
+                '{client_id: $client_id, client_secret: $client_secret, audience: $audience, grant_type: "client_credentials"}')
+              TOKEN_RESPONSE=$(curl -sS -X POST "https://${AUTH0_DOMAIN}/oauth/token" \
+                -H "Content-Type: application/json" \
+                -d "$TOKEN_REQUEST") || true
+
+              MGMT_TOKEN=$(printf '%s' "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null || true)
+              if [ -z "$MGMT_TOKEN" ]; then
+                echo "ERROR: Failed to get Auth0 Management API access token"
+                echo "Response: $TOKEN_RESPONSE"
+                exit 1
+              fi
+
+              AUTH0_USER=$(curl -sS -G -H "Authorization: Bearer $MGMT_TOKEN" \
+                --data-urlencode "email=${ADMIN_EMAIL}" \
+                "https://${AUTH0_DOMAIN}/api/v2/users-by-email") || true
+
+              IDP_USER_ID=$(printf '%s' "$AUTH0_USER" | jq -r '.[0].user_id // empty' 2>/dev/null || true)
+              if [ -z "$IDP_USER_ID" ]; then
+                echo "ERROR: Could not find user with email $ADMIN_EMAIL in Auth0 tenant ${AUTH0_DOMAIN}"
+                echo "Make sure the user exists in Auth0 (e.g., created by the auth0-bootstrap job)"
+                exit 1
+              fi
+              echo "Found Auth0 user ID: $IDP_USER_ID"
+
+              ADMIN_DISPLAY_NAME=$(printf '%s' "$AUTH0_USER" | jq -r '.[0].name // "Platform Admin"')
+              ADMIN_GIVEN_NAME=$(printf '%s' "$AUTH0_USER" | jq -r '.[0].given_name // "Platform"')
+              ADMIN_FAMILY_NAME=$(printf '%s' "$AUTH0_USER" | jq -r '.[0].family_name // "Admin"')
+
+              upsert_admin
+              {{- end }}
+
+              echo "Setup complete!"
+          env:
+            {{- include "guardian-platform.idpSetup.pgEnv" . | nindent 12 }}
+            - name: IDP_PROVIDER
+              value: "auth0"
+            - name: ORG_NAME
+              value: {{ .Values.auth0.organizationName | quote }}
+            - name: ORG_DISPLAY_NAME
+              value: {{ .Values.auth0.displayName | default .Values.auth0.organizationName | quote }}
+            {{- if .Values.auth0.createPlatformAdmin }}
+            - name: ADMIN_EMAIL
+              value: {{ .Values.auth0.platformAdminEmail | quote }}
+            - name: AUTH0_DOMAIN
+              value: {{ .Values.auth0.domain | quote }}
+            - name: AUTH0_MGMT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $auth0Secret.secretName | default "platform-auth0" | quote }}
+                  key: {{ $auth0SecretKeys.mgmtClientId | default "mgmt-client-id" | quote }}
+            - name: AUTH0_MGMT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $auth0Secret.secretName | default "platform-auth0" | quote }}
+                  key: {{ $auth0SecretKeys.mgmtClientSecret | default "mgmt-client-secret" | quote }}
+            {{- end }}
+          {{- include "guardian-platform.idpSetup.pgCaVolumeMounts" . | nindent 10 }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      # This job should run after the application starts and runs migrations
+      initContainers:
+        {{- include "guardian-platform.idpSetup.waitForSchema" . | nindent 8 }}
+      {{- include "guardian-platform.idpSetup.pgCaVolumes" . | nindent 6 }}
+{{- end }}

@@ -1,0 +1,363 @@
+# Auth0 Configuration Example
+# Complete example for deploying the Guardian Platform with Auth0
+# For all available values, see the chart's values.yaml and README.md
+#
+# Secrets:
+#   This example assumes secrets are pre-created in Kubernetes (create: false)
+#   To provide secrets via Helm values instead, see secrets-sample.yaml and deploy with:
+#     --values secrets-sample.yaml
+#
+# Usage:
+#   helm dependency update ./charts/guardian-platform
+#   helm upgrade --install guardian-platform ./charts/guardian-platform \
+#     --namespace guardian \
+#     --create-namespace \
+#     --values values-auth0.yaml
+
+global:
+  environmentType: "production"
+  domain: "guardian.your-domain.com"
+
+# =============================================================================
+# Auth Service
+# =============================================================================
+# Override values for the auth-service Helm chart
+# ------------------------------------------------------------------------------
+auth-service:
+  image:
+    tag: ""
+    pullPolicy: Always
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+      nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+      nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
+      nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
+    hosts:
+      - host: guardian.your-domain.com
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: prod-tls-secret
+        hosts:
+          - guardian.your-domain.com
+
+  config:
+    # Identity Provider Configuration
+    idp:
+      provider: "auth0"
+      issuer: "https://your-tenant.us.auth0.com/"
+      skipIssuerVerification: true
+      auth0:
+        domain: "your-tenant.us.auth0.com"
+        managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
+        apiIdentifier: "https://guardian.your-domain.com"
+    # Key Management Configuration (for DID keys)
+    keyManagement:
+      # Key Management - AWS KMS (uncomment to use instead)
+      # provider: "aws_kms"
+      # aws_kms:
+      #   region: "us-east-1"
+      #   endpoint: ""
+      #   aliasPrefix: "alias/eqtylab/did"
+      #   keyPolicyPrincipalArn: "" # Only for an IAM role with a path, or when STS is unreachable
+
+      provider: "azure_key_vault"
+      azure_key_vault:
+        vaultUrl: "https://your-keyvault.vault.azure.net/"
+        tenantId: "your-azure-tenant-id"
+
+      # Key Management - GCP KMS (uncomment to use instead)
+      # provider: "gcp_kms"
+      # gcp_kms:
+      #   projectId: "your-gcp-project-id"
+      #   locationId: "us-east1"
+      #   keyRingId: "eqtylab-did"
+      #   scheduledDestroyDays: 24
+    # Service Account Configuration
+    serviceAccounts:
+      governanceWorker:
+        audience: "https://guardian.your-domain.com"
+
+# =============================================================================
+# Governance Service
+# =============================================================================
+# Override values for the governance-service Helm chart
+# ------------------------------------------------------------------------------
+governance-service:
+  image:
+    tag: ""
+    pullPolicy: Always
+
+  args: ["-debug-config"]
+
+  securityContext:
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: guardian.your-domain.com
+        paths:
+          - path: "/governanceService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: prod-tls-secret
+        hosts:
+          - guardian.your-domain.com
+
+  config:
+    # Storage Configuration - AWS S3 (uncomment to use instead)
+    # storageProvider: "aws_s3"
+    # awsS3Region: "us-east-1"
+    # awsS3BucketName: "your-guardian-artifacts-bucket"
+    # # IAM role access (IRSA): set true to skip static keys and use the IAM role
+    # # credential chain. Requires serviceAccount below annotated with the role ARN
+    # awsS3UseIamRole: true
+
+    # Storage Configuration - Azure Blob
+    storageProvider: "azure_blob"
+    azureStorageAccountName: "your-storage-account"
+    azureStorageContainerName: "your-guardian-artifacts-container"
+
+    # Storage Configuration - GCS (uncomment to use instead)
+    # storageProvider: "gcs"
+    # gcsBucketName: "your-guardian-artifacts-bucket"
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# =============================================================================
+# Guardian
+# =============================================================================
+# Override values for the Guardian chart
+# ------------------------------------------------------------------------------
+guardian:
+  image:
+    tag: ""
+    pullPolicy: Always
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    hosts:
+      - host: guardian.your-domain.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: prod-tls-secret
+        hosts:
+          - guardian.your-domain.com
+
+  config:
+    # Auth0 Configuration
+    auth0Domain: "your-tenant.us.auth0.com"
+    auth0ClientId: "your-spa-client-id"
+    auth0Audience: "https://guardian.your-domain.com"
+    # Feature Flags
+    features:
+      governance: true
+      lineage: true
+
+# =============================================================================
+# Integrity Service
+# =============================================================================
+# Override values for the integrity-service Helm chart
+# ------------------------------------------------------------------------------
+integrity-service:
+  image:
+    tag: ""
+    pullPolicy: Always
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    hosts:
+      - host: guardian.your-domain.com
+        paths:
+          - path: "/integrityService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: prod-tls-secret
+        hosts:
+          - guardian.your-domain.com
+
+  config:
+    # Storage Configuration - Azure Blob
+    integrityAppBlobStoreType: "azure_blob"
+    integrityAppBlobStoreAccount: "your-storage-account"
+    integrityAppBlobStoreContainer: "your-integrity-store-container"
+
+    # Storage Configuration - AWS S3 (uncomment to use instead)
+    # integrityAppBlobStoreType: "aws_s3"
+    # integrityAppBlobStoreAwsRegion: "us-east-1"
+    # integrityAppBlobStoreAwsBucket: "your-integrity-store-bucket"
+    # integrityAppBlobStoreAwsFolder: "your-integrity-store-folder"
+    # # IAM role access (IRSA): set true to skip static keys and use the IAM role
+    # # credential chain. Requires serviceAccount below annotated with the role ARN
+    # integrityAppBlobStoreAwsUseIamRole: true
+
+    # Storage Configuration - GCS (uncomment to use instead)
+    # integrityAppBlobStoreType: "gcs"
+    # integrityAppBlobStoreGcsBucket: "your-integrity-store-bucket"
+    # integrityAppBlobStoreGcsFolder: "your-integrity-store-folder"
+
+  persistence:
+    enabled: true
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# =============================================================================
+# PostgreSQL
+# =============================================================================
+# Override values for the postgresql Helm chart
+# ------------------------------------------------------------------------------
+postgresql:
+  enabled: true
+
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      # Uses cluster default StorageClass when set to ""
+      # Override per CSP if needed: EKS="gp3", AKS="managed-csi", GKE="standard"
+      storageClass: ""
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+# =============================================================================
+# Auth0 Post-Install Hook
+# =============================================================================
+# Seeds the governance database with the organization and platform-admin user
+# Runs as a Helm post-install/post-upgrade hook after migrations complete
+# The admin user is looked up via the Auth0 Management API using the email below
+# ------------------------------------------------------------------------------
+auth0:
+  createOrganization: true
+  organizationName: "guardian"
+  displayName: "Guardian Platform"
+  createPlatformAdmin: true
+  platformAdminEmail: "admin@your-domain.com" # Must exist in your Auth0 tenant
+  domain: "your-tenant.us.auth0.com"
+
+# =============================================================================
+# SECRET CREATION COMMANDS
+# =============================================================================
+# Run these commands before deploying (or use secrets-sample.yaml instead):
+#
+# kubectl create namespace guardian
+#
+# # Database Credentials
+# kubectl create secret generic platform-database \
+#   --from-literal=username=postgres \
+#   --from-literal=password="$(openssl rand -hex 32)" \
+#   --namespace guardian
+#
+# # Auth0 Credentials
+# kubectl create secret generic platform-auth0 \
+#   --from-literal=client-id=YOUR_AUTH0_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AUTH0_CLIENT_SECRET \
+#   --from-literal=mgmt-client-id=YOUR_AUTH0_MGMT_CLIENT_ID \
+#   --from-literal=mgmt-client-secret=YOUR_AUTH0_MGMT_CLIENT_SECRET \
+#   --namespace guardian
+#
+# # Auth Service Credentials
+# kubectl create secret generic platform-auth-service \
+#   --from-literal=api-secret="$(openssl rand -base64 32)" \
+#   --from-literal=jwt-secret="$(openssl rand -base64 32)" \
+#   --namespace guardian
+#
+# # AWS S3 Credentials (if using S3 instead)
+# kubectl create secret generic platform-aws-s3 \
+#   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY \
+#   --from-literal=secret-access-key=YOUR_AWS_SECRET_KEY \
+#   --namespace guardian
+#
+# # Azure Blob Credentials
+# kubectl create secret generic platform-azure-blob \
+#   --from-literal=account-key=YOUR_AZURE_STORAGE_ACCOUNT_KEY \
+#   --from-literal=connection-string="DefaultEndpointsProtocol=https;..." \
+#   --namespace guardian
+#
+# # GCS Credentials (if using GCS instead)
+# kubectl create secret generic platform-gcs \
+#   --from-literal=service-account-json="$(cat service-account.json)" \
+#   --namespace guardian
+#
+# # AWS KMS Credentials (if using AWS KMS)
+# kubectl create secret generic platform-aws-kms \
+#   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY_ID \
+#   --from-literal=secret-access-key=YOUR_AWS_SECRET_ACCESS_KEY \
+#   --from-literal=session-token="" \
+#   --namespace guardian
+#
+# # Azure Key Vault Credentials (if using Azure Key Vault)
+# kubectl create secret generic platform-azure-key-vault \
+#   --from-literal=client-id=YOUR_AZURE_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_AZURE_CLIENT_SECRET \
+#   --from-literal=tenant-id=YOUR_AZURE_TENANT_ID \
+#   --from-literal=vault-url=https://your-vault.vault.azure.net/ \
+#   --namespace guardian
+#
+# # GCP KMS Credentials (if using GCP KMS with explicit service account)
+# kubectl create secret generic platform-gcp-kms \
+#   --from-literal=service-account-json="$(cat gcp-service-account.json)" \
+#   --namespace guardian
+#
+# # Governance Worker Credentials
+# kubectl create secret generic platform-governance-worker \
+#   --from-literal=encryption-key="$(openssl rand -base64 32)" \
+#   --from-literal=client-id=YOUR_M2M_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_M2M_CLIENT_SECRET \
+#   --namespace guardian
+#
+# # Image Pull Secret Credentials
+# kubectl create secret docker-registry platform-image-pull-secret \
+#   --docker-server=docker.cloudsmith.io \
+#   --docker-username=eqtylab/prod \
+#   --docker-password=YOUR_CLOUDSMITH_ENTITLEMENT_TOKEN \
+#   --docker-email=YOUR_EMAIL \
+#   --namespace guardian

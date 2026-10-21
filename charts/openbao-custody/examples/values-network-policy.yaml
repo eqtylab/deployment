@@ -13,7 +13,7 @@ openbao:
         - from:
             - namespaceSelector:
                 matchLabels:
-                  kubernetes.io/metadata.name: governance
+                  kubernetes.io/metadata.name: guardian
           ports:
             - port: 8200
               protocol: TCP

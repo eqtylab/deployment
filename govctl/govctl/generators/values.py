@@ -10,8 +10,8 @@ from govctl.generators.sections.gateway_stack import generate_gateway_stack_sect
 from govctl.generators.sections.governance_service import (
     generate_governance_service_section,
 )
-from govctl.generators.sections.governance_studio import (
-    generate_governance_studio_section,
+from govctl.generators.sections.guardian import (
+    generate_guardian_section,
 )
 from govctl.generators.sections.integrity_service import (
     generate_integrity_service_section,
@@ -68,10 +68,10 @@ def generate_values(config: PlatformConfig) -> str:
             generate_governance_service_section(config),
         ),
         (
-            "governance-studio",
+            "guardian",
             "Guardian",
-            "Override values for the governance-studio Helm chart.",
-            generate_governance_studio_section(config),
+            "Override values for the Guardian chart.",
+            generate_guardian_section(config),
         ),
         (
             "integrity-service",
@@ -129,8 +129,8 @@ def _generate_global_section(config: PlatformConfig) -> dict[str, Any]:
 
     if config.database_mode == DatabaseMode.EXTERNAL:
         # Placeholders for cloud-managed PostgreSQL.
-        # See charts/governance-platform/examples/values-external-postgres.yaml
-        # and charts/governance-platform/README.md (Cloud-Managed PostgreSQL Configuration)
+        # See charts/guardian-platform/examples/values-external-postgres.yaml
+        # and charts/guardian-platform/README.md (Cloud-Managed PostgreSQL Configuration)
         # for provider-specific notes (AWS RDS, Azure Flexible Server, GCP Cloud SQL).
         section["postgresql"] = {
             "host": "TODO-set-managed-pg-host.example.com",

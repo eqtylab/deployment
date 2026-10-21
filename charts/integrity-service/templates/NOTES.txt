@@ -4,7 +4,7 @@ Integrity Service has been deployed!
 Service URL (internal): http://{{ include "integrity-service.fullname" . }}:{{ .Values.service.port }}
 
 {{- if .Values.ingress.enabled }}
-External URL: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "governance.example.com")) }}
+External URL: {{ .Values.config.integrityServiceUrl | default (printf "https://%s/integrityService" ((.Values.global).domain | default "guardian.example.com")) }}
 {{- else }}
 
 To access the service, you need to enable ingress or use port-forwarding:

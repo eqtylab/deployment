@@ -9,9 +9,9 @@ The Auth0 Bootstrap provides automated application, API, permission, and user co
 Key capabilities:
 
 - **Application Registration**: Creates a frontend (SPA), backend (M2M), and worker (M2M) application
-- **Resource Server (API)**: Creates the Governance Platform API with a configurable identifier, token lifetime, and offline-access policy
-- **Permissions / Scopes**: Defines fine-grained custom scopes on the Governance Platform API
-- **Client Grants**: Grants the backend and worker M2M clients the appropriate scopes on the Governance Platform API
+- **Resource Server (API)**: Creates the Guardian Platform API with a configurable identifier, token lifetime, and offline-access policy
+- **Permissions / Scopes**: Defines fine-grained custom scopes on the Guardian Platform API
+- **Client Grants**: Grants the backend and worker M2M clients the appropriate scopes on the Guardian Platform API
 - **Management API Grant**: Grants the backend M2M client a limited set of Auth0 Management API scopes for user management
 - **Initial Users**: Optionally creates a platform admin user and additional test users in a database connection
 - **Auth0 Actions**: Creates, deploys, and binds the post-login and client-credentials-exchange Actions that enrich tokens with organization, role, project, and service-account claims
@@ -39,18 +39,18 @@ Minimum configuration required:
 auth0:
   domain: "your-tenant.us.auth0.com"
   api:
-    identifier: "https://governance.example.com"
+    identifier: "https://guardian.example.com"
 
 applications:
   frontend:
     callbacks:
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
       - "http://localhost:5173"
     logoutUrls:
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
       - "http://localhost:5173"
     webOrigins:
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
       - "http://localhost:5173"
 
 users:
@@ -62,16 +62,16 @@ users:
 ```bash
 helm upgrade --install auth0-bootstrap ./auth0-bootstrap \
   -f values.yaml \
-  --namespace governance \
+  --namespace guardian \
   --create-namespace
 ```
 
 ### Creating the Bootstrap M2M Application
 
-Before installing, create a Machine-to-Machine application in the Auth0 Dashboard for the bootstrap job. This is a **dedicated secret** (`auth0-management`) separate from `platform-auth0`, which is created by the `governance-platform` chart and stores the application credentials used by the platform services at runtime.
+Before installing, create a Machine-to-Machine application in the Auth0 Dashboard for the bootstrap job. This is a **dedicated secret** (`auth0-management`) separate from `platform-auth0`, which is created by the `guardian-platform` chart and stores the application credentials used by the platform services at runtime.
 
 1. In the Auth0 Dashboard, go to **Applications → Applications → Create Application**.
-2. Pick **Machine to Machine Applications** and name it something like `Governance Bootstrap M2M`.
+2. Pick **Machine to Machine Applications** and name it something like `Guardian Bootstrap M2M`.
 3. Authorize it for the **Auth0 Management API** and grant the scopes listed under [Prerequisites](#prerequisites).
 4. Copy the **Client ID** and **Client Secret** from the application's _Settings_ tab.
 5. Create the Kubernetes secrets in the target namespace:
@@ -85,18 +85,18 @@ kubectl create secret generic auth0-management \
   --from-literal=client-id=YOUR_MGMT_CLIENT_ID \
   --from-literal=client-secret=YOUR_MGMT_CLIENT_SECRET \
   --from-literal=auth-service-api-secret="$(openssl rand -base64 32)" \
-  --namespace governance
+  --namespace guardian
 
 # Initial platform admin password (only required when users.admin.enabled is true)
 kubectl create secret generic platform-admin \
   --from-literal=password="$(openssl rand -base64 16)" \
-  --namespace governance
+  --namespace guardian
 ```
 
 | Scope                                                                         | Purpose                                        |
 | ----------------------------------------------------------------------------- | ---------------------------------------------- |
 | `read:clients`, `create:clients`, `update:clients`                            | Create and update SPA / M2M applications       |
-| `read:resource_servers`, `create:resource_servers`, `update:resource_servers` | Create and update the Governance Platform API  |
+| `read:resource_servers`, `create:resource_servers`, `update:resource_servers` | Create and update the Guardian Platform API    |
 | `read:client_grants`, `create:client_grants`, `update:client_grants`          | Grant M2M clients access to APIs               |
 | `read:users`, `create:users`, `update:users`                                  | Create the platform admin user and test users  |
 | `read:actions`, `create:actions`, `update:actions`, `delete:actions`          | Create, update, deploy, and bind Auth0 Actions |
@@ -106,7 +106,7 @@ kubectl create secret generic platform-admin \
 ### Uninstalling
 
 ```bash
-helm uninstall auth0-bootstrap --namespace governance
+helm uninstall auth0-bootstrap --namespace guardian
 ```
 
 This removes all Kubernetes components associated with the chart and deletes the release.
@@ -163,23 +163,23 @@ This removes all Kubernetes components associated with the chart and deletes the
 | auth0.managementSecret.clientSecretKey         | string | `"client-secret"`           | Key in secret for the M2M client secret                                                             |
 | auth0.managementSecret.authServiceApiSecretKey | string | `"auth-service-api-secret"` | Key in secret for the bearer token forwarded to the post-login action (optional)                    |
 
-### Governance Platform API (Resource Server)
+### Guardian Platform API (Resource Server)
 
-| Key                          | Type   | Default                     | Description                                               |
-| ---------------------------- | ------ | --------------------------- | --------------------------------------------------------- |
-| auth0.api.name               | string | `"Governance Platform API"` | Display name for the API in Auth0                         |
-| auth0.api.identifier         | string | `""`                        | **Required.** API identifier / audience (URL recommended) |
-| auth0.api.tokenLifetime      | int    | `86400`                     | Access token lifetime in seconds                          |
-| auth0.api.allowOfflineAccess | bool   | `false`                     | Whether to issue refresh tokens                           |
+| Key                          | Type   | Default                   | Description                                               |
+| ---------------------------- | ------ | ------------------------- | --------------------------------------------------------- |
+| auth0.api.name               | string | `"Guardian Platform API"` | Display name for the API in Auth0                         |
+| auth0.api.identifier         | string | `""`                      | **Required.** API identifier / audience (URL recommended) |
+| auth0.api.tokenLifetime      | int    | `86400`                   | Access token lifetime in seconds                          |
+| auth0.api.allowOfflineAccess | bool   | `false`                   | Whether to issue refresh tokens                           |
 
 ### Frontend Application (SPA)
 
-| Key                              | Type   | Default                          | Description                  |
-| -------------------------------- | ------ | -------------------------------- | ---------------------------- |
-| applications.frontend.name       | string | `"Governance Platform Frontend"` | Application display name     |
-| applications.frontend.callbacks  | list   | See values.yaml                  | Allowed callback URLs        |
-| applications.frontend.logoutUrls | list   | See values.yaml                  | Allowed logout redirect URLs |
-| applications.frontend.webOrigins | list   | See values.yaml                  | Allowed web origins (CORS)   |
+| Key                              | Type   | Default                        | Description                  |
+| -------------------------------- | ------ | ------------------------------ | ---------------------------- |
+| applications.frontend.name       | string | `"Guardian Platform Frontend"` | Application display name     |
+| applications.frontend.callbacks  | list   | See values.yaml                | Allowed callback URLs        |
+| applications.frontend.logoutUrls | list   | See values.yaml                | Allowed logout redirect URLs |
+| applications.frontend.webOrigins | list   | See values.yaml                | Allowed web origins (CORS)   |
 
 The frontend application is configured as a **Single Page Application (SPA)** with:
 
@@ -189,11 +189,11 @@ The frontend application is configured as a **Single Page Application (SPA)** wi
 
 ### Backend Application (M2M)
 
-| Key                                      | Type   | Default                         | Description                                            |
-| ---------------------------------------- | ------ | ------------------------------- | ------------------------------------------------------ |
-| applications.backend.name                | string | `"Governance Platform Backend"` | Application display name                               |
-| applications.backend.apiScopes           | list   | See values.yaml                 | Scopes granted on the Governance Platform API          |
-| applications.backend.managementApiScopes | list   | See values.yaml                 | Scopes granted on the Auth0 Management API (user mgmt) |
+| Key                                      | Type   | Default                       | Description                                            |
+| ---------------------------------------- | ------ | ----------------------------- | ------------------------------------------------------ |
+| applications.backend.name                | string | `"Guardian Platform Backend"` | Application display name                               |
+| applications.backend.apiScopes           | list   | See values.yaml               | Scopes granted on the Guardian Platform API            |
+| applications.backend.managementApiScopes | list   | See values.yaml               | Scopes granted on the Auth0 Management API (user mgmt) |
 
 The backend application is configured as a **Machine-to-Machine (non-interactive) client** with:
 
@@ -204,10 +204,10 @@ The backend application is configured as a **Machine-to-Machine (non-interactive
 
 ### Worker Application (M2M)
 
-| Key                           | Type   | Default               | Description                                   |
-| ----------------------------- | ------ | --------------------- | --------------------------------------------- |
-| applications.worker.name      | string | `"Governance Worker"` | Application display name                      |
-| applications.worker.apiScopes | list   | See values.yaml       | Scopes granted on the Governance Platform API |
+| Key                           | Type   | Default               | Description                                 |
+| ----------------------------- | ------ | --------------------- | ------------------------------------------- |
+| applications.worker.name      | string | `"Governance Worker"` | Application display name                    |
+| applications.worker.apiScopes | list   | See values.yaml       | Scopes granted on the Guardian Platform API |
 
 The worker application is configured as a **Machine-to-Machine (non-interactive) client** with:
 
@@ -217,9 +217,9 @@ The worker application is configured as a **Machine-to-Machine (non-interactive)
 
 ### Custom Scopes / Permissions
 
-| Key    | Type | Default         | Description                                                        |
-| ------ | ---- | --------------- | ------------------------------------------------------------------ |
-| scopes | list | See values.yaml | Custom scopes (permissions) created on the Governance Platform API |
+| Key    | Type | Default         | Description                                                      |
+| ------ | ---- | --------------- | ---------------------------------------------------------------- |
+| scopes | list | See values.yaml | Custom scopes (permissions) created on the Guardian Platform API |
 
 Each scope is an object with `name` and `description`.
 
@@ -274,7 +274,7 @@ The action JavaScript itself lives in [`scripts/auth0/actions/`](../../scripts/a
 ```bash
 kubectl create configmap auth0-actions-source \
   --from-file=scripts/auth0/actions/ \
-  --namespace governance
+  --namespace guardian
 ```
 
 Pass `--skip-actions` to `bootstrap-auth0.sh` to skip both the ConfigMap creation and the action deployment steps (the flag also sets `actions.enabled=false` for the Helm install).
@@ -305,13 +305,13 @@ Pass `--skip-actions` to `bootstrap-auth0.sh` to skip both the ConfigMap creatio
 The bootstrap script executes in a specific order due to dependencies:
 
 1. **Authenticate** against the Auth0 Management API using the M2M credentials
-2. **Create the Governance Platform API** (resource server) with the configured custom scopes
+2. **Create the Guardian Platform API** (resource server) with the configured custom scopes
 3. **Create the frontend SPA application** with callbacks, logout URLs, and CORS origins
 4. **Create the backend M2M application** (client secret printed once in logs)
 5. **Create the worker M2M application** (client secret printed once in logs)
-6. **Grant the backend M2M client** the configured `apiScopes` on the Governance Platform API
+6. **Grant the backend M2M client** the configured `apiScopes` on the Guardian Platform API
 7. **Grant the backend M2M client** the configured `managementApiScopes` on the Auth0 Management API
-8. **Grant the worker M2M client** the configured `apiScopes` on the Governance Platform API
+8. **Grant the worker M2M client** the configured `apiScopes` on the Guardian Platform API
 9. **Create the platform admin user** (if `users.admin.enabled` is `true`)
 10. **Create test users** (if `users.testUsers.enabled` is `true`)
 11. **Create / update / deploy the post-login Action** and bind it to the `post-login` trigger (if `actions.postLogin.enabled` is `true`)
@@ -319,7 +319,7 @@ The bootstrap script executes in a specific order due to dependencies:
 
 ## Integration with Applications
 
-After successful bootstrap, populate the `platform-auth0` secret with the created application credentials and update each service's chart values. The `governance-platform` chart consumes these:
+After successful bootstrap, populate the `platform-auth0` secret with the created application credentials and update each service's chart values. The `guardian-platform` chart consumes these:
 
 **auth-service:**
 
@@ -331,7 +331,7 @@ config:
     auth0:
       domain: "your-tenant.us.auth0.com"
       managementAudience: "https://your-tenant.us.auth0.com/api/v2/"
-      apiIdentifier: "https://governance.your-domain.com"
+      apiIdentifier: "https://guardian.your-domain.com"
 
 secrets:
   auth:
@@ -339,13 +339,13 @@ secrets:
       name: "platform-auth0"
 ```
 
-**governance-studio:**
+**guardian:**
 
 ```yaml
 config:
   auth0Domain: "your-tenant.us.auth0.com"
   auth0ClientId: "your-spa-client-id"
-  auth0Audience: "https://governance.your-domain.com"
+  auth0Audience: "https://guardian.your-domain.com"
 ```
 
 The `platform-auth0` secret should contain these keys after bootstrap:
@@ -364,20 +364,20 @@ The `platform-auth0` secret should contain these keys after bootstrap:
 ### Viewing Job Status
 
 ```bash
-kubectl get jobs -n governance -l app.kubernetes.io/name=auth0-bootstrap
+kubectl get jobs -n guardian -l app.kubernetes.io/name=auth0-bootstrap
 ```
 
 ### Viewing Logs
 
 ```bash
-kubectl logs -n governance -l app.kubernetes.io/name=auth0-bootstrap
+kubectl logs -n guardian -l app.kubernetes.io/name=auth0-bootstrap
 ```
 
 ### Checking Pod Status
 
 ```bash
-kubectl get pods -n governance -l app.kubernetes.io/name=auth0-bootstrap
-kubectl describe pod <pod-name> -n governance
+kubectl get pods -n guardian -l app.kubernetes.io/name=auth0-bootstrap
+kubectl describe pod <pod-name> -n guardian
 ```
 
 ### Verifying Configuration
@@ -385,13 +385,13 @@ kubectl describe pod <pod-name> -n governance
 View the bootstrap job configuration:
 
 ```bash
-kubectl get job -n governance -l app.kubernetes.io/name=auth0-bootstrap -o yaml
+kubectl get job -n guardian -l app.kubernetes.io/name=auth0-bootstrap -o yaml
 ```
 
 Verify Auth0 resources were created by checking the job logs:
 
 ```bash
-kubectl logs -n governance -l app.kubernetes.io/name=auth0-bootstrap
+kubectl logs -n guardian -l app.kubernetes.io/name=auth0-bootstrap
 ```
 
 ### Common Issues

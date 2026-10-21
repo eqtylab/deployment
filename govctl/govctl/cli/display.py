@@ -144,14 +144,14 @@ def show_next_steps(
             f'\n     - Create the [cyan]governance[/cyan] and [cyan]"IntegrityServiceDB"[/cyan] databases on the managed instance'
             f"\n     - Keep [cyan]global.secrets.create[/cyan] enabled in {secrets_file} to have Helm create the [cyan]platform-database[/cyan] Secret for you, or disable it and pre-create that Secret manually"
             f"\n     - (For sslMode verify-ca/verify-full) create a Secret or ConfigMap named [cyan]postgres-ca[/cyan] holding the CA bundle at key [cyan]ca.crt[/cyan]"
-            f"\n     See: charts/governance-platform/README.md (Cloud-Managed PostgreSQL Configuration)"
+            f"\n     See: charts/guardian-platform/README.md (Cloud-Managed PostgreSQL Configuration)"
         )
         console.print()
         step += 1
 
     console.print(f"  {step}. Deploy the platform:")
     console.print()
-    chart = "./charts/governance-platform"
+    chart = "./charts/guardian-platform"
     version_flag = ""
     if config.artifact_source == "cloudsmith":
         console.print(
@@ -166,7 +166,7 @@ def show_next_steps(
             "--username token --password-stdin[/dim]"
         )
         console.print("[dim]     helm repo update cloudsmith-prod[/dim]")
-        chart = "cloudsmith-prod/governance-platform"
+        chart = "cloudsmith-prod/guardian-platform"
         version_flag = "       --version <released-version> \\\n"
     helm_cmd = (
         f"     helm upgrade --install {config.release_name} \\\n"

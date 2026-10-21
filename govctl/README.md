@@ -84,12 +84,12 @@ printf '%s' "$CLOUDSMITH_ENTITLEMENT_TOKEN" | helm repo add cloudsmith-prod \
   https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ \
   --username token --password-stdin
 helm repo update cloudsmith-prod
-helm upgrade --install governance-platform \
-  cloudsmith-prod/governance-platform \
+helm upgrade --install guardian-platform \
+  cloudsmith-prod/guardian-platform \
   --version <released-version> \
   -f output/values-staging.yaml \
   -f output/secrets-staging.yaml \
-  -n governance --create-namespace
+  -n guardian --create-namespace
 ```
 
 Select a stable version with a verified `cloudsmith-delivery.json`. For a version
@@ -121,7 +121,7 @@ Generated files:
 ```bash
 govctl init -I \
   --cloud gcp \
-  --domain governance.staging.eqtylab.io \
+  --domain guardian.staging.eqtylab.io \
   --environment staging \
   --auth keycloak \
   --database bundled
@@ -151,22 +151,22 @@ Configures all platform services based on your selections:
 - **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: true` by default, image tag/pull policy; no ingress)
 - **gateway-stack** — LLM Gateway and Control Plane (`enabled: false` by default, image tags/pull policies only; hostnames, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
-- **governance-studio** — frontend auth config, feature flags, ingress
+- **guardian** — Guardian: frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, persistence, ingress
 - **postgresql** — `enabled: true` plus storage class and resource limits when database mode is `bundled`; just `enabled: false` when `external`
 
-To enable the gateway, layer [`values-gateway.yaml`](../charts/governance-platform/examples/values-gateway.yaml) over the generated file and see [`charts/gateway-stack/README.md`](../charts/gateway-stack/README.md) for hostnames, TLS, and plugin setup.
+To enable the gateway, layer [`values-gateway.yaml`](../charts/guardian-platform/examples/values-gateway.yaml) over the generated file and see [`charts/gateway-stack/README.md`](../charts/gateway-stack/README.md) for hostnames, TLS, and plugin setup.
 
 PDFgen bound signing and optional timestamping are available through explicit values overrides: layer `eqty-pdfgen.config.signingBound`, `eqty-pdfgen.config.timestampUrl`, and compatible Auth/PDFgen image selections over the generated file. Verify the [image capability prerequisites](../charts/eqty-pdfgen/README.md#prerequisites) first. Bound signing is independent of the key-management provider; OpenBao remains optional. Full generator support for these settings is deferred.
 
-When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The same placeholder appears inside the generated `gatewayDsn`, so replace it in both places. The `gatewayDsn` uses `sslmode=require`: gateway-stack does not read `global.postgresql.sslMode` or `sslRootCert`, so the gateway's connection is encrypted but the server certificate is not verified. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/governance-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
+When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The same placeholder appears inside the generated `gatewayDsn`, so replace it in both places. The `gatewayDsn` uses `sslmode=require`: gateway-stack does not read `global.postgresql.sslMode` or `sslRootCert`, so the gateway's connection is encrypted but the server certificate is not verified. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/guardian-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
 
 ### bootstrap-{env}.yaml _(Auth0, Entra, or Keycloak)_
 
 Pre-configured values for the matching `<provider>-bootstrap` chart with your domain filled in:
 
-- **Auth0** — frontend SPA, backend M2M, worker M2M applications; Governance Platform API (resource server) with scopes; client grants; platform-admin user
-- **Keycloak** — governance realm with security settings and token lifespans; frontend (public), backend (confidential), and worker OAuth clients; authorization scopes; platform-admin user
+- **Auth0** — frontend SPA, backend M2M, worker M2M applications; Guardian Platform API (resource server) with scopes; client grants; platform-admin user
+- **Keycloak** — platform realm with security settings and token lifespans; frontend (public), backend (confidential), and worker OAuth clients; authorization scopes; platform-admin user
 - **Entra** — frontend (SPA), backend, and worker app registrations with Graph API permissions and the `access_as_user` scope
 
 ### secrets-{env}.yaml
@@ -188,7 +188,7 @@ After generating your files, fill in the placeholders described on the docs site
 
 OpenBao is optional. The current supported configuration
 workflow is manual Helm values, using
-[the umbrella overlay](../charts/governance-platform/examples/values-openbao.yaml)
+[the umbrella overlay](../charts/guardian-platform/examples/values-openbao.yaml)
 and the [Auth examples](../charts/auth-service/README.md#openbao-transit).
 Generate any base cloud/identity configuration first, then maintain and layer the
 OpenBao overlay yourself, selecting the provider both globally and in Auth.

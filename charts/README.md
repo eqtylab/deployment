@@ -4,20 +4,20 @@ This repository contains Helm charts for deploying the Guardian Platform on Kube
 
 ## Chart Catalog
 
-| Chart                                       | Type     | Description                                                  |
-| ------------------------------------------- | -------- | ------------------------------------------------------------ |
-| [auth-service](auth-service/)               | Subchart | Go-based authentication and authorization service            |
-| [auth0-bootstrap](auth0-bootstrap/)         | Utility  | Auth0 application, API, and user configuration job           |
-| [entra-bootstrap](entra-bootstrap/)         | Utility  | Microsoft Entra ID app registration configuration job        |
-| [eqty-pdfgen](eqty-pdfgen/)                 | Subchart | PDF and ZIP rendering service for governance manifests       |
-| [gateway-stack](gateway-stack/)             | Subchart | LLM Gateway and Control Plane                                |
-| [governance-ops](governance-ops/)           | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
-| [governance-platform](governance-platform/) | Umbrella | Complete platform deployment (recommended)                   |
-| [governance-service](governance-service/)   | Subchart | Go-based backend API and workflow engine                     |
-| [governance-studio](governance-studio/)     | Subchart | React-based frontend application                             |
-| [integrity-service](integrity-service/)     | Subchart | Rust-based verifiable credentials and lineage service        |
-| [keycloak-bootstrap](keycloak-bootstrap/)   | Utility  | Keycloak realm and client configuration job                  |
-| [openbao-custody](openbao-custody/)         | Custody  | Separately managed OpenBao release for Auth signing keys     |
+| Chart                                     | Type     | Description                                                  |
+| ----------------------------------------- | -------- | ------------------------------------------------------------ |
+| [auth-service](auth-service/)             | Subchart | Go-based authentication and authorization service            |
+| [auth0-bootstrap](auth0-bootstrap/)       | Utility  | Auth0 application, API, and user configuration job           |
+| [entra-bootstrap](entra-bootstrap/)       | Utility  | Microsoft Entra ID app registration configuration job        |
+| [eqty-pdfgen](eqty-pdfgen/)               | Subchart | PDF and ZIP rendering service for governance manifests       |
+| [gateway-stack](gateway-stack/)           | Subchart | LLM Gateway and Control Plane                                |
+| [governance-ops](governance-ops/)         | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
+| [guardian-platform](guardian-platform/)   | Umbrella | Complete platform deployment (recommended)                   |
+| [governance-service](governance-service/) | Subchart | Go-based backend API and workflow engine                     |
+| [guardian](guardian/)                     | Subchart | React-based frontend application                             |
+| [integrity-service](integrity-service/)   | Subchart | Rust-based verifiable credentials and lineage service        |
+| [keycloak-bootstrap](keycloak-bootstrap/) | Utility  | Keycloak realm and client configuration job                  |
+| [openbao-custody](openbao-custody/)       | Custody  | Separately managed OpenBao release for Auth signing keys     |
 
 ## Architecture
 
@@ -31,18 +31,18 @@ charts/
 ├── eqty-pdfgen/             # Manifest PDF rendering subchart
 ├── gateway-stack/           # Gateway and control plane subchart
 ├── governance-ops/          # Operational monitoring (dashboards, alerts)
-├── governance-platform/     # Umbrella chart (deploy this for full platform)
+├── guardian-platform/       # Umbrella chart (deploy this for full platform)
 │   ├── Chart.yaml           # Dependencies on all subcharts
 │   ├── values.yaml          # Global configuration + subchart overrides
 │   └── templates/           # Shared resources (secrets, configmaps)
 ├── governance-service/      # Backend API subchart
-├── governance-studio/       # Frontend subchart
+├── guardian/                # Frontend subchart
 ├── integrity-service/       # Credentials/lineage subchart
 ├── keycloak-bootstrap/      # Keycloak configuration utility
 └── openbao-custody/         # Separate OpenBao release for Auth signing keys (not in the umbrella)
 ```
 
-**Recommended approach**: Deploy using the `governance-platform` umbrella chart. This provides:
+**Recommended approach**: Deploy using the `guardian-platform` umbrella chart. This provides:
 
 - Centralized configuration through global values
 - Automatic service discovery and integration
@@ -97,7 +97,7 @@ Set up ingress, DNS, and certificate management:
 **4. Create namespace**
 
 ```bash
-kubectl create namespace governance
+kubectl create namespace guardian
 ```
 
 **5. Generate bootstrap, values, and secrets files**
@@ -110,20 +110,20 @@ govctl init
 
 # Option B: Copy examples
 # Values:
-cp governance-platform/examples/values-<provider>.yaml values.yaml
+cp guardian-platform/examples/values-<provider>.yaml values.yaml
 
 # Bootstrap (Auth0, Entra, or Keycloak):
 cp <provider>-bootstrap/examples/values.yaml bootstrap-values.yaml
 
 # Secrets:
-cp governance-platform/examples/secrets-sample.yaml secrets.yaml
+cp guardian-platform/examples/secrets-sample.yaml secrets.yaml
 ```
 
 Edit each file with your environment-specific settings. See [Chart Values](https://guardian.docs.eqtylab.io/deployment/chart-values/) for field-by-field details.
 
 **6. Create Kubernetes secrets**
 
-Either pass `secrets.yaml` during helm install (`--values secrets.yaml`), or create them manually with `kubectl`. See [governance-platform/README.md](governance-platform/README.md) for the full list of required secrets.
+Either pass `secrets.yaml` during helm install (`--values secrets.yaml`), or create them manually with `kubectl`. See [guardian-platform/README.md](guardian-platform/README.md) for the full list of required secrets.
 
 **7. Run IdP bootstrap**
 
@@ -132,19 +132,19 @@ This creates the required identity provider configuration (apps/API/users for Au
 ```bash
 # Auth0
 helm upgrade --install auth0-bootstrap ./auth0-bootstrap \
-  --namespace governance \
+  --namespace guardian \
   --values bootstrap-values.yaml \
   --wait --timeout 10m
 
 # Entra
 helm upgrade --install entra-bootstrap ./entra-bootstrap \
-  --namespace governance \
+  --namespace guardian \
   --values bootstrap-values.yaml \
   --wait --timeout 10m
 
 # Keycloak
 helm upgrade --install keycloak-bootstrap ./keycloak-bootstrap \
-  --namespace governance \
+  --namespace guardian \
   --values bootstrap-values.yaml \
   --wait --timeout 10m
 ```
@@ -154,24 +154,24 @@ Helper scripts are also available in `scripts/auth0/`, `scripts/entra/`, and `sc
 **8. Deploy**
 
 ```bash
-helm dependency update ./governance-platform
-helm upgrade --install governance-platform ./governance-platform \
-  --namespace governance \
+helm dependency update ./guardian-platform
+helm upgrade --install guardian-platform ./guardian-platform \
+  --namespace guardian \
   --values values.yaml
 ```
 
 The Agent Gateway is opt-in for upgrade safety. Add
-`governance-platform/examples/values-gateway.yaml` to the Helm command to enable
+`guardian-platform/examples/values-gateway.yaml` to the Helm command to enable
 it, and provide the `gateway-dsn` key in `platform-database` when using an
 externally managed Secret.
 
 **9. Verify**
 
 ```bash
-kubectl get pods -n governance
+kubectl get pods -n guardian
 ```
 
-For complete documentation, see [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) and [governance-platform/README.md](governance-platform/README.md).
+For complete documentation, see [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) and [guardian-platform/README.md](guardian-platform/README.md).
 
 ## Installation Methods
 
@@ -179,11 +179,11 @@ For complete documentation, see [Deployment Process](https://guardian.docs.eqtyl
 
 ```bash
 # Update dependencies
-helm dependency update ./governance-platform
+helm dependency update ./guardian-platform
 
 # Install
-helm upgrade --install governance-platform ./governance-platform \
-  --namespace governance \
+helm upgrade --install guardian-platform ./guardian-platform \
+  --namespace guardian \
   --create-namespace \
   --values values.yaml
 ```
@@ -200,8 +200,8 @@ printf '%s' "$CLOUDSMITH_ENTITLEMENT_TOKEN" | helm repo add cloudsmith-prod \
   https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ \
   --username token --password-stdin
 helm repo update cloudsmith-prod
-helm upgrade --install governance-platform cloudsmith-prod/governance-platform \
-  --version <released-version> --namespace governance --create-namespace \
+helm upgrade --install guardian-platform cloudsmith-prod/guardian-platform \
+  --version <released-version> --namespace guardian --create-namespace \
   --values values.yaml --values values-cloudsmith.yaml
 ```
 
@@ -212,26 +212,26 @@ Existing GHCR installation:
 echo $GITHUB_PAT | helm registry login ghcr.io -u USERNAME --password-stdin
 
 # Install from registry
-helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \
+helm upgrade --install guardian-platform oci://ghcr.io/eqtylab/charts/guardian-platform \
   --version 0.1.0 \
-  --namespace governance \
+  --namespace guardian \
   --create-namespace \
   --values values.yaml
 ```
 
 ## Deployment Examples
 
-The `governance-platform/examples/` directory contains complete deployment examples:
+The `guardian-platform/examples/` directory contains complete deployment examples:
 
-| Example                                                                           | Description                                                                                                 |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [secrets-sample.yaml](governance-platform/examples/secrets-sample.yaml)           | Complete secrets configuration template                                                                     |
-| [values-cloudsmith.yaml](governance-platform/examples/values-cloudsmith.yaml)     | Registry overlay for verified Cloudsmith deliveries                                                         |
-| [values-auth0.yaml](governance-platform/examples/values-auth0.yaml)               | Platform deployment using Auth0 as the identity provider                                                    |
-| [values-entra.yaml](governance-platform/examples/values-entra.yaml)               | Platform deployment using Entra ID as the identity provider                                                 |
-| [values-keycloak.yaml](governance-platform/examples/values-keycloak.yaml)         | Platform deployment using Keycloak as the identity provider                                                 |
-| [values-openbao.yaml](governance-platform/examples/values-openbao.yaml)           | Optional development OpenBao Transit overlay for Auth signing keys                                          |
-| [values-openbao-kind.yaml](governance-platform/examples/values-openbao-kind.yaml) | Disposable local-kind OpenBao diagnostic profile (not standalone; needs launcher-supplied publisher values) |
+| Example                                                                         | Description                                                                                                 |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [secrets-sample.yaml](guardian-platform/examples/secrets-sample.yaml)           | Complete secrets configuration template                                                                     |
+| [values-cloudsmith.yaml](guardian-platform/examples/values-cloudsmith.yaml)     | Registry overlay for verified Cloudsmith deliveries                                                         |
+| [values-auth0.yaml](guardian-platform/examples/values-auth0.yaml)               | Platform deployment using Auth0 as the identity provider                                                    |
+| [values-entra.yaml](guardian-platform/examples/values-entra.yaml)               | Platform deployment using Entra ID as the identity provider                                                 |
+| [values-keycloak.yaml](guardian-platform/examples/values-keycloak.yaml)         | Platform deployment using Keycloak as the identity provider                                                 |
+| [values-openbao.yaml](guardian-platform/examples/values-openbao.yaml)           | Optional development OpenBao Transit overlay for Auth signing keys                                          |
+| [values-openbao-kind.yaml](guardian-platform/examples/values-openbao-kind.yaml) | Disposable local-kind OpenBao diagnostic profile (not standalone; needs launcher-supplied publisher values) |
 
 ## Deployment Documentation
 
@@ -250,22 +250,22 @@ The deployment guides are on the docs site. [Deployment Process](https://guardia
 
 ```bash
 # Lint a chart
-helm lint ./governance-platform
+helm lint ./guardian-platform
 
 # Template a chart (preview rendered manifests)
-helm template governance-platform ./governance-platform \
+helm template guardian-platform ./guardian-platform \
   --values values.yaml \
   --debug
 
 # Dry-run installation
-helm upgrade --install governance-platform ./governance-platform \
-  --namespace governance \
+helm upgrade --install guardian-platform ./guardian-platform \
+  --namespace guardian \
   --values values.yaml \
   --dry-run --debug
 
 # Diff against existing release (requires helm-diff plugin)
-helm diff upgrade governance-platform ./governance-platform \
-  --namespace governance \
+helm diff upgrade guardian-platform ./guardian-platform \
+  --namespace guardian \
   --values values.yaml
 ```
 
@@ -273,21 +273,21 @@ helm diff upgrade governance-platform ./governance-platform \
 
 ```bash
 # Update all subchart dependencies
-helm dependency update ./governance-platform
+helm dependency update ./guardian-platform
 
 # List dependencies
-helm dependency list ./governance-platform
+helm dependency list ./guardian-platform
 ```
 
 ### Testing Changes
 
 ```bash
 # Run helm unittest (if configured)
-helm unittest ./governance-platform
+helm unittest ./guardian-platform
 
 # Validate against Kubernetes API
-helm upgrade --install governance-platform ./governance-platform \
-  --namespace governance \
+helm upgrade --install guardian-platform ./guardian-platform \
+  --namespace guardian \
   --values values.yaml \
   --dry-run=server
 ```
@@ -304,10 +304,10 @@ export CR_PAT="YOUR-GITHUB-PERSONAL-ACCESS-TOKEN"
 echo $CR_PAT | helm registry login ghcr.io -u USERNAME --password-stdin
 
 # Package chart
-helm package ./governance-platform
+helm package ./guardian-platform
 
 # Push to registry
-helm push governance-platform-0.1.0.tgz oci://ghcr.io/eqtylab/charts
+helm push guardian-platform-0.1.0.tgz oci://ghcr.io/eqtylab/charts
 ```
 
 ### Automated Publishing
@@ -319,7 +319,7 @@ publish from deployment. See [publish.yaml](../.github/workflows/publish.yaml).
 Locally, `just publish openbao-custody` builds its locked dependency, packages,
 and pushes `oci://ghcr.io/eqtylab/charts/openbao-custody` at its own chart version.
 `just publish-all` deliberately includes this independent chart. Neither command
-adds custody to `governance-platform` or installs it. README and example profiles
+adds custody to `guardian-platform` or installs it. README and example profiles
 are included in the custody archive for offline operator use.
 
 ## Chart Versioning
@@ -330,7 +330,7 @@ Charts follow [Semantic Versioning](https://semver.org/):
 - **MINOR**: New features, new configuration options
 - **PATCH**: Bug fixes, documentation updates
 
-The umbrella chart (`governance-platform`) version is incremented when:
+The umbrella chart (`guardian-platform`) version is incremented when:
 
 - Any subchart version changes
 - Global configuration schema changes
@@ -344,19 +344,19 @@ Changing it does not require a platform version bump. See the
 
 ## Documentation
 
-| Document                                                       | Description                                                 |
-| -------------------------------------------------------------- | ----------------------------------------------------------- |
-| [auth-service/README.md](auth-service/README.md)               | Authentication service configuration                        |
-| [auth0-bootstrap/README.md](auth0-bootstrap/README.md)         | Auth0 application/API/user setup                            |
-| [entra-bootstrap/README.md](entra-bootstrap/README.md)         | Entra ID app registration setup                             |
-| [eqty-pdfgen/README.md](eqty-pdfgen/README.md)                 | PDF generation service configuration                        |
-| [governance-ops/README.md](governance-ops/README.md)           | Operational monitoring setup                                |
-| [governance-platform/README.md](governance-platform/README.md) | Complete platform deployment guide                          |
-| [governance-service/README.md](governance-service/README.md)   | Backend API configuration                                   |
-| [governance-studio/README.md](governance-studio/README.md)     | Frontend configuration                                      |
-| [integrity-service/README.md](integrity-service/README.md)     | Credentials service configuration                           |
-| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md)   | Keycloak realm/client configuration                         |
-| [openbao-custody/README.md](openbao-custody/README.md)         | Optional OpenBao custody configuration and operator runbook |
+| Document                                                     | Description                                                 |
+| ------------------------------------------------------------ | ----------------------------------------------------------- |
+| [auth-service/README.md](auth-service/README.md)             | Authentication service configuration                        |
+| [auth0-bootstrap/README.md](auth0-bootstrap/README.md)       | Auth0 application/API/user setup                            |
+| [entra-bootstrap/README.md](entra-bootstrap/README.md)       | Entra ID app registration setup                             |
+| [eqty-pdfgen/README.md](eqty-pdfgen/README.md)               | PDF generation service configuration                        |
+| [governance-ops/README.md](governance-ops/README.md)         | Operational monitoring setup                                |
+| [guardian-platform/README.md](guardian-platform/README.md)   | Complete platform deployment guide                          |
+| [governance-service/README.md](governance-service/README.md) | Backend API configuration                                   |
+| [guardian/README.md](guardian/README.md)                     | Frontend configuration                                      |
+| [integrity-service/README.md](integrity-service/README.md)   | Credentials service configuration                           |
+| [keycloak-bootstrap/README.md](keycloak-bootstrap/README.md) | Keycloak realm/client configuration                         |
+| [openbao-custody/README.md](openbao-custody/README.md)       | Optional OpenBao custody configuration and operator runbook |
 
 ## Support
 

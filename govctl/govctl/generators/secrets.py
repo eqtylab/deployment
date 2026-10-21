@@ -84,9 +84,8 @@ def _gateway_dsn(config: PlatformConfig, password: str) -> str:
         # Encrypted, server certificate not verified
         ssl_mode = "require"
     else:
-        # Bundled Bitnami PostgreSQL resolves to "{Release.Name}-postgresql".
-        # Adjust the host if the release is not named governance-platform.
-        host = "governance-platform-postgresql"
+        # Bundled Bitnami PostgreSQL resolves to "{Release.Name}-postgresql"
+        host = f"{config.release_name}-postgresql"
         ssl_mode = "disable"
 
     return f"postgres://postgres:{password}@{host}:5432/guardian_gateway?sslmode={ssl_mode}"
@@ -128,9 +127,11 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "password": _required(
                     "Cloudsmith prod entitlement token"
                     if config.image_registry_url == "docker.cloudsmith.io"
-                    else "GitHub PAT with read:packages scope"
-                    if config.image_registry_url == "ghcr.io"
-                    else "Registry pull credential"
+                    else (
+                        "GitHub PAT with read:packages scope"
+                        if config.image_registry_url == "ghcr.io"
+                        else "Registry pull credential"
+                    )
                 ),
                 "email": config.image_registry_email or "",
             },
@@ -163,7 +164,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
         secrets["auth"]["keycloak"] = {
             "secretName": "platform-keycloak",
             "values": {
-                "serviceAccountClientId": "governance-platform-backend",
+                "serviceAccountClientId": "guardian-platform-backend",
                 "serviceAccountClientSecret": _required("Keycloak client secret"),
                 "tokenExchangePrivateKey": _generate_rsa_private_key(),
             },

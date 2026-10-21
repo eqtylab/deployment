@@ -81,7 +81,7 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
         section["config"]["idp"]["keycloak"] = {
             "realm": config.keycloak_realm,
             "adminUrl": keycloak_url,
-            "clientId": "governance-platform-frontend",
+            "clientId": "guardian-platform-frontend",
             "enableUserManagement": True,
             "enableGroupSync": False,
         }

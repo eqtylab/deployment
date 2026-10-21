@@ -17,6 +17,6 @@ metadata:
   {{- end }}
 data:
   governance-platform.json: |-
-{{ .Files.Get "dashboards/governance-platform.json" | indent 4 }}
+{{ .Files.Get "dashboards/governance-platform.json" | replace "\"guardian-platform\"" (include "governance-ops.targetRelease" . | quote) | indent 4 }}
 {{- end }}
 {{- end }}

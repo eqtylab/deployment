@@ -87,7 +87,7 @@ ingress:
   controlPlanePath: /api
   hosts:
     llmGateway: gateway.example.internal
-    controlPlane: guardian.example.internal
+    controlPlane: control-plane.example.internal
   tls:
     enabled: true
     llmGatewaySecretName: guardian-gateway-tls

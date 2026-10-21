@@ -21,25 +21,25 @@ ingress:
     nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
     nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
   hosts:
-    - host: "governance.your-domain.com"
+    - host: "guardian.your-domain.com"
       paths:
         - path: "/authService(/|$)(.*)"
           pathType: "ImplementationSpecific"
   tls:
     - secretName: "auth-service-tls"
       hosts:
-        - "governance.your-domain.com"
+        - "guardian.your-domain.com"
 
 config:
   # Keycloak Configuration
   idp:
     provider: "keycloak"
-    issuer: "https://keycloak.your-domain.com/realms/governance"
+    issuer: "https://keycloak.your-domain.com/realms/guardian"
     skipIssuerVerification: false
     keycloak:
-      realm: "governance"
+      realm: "guardian"
       adminUrl: "https://keycloak.your-domain.com"
-      clientId: "governance-platform-frontend"
+      clientId: "guardian-platform-frontend"
       enableUserManagement: true
       enableGroupSync: false
 

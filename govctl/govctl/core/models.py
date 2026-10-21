@@ -65,8 +65,8 @@ class PlatformConfig:
     aws_s3_use_iam_role: bool = False
 
     # Optional overrides
-    release_name: str = "governance-platform"
-    namespace: str = "governance"
+    release_name: str = "guardian-platform"
+    namespace: str = "guardian"
 
     # Key management
     key_management_provider: KeyManagementProvider = (
@@ -99,7 +99,7 @@ class PlatformConfig:
 
     # Keycloak-specific
     keycloak_url: str = ""
-    keycloak_realm: str = "governance"
+    keycloak_realm: str = "guardian"
 
     # Image registry
     # Direct callers retain the existing internal defaults; init selects its profile.

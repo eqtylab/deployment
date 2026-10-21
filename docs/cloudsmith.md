@@ -41,11 +41,11 @@ uses a temporary Docker configuration so existing registry credentials are not
 included in the Kubernetes Secret:
 
 ```bash
-kubectl create namespace governance --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace guardian --dry-run=client -o yaml | kubectl apply -f -
 pull_config=$(mktemp -d)
 chmod 700 "$pull_config"
 docker --config "$pull_config" login docker.cloudsmith.io --username eqtylab/prod
-kubectl -n governance create secret generic platform-image-pull-secret \
+kubectl -n guardian create secret generic platform-image-pull-secret \
   --type=kubernetes.io/dockerconfigjson \
   --from-file=.dockerconfigjson="$pull_config/config.json" \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -67,9 +67,9 @@ repository prefix; the interactive generator asks for both.
 Substitute a delivered stable version and your environment configuration:
 
 ```bash
-helm upgrade --install governance-platform \
-  cloudsmith-prod/governance-platform \
-  --version <version> --namespace governance --create-namespace \
+helm upgrade --install guardian-platform \
+  cloudsmith-prod/guardian-platform \
+  --version <version> --namespace guardian --create-namespace \
   --values values.yaml --values values-cloudsmith.yaml
 ```
 

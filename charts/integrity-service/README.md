@@ -37,7 +37,7 @@ This allows:
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, Integrity Service automatically inherits configuration from global values with no additional configuration required.
+When deployed via the `guardian-platform` umbrella chart, Integrity Service automatically inherits configuration from global values with no additional configuration required.
 
 ### Quick Start
 
@@ -58,14 +58,14 @@ integrity-service:
       nginx.ingress.kubernetes.io/rewrite-target: "/$2"
       nginx.ingress.kubernetes.io/proxy-body-size: "0"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/integrityService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "integrity-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     integrityAppBlobStoreType: "aws_s3"
     integrityAppBlobStoreAwsRegion: "us-east-1"
@@ -88,14 +88,14 @@ integrity-service:
       nginx.ingress.kubernetes.io/rewrite-target: "/$2"
       nginx.ingress.kubernetes.io/proxy-body-size: "0"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/integrityService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "integrity-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     integrityAppBlobStoreType: "azure_blob"
     integrityAppBlobStoreAccount: "your-storage-account"
@@ -117,14 +117,14 @@ integrity-service:
       nginx.ingress.kubernetes.io/rewrite-target: "/$2"
       nginx.ingress.kubernetes.io/proxy-body-size: "0"
     hosts:
-      - host: "governance.yourcompany.com"
+      - host: "guardian.yourcompany.com"
         paths:
           - path: "/integrityService(/|$)(.*)"
             pathType: "ImplementationSpecific"
     tls:
       - secretName: "integrity-service-tls"
         hosts:
-          - "governance.yourcompany.com"
+          - "guardian.yourcompany.com"
   config:
     integrityAppBlobStoreType: "gcs"
     integrityAppBlobStoreGcsBucket: "your-integrity-store-bucket"
@@ -230,13 +230,13 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Ingress
 
-| Key                 | Type   | Default                                                                                                                    | Description                 |
-| ------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| ingress.enabled     | bool   | `false`                                                                                                                    | Enable ingress              |
-| ingress.className   | string | `""`                                                                                                                       | Ingress class name          |
-| ingress.annotations | object | `{}`                                                                                                                       | Ingress annotations         |
-| ingress.hosts       | list   | `[{"host":"governance.example.com","paths":[{"path":"/integrityService(/\|$)(.*)","pathType":"ImplementationSpecific"}]}]` | Ingress hosts configuration |
-| ingress.tls         | list   | `[]`                                                                                                                       | Ingress TLS configuration   |
+| Key                 | Type   | Default                                                                                                                  | Description                 |
+| ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| ingress.enabled     | bool   | `false`                                                                                                                  | Enable ingress              |
+| ingress.className   | string | `""`                                                                                                                     | Ingress class name          |
+| ingress.annotations | object | `{}`                                                                                                                     | Ingress annotations         |
+| ingress.hosts       | list   | `[{"host":"guardian.example.com","paths":[{"path":"/integrityService(/\|$)(.*)","pathType":"ImplementationSpecific"}]}]` | Ingress hosts configuration |
+| ingress.tls         | list   | `[]`                                                                                                                     | Ingress TLS configuration   |
 
 ### Resources
 
@@ -419,7 +419,7 @@ secrets:
 kubectl create secret generic platform-azure-blob \
   --from-literal=account-key=YOUR_AZURE_STORAGE_ACCOUNT_KEY \
   --from-literal=connection-string="DefaultEndpointsProtocol=https;..." \
-  --namespace governance
+  --namespace guardian
 ```
 
 ## AWS S3 Configuration
@@ -452,7 +452,7 @@ secrets:
 kubectl create secret generic platform-aws-s3 \
   --from-literal=access-key-id=YOUR_AWS_ACCESS_KEY \
   --from-literal=secret-access-key=YOUR_AWS_SECRET_KEY \
-  --namespace governance
+  --namespace guardian
 ```
 
 ## Google Cloud Storage Configuration
@@ -483,7 +483,7 @@ secrets:
 ```bash
 kubectl create secret generic platform-gcs \
   --from-file=service-account-json=YOUR_SERVICE_ACCOUNT_KEY.json \
-  --namespace governance
+  --namespace guardian
 ```
 
 ## Troubleshooting
@@ -491,14 +491,14 @@ kubectl create secret generic platform-gcs \
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/integrity-service -n governance
+kubectl logs -f deployment/integrity-service -n guardian
 ```
 
 ### Checking Pod Status
 
 ```bash
-kubectl get pods -n governance -l app.kubernetes.io/name=integrity-service
-kubectl describe pod <pod-name> -n governance
+kubectl get pods -n guardian -l app.kubernetes.io/name=integrity-service
+kubectl describe pod <pod-name> -n guardian
 ```
 
 ### Verifying Configuration
@@ -506,19 +506,19 @@ kubectl describe pod <pod-name> -n governance
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/integrity-service -n governance -- env | grep INTEGRITY_APP
+kubectl exec -it deployment/integrity-service -n guardian -- env | grep INTEGRITY_APP
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/integrity-service -n governance -- env | sort
+kubectl exec -it deployment/integrity-service -n guardian -- env | sort
 ```
 
 Test health endpoint:
 
 ```bash
-kubectl exec -it deployment/integrity-service -n governance -- curl -s localhost:3050/health/v1
+kubectl exec -it deployment/integrity-service -n guardian -- curl -s localhost:3050/health/v1
 ```
 
 ### Common Issues
@@ -556,7 +556,7 @@ kubectl exec -it deployment/integrity-service -n governance -- curl -s localhost
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/integrity-service -n governance`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/integrity-service -n guardian`
 
 ## Health Endpoints
 

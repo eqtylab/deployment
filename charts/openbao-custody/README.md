@@ -10,7 +10,7 @@ integrated Raft storage, TLS on every listener, a retained audit volume,
 persistent volumes that outlive the Helm release, and no agent injector, CSI
 provider or UI.
 
-This chart is **not** a dependency of `governance-platform`. Install it as its
+This chart is **not** a dependency of `guardian-platform`. Install it as its
 own release in its own namespace so that installing, upgrading or uninstalling
 the platform can never touch key material. A customer-managed OpenBao that
 meets the same contract (see the Auth chart README, "OpenBao Transit") is an
@@ -160,7 +160,7 @@ StatefulSet name with the same storage settings.
 By default no NetworkPolicy is created. Merely enabling the default policy
 allows every namespace on API port 8200 and cluster port 8201; it does not limit
 access to Auth. [examples/values-network-policy.yaml](examples/values-network-policy.yaml)
-restricts API ingress to the `governance` namespace, while allowing same-release
+restricts API ingress to the `guardian` namespace, while allowing same-release
 Bao peers in the custody namespace on **both** ports (retry-join uses 8200,
 Raft and forwarding use 8201).
 
@@ -240,8 +240,8 @@ The script is intended to be idempotent and leave existing keys untouched.
 Using the authenticated operator CLI environment from step 3:
 
 ```bash
-scripts/openbao/configure-auth.sh --service-account governance-auth-service \
-  --namespace governance --audience openbao \
+scripts/openbao/configure-auth.sh --service-account guardian-platform-auth-service \
+  --namespace guardian --audience openbao \
   --transit-mount guardian-did --auth-mount kubernetes --role guardian-auth
 ```
 

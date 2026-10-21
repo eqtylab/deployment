@@ -148,9 +148,9 @@ keycloak:
   # @default -- See values below
   realm:
     # -- Name
-    # @default -- `governance`
+    # @default -- `guardian`
     # Realm name
-    name: "governance"
+    name: "guardian"
     # -- Display Name
     # @default -- `Guardian Platform`
     # Realm display name
@@ -220,15 +220,15 @@ clients:
   # Public SPA client for frontend application
   frontend:
     # -- Client ID
-    # @default -- `governance-platform-frontend`
-    clientId: "governance-platform-frontend"
+    # @default -- `guardian-platform-frontend`
+    clientId: "guardian-platform-frontend"
     # -- Name
-    # @default -- `Governance Platform Frontend`
+    # @default -- `Guardian Platform Frontend`
     # Display name for client
-    name: "Governance Platform Frontend"
+    name: "Guardian Platform Frontend"
     # -- Description
     # @default -- See values below
-    description: "Frontend application for Governance Platform"
+    description: "Frontend application for Guardian Platform"
     # -- Public Client
     # @default -- `true`
     # Public client (no client secret required)
@@ -238,13 +238,13 @@ clients:
     # Valid redirect URIs
     redirectUris:
       - "http://localhost:5173/*"
-      - "https://governance.example.com/*"
+      - "https://guardian.example.com/*"
     # -- Web Origins
     # @default -- See values below
     # Allowed web origins for CORS
     webOrigins:
       - "http://localhost:5173"
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
     defaultScopes:
@@ -276,7 +276,7 @@ clients:
           - name: "platform-audience-mapper"
             protocolMapper: "oidc-audience-mapper"
             config:
-              included.client.audience: "governance-platform-frontend"
+              included.client.audience: "guardian-platform-frontend"
               id.token.claim: "false"
               access.token.claim: "true"
               introspection.token.claim: "true"
@@ -290,15 +290,15 @@ clients:
   # Confidential service client for backend application
   backend:
     # -- Client ID
-    # @default -- `governance-platform-backend`
-    clientId: "governance-platform-backend"
+    # @default -- `guardian-platform-backend`
+    clientId: "guardian-platform-backend"
     # -- Name
-    # @default -- `Governance Platform Backend`
+    # @default -- `Guardian Platform Backend`
     # Display name for client
-    name: "Governance Platform Backend"
+    name: "Guardian Platform Backend"
     # -- Description
     # @default -- See values below
-    description: "Backend service for Governance Platform"
+    description: "Backend service for Guardian Platform"
     # -- Public Client
     # @default -- `false`
     # Public client (false for confidential)
@@ -311,13 +311,13 @@ clients:
     # @default -- See values below
     # Valid redirect URIs
     redirectUris:
-      - "https://governance.example.com/authService/*"
+      - "https://guardian.example.com/authService/*"
       - "http://localhost:8000/*"
     # -- Web Origins
     # @default -- See values below
     # Allowed web origins for CORS
     webOrigins:
-      - "https://governance.example.com"
+      - "https://guardian.example.com"
       - "http://localhost:8000"
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
@@ -353,7 +353,7 @@ clients:
     name: "Governance Worker"
     # -- Description
     # @default -- See values below
-    description: "Worker service for Governance Platform"
+    description: "Worker service for Guardian Platform"
     # -- Public Client
     # @default -- `false`
     # Public client (false for confidential)
@@ -433,7 +433,7 @@ users:
   # -- Admin User
   # @default -- See values below
   # This user is the initial admin account for logging into Guardian
-  # It is created in the Keycloak governance realm (not the Keycloak server admin)
+  # It is created in the Keycloak platform realm (not the Keycloak server admin)
   admin:
     # -- Enabled
     # @default -- `true`

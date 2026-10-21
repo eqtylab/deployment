@@ -29,8 +29,8 @@ Usage: $0 -f <values-file> -n <namespace> [options]
                                   auth0-actions secret prerequisite check
 
 Examples:
-  $0 -f $CHART_DIR/examples/values.yaml -n governance
-  $0 -f my-values.yaml --namespace governance-stag --skip-actions
+  $0 -f $CHART_DIR/examples/values.yaml -n guardian
+  $0 -f my-values.yaml --namespace guardian-stag --skip-actions
 "
 }
 
@@ -202,12 +202,12 @@ show_summary() {
   echo "The bootstrap job created the following Auth0 resources:"
   echo ""
   echo "Applications:"
-  echo "- Frontend: Governance Platform Frontend (SPA / public client)"
-  echo "- Backend:  Governance Platform Backend (M2M / non_interactive)"
+  echo "- Frontend: Guardian Platform Frontend (SPA / public client)"
+  echo "- Backend:  Guardian Platform Backend (M2M / non_interactive)"
   echo "- Worker:   Governance Worker (M2M / non_interactive)"
   echo ""
   echo "Resource Server:"
-  echo "- Governance Platform API (with custom scopes + client grants)"
+  echo "- Guardian Platform API (with custom scopes + client grants)"
   echo ""
   if [ "$SKIP_ACTIONS" != "true" ]; then
     echo "Actions:"
@@ -232,7 +232,7 @@ show_summary() {
   echo "       --from-literal=client-secret=<worker-client-secret> \\"
   echo "       -n $NAMESPACE"
   echo ""
-  echo "  4. Update governance-studio Helm values with the frontend SPA client ID and tenant domain"
+  echo "  4. Update guardian Helm values with the frontend SPA client ID and tenant domain"
   echo "  5. Deploy the Guardian Platform with Auth0 values"
   echo "  6. Enable auth0.createOrganization (and createPlatformAdmin) in the platform values so the Helm hook creates the organization and admin user, or run scripts/auth0/post-install-auth0-setup.sh after deploying"
 
@@ -318,7 +318,7 @@ This will create the following Auth0 resources:
 - Frontend application (SPA / public client)
 - Backend application (M2M / non_interactive)
 - Worker application (M2M / non_interactive)
-- Governance Platform API (resource server) with custom scopes
+- Guardian Platform API (resource server) with custom scopes
 - Client grants for backend and worker on the platform API
 - Client grant for backend on the Auth0 Management API (user management)
 - Platform admin user (if users.admin.enabled is true)

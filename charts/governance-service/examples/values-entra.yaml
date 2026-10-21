@@ -28,14 +28,14 @@ ingress:
     nginx.ingress.kubernetes.io/rewrite-target: "/$2"
     nginx.ingress.kubernetes.io/proxy-body-size: "64m"
   hosts:
-    - host: "governance.your-domain.com"
+    - host: "guardian.your-domain.com"
       paths:
         - path: "/governanceService(/|$)(.*)"
           pathType: "ImplementationSpecific"
   tls:
     - secretName: "governance-service-tls"
       hosts:
-        - "governance.your-domain.com"
+        - "guardian.your-domain.com"
 
 resources:
   requests:

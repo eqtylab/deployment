@@ -43,7 +43,7 @@ Both backend services also support TOML runtime files with `--config`, which thi
 
 ## Deployment
 
-When deployed via the `governance-platform` umbrella chart, the Gateway Stack inherits its database and adapter configuration from global values. It is disabled by default there; enable it with `charts/governance-platform/examples/values-gateway.yaml`.
+When deployed via the `guardian-platform` umbrella chart, the Gateway Stack inherits its database and adapter configuration from global values. It is disabled by default there; enable it with `charts/guardian-platform/examples/values-gateway.yaml`.
 
 ### Quick Start
 

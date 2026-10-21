@@ -4,7 +4,7 @@
 # This values file configures the Integrity Service for lineage tracking
 # and verifiable credentials management
 #
-# When deployed via the umbrella chart (governance-platform), most values
+# When deployed via the umbrella chart (guardian-platform), most values
 # are auto-configured from global settings
 # =============================================================================
 
@@ -140,7 +140,7 @@ ingress:
   # -- Ingress Hosts
   # @default -- See values below
   hosts:
-    - host: governance.example.com
+    - host: guardian.example.com
       paths:
         # Path uses regex for nginx rewrite - requires rewrite-target annotation
         - path: "/integrityService(/|$)(.*)"
@@ -150,7 +150,7 @@ ingress:
   tls: []
     # - secretName: integrity-service-tls
     #   hosts:
-    #     - governance.example.com
+    #     - guardian.example.com
 
 # -- Resource Configuration
 # @default -- `{}`

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # idp-setup.sh contains the database steps shared by scripts/{auth0,entra,keycloak}/post-install-*-setup.sh.
-# The SQL mirrors charts/governance-platform/templates/hooks/_idp-setup.tpl.
+# The SQL mirrors charts/guardian-platform/templates/hooks/_idp-setup.tpl.
 #
 # Callers set NAMESPACE, ORG_NAME, DISPLAY_NAME, IDP_PROVIDER and ADMIN_EMAIL before calling these functions.
 # These environment variables override the defaults for non-standard installs:
-#   PLATFORM_RELEASE  Helm release name of governance-platform (default: governance-platform)
+#   PLATFORM_RELEASE  Helm release name of the guardian-platform chart (default: guardian-platform)
 #   DB_POD_SELECTOR   Label selector for the bundled PostgreSQL pod (default: app.kubernetes.io/name=postgresql)
 #   DB_NAME           Database name (default: governance)
 #   DB_USER           Database user (default: postgres)
@@ -12,7 +12,7 @@
 #   DB_SECRET_KEY     Key of the password in DB_SECRET (default: password)
 #   CURL_INSECURE     Set to true to skip TLS verification on IdP API calls (default: false)
 
-PLATFORM_RELEASE="${PLATFORM_RELEASE:-governance-platform}"
+PLATFORM_RELEASE="${PLATFORM_RELEASE:-guardian-platform}"
 DB_POD_SELECTOR="${DB_POD_SELECTOR:-app.kubernetes.io/name=postgresql}"
 DB_NAME="${DB_NAME:-governance}"
 DB_USER="${DB_USER:-postgres}"
@@ -27,7 +27,7 @@ PG_PASSWORD=""
 idp_setup_env_usage() {
   echo "\
 Environment overrides (for non-default releases; the bundled PostgreSQL is required):
-  PLATFORM_RELEASE  governance-platform release name (default: $PLATFORM_RELEASE)
+  PLATFORM_RELEASE  guardian-platform chart release name (default: $PLATFORM_RELEASE)
   DB_POD_SELECTOR   PostgreSQL pod label selector (default: $DB_POD_SELECTOR)
   DB_NAME           Database name (default: $DB_NAME)
   DB_USER           Database user (default: $DB_USER)

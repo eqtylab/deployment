@@ -120,7 +120,7 @@ data:
         for i in 1 2 3; do
           SECRET=$(az ad app credential reset \
             --id "${CURRENT_APP_ID}" \
-            --display-name "governance-platform" \
+            --display-name "guardian-platform" \
             --years 2 \
             --query "password" -o tsv 2>/dev/null) && break
           echo "  Retrying credential creation (attempt $i/3)..."
@@ -459,7 +459,7 @@ data:
       echo "  client-id:           ${WORKER_APP_ID}"
       echo "  client-secret:       ${WORKER_SECRET:-<use existing>}"
       echo ""
-      echo "governance-studio Helm values:"
+      echo "guardian Helm values:"
       echo "  config.entraClientId:  ${FRONTEND_APP_ID}"
       echo "  config.entraTenantId:  ${TENANT_ID}"
       echo "  config.entraScopes:    openid profile email offline_access api://${BACKEND_APP_ID}/access_as_user"

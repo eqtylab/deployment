@@ -1,0 +1,49 @@
+apiVersion: v2
+name: guardian-platform
+description: A Helm chart for the complete Guardian Platform.
+type: application
+version: 1.2.1
+appVersion: "1.2.1"
+home: https://github.com/eqtylab/guardian-infrastructure
+sources:
+  - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/guardian-platform
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io
+dependencies:
+  # Auth Service
+  - name: auth-service
+    version: "1.2.1"
+    repository: "file://../auth-service"
+    condition: auth-service.enabled
+  # PDFGen
+  - name: eqty-pdfgen
+    version: "1.2.1"
+    repository: "file://../eqty-pdfgen"
+    condition: eqty-pdfgen.enabled
+  # Gateway and Control Plane
+  - name: gateway-stack
+    version: "1.2.1"
+    repository: "file://../gateway-stack"
+    condition: gateway-stack.enabled
+  # Governance Service API
+  - name: governance-service
+    version: "1.2.1"
+    repository: "file://../governance-service"
+    condition: governance-service.enabled
+  # Guardian
+  - name: guardian
+    version: "1.2.1"
+    repository: "file://../guardian"
+    condition: guardian.enabled
+  # Integrity Service
+  - name: integrity-service
+    version: "1.2.1"
+    repository: "file://../integrity-service"
+    condition: integrity-service.enabled
+  # PostgreSQL - used by auth-service, governance-service, and integrity-service
+  - name: postgresql
+    version: "~18.1.1" # Bitnami chart version
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    alias: postgresql
+    condition: postgresql.enabled

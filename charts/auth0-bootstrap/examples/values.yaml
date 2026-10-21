@@ -12,11 +12,11 @@
 #      --from-literal=client-id=YOUR_MGMT_CLIENT_ID \
 #      --from-literal=client-secret=YOUR_MGMT_CLIENT_SECRET \
 #      --from-literal=auth-service-api-secret="$(openssl rand -base64 32)" \
-#      --namespace governance
+#      --namespace guardian
 # 4. Create a Kubernetes secret for the platform admin password:
 #    kubectl create secret generic platform-admin \
 #      --from-literal=password="$(openssl rand -base64 16)" \
-#      --namespace governance
+#      --namespace guardian
 
 # Bootstrap job configuration
 bootstrap:
@@ -52,9 +52,9 @@ auth0:
     clientIdKey: "client-id"
     clientSecretKey: "client-secret"
 
-  # Governance Platform API
+  # Guardian Platform API
   api:
-    name: "Governance Platform API"
+    name: "Guardian Platform API"
     identifier: "https://CHANGE_ME_DOMAIN_HERE"
     tokenLifetime: 86400
     allowOfflineAccess: false
@@ -63,7 +63,7 @@ auth0:
 applications:
   # Frontend SPA
   frontend:
-    name: "Governance Platform Frontend"
+    name: "Guardian Platform Frontend"
     callbacks:
       - "https://CHANGE_ME_DOMAIN_HERE"
       - "http://localhost:5173"
@@ -76,7 +76,7 @@ applications:
 
   # Backend M2M
   backend:
-    name: "Governance Platform Backend"
+    name: "Guardian Platform Backend"
     apiScopes:
       - "read:organizations"
       - "write:organizations"

@@ -2,7 +2,7 @@
 #
 # This chart only pins and configures the upstream OpenBao chart (values under
 # `openbao`). It is installed as its own Helm release, in its own namespace,
-# and is never a dependency of governance-platform: uninstalling or upgrading
+# and is never a dependency of guardian-platform: uninstalling or upgrading
 # the platform cannot touch key material. Initialization, unsealing, audit
 # enablement and Auth's mount/policy/role are operator steps (see README and
 # scripts/openbao/configure-auth.sh), never Helm hooks.

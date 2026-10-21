@@ -38,7 +38,7 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
                 "clientSecretKey": "client-secret",
             },
             "api": {
-                "name": "Governance Platform API",
+                "name": "Guardian Platform API",
                 "identifier": api_identifier,
                 "tokenLifetime": 86400,
                 "allowOfflineAccess": False,
@@ -46,7 +46,7 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
         },
         "applications": {
             "frontend": {
-                "name": "Governance Platform Frontend",
+                "name": "Guardian Platform Frontend",
                 "callbacks": [
                     f"https://{domain}",
                     "http://localhost:5173",
@@ -61,7 +61,7 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
                 ],
             },
             "backend": {
-                "name": "Governance Platform Backend",
+                "name": "Guardian Platform Backend",
                 "apiScopes": [
                     "read:organizations",
                     "write:organizations",

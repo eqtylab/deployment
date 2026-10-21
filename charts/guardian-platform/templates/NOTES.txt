@@ -1,0 +1,224 @@
+{{- define "guardianplatform.notes" }}
+
+{{- /* Database Configuration Validation */}}
+{{- $bundledPgEnabled := .Values.postgresql.enabled }}
+{{- $externalPgHost := ((.Values.global).postgresql).host }}
+{{- if and (not $bundledPgEnabled) (not $externalPgHost) }}
+  {{- fail "No database configured: postgresql.enabled is false and global.postgresql.host is empty. Either set postgresql.enabled=true to deploy the bundled PostgreSQL, or set global.postgresql.host to point at an external PostgreSQL." }}
+{{- end }}
+
+#################################################################################
+#                                                                               #
+#                    Guardian Platform Successfully Deployed!                   #
+#                                                                               #
+#################################################################################
+
+Release Name:     {{ .Release.Name }}
+Namespace:        {{ .Release.Namespace }}
+Chart Version:    {{ .Chart.Version }}
+App Version:      {{ .Chart.AppVersion }}
+Status:           {{ .Release.Status }}
+Revision:         {{ .Release.Revision }}
+{{- $globalDomain := .Values.global.domain | default "PLEASE_CONFIGURE_GLOBAL_DOMAIN" }}
+
+---------------------------------------------------------------------------------
+➡️ Accessing Your Guardian Platform:
+---------------------------------------------------------------------------------
+
+{{- $guardian := index .Values "guardian" }}
+{{- if $guardian.enabled }}
+  {{- if $guardian.ingress.enabled }}
+    {{- $host := (first $guardian.ingress.hosts).host | default $globalDomain }}
+🔹 **Guardian:**
+    URL: https://{{ $host }}
+    (Note: It might take a few minutes for Ingress and DNS to fully propagate.)
+  {{- else }}
+🔹 **Guardian:**
+    Enabled, but Ingress is not configured. Use port-forwarding:
+    kubectl port-forward -n {{ .Release.Namespace }} svc/{{ $guardian.fullnameOverride | default (printf "%s-%s" .Release.Name ($guardian.nameOverride | default "guardian")) | trunc 63 | trimSuffix "-" }} 8080:80
+    Then visit: http://localhost:8080
+  {{- end }}
+{{- else }}
+🔹 **Guardian:** Disabled
+{{- end }}
+
+---------------------------------------------------------------------------------
+🔑 Key API Service Information:
+---------------------------------------------------------------------------------
+
+{{- $authService := index .Values "auth-service" }}
+{{- if $authService.enabled }}
+  {{- $host := $globalDomain }}
+  {{- $path := "/authService" }}
+  {{- if and $authService.ingress $authService.ingress.enabled }}
+    {{- if $authService.ingress.hosts }}
+      {{- $firstHost := index $authService.ingress.hosts 0 }}
+      {{- if $firstHost.host }}
+        {{- $host = $firstHost.host }}
+      {{- end }}
+      {{- if $firstHost.paths }}
+        {{- $firstPath := index $firstHost.paths 0 }}
+        {{- if $firstPath.path }}
+          {{- $pathStr := $firstPath.path | toString }}
+          {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
+          {{- if $basePath }}
+            {{- $path = $basePath }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+🔸 **Auth Service API:**
+    External: https://{{ $host }}{{ $path }}
+    Internal: http://{{ printf "%s-auth-service" .Release.Name }}:8080
+{{- else }}
+🔸 **Auth Service API:** Disabled
+{{- end }}
+
+{{- $governanceService := index .Values "governance-service" }}
+{{- if $governanceService.enabled }}
+  {{- $host := $globalDomain }}
+  {{- $path := "/governanceService" }}
+  {{- if and $governanceService.ingress $governanceService.ingress.enabled }}
+    {{- if $governanceService.ingress.hosts }}
+      {{- $firstHost := index $governanceService.ingress.hosts 0 }}
+      {{- if $firstHost.host }}
+        {{- $host = $firstHost.host }}
+      {{- end }}
+      {{- if $firstHost.paths }}
+        {{- $firstPath := index $firstHost.paths 0 }}
+        {{- if $firstPath.path }}
+          {{- $pathStr := $firstPath.path | toString }}
+          {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
+          {{- if $basePath }}
+            {{- $path = $basePath }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+🔸 **Governance Service API:**
+    External: https://{{ $host }}{{ $path }}
+    Internal: http://{{ printf "%s-governance-service" .Release.Name }}:10001
+{{- else }}
+🔸 **Governance Service API:** Disabled
+{{- end }}
+
+{{- $integrityService := index .Values "integrity-service" }}
+{{- if $integrityService.enabled }}
+  {{- $host := $globalDomain }}
+  {{- $path := "/integrityService" }}
+  {{- if and $integrityService.ingress $integrityService.ingress.enabled }}
+    {{- if $integrityService.ingress.hosts }}
+      {{- $firstHost := index $integrityService.ingress.hosts 0 }}
+      {{- if $firstHost.host }}
+        {{- $host = $firstHost.host }}
+      {{- end }}
+      {{- if $firstHost.paths }}
+        {{- $firstPath := index $firstHost.paths 0 }}
+        {{- if $firstPath.path }}
+          {{- $pathStr := $firstPath.path | toString }}
+          {{- $basePath := regexFind "^/[^(/|$)]*" $pathStr }}
+          {{- if $basePath }}
+            {{- $path = $basePath }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+🔸 **Integrity Service API:**
+    External: https://{{ $host }}{{ $path }}
+    Internal: http://{{ printf "%s-integrity-service" .Release.Name }}:3050
+{{- else }}
+🔸 **Integrity Service API:** Disabled
+{{- end }}
+
+{{- $eqtyPdfgen := index .Values "eqty-pdfgen" }}
+{{- if $eqtyPdfgen.enabled }}
+🔸 **PDFGen API:**
+    Internal: http://{{ printf "%s-eqty-pdfgen" .Release.Name }}:8080
+{{- else }}
+🔸 **PDFGen API:** Disabled
+{{- end }}
+
+---------------------------------------------------------------------------------
+⚙️ Important Configuration & Secrets:
+---------------------------------------------------------------------------------
+* **Database:**
+    {{- if $bundledPgEnabled }}
+    Using the bundled PostgreSQL subchart (in-cluster).
+    Host: {{ $externalPgHost | default (printf "%s-postgresql" .Release.Name) }}
+    {{- if $externalPgHost }}
+    ⚠ global.postgresql.host is overridden ({{ $externalPgHost | quote }}). This is fine
+      for customizing the in-cluster Service name (e.g., when postgresql.fullnameOverride
+      is also set). If you intended to use an external managed PostgreSQL instead, set
+      postgresql.enabled=false.
+    {{- end }}
+    {{- else }}
+    Using an external PostgreSQL instance.
+    Host: {{ $externalPgHost }}
+    SSL Mode: {{ ((.Values.global).postgresql).sslMode | default "disable" }}
+    {{- if or (((.Values.global).postgresql).sslRootCert).secretName (((.Values.global).postgresql).sslRootCert).configMapName }}
+    CA Bundle: mounted at /etc/ssl/postgres/{{ ((((.Values.global).postgresql).sslRootCert).key) | default "ca.crt" }}
+    {{- end }}
+    {{- end }}
+
+* **Domain:** Your platform is configured for the domain: {{ $globalDomain }}
+    Ensure your DNS records point to your Kubernetes Ingress controller's external IP.
+
+* **Secrets Management:** This installation uses centralized secrets configured via
+    `global.secrets`. All secrets are created in the {{ .Release.Namespace }} namespace
+    with the `platform-*` naming convention.
+    {{- if .Values.global.secrets.create }}
+    
+    ✓ Secrets automatically created by this chart:
+      - platform-database (PostgreSQL credentials)
+      - platform-auth0 (Auth0 credentials)
+      - platform-gcs (Google Cloud Storage credentials)
+      - platform-image-pull-secret (Container registry credentials)
+      - platform-auth-service (Auth Service application secrets)
+      - platform-governance-worker (Governance worker credentials)
+    {{- else }}
+    
+    ⚠ Secret creation disabled - ensure all required secrets exist manually!
+    {{- end }}
+
+* **TLS/HTTPS:** Configure TLS on your Ingress resources using cert-manager or by
+    providing your own certificates in the `ingress.tls` sections of your values.
+
+---------------------------------------------------------------------------------
+🚀 Checking Deployment Status & Next Steps:
+---------------------------------------------------------------------------------
+1.  **Check Pod Status:**
+    kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+    (Wait for all pods to be in Running or Completed state.)
+
+2.  **Check Services:**
+    kubectl get services -n {{ .Release.Namespace }}
+
+3.  **Check Ingresses:**
+    kubectl get ingresses -n {{ .Release.Namespace }}
+
+4.  **View Logs (if issues occur):**
+    kubectl logs -n {{ .Release.Namespace }} -f <pod-name>
+
+5.  **Troubleshooting Ingress:**
+    If UIs/APIs are not accessible via domain names, ensure:
+    * Your Ingress controller is running and configured correctly.
+    * DNS has propagated for {{ $globalDomain }}
+    * The Ingress resources show an ADDRESS:
+      kubectl get ingress -n {{ .Release.Namespace }}
+    * TLS certificates are properly configured (if using HTTPS)
+
+---------------------------------------------------------------------------------
+📚 Further Documentation:
+---------------------------------------------------------------------------------
+For detailed configuration options, architecture, and troubleshooting, please refer to
+the official Guardian Platform deployment documentation.
+
+Enjoy using the Guardian Platform!
+#################################################################################
+{{- end }}
+
+{{- /* Call the defined template */}}
+{{- template "guardianplatform.notes" . }}

@@ -21,14 +21,14 @@ ingress:
     nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
     nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
   hosts:
-    - host: "governance.your-domain.com"
+    - host: "guardian.your-domain.com"
       paths:
         - path: "/authService(/|$)(.*)"
           pathType: "ImplementationSpecific"
   tls:
     - secretName: "auth-service-tls"
       hosts:
-        - "governance.your-domain.com"
+        - "guardian.your-domain.com"
 
 config:
   # Microsoft Entra ID Configuration

@@ -38,14 +38,14 @@ def generate_entra_bootstrap(config: PlatformConfig) -> str:
         },
         "apps": {
             "frontend": {
-                "displayName": "Governance Platform Frontend",
+                "displayName": "Guardian Platform Frontend",
                 "redirectUris": [
                     f"https://{domain}",
                     "http://localhost:5173",
                 ],
             },
             "backend": {
-                "displayName": "Governance Platform Backend",
+                "displayName": "Guardian Platform Backend",
             },
             "worker": {
                 "displayName": "Governance Worker",

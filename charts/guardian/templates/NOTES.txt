@@ -1,0 +1,39 @@
+{{- if .Values.enabled }}
+Guardian has been deployed!
+
+Service URL (internal): http://{{ include "guardian.fullname" . }}:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+External URL: https://{{ .host }}{{ $.Values.config.basePath }}
+{{- end }}
+{{- else }}
+
+To access the application, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "guardian.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:8080
+{{- end }}
+
+Configuration:
+  Version: {{ .Chart.Version }}
+  Environment: {{ .Values.config.environment | default ((.Values.global).environmentType | default "not set") }}
+  Auth Provider: {{ .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "not set" }}
+
+Feature Flags:
+  Governance: {{ .Values.config.features.governance }}
+  Lineage: {{ .Values.config.features.lineage }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "guardian.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "guardian.fullname" . }} -n {{ .Release.Namespace }}
+
+{{- if not .Values.config.authProvider }}
+{{- if not ((.Values.global).secrets).auth.provider }}
+
+⚠️  WARNING: Auth provider is not configured!
+Please set: guardian.config.authProvider or global.secrets.auth.provider
+{{- end }}
+{{- end }}
+{{- end }}

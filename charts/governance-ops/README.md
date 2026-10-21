@@ -34,7 +34,7 @@ Key capabilities:
 
 ## Deployment
 
-Deploy this chart alongside your governance-platform instance to enable comprehensive monitoring.
+Deploy this chart alongside your Guardian Platform deployment to enable comprehensive monitoring.
 
 ### Quick Start
 
@@ -43,7 +43,7 @@ Minimum configuration required:
 ```bash
 helm install governance-ops ./charts/governance-ops \
   --namespace monitoring \
-  --set targetRelease=governance-platform
+  --set targetRelease=guardian-platform
 ```
 
 This creates:
@@ -61,7 +61,7 @@ Dashboards, alerts, and probes are **enabled by default**. Probes are only creat
 ```bash
 helm install governance-ops ./charts/governance-ops \
   --namespace my-namespace \
-  --set targetRelease=governance-platform
+  --set targetRelease=guardian-platform
 ```
 
 ### Customizing Alerts and Probes
@@ -70,7 +70,7 @@ Create a values file to customize alert behavior:
 
 ```yaml
 # custom-values.yaml
-targetRelease: governance-platform
+targetRelease: guardian-platform
 
 alerts:
   enabled: true
@@ -125,15 +125,15 @@ helm install governance-ops ./charts/governance-ops \
 helm uninstall governance-ops --namespace monitoring
 ```
 
-This removes all monitoring resources (ConfigMaps and PrometheusRules) but does not affect your governance-platform deployment.
+This removes all monitoring resources (ConfigMaps and PrometheusRules) but does not affect your Guardian Platform deployment.
 
 ## Values
 
 ### Target Release Configuration
 
-| Key           | Type   | Default                 | Description                                                        |
-| ------------- | ------ | ----------------------- | ------------------------------------------------------------------ |
-| targetRelease | string | `"governance-platform"` | Helm release name of the governance-platform deployment to monitor |
+| Key           | Type   | Default               | Description                                                      |
+| ------------- | ------ | --------------------- | ---------------------------------------------------------------- |
+| targetRelease | string | `"guardian-platform"` | Helm release name of the Guardian Platform deployment to monitor |
 
 ### Dashboard Configuration
 
@@ -276,7 +276,7 @@ helm get values kube-prometheus-stack -n monitoring | grep -A 10 sidecar
 
 ```bash
 kubectl get prometheusrule -n monitoring
-kubectl describe prometheusrule governance-platform-alerts -n monitoring
+kubectl describe prometheusrule guardian-platform-alerts -n monitoring
 ```
 
 **Verify Prometheus discovered the rules:**
@@ -284,7 +284,7 @@ kubectl describe prometheusrule governance-platform-alerts -n monitoring
 ```bash
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
 # Open: http://localhost:9090/rules
-# Look for "governance-platform" rules
+# Look for "guardian-platform" rules
 ```
 
 **Check Prometheus Operator logs:**
@@ -316,7 +316,7 @@ alerts:
 ```bash
 kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
 # Open: http://localhost:9090/targets
-# Verify governance-platform services are listed and UP
+# Verify Guardian Platform services are listed and UP
 ```
 
 **Check if nginx ingress metrics are available:**

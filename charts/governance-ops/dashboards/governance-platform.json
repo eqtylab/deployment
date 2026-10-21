@@ -736,11 +736,11 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "avg_over_time((sum(kube_pod_status_ready{namespace=\"$namespace\",pod=~\".*governance-studio.*\",condition=\"true\"}) / count(kube_pod_info{namespace=\"$namespace\",pod=~\".*governance-studio.*\"}))[$__range:1m]) * 100",
+          "expr": "avg_over_time((sum(kube_pod_status_ready{namespace=\"$namespace\",pod=~\"$release-(guardian|governance-studio)-.*\",condition=\"true\"}) / count(kube_pod_info{namespace=\"$namespace\",pod=~\"$release-(guardian|governance-studio)-.*\"}))[$__range:1m]) * 100",
           "refId": "A"
         }
       ],
-      "title": "UI Uptime",
+      "title": "Guardian Uptime",
       "type": "gauge"
     },
     {
@@ -1186,8 +1186,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "min(kube_pod_status_ready{namespace=\"$namespace\",pod=~\".*governance-studio.*\",condition=\"true\"})",
-          "legendFormat": "governance-studio",
+          "expr": "min(kube_pod_status_ready{namespace=\"$namespace\",pod=~\"$release-(guardian|governance-studio)-.*\",condition=\"true\"})",
+          "legendFormat": "guardian",
           "refId": "B"
         },
         {
@@ -1313,7 +1313,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"governance-platform.*\"}[5m])) by (ingress)",
+          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m])) by (ingress)",
           "legendFormat": "{{target}}",
           "refId": "A"
         }
@@ -1379,7 +1379,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"governance-platform.*\"}[5m]))",
+          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]))",
           "legendFormat": "Request Rate",
           "refId": "A"
         }
@@ -1485,7 +1485,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"governance-platform.*\", status=~\"5..\"}[5m])) by (ingress) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"governance-platform.*\"}[5m])) by (ingress)) or (sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"governance-platform.*\"}[5m])) by (ingress) * 0)",
+          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m])) by (ingress) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m])) by (ingress)) or (sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m])) by (ingress) * 0)",
           "legendFormat": "{{target}}",
           "refId": "A"
         }
@@ -1553,7 +1553,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"governance-platform.*\", status=~\"5..\"}[5m])) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"governance-platform.*\"}[5m]))) or vector(0)",
+          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m])) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]))) or vector(0)",
           "legendFormat": "Error Rate (5xx)",
           "refId": "A"
         }
@@ -1804,6 +1804,26 @@
       {
         "current": {
           "selected": false,
+          "text": "guardian-platform",
+          "value": "guardian-platform"
+        },
+        "hide": 0,
+        "label": "Release",
+        "name": "release",
+        "options": [
+          {
+            "selected": true,
+            "text": "guardian-platform",
+            "value": "guardian-platform"
+          }
+        ],
+        "query": "guardian-platform",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": false,
           "text": "",
           "value": ""
         },
@@ -1811,7 +1831,7 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\".*governance-studio.*\"}, host)",
+        "definition": "label_values(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-(guardian|governance-studio)\"}, host)",
         "hide": 2,
         "includeAll": false,
         "label": "Instance URL",
@@ -1819,7 +1839,7 @@
         "name": "instance_url",
         "options": [],
         "query": {
-          "query": "label_values(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\".*governance-studio.*\"}, host)",
+          "query": "label_values(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-(guardian|governance-studio)\"}, host)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,

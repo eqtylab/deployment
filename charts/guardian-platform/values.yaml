@@ -1,0 +1,3452 @@
+# =============================================================================
+# GUARDIAN PLATFORM - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the complete Guardian Platform including
+# all microservices, databases, and infrastructure components
+#
+# IMPORTANT: This file contains example values. For production deployments:
+# 1. Copy this file and customize for your environment
+# 2. NEVER commit actual secrets to version control
+# 3. Use external secret management (create=false) for production
+# 4. Override the 'domain' value with your actual domain
+# =============================================================================
+
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+global:
+  # -- Environment Configuration
+  # @default -- `production`
+  # Defines the deployment environment type, affects logging, security, and performance settings
+  # Options: development, staging, production
+  environmentType: "production"
+
+  # -- Base Domain
+  # @default -- `guardian.example.com`
+  # Base domain for all ingress hostnames - MUST be overridden for your environment
+  # This domain will be used by all services for external access
+  # Example: guardian.yourcompany.com
+  domain: "guardian.example.com"
+
+  # -- Image Pull Policy
+  # @default -- `IfNotPresent`
+  # Default image pull policy for all containers
+  # - IfNotPresent: Only pull if image doesn't exist locally (recommended for tagged releases)
+  # - Always: Always pull the latest version (use for 'latest' tags or development)
+  # - Never: Never pull, use local image only
+  imagePullPolicy: "IfNotPresent"
+
+  # -- Replace only the image registry host for EQTY Lab runtime images
+  # Example: registry.customer.example
+  imageRegistryOverride: ""
+
+  # -- Replace the full EQTY Lab image repository prefix for mirrored installs
+  # Example: registry.customer.example/eqtylab
+  imageRepositoryPrefixOverride: ""
+
+  # -- Utility Images
+  # @default -- See values below
+  # Helper images shared by the Auth, Governance and Integrity dependency wait containers
+  utilityImages:
+    # -- BusyBox Wait Container Image
+    # @default -- `""` (keeps `busybox:1.36`)
+    # Complete image reference, for example docker.io/library/busybox@sha256:...
+    busybox: ""
+
+  # -- Image Pull Secrets
+  # @default -- `[{"name": "platform-image-pull-secret"}]`
+  # Secrets for accessing private container registries
+  # These secrets must exist in the namespace before deployment
+  imagePullSecrets:
+    - name: "platform-image-pull-secret"
+
+  # -- PostgreSQL Configuration
+  # PostgreSQL connection settings shared across all platform services
+  postgresql:
+    # -- Database Host
+    # @default -- `""` (automatically resolves to deployed PostgreSQL service)
+    host: ""
+    # -- Database Port
+    # @default -- `5432`
+    port: 5432
+    # -- Database Name
+    # @default -- `governance`
+    # Default database name (additional DBs created via initdb)
+    database: "governance"
+    # -- Database Username
+    # @default -- `postgres`
+    username: "postgres"
+    # Note: Password is retrieved from the platform-database secret for security
+
+    # -- SSL Mode
+    # @default -- `disable`
+    # Options: disable, require, verify-ca, verify-full
+    # Shared default for all services; overridable via <service>.externalDatabase.sslMode
+    sslMode: "disable"
+
+    # -- SSL Root Certificate
+    # @default -- See values below
+    # CA bundle used when sslMode is verify-ca or verify-full
+    sslRootCert:
+      # -- Secret Name
+      # @default -- `""` (set to reference a Secret containing the CA bundle)
+      secretName: ""
+      # -- ConfigMap Name
+      # @default -- `""` (set to reference a ConfigMap containing the CA bundle)
+      configMapName: ""
+      # -- Key
+      # @default -- `ca.crt`
+      key: "ca.crt"
+
+  # -- Secrets Configuration
+  # Centralized secret configuration for all platform components
+  # Secrets can be created automatically by the chart or pre-created manually
+  secrets:
+    # -- Create Secrets
+    # @default -- `false`
+    # Set to true to have the chart create secrets from values below
+    # Set to false to use pre-existing secrets (secrets must exist in namespace)
+    create: false
+
+    # -- Authentication Configuration
+    # @default -- See values below
+    auth:
+      # -- Auth Provider
+      # @default -- `auth0`
+      # Options: auth0, entra, keycloak
+      provider: "auth0"
+
+      # -- Auth0 Configuration (M2M credentials only)
+      # @default -- See values below
+      # Only used if provider=auth0
+      # Note: SPA client ID is set via config, not secrets (it's public)
+      auth0:
+        secretName: "platform-auth0"
+        keys:
+          clientId: "client-id"
+          clientSecret: "client-secret"
+          mgmtClientId: "mgmt-client-id"
+          mgmtClientSecret: "mgmt-client-secret"
+        # Only used if create=true and provider=auth0
+        values:
+          # -- Auth0 Client ID (EQTYLab Platform API M2M - token validation)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
+          clientId: ""
+          # -- Auth0 Client Secret (EQTYLab Platform API M2M)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
+          clientSecret: ""
+          # -- Management API Client ID (Auth Service Backend M2M app)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
+          mgmtClientId: ""
+          # -- Management API Client Secret (Auth Service Backend M2M app)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Auth0 dashboard)
+          mgmtClientSecret: ""
+
+      # -- Microsoft Entra ID Configuration
+      # @default -- See values below
+      # Only used if provider=entra
+      entra:
+        secretName: "platform-entra"
+        keys:
+          clientId: "client-id"
+          clientSecret: "client-secret"
+          tenantId: "tenant-id"
+          graphClientId: "graph-client-id"
+          graphClientSecret: "graph-client-secret"
+        # Only used if create=true and provider=entra
+        values:
+          # -- Entra Client ID (Application (client) ID from Azure app registration)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
+          clientId: ""
+          # -- Entra Client Secret (Client secret from Azure app registration)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
+          clientSecret: ""
+          # -- Entra Tenant ID (Directory (tenant) ID from Azure)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
+          tenantId: ""
+          # -- Graph API Client ID (Application (client) ID for Microsoft Graph access)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
+          graphClientId: ""
+          # -- Graph API Client Secret (Client secret for Microsoft Graph access)
+          # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
+          graphClientSecret: ""
+
+      # -- Keycloak Configuration
+      # @default -- See values below
+      # Only used if provider=keycloak
+      keycloak:
+        secretName: "platform-keycloak"
+        keys:
+          serviceAccountClientId: "service-account-client-id"
+          serviceAccountClientSecret: "service-account-client-secret"
+          tokenExchangePrivateKey: "token-exchange-private-key"
+        # Only used if create=true and provider=keycloak
+        values:
+          # -- Service Account Client ID
+          # @default -- `guardian-platform-backend`
+          serviceAccountClientId: "guardian-platform-backend"
+          # -- Service Account Client Secret
+          # @default -- `""` (REQUIRED if create=true, retrieve from Keycloak admin console)
+          serviceAccountClientSecret: ""
+          # -- Token Exchange Private Key
+          # @default -- `""` (REQUIRED if create=true, generate with: openssl genrsa 2048)
+          tokenExchangePrivateKey: ""
+
+    # -- Auth Service Credentials
+    # @default -- See values below
+    # Used by: auth-service for application secrets
+    authService:
+      secretName: "platform-auth-service"
+      keys:
+        apiSecret: "api-secret"
+        jwtSecret: "jwt-secret"
+      # Only used if create=true
+      values:
+        # -- API Secret
+        # @default -- `""` (generate with: openssl rand -base64 32)
+        apiSecret: ""
+        # -- JWT Secret
+        # @default -- `""` (generate with: openssl rand -base64 32)
+        jwtSecret: ""
+
+    # -- Database Credentials
+    # @default -- See values below
+    # Used by: auth-service, governance-service, integrity-service
+    database:
+      secretName: "platform-database"
+      keys:
+        username: "username"
+        password: "password"
+        # DSN consumed by Agent Gateway services when gateway-stack is enabled
+        gatewayDsn: "gateway-dsn"
+      # Only used if create=true
+      values:
+        # -- Database Username
+        # @default -- `postgres`
+        username: "postgres"
+        # -- Database Password
+        # @default -- `""` (REQUIRED if create=true)
+        password: ""
+        # -- Agent Gateway database DSN
+        # @default -- `""` (REQUIRED if create=true and gateway-stack.enabled=true)
+        # URL-encode credentials that contain reserved URI characters
+        gatewayDsn: ""
+
+    # -- Governance Worker Credentials
+    # @default -- See values below
+    # Used by: auth-service for managing the governance worker's service account credentials
+    governanceWorker:
+      secretName: "platform-governance-worker"
+      keys:
+        encryptionKey: "encryption-key"
+        clientId: "client-id"
+        clientSecret: "client-secret"
+      # Only used if create=true
+      values:
+        # -- Encryption Key
+        # @default -- `""` (generate with: openssl rand -base64 32)
+        encryptionKey: ""
+        # -- Client ID
+        # @default -- `""` (Auth0 M2M application client ID)
+        clientId: ""
+        # -- Client Secret
+        # @default -- `""` (Auth0 M2M application client secret)
+        clientSecret: ""
+
+    # -- Image Registry Credentials
+    # @default -- See values below
+    # Credentials for pulling images from private registries
+    imageRegistry:
+      secretName: "platform-image-pull-secret"
+      registry: "ghcr.io"
+      # Only used if create=true
+      values:
+        # -- Registry Username
+        # @default -- `""` (eqtylab/prod for Cloudsmith entitlements; GitHub username for GHCR)
+        username: ""
+        # -- Registry Password
+        # @default -- `""` (Cloudsmith prod entitlement token, or GitHub PAT with read:packages for GHCR)
+        password: ""
+        # -- Registry Email
+        # @default -- `""` (registry contact email)
+        email: ""
+
+    # -- Key Management Configuration (for credential signing)
+    # @default -- See values below
+    # Used by: auth-service
+    keyManagement:
+      # -- Key Management Provider
+      # @default -- `azure`
+      # Options: aws_kms, azure_key_vault, gcp_kms, openbao
+      # openbao needs no cloud credentials; see auth-service.config.keyManagement.openbao
+      provider: "azure_key_vault"
+
+      # -- AWS KMS
+      # @default -- See values below
+      # Only used if provider=aws_kms
+      aws_kms:
+        secretName: "platform-aws-kms"
+        keys:
+          accessKeyId: "access-key-id"
+          secretAccessKey: "secret-access-key"
+          sessionToken: "session-token"
+        # Only used if create=true and provider=aws_kms
+        values:
+          # -- AWS Access Key ID
+          # @default -- `""` (REQUIRED if create=true)
+          accessKeyId: ""
+          # -- AWS Secret Access Key
+          # @default -- `""` (REQUIRED if create=true)
+          secretAccessKey: ""
+          # -- AWS Session Token (optional)
+          # @default -- `""`
+          sessionToken: ""
+
+      # -- Azure Key Vault
+      # @default -- See values below
+      # Only used if provider=azure_key_vault
+      azure_key_vault:
+        secretName: "platform-azure-key-vault"
+        keys:
+          clientId: "client-id"
+          clientSecret: "client-secret"
+          tenantId: "tenant-id"
+          vaultUrl: "vault-url"
+        # Only used if create=true and provider=azure_key_vault
+        values:
+          # -- Azure Client ID
+          # @default -- `""` (REQUIRED if create=true)
+          clientId: ""
+          # -- Azure Client Secret
+          # @default -- `""` (REQUIRED if create=true)
+          clientSecret: ""
+          # -- Azure Tenant ID
+          # @default -- `""` (REQUIRED if create=true)
+          tenantId: ""
+          # -- Azure Vault URL
+          # @default -- `""` (REQUIRED if create=true)
+          vaultUrl: ""
+
+      # -- GCP KMS
+      # @default -- See values below
+      # Only used if provider=gcp_kms
+      gcp_kms:
+        secretName: "platform-gcp-kms"
+        keys:
+          serviceAccountJson: "service-account-json"
+        # Only used if create=true and provider=gcp_kms
+        values:
+          # -- GCP Service Account JSON (optional if using Workload Identity/ADC)
+          # @default -- `""`
+          serviceAccountJson: ""
+
+      # -- OpenBao token Secret
+      # @default -- See values below
+      # Only used if provider=openbao and auth-service.config.keyManagement.openbao.auth.method=token_file.
+      # The Secret is operator-managed (for example written by an OpenBao Agent);
+      # the umbrella never creates it, even with create=true. The kubernetes auth
+      # method needs no Secret at all.
+      openbao:
+        secretName: ""
+
+    # -- Storage Configuration
+    # @default -- See values below
+    # Used by: governance-service, integrity-service
+    # Each service can choose its own storage provider independently
+    storage:
+      # -- AWS S3
+      # @default -- See values below
+      aws_s3:
+        secretName: "platform-aws-s3"
+        keys:
+          accessKeyId: "access-key-id"
+          secretAccessKey: "secret-access-key"
+        # Only used if create=true
+        values:
+          # -- AWS Access Key ID
+          # @default -- `""` (REQUIRED if create=true)
+          accessKeyId: ""
+          # -- AWS Secret Access Key
+          # @default -- `""` (REQUIRED if create=true)
+          secretAccessKey: ""
+
+      # -- Azure Blob Storage
+      # @default -- See values below
+      azure_blob:
+        secretName: "platform-azure-blob"
+        keys:
+          accountKey: "account-key"
+          connectionString: "connection-string"
+        # Only used if create=true
+        values:
+          # -- Azure Account Key
+          # @default -- `""` (REQUIRED if create=true)
+          accountKey: ""
+          # -- Azure Connection String
+          # @default -- `""` (REQUIRED if create=true)
+          connectionString: ""
+
+      # -- Google Cloud Storage
+      # @default -- See values below
+      gcs:
+        secretName: "platform-gcs"
+        keys:
+          serviceAccountJson: "service-account-json"
+        # Only used if create=true
+        values:
+          # -- GCS Service Account JSON
+          # @default -- `""` (REQUIRED if create=true, raw service account JSON)
+          serviceAccountJson: ""
+
+# =============================================================================
+# Auth Service
+# =============================================================================
+# Default values for the auth-service Helm chart
+# ------------------------------------------------------------------------------
+auth-service:
+  # -- Enable Service
+  # @default -- `true`
+  # Enable the Auth Service
+  enabled: true
+
+  # -- Replica Count
+  # @default -- `2`
+  # Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 2
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Container image settings for Auth Service
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/auth-service`
+    repository: ghcr.io/eqtylab/auth-service
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
+
+  # -- Image Pull Secrets
+  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+  # Additional secrets for pulling images from private registries
+  imagePullSecrets: []
+
+  # -- Name Override
+  # @default -- `""`
+  # Override the chart name used for resource naming
+  nameOverride: ""
+
+  # -- Full Name Override
+  # @default -- `""`
+  # Override the full name used for resource naming
+  fullnameOverride: ""
+
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `true`
+    create: true
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Annotations
+    # @default -- `{}`
+    annotations: {}
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+
+  # -- Pod Annotations
+  # @default -- `{}`
+  # Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Pod Labels
+  # @default -- `{}`
+  # Additional labels to add to pods
+  podLabels: {}
+
+  # -- Pod Security Context
+  # @default -- See values below
+  # Security context applied at the pod level
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # -- Container Security Context
+  # @default -- See values below
+  # Security context applied at the container level
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `8080`
+    port: 8080
+
+  # -- Ingress Configuration
+  # @default -- See values below
+  ingress:
+    # -- Enable Ingress
+    # @default -- `false`
+    enabled: false
+    # -- Ingress Class Name
+    # @default -- `""`
+    # Example: "nginx", "traefik"
+    className: ""
+    # -- Ingress Annotations
+    # @default -- `{}`
+    annotations: {}
+      # cert-manager.io/issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/rewrite-target: /$2
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress Hosts
+    # @default -- See values below
+    hosts:
+      - host: auth.example.com
+        paths:
+          - path: "/authService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    # -- TLS Configuration
+    # @default -- `[]`
+    tls: []
+      # - secretName: auth-service-tls
+      #   hosts:
+      #     - auth.example.com
+
+  # -- Resource Configuration
+  # @default -- See values below
+  # CPU and memory resource requests and limits
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `2`
+    minReplicas: 2
+    # -- Maximum Replicas
+    # @default -- `10`
+    maxReplicas: 10
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `true`
+    enabled: true
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
+
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity
+  # @default -- See values below
+  # Affinity rules for pod assignment
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - auth-service
+            topologyKey: kubernetes.io/hostname
+
+  # -- Init Containers
+  # @default -- `[]`
+  # Init containers to add to the pod
+  initContainers: []
+
+  # -- Startup Probe
+  # @default -- See values below
+  startupProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness Probe
+  # @default -- See values below
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  # -- Readiness Probe
+  # @default -- See values below
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+    successThreshold: 1
+
+  # -- Volumes
+  # @default -- `[]`
+  # Additional volumes on the Deployment
+  volumes: []
+
+  # -- Volume Mounts
+  # @default -- `[]`
+  # Additional volumeMounts on the Deployment
+  volumeMounts: []
+
+  # =============================================================================
+  # DATABASE CONFIGURATION
+  # =============================================================================
+
+  # -- External Database Configuration
+  # @default -- See values below
+  externalDatabase:
+    # -- Database Host
+    # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
+    host: ""
+    # -- Database Port
+    # @default -- `""` (defaults to 5432)
+    port: ""
+    # -- Database Name
+    # @default -- `""` (defaults to "governance")
+    name: ""
+    # -- Database User
+    # @default -- `""` (defaults to "postgres")
+    user: ""
+    # -- Database Password
+    # @default -- `""` (auto-configured from global.secrets.database)
+    password: ""
+    # -- SSL Mode
+    # @default -- `""` (auto-configured from global.postgresql.sslMode, defaults to "disable")
+    # Options: disable, require, verify-ca, verify-full
+    sslMode: ""
+
+    # -- Password Secret Reference
+    # @default -- See values below
+    passwordSecretKeyRef:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.database.secretName)
+      name: ""
+      # -- Secret Key
+      # @default -- `""` (defaults to "password")
+      key: ""
+
+  # -- Database Migrations
+  # @default -- See values below
+  migrations:
+    # -- Run at Startup
+    # @default -- `true`
+    # Run database migrations automatically at startup
+    runAtStartup: true
+    # -- Migration Path
+    # @default -- `/pkg/database/migrations`
+    # Path to migration files within the container
+    path: "/pkg/database/migrations"
+
+  # =============================================================================
+  # SECRETS CONFIGURATION
+  # =============================================================================
+
+  # -- Secrets Configuration
+  # @default -- See values below
+  secrets:
+    # -- Auth Provider Secrets
+    # @default -- See values below
+    # Only configure the section matching your auth provider
+    auth:
+      # -- Auth0 Secret
+      # @default -- See values below
+      # Only used when provider is "auth0"
+      auth0:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.auth0.secretName)
+        name: ""
+      # -- Entra Secret
+      # @default -- See values below
+      # Only used when provider is "entra"
+      entra:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+        name: ""
+      # -- Keycloak Secret
+      # @default -- See values below
+      # Only used when provider is "keycloak"
+      keycloak:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
+        name: ""
+
+    # -- Auth Service Secrets
+    # @default -- See values below
+    authService:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.authService.secretName)
+      name: ""
+
+    # -- Key Management Credentials
+    # @default -- See values below
+    # For DID key signing
+    keyManagement:
+      # -- AWS KMS Secret
+      # @default -- See values below
+      # Only used when provider is "aws_kms"
+      aws_kms:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.aws_kms.secretName)
+        name: ""
+      # -- Azure Key Vault Secret
+      # @default -- See values below
+      # Only used when provider is "azure_key_vault"
+      azure_key_vault:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.secretName)
+        name: ""
+      # -- GCP KMS Secret
+      # @default -- See values below
+      # Only used when provider is "gcp_kms"
+      gcp_kms:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.gcp_kms.secretName)
+        name: ""
+
+      # -- Operator-managed OpenBao token Secret (token_file only)
+      openbao:
+        # @default -- `""` (global.secrets.keyManagement.openbao.secretName)
+        name: ""
+
+    # -- Governance Worker Secret
+    # @default -- See values below
+    governanceWorker:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.governanceWorker.secretName)
+      name: ""
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+
+  # -- Application Configuration
+  # @default -- See values below
+  config:
+    # ---------------------------------------------------------------------------
+    # Server Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Server Configuration
+    # @default -- See values below
+    server:
+      # -- Port
+      # @default -- `8080`
+      port: 8080
+      # -- Host
+      # @default -- `0.0.0.0`
+      host: "0.0.0.0"
+      # -- Environment
+      # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+      environment: ""
+      # -- Auth Service URL
+      # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}/api/v1/auth")
+      # Internal URL used by auth-service to reference itself (e.g., for JWKS endpoint)
+      authServiceUrl: ""
+      # -- Swagger Enabled
+      # @default -- `true`
+      # Enable Swagger documentation
+      swaggerEnabled: true
+      # -- Swagger Host
+      # @default -- `""` (auto-generated from global.domain)
+      # Only used when swaggerEnabled is true
+      swaggerHost: ""
+      # -- Swagger Base Path
+      # @default -- `/authService`
+      # Only used when swaggerEnabled is true
+      swaggerBasePath: "/authService"
+
+    # ---------------------------------------------------------------------------
+    # Auth Service Secrets (API and JWT)
+    # ---------------------------------------------------------------------------
+
+    # -- API Secret
+    # @default -- `""` (auto-configured from global.secrets.authService)
+    apiSecret: ""
+
+    # -- JWT Secret
+    # @default -- `""` (auto-configured from global.secrets.authService)
+    jwtSecret: ""
+
+    # ---------------------------------------------------------------------------
+    # Logging Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Logging Configuration
+    # @default -- See values below
+    logging:
+      # -- Log Level
+      # @default -- `info`
+      # Options: debug, info, warn, error
+      level: "info"
+      # -- Log Format
+      # @default -- `json`
+      # Options: json, text
+      format: "json"
+      # -- Skip Paths
+      # @default -- `/health`
+      # Paths to skip in logs (prefix match)
+      skipPaths: "/health"
+
+    # ---------------------------------------------------------------------------
+    # CORS Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- CORS Configuration
+    # @default -- See values below
+    cors:
+      # -- Enable CORS
+      # @default -- `false`
+      # Usually handled by ingress in Kubernetes
+      enabled: false
+      # -- Allowed Origins
+      # @default -- `*`
+      origins: "*"
+
+    # ---------------------------------------------------------------------------
+    # Identity Provider Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Identity Provider Configuration
+    # @default -- See values below
+    idp:
+      # -- Provider
+      # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
+      # Options: auth0, entra, keycloak
+      provider: ""
+      # -- OIDC Issuer URL
+      # @default -- `""`
+      issuer: ""
+      # -- Skip Issuer Verification
+      # @default -- `false`
+      # Dangerous - only for development
+      skipIssuerVerification: false
+
+      # -- Auth0 Configuration
+      # @default -- See values below
+      # Only used when provider is "auth0"
+      auth0:
+        # -- Domain
+        # @default -- `""`
+        # **REQUIRED for Auth0**: Tenant domain (e.g., "yourcompany.us.auth0.com")
+        domain: ""
+        # -- Management Audience
+        # @default -- `""`
+        # **REQUIRED for Auth0**: Management API audience (e.g., "https://yourcompany.us.auth0.com/api/v2/")
+        managementAudience: ""
+        # -- API Identifier
+        # @default -- `""`
+        # **REQUIRED for Auth0**: API identifier (e.g., "https://guardian.yourcompany.com")
+        apiIdentifier: ""
+        # -- Default Connection
+        # @default -- `Username-Password-Authentication`
+        # Default connection for user creation
+        defaultConnection: "Username-Password-Authentication"
+        # -- Default Roles
+        # @default -- `[user]`
+        # Default roles for new users
+        defaultRoles:
+          - user
+        # -- Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+        # Only used when provider is "auth0"
+        clientId: ""
+        # -- Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+        # Only used when provider is "auth0"
+        clientSecret: ""
+        # -- Management Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+        # Only used when provider is "auth0"
+        managementClientId: ""
+        # -- Management Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+        # Only used when provider is "auth0"
+        managementClientSecret: ""
+
+      # -- Microsoft Entra ID Configuration
+      # @default -- See values below
+      # Only used when provider is "entra"
+      entra:
+        # -- Tenant ID
+        # @default -- `""`
+        # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+        tenantId: ""
+        # -- Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # OIDC client ID for token validation
+        clientId: ""
+        # -- Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # OIDC client secret
+        clientSecret: ""
+        # -- Graph API Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # App registration client ID with Graph API permissions
+        graphClientId: ""
+        # -- Graph API Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.entra)
+        # Corresponding client secret for Graph API
+        graphClientSecret: ""
+        # -- Default Roles
+        # @default -- `""`
+        # Comma-separated default roles for new users (optional)
+        defaultRoles: ""
+
+      # -- Keycloak Configuration
+      # @default -- See values below
+      # Only used when provider is "keycloak"
+      keycloak:
+        # -- Realm
+        # @default -- `""`
+        # **REQUIRED for Keycloak**: Realm name (e.g., "guardian")
+        realm: ""
+        # -- Admin URL
+        # @default -- `""`
+        # **REQUIRED for Keycloak**: Admin URL for admin operations (e.g., "https://keycloak.example.com")
+        adminUrl: ""
+        # -- Enable User Management
+        # @default -- `false`
+        # Enable user management via Keycloak admin API
+        enableUserManagement: false
+        # -- Enable Group Sync
+        # @default -- `false`
+        # Enable group sync with Keycloak
+        enableGroupSync: false
+        # -- Client ID
+        # @default -- `""`
+        # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "guardian-platform-frontend")
+        clientId: ""
+        # -- Service Account Client ID
+        # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+        # Only used when provider is "keycloak"
+        serviceAccountClientId: ""
+        # -- Service Account Client Secret
+        # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+        # Only used when provider is "keycloak"
+        serviceAccountClientSecret: ""
+
+    # ---------------------------------------------------------------------------
+    # Key Management Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Key Management Configuration
+    # @default -- See values below
+    keyManagement:
+      # -- Provider
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.provider)
+      # Options: aws_kms, azure_key_vault, gcp_kms, openbao
+      provider: ""
+      # -- DID key algorithm for newly created keys (DID_KEY_ALGORITHM)
+      # @default -- `""` (image default `secp256k1`; `openbao` renders `p256`)
+      algorithm: ""
+      # -- Cache TTL Minutes
+      # @default -- `15`
+      # DID Key cache TTL in minutes (not used by the openbao provider)
+      cacheTTLMinutes: 15
+
+      # -- OpenBao Transit Configuration
+      # @default -- See values below
+      # Only used when provider is "openbao". Supported for fresh installations
+      # with P-256/SHA-256. See charts/auth-service/README.md, "OpenBao Transit".
+      openbao:
+        # -- OpenBao API origin (OPENBAO_ADDRESS)
+        # @default -- `""` (**REQUIRED**: https:// origin)
+        # No credentials, path, query or fragment; optional trailing / allowed.
+        # An explicit loopback IP permits http:// only when the environment is
+        # exactly "development" (auth-service.config.server.environment, then
+        # global.environmentType, default "production"); localhost is rejected.
+        address: ""
+        # -- Transit mount dedicated to Auth (OPENBAO_TRANSIT_MOUNT)
+        # @default -- `guardian-did`
+        transitMount: ""
+        # -- Key name prefix (OPENBAO_KEY_PREFIX)
+        # @default -- `guardian`
+        keyPrefix: ""
+        # -- Per-request timeout (OPENBAO_REQUEST_TIMEOUT)
+        # @default -- `5s`
+        requestTimeout: ""
+        # -- CA bundle for the OpenBao endpoint, mounted at /etc/openbao/ca
+        # @default -- See values below
+        ca:
+          # -- Secret holding the PEM bundle
+          # @default -- `""`
+          secretName: ""
+          # -- ConfigMap holding the PEM bundle
+          # @default -- `""`
+          configMapName: ""
+          # -- Key inside the Secret/ConfigMap
+          # @default -- `ca.pem`
+          key: ""
+        # -- Egress to the OpenBao endpoint when auth-service.networkPolicy.enabled
+        # @default -- See values below
+        networkPolicy:
+          # -- NetworkPolicy `to` peers for the OpenBao endpoint (empty: no rule)
+          # @default -- `[]`
+          to: []
+          # -- OpenBao API port
+          # @default -- `8200`
+          port: 8200
+        # -- Workload authentication
+        # @default -- See values below
+        auth:
+          # -- `kubernetes` (projected token) or `token_file` (operator-managed Secret)
+          # @default -- `kubernetes`
+          method: "kubernetes"
+          # -- TokenReview reviewer for OpenBao's Kubernetes auth (see the auth-service chart README)
+          # @default -- See values below
+          reviewer:
+            # -- Create a reviewer ServiceAccount bound to system:auth-delegator
+            # @default -- `false`
+            create: false
+            # -- Reviewer ServiceAccount name
+            # @default -- `""` (`<release>-auth-service-openbao-reviewer`)
+            name: ""
+            # -- Also create a long-lived token Secret for an external OpenBao
+            # @default -- `false`
+            tokenSecret: false
+          # -- Kubernetes auth mount (OPENBAO_AUTH_MOUNT)
+          # @default -- `kubernetes`
+          mount: ""
+          # -- OpenBao role bound to the Auth Service account (OPENBAO_AUTH_ROLE)
+          # @default -- `""` (**REQUIRED for kubernetes**)
+          role: ""
+          # -- Projected token audience (OPENBAO_KUBERNETES_AUDIENCE)
+          # @default -- `""` (**REQUIRED for kubernetes**)
+          audience: ""
+          # -- Projected token lifetime in seconds
+          # @default -- `3600`
+          tokenExpirationSeconds: 3600
+          # -- Key inside the token Secret (token_file only)
+          # @default -- `token`
+          tokenKey: ""
+
+      # -- AWS KMS Configuration
+      # @default -- See values below
+      # Only used when provider is "aws_kms"
+      aws_kms:
+        # -- AWS KMS Region
+        # @default -- `""`
+        region: ""
+        # -- AWS KMS Endpoint (optional, for custom endpoints like LocalStack)
+        # @default -- `""`
+        endpoint: ""
+        # -- AWS KMS Alias Prefix
+        # @default -- `alias/eqtylab/did`
+        aliasPrefix: ""
+        # -- AWS Access Key ID (secret - auto-configured from global.secrets.keyManagement.aws_kms)
+        # @default -- `""`
+        accessKeyId: ""
+        # -- AWS Secret Access Key (secret - auto-configured from global.secrets.keyManagement.aws_kms)
+        # @default -- `""`
+        secretAccessKey: ""
+        # -- AWS Session Token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)
+        # @default -- `""`
+        sessionToken: ""
+        # -- AWS KMS Deletion Window Days
+        # @default -- `7`
+        deletionWindowDays: 7
+        # -- IAM user or role ARN granted use of new DID keys (optional, derived from the running credentials; set for a role with a path, or when STS is unreachable)
+        # @default -- `""`
+        keyPolicyPrincipalArn: ""
+
+      # -- Azure Key Vault Configuration
+      # @default -- See values below
+      # Only used when provider is "azure_key_vault"
+      azure_key_vault:
+        # -- Vault URL
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
+        vaultUrl: ""
+        # -- Tenant ID
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
+        tenantId: ""
+        # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+        # @default -- `""`
+        clientId: ""
+        # -- Client Secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
+        # @default -- `""`
+        clientSecret: ""
+
+      # -- GCP KMS Configuration
+      # @default -- See values below
+      # Only used when provider is "gcp_kms"
+      gcp_kms:
+        # -- GCP Project ID
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.gcp_kms.values.projectId)
+        projectId: ""
+        # -- GCP KMS Location ID
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.gcp_kms.values.locationId)
+        locationId: ""
+        # -- GCP KMS Key Ring ID
+        # @default -- `eqtylab-did`
+        keyRingId: ""
+        # -- GCP KMS Scheduled Destroy Days
+        # @default -- `24`
+        scheduledDestroyDays: 24
+        # -- GCP Service Account JSON (secret, optional - auto-configured from global.secrets.keyManagement.gcp_kms)
+        # @default -- `""`
+        # Not needed if using Workload Identity or Application Default Credentials (ADC)
+        serviceAccountJson: ""
+
+    # ---------------------------------------------------------------------------
+    # Service Accounts Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Service Accounts Configuration
+    # @default -- See values below
+    serviceAccounts:
+      # -- Governance Worker Configuration
+      # @default -- See values below
+      governanceWorker:
+        # -- Enabled
+        # @default -- `true`
+        # Enable governance worker service account
+        enabled: true
+        # -- Scopes
+        # @default -- See values below
+        # Scopes for service account
+        scopes:
+          - "governance:declarations:create"
+          - "integrity:statements:create"
+        # -- Audience
+        # @default -- `""`
+        # **REQUIRED for Auth0**: API audience for worker (e.g., "https://guardian.yourcompany.com")
+        audience: ""
+        # -- Scope
+        # @default -- `""` (auth-service falls back to `api://<clientId>/.default`)
+        # **Entra only**: OAuth scope requested for worker tokens
+        scope: ""
+        # -- Client ID
+        # @default -- `""` (auto-configured from global.secrets.governanceWorker)
+        clientId: ""
+        # -- Client Secret
+        # @default -- `""` (auto-configured from global.secrets.governanceWorker)
+        clientSecret: ""
+        # -- Encryption Key
+        # @default -- `""` (auto-configured from global.secrets.governanceWorker)
+        encryptionKey: ""
+
+    # ---------------------------------------------------------------------------
+    # Token Exchange Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Token Exchange Configuration
+    # @default -- See values below
+    # For Keycloak integration
+    tokenExchange:
+      # -- Enabled
+      # @default -- `false`
+      # Enable token exchange
+      enabled: false
+      # -- Key ID
+      # @default -- `auth-service-prod-001`
+      # Key identifier for signing key
+      keyId: "auth-service-prod-001"
+      # -- Private Key
+      # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+      # Only used when tokenExchange is enabled
+      privateKey: ""
+      # -- Access Token Expiry
+      # @default -- `3600`
+      # Lifetime of issued access tokens in seconds, max 86400; the first token
+      # after login is capped by the IdP token's remaining life
+      accessTokenExpirySeconds: 3600
+
+  # =============================================================================
+  # NETWORK POLICY CONFIGURATION
+  # =============================================================================
+
+  # -- Network Policy Configuration
+  # @default -- See values below
+  networkPolicy:
+    # -- Enabled
+    # @default -- `false`
+    # Enable NetworkPolicy
+    enabled: false
+
+    # -- Ingress Rules
+    # @default -- See values below
+    ingress:
+      - from:
+          - namespaceSelector:
+              matchLabels:
+                name: ingress-nginx
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: governance-service
+        ports:
+          - protocol: TCP
+            port: 8080
+
+    # -- Egress Rules
+    # @default -- See values below
+    egress:
+      # Allow DNS
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: kube-system
+        ports:
+          - protocol: TCP
+            port: 53
+          - protocol: UDP
+            port: 53
+
+      # Allow PostgreSQL
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: postgresql
+        ports:
+          - protocol: TCP
+            port: 5432
+
+      # Allow external HTTPS (for IDP communication)
+      - to: []
+        ports:
+          - protocol: TCP
+            port: 443
+
+  # =============================================================================
+  # MIGRATION JOB CONFIGURATION
+  # =============================================================================
+
+  # -- Migration Job Configuration
+  # @default -- See values below
+  migration:
+    # -- Enabled
+    # @default -- `false`
+    # Enable migration as a Helm hook job
+    enabled: false
+    # -- Backoff Limit
+    # @default -- `3`
+    # Job backoff limit
+    backoffLimit: 3
+    # -- Active Deadline Seconds
+    # @default -- `300`
+    # Job active deadline in seconds
+    activeDeadlineSeconds: 300
+    # -- TTL Seconds After Finished
+    # @default -- `300`
+    # TTL for completed jobs
+    ttlSecondsAfterFinished: 300
+
+    # -- Resources
+    # @default -- See values below
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  # =============================================================================
+  # EXTRA CONFIGURATION
+  # =============================================================================
+
+  # -- Extra Environment Variables
+  # @default -- `[]`
+  extraEnvVars: []
+    # - name: EXTRA_VAR
+    #   value: "extra-value"
+
+  # -- Extra Environment Variables Secret
+  # @default -- `""`
+  # Extra environment variables from Secret
+  extraEnvVarsSecret: ""
+
+  # -- Extra Environment Variables ConfigMap
+  # @default -- `""`
+  # Extra environment variables from ConfigMap
+  extraEnvVarsConfigMap: ""
+
+  # -- Extra Containers
+  # @default -- `[]`
+  # Extra containers to add to the pod
+  extraContainers: []
+
+  # -- Extra Manifests
+  # @default -- `[]`
+  # Extra manifests to deploy
+  extraManifests: []
+
+  # -- Host Aliases
+  # @default -- `[]`
+  # Optional pod host aliases (local qualification DNS only)
+  hostAliases: []
+
+# =============================================================================
+# PDFGen
+# =============================================================================
+# Default values for the eqty-pdfgen Helm chart
+# ------------------------------------------------------------------------------
+eqty-pdfgen:
+  # -- Enable Service
+  # @default -- `true`
+  # Enable the PDF generation service
+  enabled: true
+
+  # -- Replica Count
+  # @default -- `2`
+  # Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 2
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Container image settings for PDFGen
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/eqty-pdfgen`
+    repository: ghcr.io/eqtylab/eqty-pdfgen
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
+
+  # -- Image Pull Secrets
+  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+  # Additional secrets for pulling images from private registries
+  imagePullSecrets: []
+
+  # -- Name Override
+  # @default -- `""`
+  # Override the chart name used for resource naming
+  nameOverride: ""
+
+  # -- Full Name Override
+  # @default -- `""`
+  # Override the full name used for resource naming
+  fullnameOverride: ""
+
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `false`
+    create: false
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Annotations
+    # @default -- `{}`
+    annotations: {}
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+
+  # -- Pod Annotations
+  # @default -- `{}`
+  # Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Pod Labels
+  # @default -- `{}`
+  # Additional labels to add to pods
+  podLabels: {}
+
+  # -- Pod Security Context
+  # @default -- See values below
+  # Security context applied at the pod level
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 0
+    fsGroup: 0
+    fsGroupChangePolicy: OnRootMismatch
+
+  # -- Container Security Context
+  # @default -- See values below
+  # Security context applied at the container level
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `8080`
+    port: 8080
+
+  # -- Resource Configuration
+  # @default -- `{}`
+  # CPU and memory resource requests and limits
+  resources: {}
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `10`
+    maxReplicas: 10
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `true`
+    enabled: true
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    maxUnavailable: 1
+
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Startup Probe
+  # @default -- See values below
+  startupProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness Probe
+  # @default -- See values below
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness Probe
+  # @default -- See values below
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+  config:
+    # -- Bind Host
+    # @default -- `0.0.0.0`
+    host: 0.0.0.0
+    # -- Bind Port
+    # @default -- `8080`
+    port: 8080
+    # -- Writable temporary directory under the app working directory
+    # @default -- `tmp`
+    tmpDir: tmp
+    # -- Typst font search paths
+    # @default -- `/usr/share/fonts`
+    typstFontPaths: /usr/share/fonts
+    # -- Typst package cache path baked into the runtime image
+    # @default -- `/opt/app-root/src/.cache/typst/packages`
+    typstPackageCachePath: /opt/app-root/src/.cache/typst/packages
+    # -- RFC 3161 timestamp authority URL used during PDF signing
+    # @default -- `http://timestamp.digicert.com`
+    # Set to an empty string to sign without a timestamp token. Requires the
+    # PDFgen empty-URL behavior from guardian#234; see eqty-pdfgen README.
+    timestampUrl: http://timestamp.digicert.com
+    # -- Auth-service signing endpoint
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080/api/v1/protected/sign-pdf")
+    signingUrl: ""
+    # -- Version-bound signing (EQTY_SIGNING_BOUND)
+    # @default -- `false`
+    # Requires compatible PDFgen and Auth images from guardian#234, including
+    # Auth's curve-correct certificates from #233. See eqty-pdfgen README.
+    # The supporting PDFgen client fails closed against incompatible Auth images.
+    # Independent of key-management provider; OpenBao is optional and dev-only.
+    signingBound: false
+
+  # -- NetworkPolicy Configuration
+  # @default -- See values below
+  networkPolicy:
+    # -- Enable NetworkPolicy
+    # @default -- `false`
+    enabled: false
+    # -- Ingress policy rules
+    # @default -- `[]`
+    ingress: []
+    # -- Egress policy rules
+    # @default -- `[]`
+    egress: []
+
+  # -- Extra Environment Variables
+  # @default -- `[]`
+  extraEnvVars: []
+
+  # -- Extra Environment Variables from Secret
+  # @default -- `""`
+  extraEnvVarsSecret: ""
+
+  # -- Extra Environment Variables from ConfigMap
+  # @default -- `""`
+  extraEnvVarsConfigMap: ""
+
+# =============================================================================
+# Agent Gateway
+# =============================================================================
+# The gateway remains opt-in for the first consolidated release so existing
+# Guardian Platform installations are not changed by an upgrade. The example
+# overlay in examples/values-gateway.yaml enables the complete integration
+# ------------------------------------------------------------------------------
+gateway-stack:
+  enabled: false
+
+  # Reuse the platform database Secret. When global.secrets.create=true, the
+  # umbrella chart writes the DSN key below; external-secret users must provide it
+  database:
+    existingSecret: "platform-database"
+    secretKeys:
+      dsn: "gateway-dsn"
+    name: "guardian_gateway"
+
+  # The bundled platform PostgreSQL is authoritative for the umbrella chart
+  postgresql:
+    enabled: false
+
+  # The platform already installs an ingress controller separately
+  haproxyIngress:
+    enabled: false
+
+  llmGateway:
+    deploymentEnvironment: "production"
+    registration:
+      # Enabling registration requires a credential signer seed Secret
+      enabled: false
+
+  controlPlane:
+    adapter:
+      enabled: true
+    auth:
+      bearer:
+        enabled: true
+        mode: "auth_service"
+
+  # Keep public routes opt-in until their hostnames and auth policy have been
+  # selected for an environment
+  ingress:
+    enabled: false
+
+# =============================================================================
+# Governance Service
+# =============================================================================
+# Default values for the governance-service Helm chart
+# ------------------------------------------------------------------------------
+governance-service:
+  # -- Enable Service
+  # @default -- `true`
+  # Enable the Governance Service backend API
+  enabled: true
+
+  # -- Replica Count
+  # @default -- `2`
+  # Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 2
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Container image settings for Governance Service
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/governance-service`
+    repository: ghcr.io/eqtylab/governance-service
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
+
+  # -- Container Command
+  # @default -- `["./governance-service"]`
+  # Container entrypoint command
+  command: ["./governance-service"]
+
+  # -- Container Arguments
+  # @default -- `[]`
+  # Available options: -debug-config, -debug-config-only, -show-secrets, -help
+  args: []
+
+  # -- Image Pull Secrets
+  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+  # Additional secrets for pulling images from private registries
+  imagePullSecrets: []
+
+  # -- Name Override
+  # @default -- `""`
+  # Override the chart name used for resource naming
+  nameOverride: ""
+
+  # -- Full Name Override
+  # @default -- `""`
+  # Override the full name used for resource naming
+  fullnameOverride: ""
+
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `false`
+    create: false
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Annotations
+    # @default -- `{}`
+    annotations: {}
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+
+  # -- Pod Annotations
+  # @default -- `{}`
+  # Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Pod Labels
+  # @default -- `{}`
+  # Additional labels to add to pods
+  podLabels: {}
+
+  # -- Pod Security Context
+  # @default -- `{}`
+  # Security context applied at the pod level
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  # -- Container Security Context
+  # @default -- `{}`
+  # Security context applied at the container level
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `10001`
+    port: 10001
+
+  # -- Ingress Configuration
+  # @default -- See values below
+  ingress:
+    # -- Enable Ingress
+    # @default -- `false`
+    enabled: false
+    # -- Ingress Class Name
+    # @default -- `""`
+    # Example: "nginx", "traefik"
+    className: ""
+    # -- Ingress Annotations
+    # @default -- `{}`
+    annotations: {}
+      # cert-manager.io/issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/rewrite-target: /$2
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress Hosts
+    # @default -- See values below
+    hosts:
+      - host: guardian.example.com
+        paths:
+          # Path uses regex for nginx rewrite - requires rewrite-target annotation
+          - path: "/governanceService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    # -- TLS Configuration
+    # @default -- `[]`
+    tls: []
+      # - secretName: governance-service-tls
+      #   hosts:
+      #     - guardian.example.com
+
+  # -- Resource Configuration
+  # @default -- `{}`
+  # CPU and memory resource requests and limits
+  resources: {}
+    # requests:
+    #   cpu: 250m
+    #   memory: 256Mi
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `100`
+    maxReplicas: 100
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `true`
+    enabled: true
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
+
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Init Containers
+  # @default -- `[]`
+  # Init containers to add to the pod
+  initContainers: []
+
+  # -- Startup Probe
+  # @default -- See values below
+  startupProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness Probe
+  # @default -- See values below
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness Probe
+  # @default -- See values below
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # DATABASE CONFIGURATION
+  # =============================================================================
+
+  # -- External Database Configuration
+  # @default -- See values below
+  externalDatabase:
+    # -- Database Host
+    # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
+    host: ""
+    # -- Database Port
+    # @default -- `5432`
+    port: 5432
+    # -- Database Name
+    # @default -- `governance`
+    name: "governance"
+    # -- Database User
+    # @default -- `postgres`
+    user: "postgres"
+    # -- Database Password
+    # @default -- `""` (auto-configured from global.secrets.database)
+    password: ""
+    # -- SSL Mode
+    # @default -- `""` (auto-configured from global.postgresql.sslMode, defaults to "disable")
+    # Options: disable, require, verify-ca, verify-full
+    sslMode: ""
+
+    # -- Password Secret Reference
+    # @default -- See values below
+    passwordSecretKeyRef:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.database.secretName)
+      name: ""
+      # -- Secret Key
+      # @default -- `password`
+      key: "password"
+
+  # -- Database Migrations
+  # @default -- See values below
+  migrations:
+    # -- Run at Startup
+    # @default -- `true`
+    # Run database migrations automatically at startup
+    runAtStartup: true
+    # -- Migration Path
+    # @default -- `/app/migrations`
+    # Path to migration files within the container
+    path: "/app/migrations"
+
+  # =============================================================================
+  # SECRETS CONFIGURATION
+  # =============================================================================
+
+  # -- Secrets Configuration
+  # @default -- See values below
+  secrets:
+    # -- Auth Provider Secrets
+    # @default -- See values below
+    # Only configure the section matching your auth provider
+    auth:
+      # -- Auth0 Secret
+      # @default -- See values below
+      # Only used when auth provider is "auth0"
+      auth0:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.auth0.secretName)
+        name: ""
+      # -- Entra Secret
+      # @default -- See values below
+      # Only used when auth provider is "entra"
+      entra:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.entra.secretName)
+        name: ""
+      # -- Keycloak Secret
+      # @default -- See values below
+      # Only used when auth provider is "keycloak"
+      keycloak:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.auth.keycloak.secretName)
+        name: ""
+
+    # -- Storage Secrets
+    # @default -- See values below
+    # Only configure the section matching your storage provider
+    storage:
+      # -- AWS S3 Secret
+      # @default -- See values below
+      # Only used when storageProvider is "aws_s3"
+      aws_s3:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
+        name: ""
+
+      # -- Azure Blob Storage Secret
+      # @default -- See values below
+      # Only used when storageProvider is "azure_blob"
+      azure_blob:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
+        name: ""
+
+      # -- GCS Secret
+      # @default -- See values below
+      # Only used when storageProvider is "gcs"
+      gcs:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.gcs.secretName)
+        name: ""
+
+    # -- Auth Service Secret
+    # @default -- See values below
+    # Secret containing the Auth Service API key for worker authentication
+    authService:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.authService.secretName)
+      name: ""
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+
+  # -- Application Configuration
+  # @default -- See values below
+  config:
+    # -- Health Check Path
+    # @default -- `/health`
+    healthPath: "/health"
+
+    # -- Application Environment
+    # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+    environment: ""
+
+    # -- Log Level
+    # @default -- `info`
+    # Options: debug, info, warn, error
+    logLevel: "info"
+
+    # -- Log Format
+    # @default -- `json`
+    # Options: json, text, console, pretty
+    logFormat: "json"
+
+    # -- Skip Paths
+    # @default -- `/health`
+    # Paths to skip in logs (prefix match)
+    skipPaths: "/health"
+
+    # ---------------------------------------------------------------------------
+    # HTTP Server Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Server Configuration
+    # @default -- See values below
+    server:
+      # -- Read Timeout
+      # @default -- `30`
+      # Maximum time to read request (seconds)
+      readTimeout: 30
+      # -- Write Timeout
+      # @default -- `30`
+      # Maximum time to write response (seconds)
+      writeTimeout: 30
+      # -- Idle Timeout
+      # @default -- `120`
+      # Maximum idle time for connections (seconds)
+      idleTimeout: 120
+      # -- Swagger Enabled
+      # @default -- `true`
+      # Enable Swagger documentation
+      swaggerEnabled: true
+      # -- Swagger Host
+      # @default -- `""` (auto-generated from global.domain)
+      # Only used when swaggerEnabled is true
+      swaggerHost: ""
+      # -- Swagger Base Path
+      # @default -- `/governanceService`
+      # Only used when swaggerEnabled is true
+      swaggerBasePath: "/governanceService"
+
+    # ---------------------------------------------------------------------------
+    # Storage Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Storage Provider
+    # @default -- `""`
+    # **REQUIRED**: Cloud storage provider
+    # Options: aws_s3, azure_blob, gcs
+    storageProvider: ""
+
+    # -- AWS S3 Region
+    # @default -- `""`
+    # **REQUIRED for S3**: AWS region (e.g., "us-east-1")
+    # Only used when storageProvider is "aws_s3"
+    awsS3Region: ""
+
+    # -- AWS S3 Bucket Name
+    # @default -- `""`
+    # **REQUIRED for S3**: Bucket name
+    # Only used when storageProvider is "aws_s3"
+    awsS3BucketName: ""
+
+    # -- AWS S3 Access Key ID
+    # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
+    # Only used when storageProvider is "aws_s3"
+    awsS3AccessKeyId: ""
+
+    # -- AWS S3 Secret Access Key
+    # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
+    # Only used when storageProvider is "aws_s3"
+    awsS3SecretAccessKey: ""
+
+    # -- Use AWS IAM role for S3 access instead of static credentials
+    # @default -- `false`
+    # Omits the credential env vars so the AWS SDK uses its default chain (IRSA, instance profile)
+    # Only used when storageProvider is "aws_s3"
+    awsS3UseIamRole: false
+
+    # -- Azure Storage Account Name
+    # @default -- `""`
+    # **REQUIRED for Azure**: Storage account name
+    # Only used when storageProvider is "azure_blob"
+    azureStorageAccountName: ""
+
+    # -- Azure Storage Account Key
+    # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
+    # Only used when storageProvider is "azure_blob"
+    azureStorageAccountKey: ""
+
+    # -- Azure Storage Connection String
+    # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
+    # Only used when storageProvider is "azure_blob"
+    azureStorageConnectionString: ""
+
+    # -- Azure Storage Container Name
+    # @default -- `""`
+    # **REQUIRED for Azure**: Container name
+    # Only used when storageProvider is "azure_blob"
+    azureStorageContainerName: ""
+
+    # -- Azure Use Managed Identity
+    # @default -- `false`
+    # Use Azure managed identity instead of account key
+    # Only used when storageProvider is "azure_blob"
+    azureUseManagedIdentity: false
+
+    # -- GCS Bucket Name
+    # @default -- `""`
+    # **REQUIRED for GCS**: Bucket name
+    # Only used when storageProvider is "gcs"
+    gcsBucketName: ""
+
+    # ---------------------------------------------------------------------------
+    # Authentication Provider Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Auth Provider
+    # @default -- `""` (auto-configured from global.secrets.auth.provider, defaults to "auth0")
+    # Options: auth0, entra, keycloak
+    authProvider: ""
+
+    # -- Auth0 Domain
+    # @default -- `""`
+    # **REQUIRED for Auth0**: Tenant domain (e.g., "yourcompany.us.auth0.com")
+    # Only used when auth provider is "auth0"
+    auth0Domain: ""
+
+    # -- Auth0 Client ID
+    # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+    # Only used when auth provider is "auth0"
+    auth0ClientId: ""
+
+    # -- Auth0 Client Secret
+    # @default -- `""` (auto-configured from global.secrets.auth.auth0)
+    # Only used when auth provider is "auth0"
+    auth0ClientSecret: ""
+
+    # -- Auth0 Sync at Startup
+    # @default -- `true`
+    # Sync Auth0 users at application startup
+    # Only used when auth provider is "auth0"
+    auth0SyncAtStartup: true
+
+    # -- Auth0 Sync Page Size
+    # @default -- `100`
+    # Number of users to sync per page from Auth0
+    # Only used when auth provider is "auth0"
+    auth0SyncPageSize: 100
+
+    # -- Entra Tenant ID
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # **REQUIRED for Entra**: Microsoft Entra ID tenant ID
+    # Only used when auth provider is "entra"
+    entraTenantId: ""
+
+    # -- Entra Client ID
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # Only used when auth provider is "entra"
+    entraClientId: ""
+
+    # -- Entra Client Secret
+    # @default -- `""` (auto-configured from global.secrets.auth.entra)
+    # Only used when auth provider is "entra"
+    entraClientSecret: ""
+
+    # -- Keycloak URL
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
+    # Only used when auth provider is "keycloak"
+    keycloakUrl: ""
+
+    # -- Keycloak Realm
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Realm name (e.g., "guardian")
+    # Only used when auth provider is "keycloak"
+    keycloakRealm: ""
+
+    # -- Keycloak Client ID
+    # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+    # Only used when auth provider is "keycloak"
+    keycloakClientId: ""
+
+    # -- Keycloak Client Secret
+    # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+    # Only used when auth provider is "keycloak"
+    keycloakClientSecret: ""
+
+    # ---------------------------------------------------------------------------
+    # Service Integration URLs
+    # ---------------------------------------------------------------------------
+
+    # -- Integrity Service URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-integrity-service:3050")
+    integrityServiceUrl: ""
+
+    # -- Auth Service URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
+    authServiceUrl: ""
+
+    # -- PDF Generation Service URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-eqty-pdfgen:8080")
+    # PDF generation service base URL for policy report rendering
+    pdfgenServiceUrl: ""
+
+    # -- Control Plane URL
+    # @default -- `""` (e.g., "http://{Release.Name}-gateway-stack-control-plane:10010")
+    # Control Plane base URL for agent assessments and certifications
+    controlPlaneUrl: ""
+
+    # ---------------------------------------------------------------------------
+    # Service Account Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Service Account Configuration
+    # @default -- See values below
+    # Configuration for worker authentication
+    serviceAccount:
+      # -- Enable Service Account
+      # @default -- `true`
+      # Enable service account authentication for worker
+      enabled: true
+      # -- Auth Service URL
+      # @default -- `""`
+      # Auth Service URL for token retrieval (falls back to config.authServiceUrl)
+      authServiceUrl: ""
+      # -- Auth Service API Key
+      # @default -- `""` (auto-configured from global.secrets.authService)
+      authServiceApiKey: ""
+      # -- Service Name
+      # @default -- `governance-worker`
+      # Service account name
+      serviceName: "governance-worker"
+      # -- Existing Secret
+      # @default -- `""` (falls back to secrets.authService)
+      # Override secret name for API key
+      existingSecret: ""
+      # -- Existing Secret Keys
+      # @default -- See values below
+      existingSecretKeys:
+        # -- API Key
+        # @default -- `api-secret`
+        apiKey: "api-secret"
+
+  # -- Local Storage CA
+  # @default -- See values below
+  # Additional trusted CA for a local HTTPS artifact storage endpoint (exposed through SSL_CERT_DIR)
+  localStorageCA:
+    # -- ConfigMap Name
+    # @default -- `""`
+    # ConfigMap holding the public PEM CA (empty disables the mount)
+    configMapName: ""
+    # -- ConfigMap Key
+    # @default -- `ca.pem`
+    key: ca.pem
+
+  # -- Host Aliases
+  # @default -- `[]`
+  # Optional pod host aliases (local qualification DNS only)
+  hostAliases: []
+
+# =============================================================================
+# Guardian
+# =============================================================================
+# Default values for the Guardian chart
+# ------------------------------------------------------------------------------
+guardian:
+  # -- Enable Service
+  # @default -- `true`
+  # Enable the Guardian frontend application
+  enabled: true
+
+  # -- Replica Count
+  # @default -- `1`
+  # Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 1
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Container image settings for Guardian
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/guardian`
+    repository: ghcr.io/eqtylab/guardian
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
+
+  # -- Image Pull Secrets
+  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+  # Additional secrets for pulling images from private registries
+  imagePullSecrets: []
+
+  # -- Name Override
+  # @default -- `""`
+  # Override the chart name used for resource naming
+  nameOverride: ""
+
+  # -- Full Name Override
+  # @default -- `""`
+  # Override the full name used for resource naming
+  fullnameOverride: ""
+
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `false`
+    create: false
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Annotations
+    # @default -- `{}`
+    annotations: {}
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+
+  # -- Pod Annotations
+  # @default -- `{}`
+  # Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Pod Labels
+  # @default -- `{}`
+  # Additional labels to add to pods
+  podLabels: {}
+
+  # -- Pod Security Context
+  # @default -- `{}`
+  # Security context applied at the pod level
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  # -- Container Security Context
+  # @default -- `{}`
+  # Security context applied at the container level
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #     - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `80`
+    port: 80
+
+  # -- Ingress Configuration
+  # @default -- See values below
+  ingress:
+    # -- Enable Ingress
+    # @default -- `false`
+    enabled: false
+    # -- Ingress Class Name
+    # @default -- `""`
+    # Example: "nginx", "traefik"
+    className: ""
+    # -- Ingress Annotations
+    # @default -- `{}`
+    annotations: {}
+      # cert-manager.io/issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress Hosts
+    # @default -- See values below
+    hosts:
+      - host: guardian.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    # -- TLS Configuration
+    # @default -- `[]`
+    tls: []
+      # - secretName: guardian-tls
+      #   hosts:
+      #     - guardian.example.com
+
+  # -- Resource Configuration
+  # @default -- `{}`
+  # CPU and memory resource requests and limits
+  resources: {}
+    # requests:
+    #   cpu: 50m
+    #   memory: 128Mi
+    # limits:
+    #   cpu: 200m
+    #   memory: 256Mi
+
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `100`
+    maxReplicas: 100
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
+
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Startup Probe
+  # @default -- See values below
+  startupProbe:
+    httpGet:
+      path: /
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness Probe
+  # @default -- See values below
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness Probe
+  # @default -- See values below
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+  config:
+    # -- Base Path
+    # @default -- `/`
+    # Base path where the UI is served (useful behind a reverse proxy)
+    basePath: /
+
+    # ---------------------------------------------------------------------------
+    # Backend Service URLs
+    # ---------------------------------------------------------------------------
+
+    # -- API URL
+    # @default -- `""` (auto-generated: "https://{global.domain}/governanceService")
+    # Base API URL for the Governance Service
+    apiUrl: ""
+
+    # -- Auth Service URL
+    # @default -- `""` (auto-generated: "https://{global.domain}/authService")
+    authServiceUrl: ""
+
+    # -- Integrity Service URL
+    # @default -- `""` (auto-generated: "https://{global.domain}/integrityService")
+    integrityServiceUrl: ""
+
+    # -- Gateway API URL
+    # @default -- `""`
+    # **REQUIRED for Gateway**: Base URL for the Gateway control-plane API
+    # (e.g., "https://control-plane.example.com/api")
+    # Only used when features.gateway is enabled
+    gatewayApiUrl: ""
+
+    # -- LLM Gateway URL
+    # @default -- `""` (onboarding commands show a placeholder)
+    # Public URL of the LLM Gateway that agents connect to, shown in agent
+    # onboarding commands (e.g., "https://gateway.example.com")
+    # Only used when features.gateway is enabled
+    llmGatewayUrl: ""
+
+    # ---------------------------------------------------------------------------
+    # Authentication Provider Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Auth Provider
+    # @default -- `""` (auto-configured from global.secrets.auth.provider)
+    # Authentication provider type
+    # Options: auth0, entra, keycloak
+    authProvider: ""
+
+    # -- Auth0 Domain
+    # @default -- `""`
+    # **REQUIRED for Auth0**: Tenant domain (e.g., "your-tenant.us.auth0.com")
+    # Only used when authProvider is "auth0"
+    auth0Domain: ""
+
+    # -- Auth0 Client ID
+    # @default -- `""`
+    # **REQUIRED for Auth0**: SPA client ID (public, not a secret)
+    # Only used when authProvider is "auth0"
+    auth0ClientId: ""
+
+    # -- Auth0 Audience
+    # @default -- `""`
+    # **REQUIRED for Auth0**: Auth Service's apiIdentifier (e.g., "https://guardian.your-domain.com")
+    # Only used when authProvider is "auth0"
+    auth0Audience: ""
+
+    # -- Entra Client ID
+    # @default -- `""`
+    # **REQUIRED for Entra**: Application (client) ID from Azure app registration (public, not a secret)
+    # Only used when authProvider is "entra"
+    entraClientId: ""
+
+    # -- Entra Tenant ID
+    # @default -- `""`
+    # **REQUIRED for Entra**: Directory (tenant) ID from Azure
+    # Only used when authProvider is "entra"
+    entraTenantId: ""
+
+    # -- Entra Scopes
+    # @default -- `"openid profile email offline_access api://<backend-client-id>/access_as_user"`
+    # Space-separated list of OAuth scopes requested during login
+    # **REQUIRED for Entra**: Replace `<backend-client-id>` with the Guardian Platform Backend app registration ID
+    # Only used when authProvider is "entra"
+    entraScopes: "openid profile email offline_access api://<backend-client-id>/access_as_user"
+
+    # -- Entra Authority
+    # @default -- `""` (defaults to "https://login.microsoftonline.com/<tenantId>")
+    # Optional override for the Entra authority URL
+    # Only used when authProvider is "entra"
+    entraAuthority: ""
+
+    # -- Keycloak URL
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Server URL (e.g., "https://keycloak.example.com")
+    # Only used when authProvider is "keycloak"
+    keycloakUrl: ""
+
+    # -- Keycloak Client ID
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "guardian-platform-frontend")
+    # Only used when authProvider is "keycloak"
+    keycloakClientId: ""
+
+    # -- Keycloak Realm
+    # @default -- `""`
+    # **REQUIRED for Keycloak**: Realm name (e.g., "guardian")
+    # Only used when authProvider is "keycloak"
+    keycloakRealm: ""
+
+    # ---------------------------------------------------------------------------
+    # Application Settings
+    # ---------------------------------------------------------------------------
+
+    # -- Environment
+    # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+    # Environment label
+    environment: ""
+
+    # -- App Title
+    # @default -- `Guardian`
+    # Application title displayed in browser and UI
+    appTitle: "Guardian"
+
+    # -- Display Timezone
+    # @default -- `UTC`
+    # Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London)
+    displayTimezone: "UTC"
+
+    # ---------------------------------------------------------------------------
+    # Feature Flags
+    # ---------------------------------------------------------------------------
+
+    # -- Feature Flags
+    # @default -- See values below
+    features:
+      # -- Governance Features
+      # @default -- `true`
+      # Enable core governance features
+      governance: true
+
+      # -- Lineage Features
+      # @default -- `true`
+      # Enable lineage and integrity features (requires integrity-service)
+      lineage: true
+
+      # -- Gateway Features
+      # @default -- `false`
+      # Enable Gateway features (requires config.gatewayApiUrl)
+      gateway: false
+
+      # -- Agent Certification Features
+      # @default -- `false`
+      # Enable Governance Programs and agent certification (requires features.gateway)
+      agentCertification: false
+
+# =============================================================================
+# Integrity Service
+# =============================================================================
+# Default values for the integrity-service Helm chart
+# ------------------------------------------------------------------------------
+integrity-service:
+  # -- Enable Service
+  # @default -- `true`
+  # Enable the Integrity Service for lineage and verifiable credentials
+  enabled: true
+
+  # -- Replica Count
+  # @default -- `2`
+  # Number of pod replicas to run (ignored if autoscaling.enabled is true)
+  replicaCount: 2
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Container image settings for the Integrity Service
+  image:
+    # -- Image Repository
+    # @default -- `ghcr.io/eqtylab/integrity-service`
+    repository: ghcr.io/eqtylab/integrity-service
+    # -- Image Pull Policy
+    # @default -- `IfNotPresent`
+    # Options: IfNotPresent, Always, Never
+    pullPolicy: IfNotPresent
+    # -- Image Tag
+    # @default -- `""` (uses chart appVersion)
+    tag: ""
+    # -- Image Digest
+    # @default -- `""`
+    # Immutable sha256 digest; takes precedence over tag when set
+    digest: ""
+
+  # -- Image Pull Secrets
+  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
+  # Additional secrets for pulling images from private registries
+  imagePullSecrets: []
+
+  # -- Name Override
+  # @default -- `""`
+  # Override the chart name used for resource naming
+  nameOverride: ""
+
+  # -- Full Name Override
+  # @default -- `""`
+  # Override the full name used for resource naming
+  fullnameOverride: ""
+
+  # -- Service Account Configuration
+  # @default -- See values below
+  serviceAccount:
+    # -- Create Service Account
+    # @default -- `false`
+    create: false
+    # -- Automount API Credentials
+    # @default -- `true`
+    automount: true
+    # -- Service Account Annotations
+    # @default -- `{}`
+    annotations: {}
+    # -- Service Account Name
+    # @default -- `""` (generated if create is true)
+    name: ""
+
+  # -- Pod Annotations
+  # @default -- `{}`
+  # Additional annotations to add to pods
+  podAnnotations: {}
+
+  # -- Pod Labels
+  # @default -- `{}`
+  # Additional labels to add to pods
+  podLabels: {}
+
+  # -- Pod Security Context
+  # @default -- `{}`
+  # Security context applied at the pod level
+  podSecurityContext:
+    runAsNonRoot: true
+
+  # -- Container Security Context
+  # @default -- See values below
+  # Security context applied at the container level
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  # -- Service Configuration
+  # @default -- See values below
+  service:
+    # -- Enable Service
+    # @default -- `true`
+    enabled: true
+    # -- Service Type
+    # @default -- `ClusterIP`
+    # Options: ClusterIP, NodePort, LoadBalancer
+    type: ClusterIP
+    # -- Service Port
+    # @default -- `3050`
+    port: 3050
+
+  # -- Ingress Configuration
+  # @default -- See values below
+  ingress:
+    # -- Enable Ingress
+    # @default -- `false`
+    enabled: false
+    # -- Ingress Class Name
+    # @default -- `""`
+    # Example: "nginx", "traefik"
+    className: ""
+    # -- Ingress Annotations
+    # @default -- `{}`
+    annotations: {}
+      # cert-manager.io/issuer: "letsencrypt-prod"
+      # nginx.ingress.kubernetes.io/rewrite-target: /$2
+      # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # -- Ingress Hosts
+    # @default -- See values below
+    hosts:
+      - host: guardian.example.com
+        paths:
+          # Path uses regex for nginx rewrite - requires rewrite-target annotation
+          - path: "/integrityService(/|$)(.*)"
+            pathType: ImplementationSpecific
+    # -- TLS Configuration
+    # @default -- `[]`
+    tls: []
+      # - secretName: integrity-service-tls
+      #   hosts:
+      #     - guardian.example.com
+
+  # -- Resource Configuration
+  # @default -- `{}`
+  # CPU and memory resource requests and limits
+  resources: {}
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  # -- Autoscaling Configuration
+  # @default -- See values below
+  autoscaling:
+    # -- Enable Autoscaling
+    # @default -- `false`
+    enabled: false
+    # -- Minimum Replicas
+    # @default -- `1`
+    minReplicas: 1
+    # -- Maximum Replicas
+    # @default -- `100`
+    maxReplicas: 100
+    # -- Target CPU Utilization
+    # @default -- `80`
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory Utilization
+    # @default -- `80`
+    targetMemoryUtilizationPercentage: 80
+
+  # -- Pod Disruption Budget
+  # @default -- See values below
+  podDisruptionBudget:
+    # -- Enable PDB
+    # @default -- `true`
+    enabled: true
+    # -- Minimum Available
+    # @default -- `1`
+    # Only rendered when replicaCount > 1
+    minAvailable: 1
+    # -- Maximum Unavailable
+    # @default -- `1`
+    # Only rendered when replicaCount <= 1; allows eviction of single-replica pods during node drains
+    # Setting this to `0` may block node drains and cluster upgrades
+    maxUnavailable: 1
+
+  # -- Node Selector
+  # @default -- `{}`
+  # Node labels for pod assignment
+  nodeSelector: {}
+
+  # -- Tolerations
+  # @default -- `[]`
+  # Tolerations for pod assignment
+  tolerations: []
+
+  # -- Affinity
+  # @default -- `{}`
+  # Affinity rules for pod assignment
+  affinity: {}
+
+  # -- Init Containers
+  # @default -- `[]`
+  # Init containers to add to the pod
+  initContainers: []
+
+  # -- Startup Probe
+  # @default -- See values below
+  startupProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
+
+  # -- Liveness Probe
+  # @default -- See values below
+  livenessProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # -- Readiness Probe
+  # @default -- See values below
+  readinessProbe:
+    httpGet:
+      path: /health/v1
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+
+  # =============================================================================
+  # PERSISTENCE CONFIGURATION
+  # =============================================================================
+  persistence:
+    # -- Enable Persistence
+    # @default -- `false`
+    # Enable persistent volume for integrity data
+    enabled: false
+
+    # -- Integrity Data Volume
+    # @default -- See values below
+    integrity:
+      # -- Mount Path
+      # @default -- `/data/integrity`
+      mountPath: /data/integrity
+      # -- Host Path
+      # @default -- `/var/lib/integrity`
+      # Only used when persistence.enabled is true
+      hostPath: /var/lib/integrity
+      # -- Use an existing PVC instead of a node-local hostPath
+      # @default -- `""`
+      existingClaim: ""
+
+  # =============================================================================
+  # DATABASE CONFIGURATION
+  # =============================================================================
+
+  # -- External Database Configuration
+  # @default -- See values below
+  externalDatabase:
+    # -- Database Host
+    # @default -- `""` (auto-configured from global.postgresql.host, then "{Release.Name}-postgresql")
+    host: ""
+    # -- Database Port
+    # @default -- `""` (auto-configured from global.postgresql.port, defaults to 5432)
+    port: ""
+    # -- Database Name
+    # @default -- `IntegrityServiceDB`
+    name: "IntegrityServiceDB"
+    # -- Database User
+    # @default -- `""` (auto-configured from global.postgresql.username, defaults to "postgres")
+    user: ""
+    # -- Database Password
+    # @default -- `""` (auto-configured from global.secrets.database)
+    password: ""
+    # -- SSL Mode
+    # @default -- `""` (auto-configured from global.postgresql.sslMode, defaults to "disable")
+    # Options: disable, require, verify-ca, verify-full
+    sslMode: ""
+
+    # -- Password Secret Reference
+    # @default -- See values below
+    passwordSecretKeyRef:
+      # -- Secret Name
+      # @default -- `""` (auto-configured from global.secrets.database.secretName)
+      name: ""
+      # -- Secret Key
+      # @default -- `""` (defaults to "password")
+      key: ""
+
+  # =============================================================================
+  # APPLICATION CONFIGURATION
+  # =============================================================================
+  config:
+    # -- Rust Environment
+    # @default -- `""` (auto-configured from global.environmentType)
+    rustEnv: ""
+
+    # ---------------------------------------------------------------------------
+    # Storage Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Blob Store Type
+    # @default -- `""`
+    # **REQUIRED**: Blob storage backend type
+    # Options: aws_s3, azure_blob, gcs, local_fs
+    integrityAppBlobStoreType: ""
+    # -- Local filesystem path (requires a persistent mount for retained data)
+    # @default -- `""`
+    integrityAppBlobStoreLocalPath: ""
+
+    # -- AWS S3 Region
+    # @default -- `""`
+    # **REQUIRED for S3**: AWS region (e.g., "us-east-1")
+    # Only used when integrityAppBlobStoreType is "aws_s3"
+    integrityAppBlobStoreAwsRegion: ""
+
+    # -- AWS S3 Bucket
+    # @default -- `""`
+    # **REQUIRED for S3**: Bucket name
+    # Only used when integrityAppBlobStoreType is "aws_s3"
+    integrityAppBlobStoreAwsBucket: ""
+
+    # -- AWS S3 Folder
+    # @default -- `""`
+    # **REQUIRED for S3**: Folder/Prefix
+    # Only used when integrityAppBlobStoreType is "aws_s3"
+    integrityAppBlobStoreAwsFolder: ""
+
+    # -- AWS Access Key ID
+    # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
+    # Only used when integrityAppBlobStoreType is "aws_s3"
+    integrityAppBlobStoreAwsAccessKeyId: ""
+
+    # -- AWS Secret Access Key
+    # @default -- `""` (auto-configured from global.secrets.storage.aws_s3)
+    # Only used when integrityAppBlobStoreType is "aws_s3"
+    integrityAppBlobStoreAwsSecretAccessKey: ""
+
+    # -- Use AWS IAM role for S3 access instead of static credentials
+    # @default -- `false`
+    # Omits the credential env vars so the AWS SDK uses its default chain (IRSA, instance profile)
+    # Only used when integrityAppBlobStoreType is "aws_s3"
+    integrityAppBlobStoreAwsUseIamRole: false
+
+    # -- Azure Storage Account
+    # @default -- `""`
+    # **REQUIRED for Azure**: Storage account name
+    # Only used when integrityAppBlobStoreType is "azure_blob"
+    integrityAppBlobStoreAccount: ""
+
+    # -- Azure Container Name
+    # @default -- `""`
+    # **REQUIRED for Azure**: Container name
+    # Only used when integrityAppBlobStoreType is "azure_blob"
+    integrityAppBlobStoreContainer: ""
+
+    # -- Azure Storage Account Key
+    # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
+    # Only used when integrityAppBlobStoreType is "azure_blob"
+    integrityAppBlobStoreKey: ""
+
+    # -- GCS Bucket Name
+    # @default -- `""`
+    # **REQUIRED for GCS**: Bucket name
+    # Only used when integrityAppBlobStoreType is "gcs"
+    integrityAppBlobStoreGcsBucket: ""
+
+    # -- GCS Folder
+    # @default -- `""`
+    # **REQUIRED for GCS**: Folder/Prefix
+    # Only used when integrityAppBlobStoreType is "gcs"
+    integrityAppBlobStoreGcsFolder: ""
+
+    # ---------------------------------------------------------------------------
+    # Logging Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Default Log Level
+    # @default -- `warn`
+    # Options: trace, debug, info, warn, error
+    integrityAppLoggingLogLevelDefault: "warn"
+
+    # -- Service Log Level
+    # @default -- `trace`
+    # Integrity Service specific log level
+    # Options: trace, debug, info, warn, error
+    integrityAppLoggingLogLevelIntegrityService: "trace"
+
+    # ---------------------------------------------------------------------------
+    # Authentication Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Auth Type
+    # @default -- `auth_service`
+    integrityAppAuthType: "auth_service"
+
+    # -- Auth Service URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
+    integrityAppAuthUrl: ""
+
+    # ---------------------------------------------------------------------------
+    # Service URL Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Integrity Service URL
+    # @default -- `""` (auto-generated from global.domain)
+    # Public URL for this service
+    integrityServiceUrl: ""
+
+    # ---------------------------------------------------------------------------
+    # Swagger Configuration
+    # ---------------------------------------------------------------------------
+
+    # -- Swagger Base Path
+    # @default -- `/integrityService`
+    # Base path for Swagger UI
+    swaggerBasePath: "/integrityService"
+
+  # =============================================================================
+  # SECRETS CONFIGURATION
+  # =============================================================================
+  secrets:
+    # -- Storage Secrets
+    # @default -- See values below
+    # Only configure the section matching your storage provider
+    storage:
+      # -- AWS S3 Secret
+      # @default -- See values below
+      # Only used when integrityAppBlobStoreType is "aws_s3"
+      aws_s3:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.aws_s3.secretName)
+        name: ""
+
+      # -- Azure Blob Storage Secret
+      # @default -- See values below
+      # Only used when integrityAppBlobStoreType is "azure_blob"
+      azure_blob:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.azure_blob.secretName)
+        name: ""
+
+      # -- GCS Secret
+      # @default -- See values below
+      # Only used when integrityAppBlobStoreType is "gcs"
+      gcs:
+        # -- Secret Name
+        # @default -- `""` (auto-configured from global.secrets.storage.gcs.secretName)
+        name: ""
+
+# =============================================================================
+# PostgreSQL
+# =============================================================================
+# Bitnami PostgreSQL chart configuration for platform database
+# ------------------------------------------------------------------------------
+postgresql:
+  # -- Enable PostgreSQL
+  # @default -- `true`
+  # Set to false to use an external PostgreSQL instance
+  enabled: true
+
+  # -- Global Storage Class
+  # @default -- See values below
+  # Storage class configuration for the Bitnami PostgreSQL chart
+  global:
+    # -- Storage Class
+    # @default -- `""` (uses cluster default)
+    # Uses cluster default StorageClass when set to ""
+    # Override per CSP if needed: EKS="gp3", AKS="managed-csi", GKE="standard", etc
+    defaultStorageClass: ""
+
+    postgresql:
+      auth:
+        # -- Database Name
+        # @default -- `governance`
+        # Default database for platform services
+        database: "governance"
+
+        # -- Database Username
+        # @default -- `postgres`
+        # PostgreSQL admin username
+        username: "postgres"
+
+        # -- Postgres Password
+        # @default -- `"placeholder"` (overridden by existingSecret at runtime)
+        # This placeholder satisfies Bitnami chart validation during upgrades
+        # The actual password is read from existingSecret at runtime
+        postgresPassword: "placeholder-overridden-by-secret"
+
+        # -- Existing Secret
+        # @default -- `platform-database`
+        # References global.secrets.database.secretName
+        existingSecret: "platform-database"
+
+        # -- Secret Keys
+        # @default -- See values below
+        # Keys within the existing secret for password retrieval
+        secretKeys:
+          # -- Admin Password Key
+          # @default -- `password`
+          # Key name for PostgreSQL admin password in secret
+          adminPasswordKey: "password"
+
+          # -- User Password Key
+          # @default -- `password`
+          # Key name for regular user password in secret
+          userPasswordKey: "password"
+
+  # -- Image Configuration
+  # @default -- See values below
+  # Bitnami PostgreSQL 17 image
+  image:
+    # -- Image Registry
+    # @default -- `docker.io`
+    registry: docker.io
+
+    # -- Image Repository
+    # @default -- `bitnamilegacy/postgresql`
+    repository: bitnamilegacy/postgresql
+
+    # -- Image Tag
+    # @default -- `17-debian-12`
+    tag: 17-debian-12
+
+  # -- Primary Instance Configuration
+  # @default -- See values below
+  # Configuration for the primary PostgreSQL instance
+  primary:
+    # -- Persistence Configuration
+    # @default -- See values below
+    persistence:
+      # -- Enable Persistence
+      # @default -- `true`
+      # Enable persistent volume for database data
+      enabled: true
+
+      # -- Storage Size
+      # @default -- `10Gi`
+      # Size of persistent volume for database
+      size: 10Gi
+
+    # -- Resource Configuration
+    # @default -- See values below
+    # CPU and memory resources for PostgreSQL pod
+    resources:
+      # -- Resource Requests
+      # @default -- See values below
+      requests:
+        # -- CPU Request
+        # @default -- `500m`
+        cpu: 500m
+
+        # -- Memory Request
+        # @default -- `1Gi`
+        memory: 1Gi
+
+      # -- Resource Limits
+      # @default -- See values below
+      limits:
+        # -- CPU Limit
+        # @default -- `2000m`
+        cpu: 2000m
+
+        # -- Memory Limit
+        # @default -- `2Gi`
+        memory: 2Gi
+
+    # -- Database Initialization
+    # @default -- See values below
+    # Scripts to run when initializing the database
+    # Creates additional databases beyond the default 'governance' database
+    initdb:
+      # -- Initialization Scripts
+      # @default -- See values below
+      scripts:
+        # -- Create Additional Databases
+        # @default -- Creates governance, IntegrityServiceDB, and guardian_gateway databases
+        create-additional-dbs.sql: |
+          CREATE DATABASE governance;
+          GRANT ALL PRIVILEGES ON DATABASE governance TO postgres;
+
+          CREATE DATABASE "IntegrityServiceDB";
+          GRANT ALL PRIVILEGES ON DATABASE "IntegrityServiceDB" TO postgres;
+
+          CREATE DATABASE guardian_gateway;
+          GRANT ALL PRIVILEGES ON DATABASE guardian_gateway TO postgres;
+
+# ------------------------------------------------------------------------------
+# Local kind Diagnostic Profile Guard
+# ------------------------------------------------------------------------------
+# -- OpenBao kind Profile
+# @default -- `false`
+# Enforce the opt-in local kind publisher trust/custody contract
+# (development-only diagnostics; see examples/values-openbao-kind.yaml)
+openbaoKindProfile: false
+
+# ------------------------------------------------------------------------------
+# IdP Post-Install Hook Image
+# ------------------------------------------------------------------------------
+# -- IdP Setup Image
+# @default -- `""` (keeps `postgres:17-alpine`)
+# Complete image reference for the auth0/entra/keycloak post-install setup Jobs
+# Must provide psql and pg_isready. With createPlatformAdmin it also needs curl and jq;
+# if they are missing they are installed with apk at runtime, which needs internet access
+# global.imageRegistryOverride and global.imageRepositoryPrefixOverride do not apply to this value
+idpSetupImage: ""
+
+# -- Name Override
+# @default -- `""` (uses the chart name)
+# Replaces the chart name in the IdP post-install Job names
+nameOverride: ""
+# -- Fullname Override
+# @default -- `""`
+# Replaces the release-and-chart prefix of the IdP post-install Job names
+fullnameOverride: ""
+
+# =============================================================================
+# Auth0 Post-Install Configuration
+# =============================================================================
+# Configuration for Auth0 identity provider integration
+# Creates the necessary organization and admin user in the governance database
+# Only used when global.secrets.auth.provider is set to "auth0"
+# ------------------------------------------------------------------------------
+auth0:
+  # -- Create Organization
+  # @default -- `false`
+  # Enable automatic organization creation for the Auth0 tenant
+  # Set to true to create organization in database on install/upgrade
+  createOrganization: false
+
+  # -- Organization Name
+  # @default -- `guardian`
+  # Organization identifier in the database
+  organizationName: "guardian"
+
+  # -- Display Name
+  # @default -- `Guardian`
+  # Human-readable display name for the organization
+  displayName: "Guardian"
+
+  # -- Create Platform Admin
+  # @default -- `false`
+  # Create platform-admin user in Auth Service tables
+  # Set to true to create an initial platform administrator
+  # The Auth0 user ID is automatically resolved by looking up the user by email via the Management API
+  createPlatformAdmin: false
+
+  # -- Platform Admin Email
+  # @default -- `""`
+  # **REQUIRED** when createPlatformAdmin is true
+  # Must be an email address that exists in your Auth0 tenant
+  # (typically created during the auth0-bootstrap job)
+  # Used to look up the Auth0 user_id automatically via the Management API
+  platformAdminEmail: ""
+
+  # -- Domain
+  # @default -- `""`
+  # **REQUIRED** when createPlatformAdmin is true
+  # Auth0 tenant domain (e.g., "yourcompany.us.auth0.com")
+  # Used to call the Auth0 Management API for user lookup
+  domain: ""
+
+# ------------------------------------------------------------------------------
+# Microsoft Entra ID Post-Install Configuration
+# ------------------------------------------------------------------------------
+# Configuration for Microsoft Entra ID identity provider integration
+# Creates the necessary organization and admin user in the governance database
+# Only used when global.secrets.auth.provider is set to "entra"
+# ------------------------------------------------------------------------------
+entra:
+  # -- Create Organization
+  # @default -- `false`
+  # Enable automatic organization creation for Entra tenant
+  # Set to true to create organization in database on install/upgrade
+  createOrganization: false
+
+  # -- Organization Name
+  # @default -- `governance`
+  # Organization identifier in the database
+  organizationName: "guardian"
+
+  # -- Display Name
+  # @default -- `Guardian`
+  # Human-readable display name for the organization
+  displayName: "Guardian"
+
+  # -- Create Platform Admin
+  # @default -- `false`
+  # Create platform-admin user in Auth Service tables
+  # Set to true to create an initial platform administrator
+  # The Entra user ID is automatically resolved by looking up the user by email via Graph API
+  createPlatformAdmin: false
+
+  # -- Platform Admin Email
+  # @default -- `""`
+  # **REQUIRED** when createPlatformAdmin is true
+  # Must be an email address that exists in your Microsoft Entra tenant
+  # (e.g., user@yourorg.onmicrosoft.com or user@yourverifieddomain.com)
+  # Used to look up the Entra user Object ID automatically via Microsoft Graph API
+  platformAdminEmail: ""
+
+  # -- Tenant ID
+  # @default -- `""`
+  # Microsoft Entra tenant ID for the Graph API user lookup
+  # When empty, read from the global.secrets.auth.entra tenant ID key
+  tenantId: ""
+
+# ------------------------------------------------------------------------------
+# Keycloak Post-Install Configuration
+# ------------------------------------------------------------------------------
+# Configuration for Keycloak identity provider integration
+# Creates the necessary organization and admin user in the governance database
+# Only used when global.secrets.auth.provider is set to "keycloak"
+# ------------------------------------------------------------------------------
+keycloak:
+  # -- Create Organization
+  # @default -- `false`
+  # Enable automatic organization creation for Keycloak realm
+  # Set to true to create organization in database on install/upgrade
+  # Organization name will match the Keycloak realm name
+  createOrganization: false
+
+  # -- Realm Name
+  # @default -- `guardian`
+  # Keycloak realm name for the platform
+  # Must match auth-service config.idp.keycloak.realm and guardian config.keycloakRealm
+  # This name is used as the organization identifier in the database
+  realmName: "guardian"
+
+  # -- Display Name
+  # @default -- `Guardian`
+  # Human-readable display name for the organization
+  # Shown in UI and organization management interfaces
+  displayName: "Guardian"
+
+  # -- Create Platform Admin
+  # @default -- `false`
+  # Create platform-admin user in Auth Service tables
+  # Set to true to create an initial platform administrator
+  # The Keycloak user ID is automatically resolved by looking up the user by email
+  createPlatformAdmin: false
+
+  # -- Platform Admin Email
+  # @default -- `""` (defaults to admin@<global.domain>)
+  # Email address of the platform administrator in Keycloak created during bootstrap
+  # Must match keycloak-bootstrap users.admin.email
+  # Used to look up the Keycloak user ID automatically
+  platformAdminEmail: ""
+
+  # -- Keycloak Internal URL
+  # @default -- `http://keycloak:8080/keycloak`
+  # Internal cluster URL for the Keycloak Admin REST API
+  # Set this when Keycloak runs outside the release namespace or outside the cluster
+  url: "http://keycloak:8080/keycloak"
+
+  # -- Keycloak Admin Username
+  # @default -- `admin`
+  # Master realm admin used to look up the platform admin; must match keycloak-bootstrap keycloak.adminUsername
+  adminUsername: "admin"
+
+  # -- Keycloak Admin Password Secret
+  # @default -- See values below
+  # Secret holding the master realm admin password; must match keycloak-bootstrap keycloak.adminPasswordSecret
+  adminPasswordSecret:
+    # -- Secret Name
+    # @default -- `keycloak-admin`
+    name: "keycloak-admin"
+    # -- Secret Key
+    # @default -- `password`
+    key: "password"

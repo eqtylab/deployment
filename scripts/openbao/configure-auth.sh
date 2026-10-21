@@ -62,8 +62,8 @@ Chart values that must match: config.keyManagement.openbao.transitMount,
 auth.mount, auth.role and auth.audience in charts/auth-service.
 
 Examples:
-  $0 -s governance-auth-service -n governance
-  $0 -s governance-auth-service -n governance --kubernetes-host https://10.0.0.1:6443 \\
+  $0 -s guardian-platform-auth-service -n guardian
+  $0 -s guardian-platform-auth-service -n guardian --kubernetes-host https://10.0.0.1:6443 \\
      --kubernetes-ca-file ./ca.crt --reviewer-jwt-file ./reviewer.jwt
 "
 }

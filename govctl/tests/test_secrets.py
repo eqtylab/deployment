@@ -36,6 +36,12 @@ class GatewayDsnTests(unittest.TestCase):
         dsn = self.gateway_dsn(DatabaseMode.BUNDLED)
         self.assertTrue(dsn.endswith("/guardian_gateway?sslmode=disable"), dsn)
 
+    def test_bundled_database_gateway_dsn_targets_the_guardian_platform_postgresql(
+        self,
+    ):
+        dsn = self.gateway_dsn(DatabaseMode.BUNDLED)
+        self.assertIn("@guardian-platform-postgresql:5432/", dsn)
+
 
 if __name__ == "__main__":
     unittest.main()

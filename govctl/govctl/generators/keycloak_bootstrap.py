@@ -57,9 +57,9 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
         },
         "clients": {
             "frontend": {
-                "clientId": "governance-platform-frontend",
-                "name": "Governance Platform Frontend",
-                "description": "Frontend application for Governance Platform",
+                "clientId": "guardian-platform-frontend",
+                "name": "Guardian Platform Frontend",
+                "description": "Frontend application for Guardian Platform",
                 "publicClient": True,
                 "redirectUris": [
                     f"https://{domain}/*",
@@ -94,7 +94,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                                 "name": "platform-audience-mapper",
                                 "protocolMapper": "oidc-audience-mapper",
                                 "config": {
-                                    "included.client.audience": "governance-platform-frontend",
+                                    "included.client.audience": "guardian-platform-frontend",
                                     "id.token.claim": "false",
                                     "access.token.claim": "true",
                                     "introspection.token.claim": "true",
@@ -105,9 +105,9 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                 ],
             },
             "backend": {
-                "clientId": "governance-platform-backend",
-                "name": "Governance Platform Backend",
-                "description": "Backend service for Governance Platform",
+                "clientId": "guardian-platform-backend",
+                "name": "Guardian Platform Backend",
+                "description": "Backend service for Guardian Platform",
                 "publicClient": False,
                 "serviceAccountsEnabled": True,
                 "redirectUris": [
@@ -121,7 +121,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
             "worker": {
                 "clientId": "governance-worker",
                 "name": "Governance Worker",
-                "description": "Worker service for Governance Platform",
+                "description": "Worker service for Guardian Platform",
                 "publicClient": False,
                 "serviceAccountsEnabled": True,
                 "defaultScopes": ["openid", "profile", "email", "roles"],
