@@ -9,7 +9,7 @@
       "type": "object",
       "required": ["name", "version", "releaseType", "kubernetesMinimumVersion", "architecture"],
       "properties": {
-        "name": { "const": "governance-platform" },
+        "name": { "enum": ["governance-platform", "guardian-platform"] },
         "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$", "$comment": "Semantic version; the same pattern applies to charts.openbaoCustody.version." },
         "releaseType": { "enum": ["prerelease", "stable"] },
         "releaseDate": { "type": "string" },
