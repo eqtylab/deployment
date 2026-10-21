@@ -1,6 +1,6 @@
 # Optional OpenBao custody delivery
 
-OpenBao is optional and development-only. The `governance-platform` chart does
+OpenBao is optional and development-only. The `guardian-platform` chart does
 not install custody as a dependency. A compatible application release and
 explicit OpenBao values are required even when the custody archive is supplied.
 Packaging and render checks do not qualify a live deployment.

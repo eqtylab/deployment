@@ -15,7 +15,7 @@ import yaml
 ROOT = next(
     p
     for p in Path(__file__).resolve().parents
-    if (p / "charts/governance-platform/Chart.yaml").is_file()
+    if (p / "charts/guardian-platform/Chart.yaml").is_file()
 )
 
 
@@ -25,11 +25,11 @@ class CloudsmithRenderTests(unittest.TestCase):
             "helm",
             "template",
             "distribution-test",
-            str(ROOT / "charts/governance-platform"),
+            str(ROOT / "charts/guardian-platform"),
             "--namespace",
             "governance",
             "--values",
-            str(ROOT / "charts/governance-platform/examples/values-gateway.yaml"),
+            str(ROOT / "charts/guardian-platform/examples/values-gateway.yaml"),
             "--set",
             "eqty-pdfgen.enabled=true",
             "--set-string",
@@ -40,7 +40,7 @@ class CloudsmithRenderTests(unittest.TestCase):
         if secrets:
             args += [
                 "--values",
-                str(ROOT / "charts/governance-platform/examples/secrets-sample.yaml"),
+                str(ROOT / "charts/guardian-platform/examples/secrets-sample.yaml"),
             ]
             args += [
                 "--set",
@@ -49,9 +49,7 @@ class CloudsmithRenderTests(unittest.TestCase):
         if cloudsmith:
             args += [
                 "--values",
-                str(
-                    ROOT / "charts/governance-platform/examples/values-cloudsmith.yaml"
-                ),
+                str(ROOT / "charts/guardian-platform/examples/values-cloudsmith.yaml"),
             ]
         result = subprocess.run(args, capture_output=True, text=True, check=True)
         return [d for d in yaml.safe_load_all(result.stdout) if d]

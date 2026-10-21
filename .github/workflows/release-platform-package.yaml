@@ -159,11 +159,11 @@ jobs:
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             charts+=(eqty-pdfgen)
           fi
-          charts+=(governance-service governance-studio integrity-service)
+          charts+=(governance-service guardian integrity-service)
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             charts+=(gateway-stack)
           fi
-          charts+=(governance-platform)
+          charts+=(guardian-platform)
 
           for chart in "${charts[@]}"; do
             chart_version="$(yq '.version' "charts/${chart}/Chart.yaml")"
@@ -201,17 +201,17 @@ jobs:
           if [ -d charts/gateway-stack ]; then
             helm dependency build charts/gateway-stack
           fi
-          helm dependency build charts/governance-platform
+          helm dependency build charts/guardian-platform
           python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           charts=(charts/auth-service)
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             charts+=(charts/eqty-pdfgen)
           fi
-          charts+=(charts/governance-service charts/governance-studio charts/integrity-service)
+          charts+=(charts/governance-service charts/guardian charts/integrity-service)
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             charts+=(charts/gateway-stack)
           fi
-          charts+=(charts/governance-platform)
+          charts+=(charts/guardian-platform)
 
           for chart in "${charts[@]}"; do
             helm lint "$chart"
@@ -222,18 +222,18 @@ jobs:
             template_args+=(--set 'eqty-pdfgen.enabled=true')
           fi
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
-            template_args+=(--values charts/governance-platform/examples/values-gateway.yaml)
+            template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
           fi
 
-          helm template governance-platform charts/governance-platform \
+          helm template governance-platform charts/guardian-platform \
             "${template_args[@]}" \
             >/dev/null
-          helm template governance-platform charts/governance-platform \
+          helm template governance-platform charts/guardian-platform \
             "${template_args[@]}" \
-            --values charts/governance-platform/examples/values-keycloak.yaml \
-            --values charts/governance-platform/examples/values-external-postgres.yaml \
+            --values charts/guardian-platform/examples/values-keycloak.yaml \
+            --values charts/guardian-platform/examples/values-external-postgres.yaml \
             >/dev/null
-          helm template governance-platform charts/governance-platform \
+          helm template governance-platform charts/guardian-platform \
             "${template_args[@]}" \
             --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
             >/dev/null
@@ -268,7 +268,7 @@ jobs:
             # Custody has its own lifecycle and must never inherit VERSION.
             chart_version="$(yq '.version' "$chart_dir/Chart.yaml")"
 
-            if [ "$chart" = "gateway-stack" ] || [ "$chart" = "governance-platform" ]; then
+            if [ "$chart" = "gateway-stack" ] || [ "$chart" = "guardian-platform" ]; then
               helm dependency build "$chart_dir"
             fi
 
@@ -314,11 +314,11 @@ jobs:
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             charts+=(eqty-pdfgen)
           fi
-          charts+=(governance-service governance-studio integrity-service)
+          charts+=(governance-service guardian integrity-service)
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             charts+=(gateway-stack)
           fi
-          charts+=(governance-platform)
+          charts+=(guardian-platform)
 
           if [ -n "$CUSTODY_VERSION" ]; then
             charts+=(openbao-custody)
@@ -340,8 +340,8 @@ jobs:
           cp dist/chart-digests.yaml "$package_root/chart-digests.yaml"
           cp dist/charts/*.tgz "$package_root/charts/"
           cp dist/charts/*.sha256 "$package_root/charts/"
-          cp -R charts/governance-platform/examples "$package_root/examples/governance-platform"
-          cp charts/governance-platform/examples/values-cloudsmith.yaml "$package_root/values-cloudsmith.yaml"
+          cp -R charts/guardian-platform/examples "$package_root/examples/governance-platform"
+          cp charts/guardian-platform/examples/values-cloudsmith.yaml "$package_root/values-cloudsmith.yaml"
           python -B scripts/release/custody_distribution.py stage "$package_root"
 
           cat > "$package_root/INSTALL.md" <<EOF
@@ -350,7 +350,7 @@ jobs:
           Until this version has a verified Cloudsmith delivery, use its existing GHCR chart and image credentials:
 
           \`\`\`bash
-          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
+          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/guardian-platform \\
             --version ${VERSION} \\
             --namespace governance \\
             --create-namespace \\
@@ -402,7 +402,7 @@ jobs:
           test -f "/tmp/package-check/governance-platform-v${VERSION}/release-manifest.yaml"
           test -f "/tmp/package-check/governance-platform-v${VERSION}/chart-digests.yaml"
           python -B scripts/release/custody_distribution.py verify-package "/tmp/package-check/governance-platform-v${VERSION}"
-          umbrella_package="$(yq '.charts.governance-platform.package' dist/chart-digests.yaml)"
+          umbrella_package="$(yq '.charts.guardian-platform.package' dist/chart-digests.yaml)"
           helm template governance-platform "dist/charts/${umbrella_package}" >/dev/null
 
       - name: Attest release packages
@@ -427,7 +427,7 @@ jobs:
           ### Install
 
           \`\`\`bash
-          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/governance-platform \\
+          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/guardian-platform \\
             --version ${VERSION} \\
             --namespace governance \\
             --create-namespace \\
