@@ -170,10 +170,10 @@ the delivery manifest records each native Helm package ID, repository, name,
 version, and identical archive checksum alongside its original GHCR source.
 
 All original GitHub release assets are copied as versioned raw packages. Names
-are lowercase filenames, prefixed with `governance-platform-` only if that prefix
+are lowercase filenames, prefixed with `guardian-platform-` only if that prefix
 is not already present. For example, the archive package is
-`governance-platform-v1.2.0.tar.gz`; the manifest package is
-`governance-platform-release-manifest.yaml`. Available GitHub attestation bundles are also
+`guardian-platform-v1.3.0.tar.gz`; the manifest package is
+`guardian-platform-release-manifest.yaml`. Available GitHub attestation bundles are also
 exported as raw packages and attached additively to the GitHub release.
 The original signed manifests, archives, and checksums are not rewritten.
 
@@ -208,7 +208,7 @@ Raw packages use the naming rule above and the platform version. The delivery
 manifest has this credential-free authenticated URL:
 
 ```text
-https://dl.cloudsmith.io/basic/eqtylab/prod/raw/names/governance-platform-cloudsmith-delivery.json/versions/<version>/cloudsmith-delivery.json
+https://dl.cloudsmith.io/basic/eqtylab/prod/raw/names/guardian-platform-cloudsmith-delivery.json/versions/<version>/cloudsmith-delivery.json
 ```
 
 Use HTTP basic authentication with username `token` and the prod entitlement as
@@ -217,7 +217,7 @@ sources, image digests and attachments, native Helm repository and package
 identifiers, chart archive hashes, and raw file names, package identifiers,
 hashes and download URLs. The
 archive and checksum package names are their lowercase filenames without an
-extra `governance-platform-` prefix. Original checksum contents retain the release
+extra `guardian-platform-` prefix. Original checksum contents retain the release
 publisher's `dist/` paths.
 
 ## Local validation

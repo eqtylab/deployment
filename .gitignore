@@ -1,7 +1,6 @@
 # Secrets (allow encrypted and template files)
 **/secrets/*
 !**/secrets/*.enc.yaml
-!charts/governance-platform/templates/secrets/**
 !charts/guardian-platform/templates/secrets/**
 
 # Database dumps

@@ -235,14 +235,16 @@ def validate_manifest(manifest, version):
         manifest["sources"]["guardian"]["repository"] == "eqtylab/guardian",
         "Only Guardian Platform releases are supported",
     )
+    require(
+        manifest["platform"]["name"] == "guardian-platform",
+        "Only guardian-platform releases (1.3 and later) are supported",
+    )
 
 
 def raw_package_name(name):
     name = safe_name(name).lower()
     return (
-        name
-        if name.startswith("governance-platform-")
-        else "governance-platform-" + name
+        name if name.startswith("guardian-platform-") else "guardian-platform-" + name
     )
 
 
@@ -258,7 +260,7 @@ def file_entry(path):
 def unpack_charts(archive, manifest, chart_digests, work):
     """Read only expected regular files; never extract release-supplied paths."""
     version = manifest["platform"]["version"]
-    prefix = f"governance-platform-v{version}/"
+    prefix = f"guardian-platform-v{version}/"
     with tarfile.open(archive) as tar:
         members = {}
         for member in tar.getmembers():
@@ -510,7 +512,7 @@ def prepare(version, work, receipt_path=None):
         "Release asset differs from approved tagged manifest",
     )
     chart_digests = yaml.safe_load((assets / "chart-digests.yaml").read_text())
-    archive = assets / f"governance-platform-v{version}.tar.gz"
+    archive = assets / f"guardian-platform-v{version}.tar.gz"
     checksum = (assets / (archive.name + ".sha256")).read_text().split()[0]
     require(sha256(archive) == checksum, "Customer package checksum mismatch")
     charts = unpack_charts(archive, manifest, chart_digests, work)

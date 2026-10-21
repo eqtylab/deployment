@@ -87,6 +87,11 @@ jobs:
             exit 1
           fi
 
+          if [ "$(yq '.platform.name' "$manifest")" != "guardian-platform" ]; then
+            echo "::error::Only guardian-platform releases (1.3 and later) can be packaged: ${manifest}"
+            exit 1
+          fi
+
           release_type="$(yq '.platform.releaseType' "$manifest")"
           if [ "$release_type" = "prerelease" ]; then
             prerelease="true"
@@ -134,7 +139,7 @@ jobs:
             exit 1
           fi
 
-          services=(authService governanceService governanceStudio integrityService)
+          services=(authService governanceService guardian integrityService)
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             services+=(eqtyPdfgen)
           fi
@@ -225,15 +230,15 @@ jobs:
             template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
           fi
 
-          helm template governance-platform charts/guardian-platform \
+          helm template guardian-platform charts/guardian-platform \
             "${template_args[@]}" \
             >/dev/null
-          helm template governance-platform charts/guardian-platform \
+          helm template guardian-platform charts/guardian-platform \
             "${template_args[@]}" \
             --values charts/guardian-platform/examples/values-keycloak.yaml \
             --values charts/guardian-platform/examples/values-external-postgres.yaml \
             >/dev/null
-          helm template governance-platform charts/guardian-platform \
+          helm template guardian-platform charts/guardian-platform \
             "${template_args[@]}" \
             --set global.imageRepositoryPrefixOverride=registry.customer.example/eqtylab \
             >/dev/null
@@ -333,14 +338,14 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
           MANIFEST: ${{ steps.release.outputs.manifest }}
         run: |
-          package_root="dist/governance-platform-v${VERSION}"
+          package_root="dist/guardian-platform-v${VERSION}"
           mkdir -p "$package_root/charts" "$package_root/examples"
 
           cp "$MANIFEST" "$package_root/release-manifest.yaml"
           cp dist/chart-digests.yaml "$package_root/chart-digests.yaml"
           cp dist/charts/*.tgz "$package_root/charts/"
           cp dist/charts/*.sha256 "$package_root/charts/"
-          cp -R charts/guardian-platform/examples "$package_root/examples/governance-platform"
+          cp -R charts/guardian-platform/examples "$package_root/examples/guardian-platform"
           cp charts/guardian-platform/examples/values-cloudsmith.yaml "$package_root/values-cloudsmith.yaml"
           python -B scripts/release/custody_distribution.py stage "$package_root"
 
@@ -350,20 +355,22 @@ jobs:
           Until this version has a verified Cloudsmith delivery, use its existing GHCR chart and image credentials:
 
           \`\`\`bash
-          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/guardian-platform \\
+          helm upgrade --install guardian-platform oci://ghcr.io/eqtylab/charts/guardian-platform \\
             --version ${VERSION} \\
-            --namespace governance \\
+            --namespace guardian \\
             --create-namespace \\
             --values values.yaml
           \`\`\`
+
+          To upgrade a release installed before 1.3, follow https://guardian.docs.eqtylab.io/deployment/upgrade/#upgrading-from-12x instead of this command.
 
           GHCR installs require GitHub package read credentials and govctl init --artifact-source github. Only after cloudsmith-delivery.json confirms this version is delivered, follow https://github.com/eqtylab/deployment/blob/main/docs/cloudsmith.md to install from Cloudsmith with the packaged values-cloudsmith.yaml and your prod entitlement token from EQTY Lab. A GitHub release or enabled publishing flag alone does not prove delivery. Prereleases remain in GitHub.
 
           See OPENBAO.md for the optional, independently versioned custody release and operator setup. Custody is included only when release-manifest.yaml contains charts.openbaoCustody; its absence requires customer-managed OpenBao if that backend is selected. Inclusion does not enable OpenBao in the platform.
           EOF
 
-          (cd dist && tar -czf "governance-platform-v${VERSION}.tar.gz" "governance-platform-v${VERSION}")
-          sha256sum "dist/governance-platform-v${VERSION}.tar.gz" > "dist/governance-platform-v${VERSION}.tar.gz.sha256"
+          (cd dist && tar -czf "guardian-platform-v${VERSION}.tar.gz" "guardian-platform-v${VERSION}")
+          sha256sum "dist/guardian-platform-v${VERSION}.tar.gz" > "dist/guardian-platform-v${VERSION}.tar.gz.sha256"
           sha256sum dist/charts/*.tgz > dist/CHARTS.sha256
 
       - name: Build optional air-gap package
@@ -371,7 +378,7 @@ jobs:
         env:
           VERSION: ${{ steps.release.outputs.version }}
         run: |
-          package_root="dist/governance-platform-v${VERSION}-airgap"
+          package_root="dist/guardian-platform-v${VERSION}-airgap"
           mkdir -p "$package_root/images" "$package_root/charts" "$package_root/scripts"
           cp dist/charts/*.tgz "$package_root/charts/"
           cp "releases/v${VERSION}/release-manifest.yaml" "$package_root/release-manifest.yaml"
@@ -390,27 +397,27 @@ jobs:
           EOF
           chmod +x "$package_root/scripts/mirror-images.sh"
 
-          (cd dist && tar -czf "governance-platform-v${VERSION}-airgap.tar.gz" "governance-platform-v${VERSION}-airgap")
-          sha256sum "dist/governance-platform-v${VERSION}-airgap.tar.gz" > "dist/governance-platform-v${VERSION}-airgap.tar.gz.sha256"
+          (cd dist && tar -czf "guardian-platform-v${VERSION}-airgap.tar.gz" "guardian-platform-v${VERSION}-airgap")
+          sha256sum "dist/guardian-platform-v${VERSION}-airgap.tar.gz" > "dist/guardian-platform-v${VERSION}-airgap.tar.gz.sha256"
 
       - name: Verify package
         env:
           VERSION: ${{ steps.release.outputs.version }}
         run: |
           mkdir -p /tmp/package-check
-          tar -xzf "dist/governance-platform-v${VERSION}.tar.gz" -C /tmp/package-check
-          test -f "/tmp/package-check/governance-platform-v${VERSION}/release-manifest.yaml"
-          test -f "/tmp/package-check/governance-platform-v${VERSION}/chart-digests.yaml"
-          python -B scripts/release/custody_distribution.py verify-package "/tmp/package-check/governance-platform-v${VERSION}"
+          tar -xzf "dist/guardian-platform-v${VERSION}.tar.gz" -C /tmp/package-check
+          test -f "/tmp/package-check/guardian-platform-v${VERSION}/release-manifest.yaml"
+          test -f "/tmp/package-check/guardian-platform-v${VERSION}/chart-digests.yaml"
+          python -B scripts/release/custody_distribution.py verify-package "/tmp/package-check/guardian-platform-v${VERSION}"
           umbrella_package="$(yq '.charts.guardian-platform.package' dist/chart-digests.yaml)"
-          helm template governance-platform "dist/charts/${umbrella_package}" >/dev/null
+          helm template guardian-platform "dist/charts/${umbrella_package}" >/dev/null
 
       - name: Attest release packages
         if: steps.release.outputs.publish == 'true'
         uses: actions/attest@v4
         with:
           subject-path: |
-            dist/governance-platform-v${{ steps.release.outputs.version }}.tar.gz
+            dist/guardian-platform-v${{ steps.release.outputs.version }}.tar.gz
             dist/charts/*.tgz
 
       - name: Create release notes
@@ -427,16 +434,18 @@ jobs:
           ### Install
 
           \`\`\`bash
-          helm upgrade --install governance-platform oci://ghcr.io/eqtylab/charts/guardian-platform \\
+          helm upgrade --install guardian-platform oci://ghcr.io/eqtylab/charts/guardian-platform \\
             --version ${VERSION} \\
-            --namespace governance \\
+            --namespace guardian \\
             --create-namespace \\
             --values values.yaml
           \`\`\`
 
+          To upgrade a release installed before 1.3, follow https://guardian.docs.eqtylab.io/deployment/upgrade/#upgrading-from-12x instead of this command.
+
           ### Artifacts
 
-          - Connected package: \`governance-platform-v${VERSION}.tar.gz\`
+          - Connected package: \`guardian-platform-v${VERSION}.tar.gz\`
           - Release manifest: \`release-manifest.yaml\`
           - Chart digests: \`chart-digests.yaml\`
           - Runtime image tags: \`${VERSION}\`
@@ -454,16 +463,16 @@ jobs:
           python -B scripts/release/cloudsmith_release.py check-publish "$VERSION"
           tag="platform/v${VERSION}"
           assets=(
-            "dist/governance-platform-v${VERSION}.tar.gz"
-            "dist/governance-platform-v${VERSION}.tar.gz.sha256"
+            "dist/guardian-platform-v${VERSION}.tar.gz"
+            "dist/guardian-platform-v${VERSION}.tar.gz.sha256"
             "dist/CHARTS.sha256"
             "dist/chart-digests.yaml"
             "releases/v${VERSION}/release-manifest.yaml"
           )
 
-          if [ -f "dist/governance-platform-v${VERSION}-airgap.tar.gz" ]; then
-            assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz")
-            assets+=("dist/governance-platform-v${VERSION}-airgap.tar.gz.sha256")
+          if [ -f "dist/guardian-platform-v${VERSION}-airgap.tar.gz" ]; then
+            assets+=("dist/guardian-platform-v${VERSION}-airgap.tar.gz")
+            assets+=("dist/guardian-platform-v${VERSION}-airgap.tar.gz.sha256")
           fi
 
           flags=()

@@ -20,7 +20,7 @@ import publish_cloudsmith as publisher
 
 def fixture(directory, custody=False):
     manifest = yaml.safe_load(
-        (source.ROOT / "releases/v1.2.0/release-manifest.yaml").read_text()
+        (Path(__file__).parent / "fixtures/release-manifest.yaml").read_text()
     )
     if custody:
         manifest["charts"]["openbaoCustody"] = {
@@ -52,10 +52,10 @@ def fixture(directory, custody=False):
         data = yaml.safe_dump(value).encode()
         (assets / name).write_bytes(data)
         members[name] = data
-    archive = assets / "governance-platform-v1.2.0.tar.gz"
+    archive = assets / "guardian-platform-v1.2.0.tar.gz"
     with tarfile.open(archive, "w:gz") as tar:
         for name, data in members.items():
-            entry = tarfile.TarInfo("governance-platform-v1.2.0/" + name)
+            entry = tarfile.TarInfo("guardian-platform-v1.2.0/" + name)
             entry.size = len(data)
             tar.addfile(entry, io.BytesIO(data))
     (assets / (archive.name + ".sha256")).write_text(
@@ -128,15 +128,15 @@ class ReleaseTests(unittest.TestCase):
 
     def test_raw_names_do_not_repeat_platform_prefix(self):
         for name, expected in (
-            ("governance-platform-v1.2.0.tar.gz", "governance-platform-v1.2.0.tar.gz"),
+            ("guardian-platform-v1.2.0.tar.gz", "guardian-platform-v1.2.0.tar.gz"),
             (
-                "governance-platform-v1.2.0.tar.gz.sha256",
-                "governance-platform-v1.2.0.tar.gz.sha256",
+                "guardian-platform-v1.2.0.tar.gz.sha256",
+                "guardian-platform-v1.2.0.tar.gz.sha256",
             ),
-            ("CHARTS.sha256", "governance-platform-charts.sha256"),
+            ("CHARTS.sha256", "guardian-platform-charts.sha256"),
             (
                 "cloudsmith-delivery.json",
-                "governance-platform-cloudsmith-delivery.json",
+                "guardian-platform-cloudsmith-delivery.json",
             ),
         ):
             self.assertEqual(source.raw_package_name(name), expected)
@@ -230,6 +230,12 @@ class ReleaseTests(unittest.TestCase):
                     source.release(version)
             api.assert_not_called()
 
+    def test_only_guardian_platform_releases_are_mirrored(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["platform"]["name"] = "other-platform"
+        with self.assertRaisesRegex(ValueError, "guardian-platform"):
+            source.validate_manifest(manifest, "1.2.0")
+
     def test_draft_prerelease_or_unmerged_release_is_rejected(self):
         for change in ({"draft": True}, {"prerelease": True}, {"published_at": None}):
             with (
@@ -320,7 +326,7 @@ class ReleaseTests(unittest.TestCase):
         altered["charts"]["auth-service"]["packageSha256"] = "0" * 64
         with self.assertRaises(ValueError):
             source.unpack_charts(
-                self.work / "assets/governance-platform-v1.2.0.tar.gz",
+                self.work / "assets/guardian-platform-v1.2.0.tar.gz",
                 self.manifest,
                 altered,
                 self.work,
@@ -618,9 +624,9 @@ class ReleaseTests(unittest.TestCase):
                 patch.object(
                     publisher,
                     "helm_package",
-                    side_effect=ValueError("Conflicting helm package")
-                    if preflight
-                    else None,
+                    side_effect=(
+                        ValueError("Conflicting helm package") if preflight else None
+                    ),
                 ),
                 patch.object(publisher, "copy_oci") as copy,
                 patch.object(

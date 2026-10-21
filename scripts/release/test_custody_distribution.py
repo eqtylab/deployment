@@ -49,12 +49,6 @@ def latest_manifest():
     return read_yaml(max(manifest_paths(), key=release_order))
 
 
-CHART_RENAMES = {
-    "governance-platform": "guardian-platform",
-    "governance-studio": "guardian",
-}
-
-
 class ManifestTests(unittest.TestCase):
     def test_every_historical_manifest_remains_external_only(self):
         manifests = manifest_paths()
@@ -121,7 +115,9 @@ class PackageTests(unittest.TestCase):
         self.work = tempfile.TemporaryDirectory(prefix="custody-delivery-test-")
         self.addCleanup(self.work.cleanup)
         self.root = Path(self.work.name)
-        self.manifest = latest_manifest()
+        self.manifest = read_yaml(
+            Path(__file__).parent / "fixtures/release-manifest.yaml"
+        )
         self.manifest["platform"]["version"] = "9.8.7"
         self.manifest["validation"]["evidence"] = {
             "status": "pending",
@@ -131,7 +127,6 @@ class PackageTests(unittest.TestCase):
         # downloading unrelated dependencies or claiming platform qualification.
         for chart in self.manifest["charts"].values():
             chart["version"] = "9.8.7"
-            chart["name"] = CHART_RENAMES.get(chart["name"], chart["name"])
             directory = self.root / "charts" / chart["name"]
             directory.mkdir(parents=True)
             (directory / "Chart.yaml").write_text(
@@ -210,10 +205,10 @@ class PackageTests(unittest.TestCase):
         extracted = self.root / "extracted"
         extracted.mkdir()
         with tarfile.open(
-            self.root / "dist/governance-platform-v9.8.7.tar.gz"
+            self.root / "dist/guardian-platform-v9.8.7.tar.gz"
         ) as archive:
             archive.extractall(extracted, filter="data")
-        return extracted / "governance-platform-v9.8.7"
+        return extracted / "guardian-platform-v9.8.7"
 
     def test_old_manifest_package_excludes_custody_but_keeps_operator_files(self):
         package = self.assemble(supplied=False)
