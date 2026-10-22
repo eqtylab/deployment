@@ -1,4 +1,8 @@
 {{- if .Values.enabled }}
+{{- $artifactStorage := dict "storage" .Values.llmGateway.plugins.artifactStorage "path" "llmGateway.plugins.artifactStorage" "envPrefix" "LLM_GATEWAY" "readOnly" true }}
+{{- if .Values.llmGateway.plugins.enabled }}
+{{- include "gateway-stack.artifactStorage.validate" $artifactStorage }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -109,6 +113,9 @@ spec:
             - {{ printf "-plugin-artifact-storage-s3-region=%s" (required "llmGateway.plugins.artifactStorage.s3.region is required when provider=s3" .Values.llmGateway.plugins.artifactStorage.s3.region) | quote }}
             - -plugin-artifact-storage-s3-force-path-style={{ ternary "true" "false" .Values.llmGateway.plugins.artifactStorage.s3.forcePathStyle }}
             {{- end }}
+            {{- with include "gateway-stack.artifactStorage.args" $artifactStorage | trim }}
+            {{- . | nindent 12 }}
+            {{- end }}
             {{- range $key := keys .Values.llmGateway.plugins.trustedSignerKeys | sortAlpha }}
             - {{ printf "-plugin-trusted-signer-key=%s=%s" $key (index $.Values.llmGateway.plugins.trustedSignerKeys $key) | quote }}
             {{- end }}
@@ -189,6 +196,11 @@ spec:
               value: {{ required "llmGateway.plugins.artifactStorage.s3.secretAccessKey is required when provider=s3 and no existingSecret is set" $s3.secretAccessKey | quote }}
             {{- end }}
             {{- end }}
+            {{- if .Values.llmGateway.plugins.enabled }}
+            {{- with include "gateway-stack.artifactStorage.env" $artifactStorage | trim }}
+            {{- . | nindent 12 }}
+            {{- end }}
+            {{- end }}
             {{- with .Values.llmGateway.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -227,6 +239,9 @@ spec:
               mountPath: {{ .Values.llmGateway.plugins.endQueueDir }}
             - name: plugin-artifact-cache
               mountPath: {{ .Values.llmGateway.plugins.artifactCacheDir }}
+            {{- with include "gateway-stack.artifactStorage.volumeMounts" $artifactStorage | trim }}
+            {{- . | nindent 12 }}
+            {{- end }}
             {{- end }}
           {{- with .Values.llmGateway.resources }}
           resources:
@@ -240,5 +255,8 @@ spec:
           emptyDir: {}
         - name: plugin-artifact-cache
           emptyDir: {}
+        {{- with include "gateway-stack.artifactStorage.volumes" $artifactStorage | trim }}
+        {{- . | nindent 8 }}
+        {{- end }}
         {{- end }}
 {{- end }}

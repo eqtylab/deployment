@@ -189,3 +189,116 @@ default
 default
 {{- end -}}
 {{- end -}}
+
+{{/*
+Plugin artifact storage beyond the inline gcs and s3 settings: GCS credentials, Azure, and file
+Context: (dict "storage" <artifactStorage> "path" <values path> "envPrefix" <env prefix> "readOnly" <bool>)
+*/}}
+{{- define "gateway-stack.artifactStorage.validate" -}}
+{{- $s := .storage -}}
+{{- if and $s.provider (not (has $s.provider (list "gcs" "s3" "azure" "file"))) -}}
+{{- fail (printf "%s.provider must be one of gcs, s3, azure, file" .path) -}}
+{{- end -}}
+{{- if eq $s.provider "azure" -}}
+{{- $az := $s.azure -}}
+{{- $modes := 0 -}}
+{{- range (list $az.connectionString $az.accountKey $az.existingSecret $az.useManagedIdentity) -}}
+{{- if . }}{{ $modes = add1 $modes }}{{ end -}}
+{{- end -}}
+{{- if ne (int $modes) 1 -}}
+{{- fail (printf "%s.azure requires exactly one of connectionString, accountKey, existingSecret, or useManagedIdentity" .path) -}}
+{{- end -}}
+{{- if and (or $az.accountKey $az.useManagedIdentity) (not $az.accountName) -}}
+{{- fail (printf "%s.azure.accountName is required with accountKey or useManagedIdentity" .path) -}}
+{{- end -}}
+{{- if and $az.connectionString $az.endpoint -}}
+{{- fail (printf "%s.azure.endpoint cannot be combined with connectionString" .path) -}}
+{{- end -}}
+{{- end -}}
+{{- if eq $s.provider "file" -}}
+{{- if not $s.file.existingClaim -}}
+{{- fail (printf "%s.file.existingClaim is required when provider=file" .path) -}}
+{{- end -}}
+{{- if not (hasPrefix "/" (default "" $s.bucket)) -}}
+{{- fail (printf "%s.bucket must be an absolute path when provider=file" .path) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "gateway-stack.artifactStorage.args" -}}
+{{- $s := .storage -}}
+{{- if and (eq $s.provider "gcs") $s.gcs.existingSecret }}
+- {{ printf "-plugin-artifact-storage-gcs-credentials-file=%s/%s" (trimSuffix "/" ($s.gcs.mountPath | default "/run/secrets/guardian-plugin-artifact-gcs")) ($s.gcs.secretKey | default "serviceAccountJson") | quote }}
+{{- end }}
+{{- if eq $s.provider "azure" }}
+{{- if $s.azure.accountName }}
+- {{ printf "-plugin-artifact-storage-azure-account-name=%s" $s.azure.accountName | quote }}
+{{- end }}
+{{- if $s.azure.endpoint }}
+- {{ printf "-plugin-artifact-storage-azure-endpoint=%s" $s.azure.endpoint | quote }}
+{{- end }}
+{{- if $s.azure.useManagedIdentity }}
+- -plugin-artifact-storage-azure-use-managed-identity=true
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "gateway-stack.artifactStorage.env" -}}
+{{- $s := .storage -}}
+{{- if eq $s.provider "azure" }}
+{{- $az := $s.azure }}
+{{- if $az.existingSecret }}
+- name: {{ .envPrefix }}_PLUGIN_ARTIFACT_STORAGE_AZURE_ACCOUNT_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $az.existingSecret }}
+      key: {{ $az.secretKeys.accountKey | default "accountKey" }}
+      optional: true
+- name: {{ .envPrefix }}_PLUGIN_ARTIFACT_STORAGE_AZURE_CONNECTION_STRING
+  valueFrom:
+    secretKeyRef:
+      name: {{ $az.existingSecret }}
+      key: {{ $az.secretKeys.connectionString | default "connectionString" }}
+      optional: true
+{{- else if $az.accountKey }}
+- name: {{ .envPrefix }}_PLUGIN_ARTIFACT_STORAGE_AZURE_ACCOUNT_KEY
+  value: {{ $az.accountKey | quote }}
+{{- else if $az.connectionString }}
+- name: {{ .envPrefix }}_PLUGIN_ARTIFACT_STORAGE_AZURE_CONNECTION_STRING
+  value: {{ $az.connectionString | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "gateway-stack.artifactStorage.volumeMounts" -}}
+{{- $s := .storage -}}
+{{- if and (eq $s.provider "gcs") $s.gcs.existingSecret }}
+- name: plugin-artifact-gcs-credentials
+  mountPath: {{ $s.gcs.mountPath | default "/run/secrets/guardian-plugin-artifact-gcs" | quote }}
+  readOnly: true
+{{- end }}
+{{- if eq $s.provider "file" }}
+- name: plugin-artifact-storage
+  mountPath: {{ $s.bucket | quote }}
+  {{- if .readOnly }}
+  readOnly: true
+  {{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "gateway-stack.artifactStorage.volumes" -}}
+{{- $s := .storage -}}
+{{- if and (eq $s.provider "gcs") $s.gcs.existingSecret }}
+- name: plugin-artifact-gcs-credentials
+  secret:
+    secretName: {{ $s.gcs.existingSecret | quote }}
+    items:
+      - key: {{ $s.gcs.secretKey | default "serviceAccountJson" | quote }}
+        path: {{ $s.gcs.secretKey | default "serviceAccountJson" | quote }}
+{{- end }}
+{{- if eq $s.provider "file" }}
+- name: plugin-artifact-storage
+  persistentVolumeClaim:
+    claimName: {{ $s.file.existingClaim | quote }}
+{{- end }}
+{{- end -}}

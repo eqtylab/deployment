@@ -188,8 +188,8 @@ When deployed via the umbrella chart, these global values are automatically used
 | llmGateway.plugins.endQueueDir                          | string | `"/var/lib/guardian/plugin-end-queue"` | Async `request.end` queue directory                                                    |
 | llmGateway.plugins.endQueueMaxBytes                     | int    | `134217728`                            | End queue size cap (128 MiB)                                                           |
 | llmGateway.plugins.artifactCacheDir                     | string | `"/var/lib/guardian/plugin-artifacts"` | Plugin artifact cache directory                                                        |
-| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs` or `s3`)                                              |
-| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket                                                                |
+| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                            |
+| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket or Azure container; the mount path for `file`                  |
 | llmGateway.plugins.artifactStorage.prefix               | string | `""`                                   | Artifact storage key prefix                                                            |
 | llmGateway.plugins.trustedSignerKeys                    | object | `{}`                                   | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`) |
 | llmGateway.plugins.secrets.resolutionOrder              | list   | `[]`                                   | Secret resolver order; prefer `["store"]` for shared deployments                       |
@@ -268,8 +268,8 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 | controlPlane.plugins.publisherSigner.existingSecret       | string | `""`                                       | Secret holding the publisher signer seed                                               |
 | controlPlane.plugins.publisherSigner.secretKey            | string | `"seed"`                                   | Key within the signer Secret                                                           |
 | controlPlane.plugins.publisherSigner.mountPath            | string | `"/run/secrets/guardian-plugin-publisher"` | Signer seed mount path                                                                 |
-| controlPlane.plugins.artifactStorage.provider             | string | `""`                                       | Artifact storage provider (`gcs` or `s3`)                                              |
-| controlPlane.plugins.artifactStorage.bucket               | string | `""`                                       | Artifact storage bucket                                                                |
+| controlPlane.plugins.artifactStorage.provider             | string | `""`                                       | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                            |
+| controlPlane.plugins.artifactStorage.bucket               | string | `""`                                       | Artifact storage bucket or Azure container; the mount path for `file`                  |
 | controlPlane.plugins.artifactStorage.prefix               | string | `""`                                       | Artifact storage key prefix                                                            |
 | controlPlane.plugins.artifactStorage.maxUploadBytes       | int    | `536870912`                                | Maximum upload size (512 MiB)                                                          |
 | controlPlane.plugins.artifactStorage.gcs.kmsKeyName       | string | `""`                                       | GCS KMS key name                                                                       |
@@ -283,18 +283,30 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 
 These keys exist identically under both `llmGateway.plugins.artifactStorage` and `controlPlane.plugins.artifactStorage`. Replace `<workload>` with either `llmGateway` or `controlPlane`.
 
-| Key                                                                | Type   | Default             | Description                                                    |
-| ------------------------------------------------------------------ | ------ | ------------------- | -------------------------------------------------------------- |
-| \<workload\>.plugins.artifactStorage.gcs.endpoint                  | string | `""`                | GCS endpoint override                                          |
-| \<workload\>.plugins.artifactStorage.s3.endpoint                   | string | `""`                | S3 endpoint override                                           |
-| \<workload\>.plugins.artifactStorage.s3.region                     | string | `""`                | S3 region; required when provider is `s3`                      |
-| \<workload\>.plugins.artifactStorage.s3.forcePathStyle             | bool   | `false`             | Use path-style S3 addressing                                   |
-| \<workload\>.plugins.artifactStorage.s3.accessKeyID                | string | `""`                | S3 access key ID; required when no `existingSecret` is set     |
-| \<workload\>.plugins.artifactStorage.s3.secretAccessKey            | string | `""`                | S3 secret access key; required when no `existingSecret` is set |
-| \<workload\>.plugins.artifactStorage.s3.existingSecret             | string | `""`                | Pre-created Secret holding the S3 credentials                  |
-| \<workload\>.plugins.artifactStorage.s3.secretKeys.accessKeyID     | string | `"accessKeyID"`     | Key holding the access key ID                                  |
-| \<workload\>.plugins.artifactStorage.s3.secretKeys.secretAccessKey | string | `"secretAccessKey"` | Key holding the secret access key                              |
-| \<workload\>.plugins.secrets.encryptionKey.secretKey               | string | `"encryption-key"`  | Key holding the plugin secret encryption key                   |
+| Key                                                                    | Type   | Default                                       | Description                                                             |
+| ---------------------------------------------------------------------- | ------ | --------------------------------------------- | ----------------------------------------------------------------------- |
+| \<workload\>.plugins.artifactStorage.gcs.endpoint                      | string | `""`                                          | GCS endpoint override                                                   |
+| \<workload\>.plugins.artifactStorage.gcs.existingSecret                | string | `""`                                          | Secret holding a GCS service account JSON; unset uses workload identity |
+| \<workload\>.plugins.artifactStorage.gcs.secretKey                     | string | `"serviceAccountJson"`                        | Key holding the service account JSON                                    |
+| \<workload\>.plugins.artifactStorage.gcs.mountPath                     | string | `"/run/secrets/guardian-plugin-artifact-gcs"` | Where the service account JSON is mounted                               |
+| \<workload\>.plugins.artifactStorage.s3.endpoint                       | string | `""`                                          | S3 endpoint override                                                    |
+| \<workload\>.plugins.artifactStorage.s3.region                         | string | `""`                                          | S3 region; required when provider is `s3`                               |
+| \<workload\>.plugins.artifactStorage.s3.forcePathStyle                 | bool   | `false`                                       | Use path-style S3 addressing                                            |
+| \<workload\>.plugins.artifactStorage.s3.accessKeyID                    | string | `""`                                          | S3 access key ID; required when no `existingSecret` is set              |
+| \<workload\>.plugins.artifactStorage.s3.secretAccessKey                | string | `""`                                          | S3 secret access key; required when no `existingSecret` is set          |
+| \<workload\>.plugins.artifactStorage.s3.existingSecret                 | string | `""`                                          | Pre-created Secret holding the S3 credentials                           |
+| \<workload\>.plugins.artifactStorage.s3.secretKeys.accessKeyID         | string | `"accessKeyID"`                               | Key holding the access key ID                                           |
+| \<workload\>.plugins.artifactStorage.s3.secretKeys.secretAccessKey     | string | `"secretAccessKey"`                           | Key holding the secret access key                                       |
+| \<workload\>.plugins.artifactStorage.azure.accountName                 | string | `""`                                          | Storage account name; required with an account key or managed identity  |
+| \<workload\>.plugins.artifactStorage.azure.endpoint                    | string | `""`                                          | Blob service endpoint override; not with `connectionString`             |
+| \<workload\>.plugins.artifactStorage.azure.useManagedIdentity          | bool   | `false`                                       | Authenticate with the pod's managed identity                            |
+| \<workload\>.plugins.artifactStorage.azure.accountKey                  | string | `""`                                          | Account key                                                             |
+| \<workload\>.plugins.artifactStorage.azure.connectionString            | string | `""`                                          | Connection string                                                       |
+| \<workload\>.plugins.artifactStorage.azure.existingSecret              | string | `""`                                          | Pre-created Secret holding an account key or a connection string        |
+| \<workload\>.plugins.artifactStorage.azure.secretKeys.accountKey       | string | `"accountKey"`                                | Key holding the account key                                             |
+| \<workload\>.plugins.artifactStorage.azure.secretKeys.connectionString | string | `"connectionString"`                          | Key holding the connection string                                       |
+| \<workload\>.plugins.artifactStorage.file.existingClaim                | string | `""`                                          | ReadWriteMany PVC mounted at `bucket`; required when provider is `file` |
+| \<workload\>.plugins.secrets.encryptionKey.secretKey                   | string | `"encryption-key"`                            | Key holding the plugin secret encryption key                            |
 
 ### Ingress
 

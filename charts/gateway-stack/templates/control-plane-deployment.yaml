@@ -5,6 +5,8 @@
 {{- if and .Values.controlPlane.auth.bearer.enabled (not .Values.controlPlane.auth.enabled) }}
 {{- fail "controlPlane.auth.enabled must be true when controlPlane.auth.bearer.enabled=true" }}
 {{- end }}
+{{- $artifactStorage := dict "storage" .Values.controlPlane.plugins.artifactStorage "path" "controlPlane.plugins.artifactStorage" "envPrefix" "CONTROL_PLANE" "readOnly" false }}
+{{- include "gateway-stack.artifactStorage.validate" $artifactStorage }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -175,6 +177,9 @@ spec:
             - {{ printf "-plugin-artifact-storage-s3-region=%s" (required "controlPlane.plugins.artifactStorage.s3.region is required when provider=s3" .Values.controlPlane.plugins.artifactStorage.s3.region) | quote }}
             - -plugin-artifact-storage-s3-force-path-style={{ ternary "true" "false" .Values.controlPlane.plugins.artifactStorage.s3.forcePathStyle }}
             {{- end }}
+            {{- with include "gateway-stack.artifactStorage.args" $artifactStorage | trim }}
+            {{- . | nindent 12 }}
+            {{- end }}
             {{- range $key := keys .Values.controlPlane.plugins.trustedSignerKeys | sortAlpha }}
             - {{ printf "-plugin-trusted-signer-key=%s=%s" $key (index $.Values.controlPlane.plugins.trustedSignerKeys $key) | quote }}
             {{- end }}
@@ -236,6 +241,9 @@ spec:
               value: {{ required "controlPlane.plugins.artifactStorage.s3.secretAccessKey is required when provider=s3 and no existingSecret is set" $s3.secretAccessKey | quote }}
             {{- end }}
             {{- end }}
+            {{- with include "gateway-stack.artifactStorage.env" $artifactStorage | trim }}
+            {{- . | nindent 12 }}
+            {{- end }}
             {{- with .Values.controlPlane.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -259,19 +267,31 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if $publisherSigner.existingSecret }}
+          {{- $artifactStorageMounts := include "gateway-stack.artifactStorage.volumeMounts" $artifactStorage | trim }}
+          {{- if or $publisherSigner.existingSecret $artifactStorageMounts }}
           volumeMounts:
+            {{- if $publisherSigner.existingSecret }}
             - name: plugin-publisher-signer
               mountPath: {{ $publisherSigner.mountPath | default "/run/secrets/guardian-plugin-publisher" | quote }}
               readOnly: true
+            {{- end }}
+            {{- with $artifactStorageMounts }}
+            {{- . | nindent 12 }}
+            {{- end }}
           {{- end }}
-      {{- if $publisherSigner.existingSecret }}
+      {{- $artifactStorageVolumes := include "gateway-stack.artifactStorage.volumes" $artifactStorage | trim }}
+      {{- if or $publisherSigner.existingSecret $artifactStorageVolumes }}
       volumes:
+        {{- if $publisherSigner.existingSecret }}
         - name: plugin-publisher-signer
           secret:
             secretName: {{ $publisherSigner.existingSecret | quote }}
             items:
               - key: {{ $publisherSigner.secretKey | default "seed" | quote }}
                 path: {{ $publisherSigner.secretKey | default "seed" | quote }}
+        {{- end }}
+        {{- with $artifactStorageVolumes }}
+        {{- . | nindent 8 }}
+        {{- end }}
       {{- end }}
 {{- end }}

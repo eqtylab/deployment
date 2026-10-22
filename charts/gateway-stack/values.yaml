@@ -341,7 +341,7 @@ llmGateway:
     artifactStorage:
       # -- Storage Provider
       # @default -- `""`
-      # Options: gcs, s3
+      # Options: gcs, s3, azure, file
       provider: ""
       # -- Storage Bucket
       # @default -- `""`
@@ -355,6 +355,15 @@ llmGateway:
         # -- GCS Endpoint Override
         # @default -- `""`
         endpoint: ""
+        # -- GCS Credentials Secret
+        # @default -- `""` (uses the pod's workload identity)
+        existingSecret: ""
+        # -- GCS Credentials Secret Key
+        # @default -- `serviceAccountJson`
+        secretKey: serviceAccountJson
+        # -- GCS Credentials Mount Path
+        # @default -- `/run/secrets/guardian-plugin-artifact-gcs`
+        mountPath: /run/secrets/guardian-plugin-artifact-gcs
       # -- S3 Settings
       # @default -- See values below
       s3:
@@ -385,6 +394,43 @@ llmGateway:
           # -- Secret Access Key Key
           # @default -- `secretAccessKey`
           secretAccessKey: secretAccessKey
+      # -- Azure Settings
+      # @default -- See values below
+      azure:
+        # -- Azure Storage Account Name
+        # @default -- `""` (REQUIRED with an account key or managed identity)
+        accountName: ""
+        # -- Azure Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- Use Managed Identity
+        # @default -- `false`
+        useManagedIdentity: false
+        # -- Azure Account Key
+        # @default -- `""`
+        accountKey: ""
+        # -- Azure Connection String
+        # @default -- `""`
+        connectionString: ""
+        # -- Existing Azure Credentials Secret
+        # @default -- `""` (holds an account key or a connection string)
+        existingSecret: ""
+        # -- Azure Secret Keys
+        # @default -- See values below
+        secretKeys:
+          # -- Account Key Key
+          # @default -- `accountKey`
+          accountKey: accountKey
+          # -- Connection String Key
+          # @default -- `connectionString`
+          connectionString: connectionString
+      # -- File Settings
+      # @default -- See values below
+      file:
+        # -- Existing PersistentVolumeClaim
+        # @default -- `""` (REQUIRED when provider is file)
+        # ReadWriteMany claim shared by the Control Plane and LLM Gateway, mounted at bucket
+        existingClaim: ""
     # -- Trusted Plugin Signer Keys
     # @default -- `{}`
     # Map of signer key ID to did:key public key
@@ -712,7 +758,7 @@ controlPlane:
     artifactStorage:
       # -- Storage Provider
       # @default -- `""`
-      # Options: gcs, s3
+      # Options: gcs, s3, azure, file
       provider: ""
       # -- Storage Bucket
       # @default -- `""`
@@ -732,6 +778,15 @@ controlPlane:
         # -- GCS KMS Key Name
         # @default -- `""`
         kmsKeyName: ""
+        # -- GCS Credentials Secret
+        # @default -- `""` (uses the pod's workload identity)
+        existingSecret: ""
+        # -- GCS Credentials Secret Key
+        # @default -- `serviceAccountJson`
+        secretKey: serviceAccountJson
+        # -- GCS Credentials Mount Path
+        # @default -- `/run/secrets/guardian-plugin-artifact-gcs`
+        mountPath: /run/secrets/guardian-plugin-artifact-gcs
       # -- S3 Settings
       # @default -- See values below
       s3:
@@ -762,6 +817,43 @@ controlPlane:
           # -- Secret Access Key Key
           # @default -- `secretAccessKey`
           secretAccessKey: secretAccessKey
+      # -- Azure Settings
+      # @default -- See values below
+      azure:
+        # -- Azure Storage Account Name
+        # @default -- `""` (REQUIRED with an account key or managed identity)
+        accountName: ""
+        # -- Azure Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- Use Managed Identity
+        # @default -- `false`
+        useManagedIdentity: false
+        # -- Azure Account Key
+        # @default -- `""`
+        accountKey: ""
+        # -- Azure Connection String
+        # @default -- `""`
+        connectionString: ""
+        # -- Existing Azure Credentials Secret
+        # @default -- `""` (holds an account key or a connection string)
+        existingSecret: ""
+        # -- Azure Secret Keys
+        # @default -- See values below
+        secretKeys:
+          # -- Account Key Key
+          # @default -- `accountKey`
+          accountKey: accountKey
+          # -- Connection String Key
+          # @default -- `connectionString`
+          connectionString: connectionString
+      # -- File Settings
+      # @default -- See values below
+      file:
+        # -- Existing PersistentVolumeClaim
+        # @default -- `""` (REQUIRED when provider is file)
+        # ReadWriteMany claim shared by the Control Plane and LLM Gateway, mounted at bucket
+        existingClaim: ""
     # -- Trusted Plugin Signer Keys
     # @default -- `{}`
     # Map of signer key ID to did:key public key
