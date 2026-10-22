@@ -1640,7 +1640,10 @@ gateway-stack:
   controlPlane:
     adapter:
       enabled: true
+    # Enabling the stack requires a registration token secret: set
+    # auth.registrationTokenSecret or auth.existingSecret
     auth:
+      enabled: true
       bearer:
         enabled: true
         mode: "auth_service"

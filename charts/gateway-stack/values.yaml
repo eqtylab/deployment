@@ -675,7 +675,7 @@ controlPlane:
     allowEmbeddedCredentialBootstrap: false
   # -- VirusTotal Configuration
   # @default -- See values below
-  # Optional upload scanning for plugin artifacts
+  # Optional scanning of the blobs callers look up through /v1/vt-scans
   virusTotal:
     # -- Enable VirusTotal Scanning
     # @default -- `false`

@@ -34,7 +34,9 @@ with `examples/values-gateway.yaml`; its control-plane adapter then resolves the
 umbrella Auth, Governance, and Integrity services automatically, and the overlay
 points Governance Service at the Control Plane for agent assessments. The gateway
 reuses `platform-database` and expects a `gateway-dsn` key for the
-`guardian_gateway` database.
+`guardian_gateway` database. The Control Plane also needs a registration token
+secret, in `gateway-stack.controlPlane.auth.registrationTokenSecret` or a Secret
+named by `gateway-stack.controlPlane.auth.existingSecret`.
 
 ## Configuration Model
 

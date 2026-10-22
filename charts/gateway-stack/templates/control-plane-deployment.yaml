@@ -2,6 +2,9 @@
 {{- if and .Values.controlPlane.auth.enabled (not .Values.controlPlane.auth.bearer.enabled) }}
 {{- fail "controlPlane.auth.bearer.enabled must be true when controlPlane.auth.enabled=true" }}
 {{- end }}
+{{- if and .Values.controlPlane.auth.bearer.enabled (not .Values.controlPlane.auth.enabled) }}
+{{- fail "controlPlane.auth.enabled must be true when controlPlane.auth.bearer.enabled=true" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -137,11 +140,11 @@ spec:
             - {{ printf "-adapter-integrity-http-timeout=%s" $adapter.integrityHTTPTimeout | quote }}
             - {{ printf "-adapter-integrity-status-cache-ttl=%s" $adapter.integrityStatusCacheTTL | quote }}
             {{- end }}
-            {{- if $adapter.trustedMembershipIssuerDIDs }}
-            - {{ printf "-adapter-trusted-membership-issuer-dids=%s" (join "," $adapter.trustedMembershipIssuerDIDs) | quote }}
+            {{- range $adapter.trustedMembershipIssuerDIDs }}
+            - {{ printf "-adapter-trusted-membership-issuer-did=%s" . | quote }}
             {{- end }}
-            {{- if $adapter.trustedComplianceIssuerDIDs }}
-            - {{ printf "-adapter-trusted-compliance-issuer-dids=%s" (join "," $adapter.trustedComplianceIssuerDIDs) | quote }}
+            {{- range $adapter.trustedComplianceIssuerDIDs }}
+            - {{ printf "-adapter-trusted-compliance-issuer-did=%s" . | quote }}
             {{- end }}
             {{- if $adapter.allowEmbeddedCredentialBootstrap }}
             - -adapter-allow-embedded-credential-bootstrap=true

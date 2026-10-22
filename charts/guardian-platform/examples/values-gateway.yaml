@@ -19,6 +19,11 @@
 #
 # If global.secrets.create=true, also set
 # global.secrets.database.values.gatewayDsn to the guardian_gateway DSN
+#
+# The Control Plane needs a registration token secret. Set
+# gateway-stack.controlPlane.auth.registrationTokenSecret in your secrets file
+# (openssl rand -hex 32), or name a pre-created Secret with a
+# registrationTokenSecret key in auth.existingSecret below
 
 gateway-stack:
   enabled: true
@@ -26,6 +31,8 @@ gateway-stack:
   # Serve the control-plane API under /api
   controlPlane:
     apiBasePath: "/api"
+    # auth:
+    #   existingSecret: "guardian-control-plane-auth"
 
   # Public routes stay off until hostnames and TLS are chosen. Replace both
   # hosts and the guardian.config.gatewayApiUrl and llmGatewayUrl

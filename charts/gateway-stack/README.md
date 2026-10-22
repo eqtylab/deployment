@@ -79,7 +79,7 @@ which takes precedence over its tag while retaining registry mirror behavior.
 - `llmGateway.registration.credentialSigner.existingSecret` when `llmGateway.registration.enabled=true`
 - `controlPlane.image.repository`
 - `controlPlane.auth.enabled=true`
-- `controlPlane.auth.bearer.enabled=true` (required whenever auth is enabled; bearer tokens are the only credential)
+- `controlPlane.auth.bearer.enabled=true` (required whenever auth is enabled, and auth whenever it is; bearer tokens are the only credential)
 - `controlPlane.auth.bearer.issuerURL`
 - `controlPlane.auth.bearer.clientID`
 - One of:
@@ -275,7 +275,7 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 | controlPlane.plugins.artifactStorage.gcs.kmsKeyName       | string | `""`                                       | GCS KMS key name                                                                       |
 | controlPlane.plugins.trustedSignerKeys                    | object | `{}`                                       | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`) |
 | controlPlane.plugins.secrets.encryptionKey.existingSecret | string | `""`                                       | Secret holding the plugin secret encryption key                                        |
-| controlPlane.virusTotal.enabled                           | bool   | `false`                                    | Enable VirusTotal upload scanning                                                      |
+| controlPlane.virusTotal.enabled                           | bool   | `false`                                    | Enable VirusTotal scanning of the blobs callers look up through `/v1/vt-scans`         |
 | controlPlane.virusTotal.existingSecret                    | string | `""`                                       | Secret holding the VirusTotal API key                                                  |
 | controlPlane.virusTotal.secretKey                         | string | `"api-key"`                                | Key within the VirusTotal Secret                                                       |
 
