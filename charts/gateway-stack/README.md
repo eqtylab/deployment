@@ -154,7 +154,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | llmGateway.service.port               | int    | `10000`                                  | Service port                                                |
 | llmGateway.upstreams.anthropicURL     | string | `"https://api.anthropic.com"`            | Anthropic upstream URL                                      |
 | llmGateway.upstreams.openaiURL        | string | `"https://api.openai.com"`               | OpenAI upstream URL                                         |
-| llmGateway.signature.label            | string | `"sig1"`                                 | RFC 9421 signature label                                    |
+| llmGateway.signature.label            | string | `"sig"`                                  | RFC 9421 signature label; must match Viper's `sig`          |
 | llmGateway.signature.defaultSigMaxAge | string | `"60s"`                                  | Maximum accepted signature age                              |
 | llmGateway.signature.defaultClockSkew | string | `"120s"`                                 | Allowed clock skew                                          |
 | llmGateway.extraArgs                  | list   | `[]`                                     | Extra container arguments                                   |
@@ -180,22 +180,23 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### LLM Gateway Plugin Runtime
 
-| Key                                                     | Type   | Default                                | Description                                                                            |
-| ------------------------------------------------------- | ------ | -------------------------------------- | -------------------------------------------------------------------------------------- |
-| llmGateway.plugins.enabled                              | bool   | `false`                                | Enable the plugin runtime                                                              |
-| llmGateway.plugins.pollInterval                         | string | `"15s"`                                | Plugin poll interval                                                                   |
-| llmGateway.plugins.authorizerShadowEnabled              | bool   | `false`                                | Evaluate authorizer plugins without enforcing decisions                                |
-| llmGateway.plugins.endQueueDir                          | string | `"/var/lib/guardian/plugin-end-queue"` | Async `request.end` queue directory                                                    |
-| llmGateway.plugins.endQueueMaxBytes                     | int    | `134217728`                            | End queue size cap (128 MiB)                                                           |
-| llmGateway.plugins.artifactCacheDir                     | string | `"/var/lib/guardian/plugin-artifacts"` | Plugin artifact cache directory                                                        |
-| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                            |
-| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket or Azure container; the mount path for `file`                  |
-| llmGateway.plugins.artifactStorage.prefix               | string | `""`                                   | Artifact storage key prefix                                                            |
-| llmGateway.plugins.trustedSignerKeys                    | object | `{}`                                   | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`) |
-| llmGateway.plugins.secrets.resolutionOrder              | list   | `[]`                                   | Secret resolver order; prefer `["store"]` for shared deployments                       |
-| llmGateway.plugins.secrets.encryptionKey.existingSecret | string | `""`                                   | Secret holding the plugin secret encryption key                                        |
-| llmGateway.plugins.secretEnvs                           | object | `{}`                                   | Inline plugin secret env vars (local/dev fallback)                                     |
-| llmGateway.plugins.secretEnvsSecret.name                | string | `""`                                   | Secret providing plugin secret env vars (local/dev fallback)                           |
+| Key                                                     | Type   | Default                                | Description                                                                             |
+| ------------------------------------------------------- | ------ | -------------------------------------- | --------------------------------------------------------------------------------------- |
+| llmGateway.plugins.enabled                              | bool   | `false`                                | Enable the plugin runtime                                                               |
+| llmGateway.plugins.pollInterval                         | string | `"15s"`                                | Plugin poll interval                                                                    |
+| llmGateway.plugins.authorizerShadowEnabled              | bool   | `false`                                | Evaluate authorizer plugins without enforcing decisions                                 |
+| llmGateway.plugins.endQueueDir                          | string | `"/var/lib/guardian/plugin-end-queue"` | Async `request.end` queue directory                                                     |
+| llmGateway.plugins.endQueueMaxBytes                     | int    | `134217728`                            | End queue size cap (128 MiB)                                                            |
+| llmGateway.plugins.artifactCacheDir                     | string | `"/var/lib/guardian/plugin-artifacts"` | Plugin artifact cache directory                                                         |
+| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                             |
+| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket or Azure container; the mount path for `file`                   |
+| llmGateway.plugins.artifactStorage.prefix               | string | `""`                                   | Artifact storage key prefix                                                             |
+| llmGateway.plugins.trustedSignerKeys                    | object | `{}`                                   | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`)  |
+| llmGateway.plugins.secrets.resolutionOrder              | list   | `[]`                                   | Secret resolver order; prefer `["store"]` for shared deployments                        |
+| llmGateway.plugins.secrets.encryptionKey.existingSecret | string | `""`                                   | Secret holding the plugin secret encryption key                                         |
+| llmGateway.plugins.secretEnvs                           | object | `{}`                                   | Inline plugin secret env vars (local/dev fallback)                                      |
+| llmGateway.plugins.secretEnvsSecret.name                | string | `""`                                   | Secret providing plugin secret env vars (local/dev fallback)                            |
+| llmGateway.projectContext.mode                          | string | `"disabled"`                           | Project context mode (`disabled`, `observe`, or `enforce`); requires the plugin runtime |
 
 ### Control Plane
 

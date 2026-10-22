@@ -250,8 +250,9 @@ llmGateway:
   # RFC 9421 message signature verification settings
   signature:
     # -- Signature Label
-    # @default -- `sig1`
-    label: sig1
+    # @default -- `sig`
+    # Must match the label Viper signs with
+    label: sig
     # -- Default Signature Max Age
     # @default -- `60s`
     defaultSigMaxAge: 60s
@@ -313,6 +314,16 @@ llmGateway:
     # -- Audit Retention Days
     # @default -- `90`
     retentionDays: 90
+  # -- Project Context Configuration
+  # @default -- See values below
+  # Binds each request to the Guardian project its agent presents, so project
+  # configurations and memberships apply
+  projectContext:
+    # -- Project Context Mode
+    # @default -- `disabled`
+    # Options: disabled, observe, enforce. **REQUIRES** plugins.enabled=true
+    # when not disabled
+    mode: disabled
   # -- Hook/Plugin Runtime Configuration
   # @default -- See values below
   # See docs/plugin-runtime-bootstrap.md for the full bootstrap procedure

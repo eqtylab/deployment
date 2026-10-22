@@ -127,6 +127,17 @@ spec:
             - -plugin-secrets-resolution-order=env
             {{- end }}
             {{- end }}
+            {{- $projectContextMode := .Values.llmGateway.projectContext.mode }}
+            {{- if not (and (kindIs "string" $projectContextMode) (has (lower $projectContextMode) (list "disabled" "observe" "enforce"))) }}
+            {{- fail (printf "llmGateway.projectContext.mode must be the string disabled, observe, or enforce (got %v)" $projectContextMode) }}
+            {{- end }}
+            {{- $projectContextMode = lower $projectContextMode }}
+            {{- if ne $projectContextMode "disabled" }}
+            {{- if not .Values.llmGateway.plugins.enabled }}
+            {{- fail "llmGateway.projectContext.mode requires llmGateway.plugins.enabled=true" }}
+            {{- end }}
+            - -project-context-mode={{ $projectContextMode }}
+            {{- end }}
             {{- if .Values.llmGateway.authServiceBaseURL }}
             - {{ printf "-auth-service-base-url=%s" .Values.llmGateway.authServiceBaseURL | quote }}
             {{- end }}
