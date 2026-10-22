@@ -653,8 +653,8 @@ controlPlane:
     # @default -- `5s`
     httpTimeout: 5s
     # -- Project Runtime Read Timeout
-    # @default -- `5s`
-    projectRuntimeReadTimeout: 5s
+    # @default -- `30s`
+    projectRuntimeReadTimeout: 30s
     # -- Integrity Service Base URL
     # @default -- `""` (auto-generated: "http://{Release.Name}-integrity-service:3050")
     integrityBaseURL: ""

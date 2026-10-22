@@ -253,7 +253,7 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 | controlPlane.adapter.governanceServiceBaseURL         | string | `""`    | Defaults to `http://{Release.Name}-governance-service:10001` |
 | controlPlane.adapter.integrityBaseURL                 | string | `""`    | Defaults to `http://{Release.Name}-integrity-service:3050`   |
 | controlPlane.adapter.httpTimeout                      | string | `"5s"`  | Adapter HTTP timeout                                         |
-| controlPlane.adapter.projectRuntimeReadTimeout        | string | `"5s"`  | Project runtime read timeout                                 |
+| controlPlane.adapter.projectRuntimeReadTimeout        | string | `"30s"` | Project runtime read timeout                                 |
 | controlPlane.adapter.integrityHTTPTimeout             | string | `"5s"`  | Integrity HTTP timeout                                       |
 | controlPlane.adapter.integrityStatusCacheTTL          | string | `"5m"`  | Integrity status cache TTL                                   |
 | controlPlane.adapter.trustedMembershipIssuerDIDs      | list   | `[]`    | Trusted membership credential issuers                        |
