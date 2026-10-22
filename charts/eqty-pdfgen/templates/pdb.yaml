@@ -6,7 +6,8 @@ metadata:
   labels:
     {{- include "eqty-pdfgen.labels" . | nindent 4 }}
 spec:
-  {{- if gt (int .Values.replicaCount) 1 }}
+  {{- $replicas := ternary .Values.autoscaling.minReplicas .Values.replicaCount .Values.autoscaling.enabled }}
+  {{- if gt (int $replicas) 1 }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   {{- else }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable | default 1 }}

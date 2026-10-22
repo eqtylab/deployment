@@ -376,11 +376,11 @@ These keys exist identically under `llmGateway` and `controlPlane`. Replace `<wo
 
 ### High Availability
 
-| Key                                             | Type | Default | Description                                                                        |
-| ----------------------------------------------- | ---- | ------- | ---------------------------------------------------------------------------------- |
-| \<workload\>.podDisruptionBudget.enabled        | bool | `false` | Enable Pod Disruption Budget                                                       |
-| \<workload\>.podDisruptionBudget.minAvailable   | int  | `1`     | Minimum available pods during disruptions (only rendered when replicaCount > 1)    |
-| \<workload\>.podDisruptionBudget.maxUnavailable | int  | `1`     | Maximum unavailable pods during disruptions (only rendered when replicaCount <= 1) |
+| Key                                             | Type | Default | Description                                                                                                                             |
+| ----------------------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| \<workload\>.podDisruptionBudget.enabled        | bool | `false` | Enable Pod Disruption Budget                                                                                                            |
+| \<workload\>.podDisruptionBudget.minAvailable   | int  | `1`     | Minimum available pods during disruptions (only rendered when replicaCount, or autoscaling.minReplicas with autoscaling on, is above 1) |
+| \<workload\>.podDisruptionBudget.maxUnavailable | int  | `1`     | Maximum unavailable pods during disruptions (only rendered otherwise)                                                                   |
 
 ### Node Scheduling
 

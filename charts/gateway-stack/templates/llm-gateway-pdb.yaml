@@ -7,7 +7,8 @@ metadata:
     {{- include "gateway-stack.labels" . | nindent 4 }}
     app.kubernetes.io/component: llm-gateway
 spec:
-  {{- if gt (int .Values.llmGateway.replicaCount) 1 }}
+  {{- $replicas := ternary .Values.llmGateway.autoscaling.minReplicas .Values.llmGateway.replicaCount .Values.llmGateway.autoscaling.enabled }}
+  {{- if gt (int $replicas) 1 }}
   minAvailable: {{ .Values.llmGateway.podDisruptionBudget.minAvailable }}
   {{- else }}
   maxUnavailable: {{ .Values.llmGateway.podDisruptionBudget.maxUnavailable | default 1 }}

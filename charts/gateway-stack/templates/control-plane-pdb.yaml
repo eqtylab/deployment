@@ -7,7 +7,8 @@ metadata:
     {{- include "gateway-stack.labels" . | nindent 4 }}
     app.kubernetes.io/component: control-plane
 spec:
-  {{- if gt (int .Values.controlPlane.replicaCount) 1 }}
+  {{- $replicas := ternary .Values.controlPlane.autoscaling.minReplicas .Values.controlPlane.replicaCount .Values.controlPlane.autoscaling.enabled }}
+  {{- if gt (int $replicas) 1 }}
   minAvailable: {{ .Values.controlPlane.podDisruptionBudget.minAvailable }}
   {{- else }}
   maxUnavailable: {{ .Values.controlPlane.podDisruptionBudget.maxUnavailable | default 1 }}
