@@ -228,6 +228,7 @@ jobs:
           fi
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
+            template_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
           fi
 
           helm template guardian-platform charts/guardian-platform \
