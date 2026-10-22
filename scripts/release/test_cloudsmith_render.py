@@ -46,6 +46,11 @@ class CloudsmithRenderTests(unittest.TestCase):
                 "--set",
                 "global.secrets.database.values.gatewayDsn=postgres://test:test@postgres/guardian?sslmode=disable",
             ]
+        else:
+            args += [
+                "--set",
+                "gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation",
+            ]
         if cloudsmith:
             args += [
                 "--values",
