@@ -31,7 +31,7 @@ Configuration:
 
 Database:
   Host: {{ .Values.externalDatabase.host | default (printf "%s-postgresql" .Release.Name) }}
-  Database: {{ .Values.externalDatabase.name }}
+  Database: {{ .Values.externalDatabase.name | default ((.Values.global).postgresql).database | default "governance" }}
   Migrations: {{ if .Values.migrations.runAtStartup }}enabled{{ else }}disabled{{ end }}
 
 To check the status:

@@ -347,6 +347,8 @@ spec:
                 secretKeyRef:
                   name: {{ $gcpKmsSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).keyManagement).gcp_kms).keys).serviceAccountJson | default "service-account-json" | quote }}
+                  # Absent when using Workload Identity or Application Default Credentials
+                  optional: true
               {{- end }}
             {{- end }}
             {{- end }}

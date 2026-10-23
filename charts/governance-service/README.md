@@ -360,13 +360,13 @@ When deployed via the umbrella chart, these global values are automatically used
 | Key                                        | Type   | Default             | Description                                                                                                                         |
 | ------------------------------------------ | ------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | externalDatabase.host                      | string | `""`                | Database host (auto-generated as {Release.Name}-postgresql)                                                                         |
-| externalDatabase.port                      | int    | `5432`              | Database port                                                                                                                       |
-| externalDatabase.name                      | string | `"governance"`      | Database name                                                                                                                       |
-| externalDatabase.user                      | string | `"postgres"`        | Database user                                                                                                                       |
+| externalDatabase.port                      | string | `""`                | Database port (auto-configured from global.postgresql.port; defaults to `5432` when empty)                                          |
+| externalDatabase.name                      | string | `""`                | Database name (auto-configured from global.postgresql.database, default "governance")                                               |
+| externalDatabase.user                      | string | `""`                | Database user (auto-configured from global.postgresql.username, default "postgres")                                                 |
 | externalDatabase.password                  | string | `""`                | Database password (auto-configured from global.secrets.database)                                                                    |
 | externalDatabase.sslMode                   | string | `""`                | SSL mode (auto-configured from global.postgresql.sslMode, defaults to "disable"). Options: disable, require, verify-ca, verify-full |
 | externalDatabase.passwordSecretKeyRef.name | string | `""`                | Secret name (auto-configured from global.secrets.database.secretName)                                                               |
-| externalDatabase.passwordSecretKeyRef.key  | string | `"password"`        | Secret key name for password                                                                                                        |
+| externalDatabase.passwordSecretKeyRef.key  | string | `""`                | Secret key name for password (auto-configured from global.secrets.database.keys.password, default "password")                       |
 | migrations.runAtStartup                    | bool   | `true`              | Run database migrations automatically at startup                                                                                    |
 | migrations.path                            | string | `"/app/migrations"` | Path to migration files within the container                                                                                        |
 

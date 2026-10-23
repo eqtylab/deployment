@@ -267,14 +267,14 @@ externalDatabase:
   # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
   host: ""
   # -- Database Port
-  # @default -- `5432`
-  port: 5432
+  # @default -- `""` (auto-configured from global.postgresql.port, defaults to 5432)
+  port: ""
   # -- Database Name
-  # @default -- `governance`
-  name: "governance"
+  # @default -- `""` (auto-configured from global.postgresql.database, defaults to "governance")
+  name: ""
   # -- Database User
-  # @default -- `postgres`
-  user: "postgres"
+  # @default -- `""` (auto-configured from global.postgresql.username, defaults to "postgres")
+  user: ""
   # -- Database Password
   # @default -- `""` (auto-configured from global.secrets.database)
   password: ""
@@ -290,8 +290,8 @@ externalDatabase:
     # @default -- `""` (auto-configured from global.secrets.database.secretName)
     name: ""
     # -- Secret Key
-    # @default -- `password`
-    key: "password"
+    # @default -- `""` (auto-configured from global.secrets.database.keys.password, defaults to "password")
+    key: ""
 
 # -- Database Migrations
 # @default -- See values below

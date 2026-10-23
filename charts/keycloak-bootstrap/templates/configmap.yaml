@@ -568,7 +568,7 @@ data:
         "{{ .Values.users.admin.firstName }}" \
         "{{ .Values.users.admin.lastName }}" \
         "${ADMIN_PASSWORD}" \
-        "{{ not .Values.users.admin.temporaryPassword }}"
+        "{{ .Values.users.admin.temporaryPassword }}"
       {{- end }}
 
       # Create test users
