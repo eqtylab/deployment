@@ -10,7 +10,7 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
     """Generate auth0-bootstrap values.yaml content based on configuration."""
     domain = config.domain
     auth0_domain = config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com"
-    api_identifier = config.auth0_audience or f"https://{domain}"
+    api_identifier = config.auth0_api_identifier
     admin_email = f"admin@{domain}"
 
     data: dict[str, Any] = {

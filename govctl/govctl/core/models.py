@@ -34,6 +34,13 @@ CLOUD_TO_STORAGE = {
     CloudProvider.GCP: "gcs",
 }
 
+# Mapping of cloud provider to default key management provider
+CLOUD_TO_KEY_MANAGEMENT = {
+    CloudProvider.AWS: KeyManagementProvider.AWS_KMS,
+    CloudProvider.AZURE: KeyManagementProvider.AZURE_KEY_VAULT,
+    CloudProvider.GCP: KeyManagementProvider.GCP_KMS,
+}
+
 
 @dataclass
 class PlatformConfig:
@@ -92,6 +99,11 @@ class PlatformConfig:
     # Auth0-specific
     auth0_domain: str = ""
     auth0_audience: str = ""
+
+    @property
+    def auth0_api_identifier(self) -> str:
+        """Get the Guardian API identifier, defaulting to the platform URL."""
+        return self.auth0_audience or f"https://{self.domain}"
 
     # Entra-specific
     entra_tenant_id: str = ""

@@ -1,12 +1,19 @@
 """Init command for govctl."""
 
+import os
 from pathlib import Path
 
 import click
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider, DatabaseMode
+from govctl.core.models import (
+    CLOUD_TO_KEY_MANAGEMENT,
+    AuthProvider,
+    CloudProvider,
+    DatabaseMode,
+    PlatformConfig,
+)
 from govctl.core.artifacts import configure_artifacts
 from govctl.generators.values import generate_values
 from govctl.generators.secrets import generate_secrets
@@ -17,6 +24,20 @@ from govctl.generators.auth0_bootstrap import generate_auth0_bootstrap
 from govctl.utils.output import console
 from govctl.cli.prompts import collect_interactive_config
 from govctl.cli.display import show_config_summary, show_next_steps
+
+BOOTSTRAP_GENERATORS = {
+    AuthProvider.AUTH0: generate_auth0_bootstrap,
+    AuthProvider.ENTRA: generate_entra_bootstrap,
+    AuthProvider.KEYCLOAK: generate_keycloak_bootstrap,
+}
+
+
+def write_private(path: Path, content: str) -> None:
+    """Write content to path readable only by the owner (mode 0600)."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(content)
 
 
 @click.command("init")
@@ -68,6 +89,12 @@ from govctl.cli.display import show_config_summary, show_next_steps
     default=True,
     help="Run in interactive mode",
 )
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Overwrite existing generated files without asking",
+)
 def init_cmd(
     cloud: str | None,
     domain: str | None,
@@ -77,10 +104,13 @@ def init_cmd(
     artifact_source: str,
     output: str,
     interactive: bool,
+    force: bool,
 ):
     """Initialize a new Guardian Platform deployment.
 
-    Generates values.yaml and secrets.yaml files based on your configuration.
+    Generates values-{env}.yaml, secrets-{env}.yaml, and bootstrap-{env}.yaml
+    files based on your configuration. Existing files are only replaced after
+    confirmation, or with --force.
 
     Examples:
 
@@ -88,7 +118,10 @@ def init_cmd(
         govctl init
 
         # Non-interactive mode
-        govctl init --cloud gcp --domain guardian.example.com --environment staging --auth keycloak
+        govctl init -I --cloud gcp --domain guardian.example.com --environment staging --auth keycloak
+
+        # Regenerate over existing files (replaces generated secrets)
+        govctl init -I --force --cloud gcp --domain guardian.example.com --environment staging --auth keycloak
 
         # Output to specific directory
         govctl init -o ./my-deployment
@@ -121,12 +154,14 @@ def init_cmd(
                 else DatabaseMode.BUNDLED
             )
         )
+        cloud_provider = CloudProvider(cloud.lower())
         config = PlatformConfig(
-            cloud_provider=CloudProvider(cloud.lower()),
+            cloud_provider=cloud_provider,
             domain=domain,
             environment=env_lower,
             auth_provider=AuthProvider(auth.lower()),
             database_mode=db_mode,
+            key_management_provider=CLOUD_TO_KEY_MANAGEMENT[cloud_provider],
         )
         configure_artifacts(config, artifact_source.lower())
 
@@ -141,38 +176,38 @@ def init_cmd(
 
     # Generate files
     output_path = Path(output)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    values_content = generate_values(config)
-    secrets_content = generate_secrets(config)
-
     values_file = output_path / f"values-{config.environment}.yaml"
     secrets_file = output_path / f"secrets-{config.environment}.yaml"
+    bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
 
-    values_file.write_text(values_content)
-    secrets_file.write_text(secrets_content)
+    # Existing files are replaced only after confirmation or with --force
+    existing = [f for f in (values_file, secrets_file, bootstrap_file) if f.exists()]
+    if existing and not force:
+        names = ", ".join(str(f) for f in existing)
+        if not interactive:
+            raise click.ClickException(
+                f"{names} already exist. Pass --force to overwrite them."
+            )
+        if not Confirm.ask(
+            f"\n[bold yellow]{names} already exist. Overwrite them with newly "
+            "generated secrets?[/bold yellow]",
+            default=False,
+        ):
+            console.print("[yellow]Aborted.[/yellow]")
+            return
 
-    bootstrap_file = None
-    if config.auth_provider == AuthProvider.AUTH0:
-        bootstrap_content = generate_auth0_bootstrap(config)
-        bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
-        bootstrap_file.write_text(bootstrap_content)
-    elif config.auth_provider == AuthProvider.ENTRA:
-        bootstrap_content = generate_entra_bootstrap(config)
-        bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
-        bootstrap_file.write_text(bootstrap_content)
-    elif config.auth_provider == AuthProvider.KEYCLOAK:
-        bootstrap_content = generate_keycloak_bootstrap(config)
-        bootstrap_file = output_path / f"bootstrap-{config.environment}.yaml"
-        bootstrap_file.write_text(bootstrap_content)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    values_file.write_text(generate_values(config))
+    write_private(secrets_file, generate_secrets(config))
+    bootstrap_file.write_text(BOOTSTRAP_GENERATORS[config.auth_provider](config))
 
     console.print()
     console.print("[bold green]Files generated successfully![/bold green]")
     console.print()
     console.print(f"  [cyan]{values_file}[/cyan]")
     console.print(f"  [cyan]{secrets_file}[/cyan]")
-    if bootstrap_file:
-        console.print(f"  [cyan]{bootstrap_file}[/cyan]")
+    console.print(f"  [cyan]{bootstrap_file}[/cyan]")
     console.print()
 
     show_next_steps(config, values_file, secrets_file, bootstrap_file)

@@ -10,6 +10,7 @@ from govctl.core.models import (
     AuthProvider,
     DatabaseMode,
     KeyManagementProvider,
+    CLOUD_TO_KEY_MANAGEMENT,
 )
 from govctl.utils.naming import generate_domain_code
 from govctl.utils.validate import (
@@ -132,16 +133,10 @@ def collect_interactive_config(
     # --- Key Management (required for DID keys) ---
     console.print()
     console.print("[bold]Key Management Configuration (for DID keys):[/bold]")
-    km_defaults = {
-        CloudProvider.AWS: "aws_kms",
-        CloudProvider.AZURE: "azure_key_vault",
-        CloudProvider.GCP: "gcp_kms",
-    }
-    km_default = km_defaults[cloud_provider]
     km_choice = Prompt.ask(
         "  Key Management Provider",
         choices=["aws_kms", "azure_key_vault", "gcp_kms"],
-        default=km_default,
+        default=CLOUD_TO_KEY_MANAGEMENT[cloud_provider].value,
     )
     config.key_management_provider = KeyManagementProvider(km_choice)
 
@@ -254,14 +249,12 @@ def collect_interactive_config(
         while True:
             auth0_audience = Prompt.ask(
                 "  Auth0 Audience/API Identifier",
-                default=f"https://{auth0_domain}/api/v2/",
+                default=config.auth0_api_identifier,
             )
-            if is_valid_https_url(auth0_audience) and auth0_audience.endswith(
-                "/api/v2/"
-            ):
+            if is_valid_https_url(auth0_audience):
                 break
             console.print(
-                "[red]Invalid Auth0 audience. Expected format: https://your-tenant.us.auth0.com/api/v2/[/red]"
+                "[red]Invalid Auth0 audience. Expected format: https://guardian.example.com[/red]"
             )
         config.auth0_audience = auth0_audience
     elif auth_provider == AuthProvider.ENTRA:

@@ -139,6 +139,9 @@ govctl init -I \
 | `--artifact-source`              |         | `cloudsmith` (default) for verified customer releases; `github` for existing GHCR installs                            |
 | `--output`                       | `-o`    | Output directory (default: `output`)                                                                                  |
 | `--interactive/--no-interactive` | `-i/-I` | Toggle interactive mode                                                                                               |
+| `--force`                        | `-f`    | Overwrite existing generated files without asking                                                                     |
+
+Existing `values-{env}.yaml`, `secrets-{env}.yaml`, or `bootstrap-{env}.yaml` files in the output directory are not replaced silently: interactive mode asks first, and non-interactive mode exits unless `--force` is passed. Regenerating replaces every generated secret, so do not overwrite the secrets of an existing install. `secrets-{env}.yaml` is written with mode `0600`.
 
 ## What Gets Generated
 

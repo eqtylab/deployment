@@ -43,9 +43,7 @@ def generate_guardian_section(config: PlatformConfig) -> dict[str, Any]:
         auth0_domain = config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com"
         section["config"]["authProvider"] = "auth0"
         section["config"]["auth0Domain"] = auth0_domain
-        section["config"]["auth0Audience"] = (
-            config.auth0_audience or f"https://{auth0_domain}/api/v2/"
-        )
+        section["config"]["auth0Audience"] = config.auth0_api_identifier
         section["config"]["auth0ClientId"] = "YOUR_AUTH0_SPA_CLIENT_ID"
     elif config.auth_provider == AuthProvider.ENTRA:
         tenant_id = config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"

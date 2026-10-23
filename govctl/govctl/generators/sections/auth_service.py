@@ -60,7 +60,7 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
         section["config"]["idp"]["auth0"] = {
             "domain": auth0_domain,
             "managementAudience": f"https://{auth0_domain}/api/v2/",
-            "apiIdentifier": config.auth0_audience or f"https://{auth0_domain}/api/v2/",
+            "apiIdentifier": config.auth0_api_identifier,
         }
     elif config.auth_provider == AuthProvider.ENTRA:
         tenant_id = config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"

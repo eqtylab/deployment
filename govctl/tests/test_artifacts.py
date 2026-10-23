@@ -12,10 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from govctl.cli.commands.init import init_cmd
 from govctl.core.artifacts import configure_artifacts
 from govctl.core.models import (
+    CLOUD_TO_KEY_MANAGEMENT,
     PlatformConfig,
     CloudProvider,
     AuthProvider,
-    KeyManagementProvider,
 )
 from govctl.generators.values import generate_values
 from govctl.generators.secrets import generate_secrets
@@ -55,11 +55,7 @@ class ArtifactProfileTests(unittest.TestCase):
                         config = self.config()
                         config.auth_provider = auth
                         config.cloud_provider = cloud
-                        config.key_management_provider = {
-                            CloudProvider.AWS: KeyManagementProvider.AWS_KMS,
-                            CloudProvider.AZURE: KeyManagementProvider.AZURE_KEY_VAULT,
-                            CloudProvider.GCP: KeyManagementProvider.GCP_KMS,
-                        }[cloud]
+                        config.key_management_provider = CLOUD_TO_KEY_MANAGEMENT[cloud]
                         configure_artifacts(config, source)
                         secrets = generate_secrets(config)
                         self.assertNotIn("__REQUIRED__", secrets)
