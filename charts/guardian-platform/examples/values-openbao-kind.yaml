@@ -1,3 +1,5 @@
+# OpenBao kind Diagnostic Example
+#
 # Disposable local-kind OpenBao diagnostic profile (development only)
 # Complete platform overlay for the disposable kind fixture in
 # tests/fixtures/openbao-kind. Emulated amd64 diagnostics, not a supported
@@ -13,7 +15,7 @@
 # belong here.
 #
 # Usage:
-#   helm dependency update ./charts/guardian-platform
+#   helm dependency build ./charts/guardian-platform
 #   helm upgrade --install guardian ./charts/guardian-platform \
 #     --namespace <cluster>-app \
 #     --values values-keycloak.yaml \

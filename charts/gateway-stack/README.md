@@ -48,7 +48,7 @@ When deployed via the `guardian-platform` umbrella chart, the Gateway Stack inhe
 ### Quick Start
 
 ```bash
-helm dependency update charts/gateway-stack
+helm dependency build charts/gateway-stack
 helm upgrade --install guardian charts/gateway-stack \
   --namespace guardian \
   --create-namespace \
@@ -105,22 +105,22 @@ To have this chart create the ACME issuer for you, also set:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                     | Type   | Description                                                                       |
-| --------------------------------------- | ------ | --------------------------------------------------------------------------------- |
-| global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)          |
-| global.imageRepositoryPrefixOverride    | string | Replace the full EQTY Lab image repository prefix (e.g., `registry.example/eqty`) |
-| global.imagePullPolicy                  | string | Default image pull policy for platform installs                                   |
-| global.imagePullSecrets                 | list   | Image pull secrets applied to every workload in this chart                        |
-| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                         |
+| Key                                     | Type   | Description                                                                                               |
+| --------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
+| global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)                                  |
+| global.imageRepositoryPrefixOverride    | string | Replace the full EQTY Lab image repository prefix (e.g., `registry.example/eqty`)                         |
+| global.imagePullPolicy                  | string | Default image pull policy for platform installs                                                           |
+| global.imagePullSecrets                 | list   | Image pull secrets for every workload in this chart when global.secrets.imageRegistry.secretName is empty |
+| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                                                 |
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default | Description                                                         |
-| ---------------- | ------ | ------- | ------------------------------------------------------------------- |
-| enabled          | bool   | `true`  | Enable this subchart (umbrella chart only)                          |
-| imagePullSecrets | list   | `[]`    | Additional image pull secrets (beyond global)                       |
-| nameOverride     | string | `""`    | Override the chart name used for resource naming                    |
-| fullnameOverride | string | `""`    | Override the full name prefix for every resource this chart creates |
+| Key              | Type   | Default | Description                                                                                                           |
+| ---------------- | ------ | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| enabled          | bool   | `true`  | Enable this subchart (umbrella chart only)                                                                            |
+| imagePullSecrets | list   | `[]`    | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
+| nameOverride     | string | `""`    | Override the chart name used for resource naming                                                                      |
+| fullnameOverride | string | `""`    | Override the full name prefix for every resource this chart creates                                                   |
 
 ### Database
 
@@ -140,26 +140,26 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### LLM Gateway
 
-| Key                                   | Type   | Default                                  | Description                                                 |
-| ------------------------------------- | ------ | ---------------------------------------- | ----------------------------------------------------------- |
-| llmGateway.replicaCount               | int    | `1`                                      | Number of replicas to deploy                                |
-| llmGateway.image.repository           | string | `"ghcr.io/eqtylab/guardian-llm-gateway"` | Container image repository                                  |
-| llmGateway.image.tag                  | string | `""`                                     | Overrides the image tag (default is chart appVersion)       |
-| llmGateway.image.digest               | string | `""`                                     | Immutable sha256 digest; takes precedence over the tag      |
-| llmGateway.image.pullPolicy           | string | `"IfNotPresent"`                         | Image pull policy                                           |
-| llmGateway.listenAddr                 | string | `":10000"`                               | Listen address                                              |
-| llmGateway.deploymentEnvironment      | string | `""`                                     | Reported on audit events and used by gateway runtime policy |
-| llmGateway.service.enabled            | bool   | `true`                                   | Create a Service resource                                   |
-| llmGateway.service.type               | string | `"ClusterIP"`                            | Kubernetes service type                                     |
-| llmGateway.service.port               | int    | `10000`                                  | Service port                                                |
-| llmGateway.upstreams.anthropicURL     | string | `"https://api.anthropic.com"`            | Anthropic upstream URL                                      |
-| llmGateway.upstreams.openaiURL        | string | `"https://api.openai.com"`               | OpenAI upstream URL                                         |
-| llmGateway.signature.label            | string | `"sig"`                                  | RFC 9421 signature label; must match Viper's `sig`          |
-| llmGateway.signature.defaultSigMaxAge | string | `"60s"`                                  | Maximum accepted signature age                              |
-| llmGateway.signature.defaultClockSkew | string | `"120s"`                                 | Allowed clock skew                                          |
-| llmGateway.extraArgs                  | list   | `[]`                                     | Extra container arguments                                   |
-| llmGateway.extraEnv                   | list   | `[]`                                     | Extra environment variables                                 |
-| llmGateway.resources                  | object | `{}`                                     | Resource requests and limits                                |
+| Key                                   | Type   | Default                                  | Description                                                                                 |
+| ------------------------------------- | ------ | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| llmGateway.replicaCount               | int    | `1`                                      | Number of replicas to deploy                                                                |
+| llmGateway.image.repository           | string | `"ghcr.io/eqtylab/guardian-llm-gateway"` | Container image repository                                                                  |
+| llmGateway.image.tag                  | string | `""`                                     | Overrides the image tag (default is chart appVersion)                                       |
+| llmGateway.image.digest               | string | `""`                                     | Immutable sha256 digest; takes precedence over the tag                                      |
+| llmGateway.image.pullPolicy           | string | `""`                                     | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`) |
+| llmGateway.listenAddr                 | string | `":10000"`                               | Listen address                                                                              |
+| llmGateway.deploymentEnvironment      | string | `""`                                     | Reported on audit events and used by gateway runtime policy                                 |
+| llmGateway.service.enabled            | bool   | `true`                                   | Create a Service resource                                                                   |
+| llmGateway.service.type               | string | `"ClusterIP"`                            | Kubernetes service type                                                                     |
+| llmGateway.service.port               | int    | `10000`                                  | Service port                                                                                |
+| llmGateway.upstreams.anthropicURL     | string | `"https://api.anthropic.com"`            | Anthropic upstream URL                                                                      |
+| llmGateway.upstreams.openaiURL        | string | `"https://api.openai.com"`               | OpenAI upstream URL                                                                         |
+| llmGateway.signature.label            | string | `"sig"`                                  | RFC 9421 signature label; must match Viper's `sig`                                          |
+| llmGateway.signature.defaultSigMaxAge | string | `"60s"`                                  | Maximum accepted signature age                                                              |
+| llmGateway.signature.defaultClockSkew | string | `"120s"`                                 | Allowed clock skew                                                                          |
+| llmGateway.extraArgs                  | list   | `[]`                                     | Extra container arguments                                                                   |
+| llmGateway.extraEnv                   | list   | `[]`                                     | Extra environment variables                                                                 |
+| llmGateway.resources                  | object | `{}`                                     | Resource requests and limits                                                                |
 
 ### LLM Gateway Registration and Audit
 
@@ -200,29 +200,29 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Control Plane
 
-| Key                                                | Type   | Default                                    | Description                                              |
-| -------------------------------------------------- | ------ | ------------------------------------------ | -------------------------------------------------------- |
-| controlPlane.replicaCount                          | int    | `1`                                        | Number of replicas to deploy                             |
-| controlPlane.image.repository                      | string | `"ghcr.io/eqtylab/guardian-control-plane"` | Container image repository                               |
-| controlPlane.image.tag                             | string | `""`                                       | Overrides the image tag (default is chart appVersion)    |
-| controlPlane.image.digest                          | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag   |
-| controlPlane.image.pullPolicy                      | string | `"IfNotPresent"`                           | Image pull policy                                        |
-| controlPlane.listenAddr                            | string | `":10010"`                                 | Listen address                                           |
-| controlPlane.apiBasePath                           | string | `""`                                       | API base path; set with `ingress.controlPlanePath`       |
-| controlPlane.corsAllowAll                          | bool   | `true`                                     | Allow all CORS origins                                   |
-| controlPlane.service.enabled                       | bool   | `true`                                     | Create a Service resource                                |
-| controlPlane.service.type                          | string | `"ClusterIP"`                              | Kubernetes service type                                  |
-| controlPlane.service.port                          | int    | `10010`                                    | Service port                                             |
-| controlPlane.extraArgs                             | list   | `[]`                                       | Extra container arguments                                |
-| controlPlane.extraEnv                              | list   | `[]`                                       | Extra environment variables                              |
-| controlPlane.hostAliases                           | list   | `[]`                                       | Optional pod host aliases (local qualification DNS only) |
-| controlPlane.resources                             | object | `{}`                                       | Resource requests and limits                             |
-| controlPlane.waitForRegistryViews.enabled          | bool   | `true`                                     | Wait for llm-gateway migrations before starting          |
-| controlPlane.waitForRegistryViews.image.repository | string | `"docker.io/library/postgres"`             | Init container image supplying `psql`                    |
-| controlPlane.waitForRegistryViews.image.tag        | string | `"17.6"`                                   | Init container image tag                                 |
-| controlPlane.waitForRegistryViews.image.digest     | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag   |
-| controlPlane.waitForRegistryViews.image.pullPolicy | string | `"IfNotPresent"`                           | Init container image pull policy                         |
-| controlPlane.waitForRegistryViews.intervalSeconds  | int    | `2`                                        | Poll interval                                            |
+| Key                                                | Type   | Default                                    | Description                                                                                                |
+| -------------------------------------------------- | ------ | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| controlPlane.replicaCount                          | int    | `1`                                        | Number of replicas to deploy                                                                               |
+| controlPlane.image.repository                      | string | `"ghcr.io/eqtylab/guardian-control-plane"` | Container image repository                                                                                 |
+| controlPlane.image.tag                             | string | `""`                                       | Overrides the image tag (default is chart appVersion)                                                      |
+| controlPlane.image.digest                          | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag                                                     |
+| controlPlane.image.pullPolicy                      | string | `""`                                       | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                |
+| controlPlane.listenAddr                            | string | `":10010"`                                 | Listen address                                                                                             |
+| controlPlane.apiBasePath                           | string | `""`                                       | API base path; set with `ingress.controlPlanePath`                                                         |
+| controlPlane.corsAllowAll                          | bool   | `true`                                     | Allow all CORS origins                                                                                     |
+| controlPlane.service.enabled                       | bool   | `true`                                     | Create a Service resource                                                                                  |
+| controlPlane.service.type                          | string | `"ClusterIP"`                              | Kubernetes service type                                                                                    |
+| controlPlane.service.port                          | int    | `10010`                                    | Service port                                                                                               |
+| controlPlane.extraArgs                             | list   | `[]`                                       | Extra container arguments                                                                                  |
+| controlPlane.extraEnv                              | list   | `[]`                                       | Extra environment variables                                                                                |
+| controlPlane.hostAliases                           | list   | `[]`                                       | Optional pod host aliases (local qualification DNS only)                                                   |
+| controlPlane.resources                             | object | `{}`                                       | Resource requests and limits                                                                               |
+| controlPlane.waitForRegistryViews.enabled          | bool   | `true`                                     | Wait for llm-gateway migrations before starting                                                            |
+| controlPlane.waitForRegistryViews.image.repository | string | `"docker.io/library/postgres"`             | Init container image supplying `psql`                                                                      |
+| controlPlane.waitForRegistryViews.image.tag        | string | `"17.6"`                                   | Init container image tag                                                                                   |
+| controlPlane.waitForRegistryViews.image.digest     | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag                                                     |
+| controlPlane.waitForRegistryViews.image.pullPolicy | string | `""`                                       | Init container image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`) |
+| controlPlane.waitForRegistryViews.intervalSeconds  | int    | `2`                                        | Poll interval                                                                                              |
 
 `controlPlane.hostAliases` exists for local qualification DNS only: the disposable
 OpenBao kind profile resolves its canonical Integrity status origin through it.
@@ -599,7 +599,7 @@ Source precedence is:
 3. environment variables
 4. CLI flags
 
-This chart keeps args and env as the default wiring. To use TOML files in-cluster, mount a `ConfigMap` or `Secret` and pass `--config=<mounted-path>` via `extraArgs`.
+This chart wires both services through args and env only. It has no values for extra volumes or volume mounts, so it cannot mount a TOML file from a `ConfigMap` or `Secret`. Set runtime options with `llmGateway.extraEnv` and `controlPlane.extraEnv`, or pass CLI flags with `llmGateway.extraArgs` and `controlPlane.extraArgs`.
 
 ## Additional Guides
 

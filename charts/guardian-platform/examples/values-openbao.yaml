@@ -1,3 +1,5 @@
+# OpenBao Overlay Example
+#
 # Guardian Platform with Auth signing keys in OpenBao Transit.
 #
 # Layer this over an identity-provider example (values-keycloak.yaml for a

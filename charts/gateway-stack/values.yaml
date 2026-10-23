@@ -25,8 +25,8 @@ global:
   imageRepositoryPrefixOverride: ""
 
 # -- Image Pull Secrets
-# @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
-# Additional secrets for pulling images from private registries
+# @default -- `[]`
+# Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
 imagePullSecrets: []
 
 # -- Name Override
@@ -119,9 +119,9 @@ llmGateway:
     # @default -- `""`
     digest: ""
     # -- Image Pull Policy
-    # @default -- `IfNotPresent`
+    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
     # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
   # -- Listen Address
   # @default -- `":10000"`
   listenAddr: ":10000"
@@ -530,9 +530,9 @@ controlPlane:
     # @default -- `""`
     digest: ""
     # -- Image Pull Policy
-    # @default -- `IfNotPresent`
+    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
     # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
   # -- Listen Address
   # @default -- `":10010"`
   listenAddr: ":10010"
@@ -911,9 +911,9 @@ controlPlane:
       # @default -- `docker.io/library/postgres`
       repository: docker.io/library/postgres
       # -- Image Pull Policy
-      # @default -- `IfNotPresent`
+      # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
       # Options: IfNotPresent, Always, Never
-      pullPolicy: IfNotPresent
+      pullPolicy: ""
       # -- Image Tag
       # @default -- `17.6`
       # Debian variant; alpine images use UID 70, not the 999 pinned below

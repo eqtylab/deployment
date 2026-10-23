@@ -1,4 +1,4 @@
-# Agent Gateway overlay
+# Agent Gateway Overlay Example
 #
 # Use with a complete provider values file, for example:
 #   helm upgrade --install guardian-platform ./charts/guardian-platform \

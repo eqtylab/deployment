@@ -32,9 +32,9 @@ image:
   # @default -- `ghcr.io/eqtylab/guardian`
   repository: ghcr.io/eqtylab/guardian
   # -- Image Pull Policy
-  # @default -- `IfNotPresent`
+  # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
   # Options: IfNotPresent, Always, Never
-  pullPolicy: IfNotPresent
+  pullPolicy: ""
   # -- Image Tag
   # @default -- `""` (uses chart appVersion)
   tag: ""
@@ -43,8 +43,8 @@ image:
   digest: ""
 
 # -- Image Pull Secrets
-# @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
-# Additional secrets for pulling images from private registries
+# @default -- `[]`
+# Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
 imagePullSecrets: []
 
 # -- Name Override
@@ -84,7 +84,7 @@ podAnnotations: {}
 podLabels: {}
 
 # -- Pod Security Context
-# @default -- `{}`
+# @default -- See values below
 # Security context applied at the pod level
 podSecurityContext:
   runAsNonRoot: true
@@ -97,7 +97,7 @@ podSecurityContext:
 containerPort: 8081
 
 # -- Container Security Context
-# @default -- `{}`
+# @default -- See values below
 # Security context applied at the container level
 securityContext:
   runAsNonRoot: true
@@ -356,7 +356,7 @@ config:
   # ---------------------------------------------------------------------------
 
   # -- Environment
-  # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+  # @default -- `""` (auto-configured from global.environmentType, otherwise empty)
   # Environment label
   environment: ""
 

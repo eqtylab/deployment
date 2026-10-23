@@ -227,17 +227,15 @@ bao operator raft list-peers
 
 The audit volume is retained like the data volume. Ship
 `/openbao/audit/audit.log` to the customer's log pipeline; OpenBao refuses
-requests when no enabled audit device can be written, so monitor the volume
-(H6).
+requests when no enabled audit device can be written, so monitor the volume.
 
 ### 4. Configure the Auth mount, policy and role
 
-Use the companion `scripts/openbao/configure-auth.sh` operator tooling from
-[infrastructure PR #115](https://github.com/eqtylab/guardian-infrastructure/pull/115),
-including `scripts/helpers/output.sh` and its policy file. That tooling is a
-separate change, not bundled in this chart archive; use a checkout containing it.
-The script is intended to be idempotent and leave existing keys untouched.
-Using the authenticated operator CLI environment from step 3:
+Use `scripts/openbao/configure-auth.sh` from a checkout of this repository. The
+script sources `scripts/helpers/output.sh` and reads the policy template
+`scripts/openbao/policies/guardian-auth.hcl`; neither is bundled in this chart
+archive. The script is intended to be idempotent and leave existing keys
+untouched. Using the authenticated operator CLI environment from step 3:
 
 ```bash
 scripts/openbao/configure-auth.sh --service-account guardian-platform-auth-service \
@@ -245,16 +243,15 @@ scripts/openbao/configure-auth.sh --service-account guardian-platform-auth-servi
   --transit-mount guardian-did --auth-mount kubernetes --role guardian-auth
 ```
 
-**In-cluster auth configuration:** the companion #115 script writes
+**In-cluster auth configuration:** the script writes
 `auth/kubernetes/config` itself, including on a fresh mount. With
 `--kubernetes-host` omitted, it sets `https://kubernetes.default.svc:443`, enables
 the server's local token and CA, and clears any previously configured external
 reviewer token and CA. Verify with `bao read auth/kubernetes/config` before Auth
 logs in (adapt the path for a custom auth mount).
 
-For older tooling that only enables the mount and creates the role, the config
-write remains a prerequisite. On a fresh mount, this manual alternative supplies
-the missing configuration:
+If you configure the mount and role by hand instead of with the script, the
+config write is still a prerequisite. On a fresh mount, this supplies it:
 
 ```bash
 bao write auth/kubernetes/config \
@@ -314,8 +311,8 @@ the three Raft peers rejoin as voters and the upstream chart test passes.
 
 Take a Raft snapshot first (`bao operator raft snapshot save`). Do not
 downgrade binaries against a newer Raft data format; restore from a snapshot
-taken with the older version instead. Automation of snapshots, restore and
-seal-recovery rehearsal is H5.
+taken with the older version instead. This chart does not automate snapshots,
+restore or seal-recovery rehearsal; schedule and rehearse them yourself.
 
 ## Seal decision
 

@@ -17,6 +17,9 @@ targetRelease: "guardian-platform"
 # =============================================================================
 # GRAFANA DASHBOARDS
 # =============================================================================
+# -- Grafana Dashboards
+# @default -- See values below
+# Dashboard ConfigMaps discovered by the Grafana sidecar
 dashboards:
   # -- Enable Dashboards
   # @default -- `true`
@@ -54,6 +57,9 @@ dashboards:
 # =============================================================================
 # PROMETHEUS ALERTS
 # =============================================================================
+# -- Prometheus Alerts
+# @default -- See values below
+# PrometheusRule resource with the Guardian Platform alert rules
 alerts:
   # -- Enable Alerts
   # @default -- `true`
@@ -69,7 +75,8 @@ alerts:
   # -- Alert Labels
   # @default -- `{}`
   # Additional labels to add to PrometheusRule resource
-  # Note: Labels matching Prometheus serviceMonitorSelector are required for discovery
+  # Note: The 'release: kube-prometheus-stack' label is always added; add labels here
+  # if your Prometheus ruleSelector matches on something else
   labels: {}
 
   # -- Alert Annotations
@@ -259,6 +266,9 @@ alerts:
 # =============================================================================
 # BLACKBOX EXPORTER PROBES
 # =============================================================================
+# -- Blackbox Exporter Probes
+# @default -- See values below
+# Probe resources for HTTP/HTTPS endpoint monitoring
 probes:
   # -- Enable Probes
   # @default -- `true`
@@ -294,17 +304,17 @@ probes:
   module: https_2xx
 
   # -- Ingress Discovery
-  # @default -- `true`
+  # @default -- See values below
   # Automatically discover and probe ingress resources from targetRelease
-  # When enabled, probes all ingress hosts created by the guardian-platform chart
   ingressDiscovery:
+    # -- Enable Ingress Discovery
+    # @default -- `true`
+    # When enabled, looks up ingresses in all namespaces at render time and creates
+    # one Probe per host and path on ingresses labeled with the targetRelease instance
     enabled: true
     # -- Namespace Selector
-    # @default -- `{ any: true }` (discovers ingresses in all namespaces)
-    # Namespace selector for ingress discovery
-    # Set to { any: true } to discover ingresses across all namespaces (recommended for centralized deployment)
-    # For specific namespaces use: namespaceSelector: { matchNames: ["namespace1", "namespace2"] }
-    # For label-based selection use: namespaceSelector: { matchLabels: { environment: "prod" } }
+    # @default -- `{ any: true }`
+    # Not read by any template; ingress discovery always looks up all namespaces
     namespaceSelector:
       any: true
     # Ingress label selector - matches ingresses from the targetRelease

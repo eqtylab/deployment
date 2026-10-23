@@ -237,7 +237,8 @@ From global values:
 - Key management credentials for DID signing (from `global.secrets.keyManagement`)
 - Worker credentials (from `global.secrets.governanceWorker`)
 - Environment type (from `global.environmentType`)
-- Image pull secrets (from `global.secrets.imageRegistry`)
+- Image pull policy (from `global.imagePullPolicy`)
+- Image pull secrets (from `global.secrets.imageRegistry.secretName`, then `global.imagePullSecrets`)
 
 Generated defaults:
 
@@ -251,38 +252,40 @@ Generated defaults:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                                     | Type   | Description                                                             |
-| ------------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
-| global.domain                                           | string | Base domain for all services                                            |
-| global.environmentType                                  | string | Environment type (development/staging/production)                       |
-| global.postgresql.host                                  | string | PostgreSQL host                                                         |
-| global.postgresql.port                                  | int    | PostgreSQL port                                                         |
-| global.postgresql.database                              | string | PostgreSQL database name                                                |
-| global.postgresql.username                              | string | PostgreSQL username                                                     |
-| global.secrets.database.secretName                      | string | Name of database credentials secret                                     |
-| global.secrets.auth.provider                            | string | Auth provider (auth0, entra, or keycloak)                               |
-| global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                                           |
-| global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                                        |
-| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                                        |
-| global.secrets.authService.secretName                   | string | Auth Service security secrets name                                      |
-| global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, gcp_kms, or openbao) |
-| global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                                         |
-| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                                 |
-| global.secrets.keyManagement.gcp_kms.secretName         | string | GCP KMS credentials secret name                                         |
-| global.secrets.governanceWorker.secretName              | string | Worker credentials secret name                                          |
-| global.secrets.imageRegistry.secretName                 | string | Registry pull secret name                                               |
+| Key                                                     | Type   | Description                                                              |
+| ------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| global.domain                                           | string | Base domain for all services                                             |
+| global.environmentType                                  | string | Environment type (development/staging/production)                        |
+| global.imagePullPolicy                                  | string | Default image pull policy for every container                            |
+| global.imagePullSecrets                                 | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty |
+| global.postgresql.host                                  | string | PostgreSQL host                                                          |
+| global.postgresql.port                                  | int    | PostgreSQL port                                                          |
+| global.postgresql.database                              | string | PostgreSQL database name                                                 |
+| global.postgresql.username                              | string | PostgreSQL username                                                      |
+| global.secrets.database.secretName                      | string | Name of database credentials secret                                      |
+| global.secrets.auth.provider                            | string | Auth provider (auth0, entra, or keycloak)                                |
+| global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                                            |
+| global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                                         |
+| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                                         |
+| global.secrets.authService.secretName                   | string | Auth Service security secrets name                                       |
+| global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, gcp_kms, or openbao)  |
+| global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                                          |
+| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                                  |
+| global.secrets.keyManagement.gcp_kms.secretName         | string | GCP KMS credentials secret name                                          |
+| global.secrets.governanceWorker.secretName              | string | Worker credentials secret name                                           |
+| global.secrets.imageRegistry.secretName                 | string | Registry pull secret name                                                |
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                          | Description                                              |
-| ---------------- | ------ | -------------------------------- | -------------------------------------------------------- |
-| enabled          | bool   | `true`                           | Enable this subchart (umbrella chart only)               |
-| replicaCount     | int    | `2`                              | Number of replicas to deploy                             |
-| image.repository | string | `"ghcr.io/eqtylab/auth-service"` | Container image repository                               |
-| image.pullPolicy | string | `"IfNotPresent"`                 | Image pull policy                                        |
-| image.tag        | string | `""`                             | Overrides the image tag (default is chart appVersion)    |
-| image.digest     | string | `""`                             | Immutable sha256 digest; takes precedence over image.tag |
-| imagePullSecrets | list   | `[]`                             | Additional image pull secrets (beyond global)            |
+| Key              | Type   | Default                          | Description                                                                                                           |
+| ---------------- | ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| enabled          | bool   | `true`                           | Enable this subchart (umbrella chart only)                                                                            |
+| replicaCount     | int    | `2`                              | Number of replicas to deploy                                                                                          |
+| image.repository | string | `"ghcr.io/eqtylab/auth-service"` | Container image repository                                                                                            |
+| image.pullPolicy | string | `""`                             | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
+| image.tag        | string | `""`                             | Overrides the image tag (default is chart appVersion)                                                                 |
+| image.digest     | string | `""`                             | Immutable sha256 digest; takes precedence over image.tag                                                              |
+| imagePullSecrets | list   | `[]`                             | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
 
 ### Service Account
 
@@ -565,15 +568,14 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Service Account Configuration
 
-| Key                                                   | Type   | Default         | Description                                                                  |
-| ----------------------------------------------------- | ------ | --------------- | ---------------------------------------------------------------------------- |
-| config.serviceAccounts.governanceWorker.enabled       | bool   | `true`          | Enable governance worker account                                             |
-| config.serviceAccounts.governanceWorker.scopes        | list   | See values.yaml | Worker scopes                                                                |
-| config.serviceAccounts.governanceWorker.audience      | string | `""`            | Token audience (**must be set**; Auth0 API identifier or Keycloak realm URL) |
-| config.serviceAccounts.governanceWorker.scope         | string | `""`            | Worker OAuth scope (**Entra only**; defaults to `api://<clientId>/.default`) |
-| config.serviceAccounts.governanceWorker.clientId      | string | `""`            | Worker client ID (auto-configured from global.secrets.governanceWorker)      |
-| config.serviceAccounts.governanceWorker.clientSecret  | string | `""`            | Worker client secret (auto-configured from global.secrets.governanceWorker)  |
-| config.serviceAccounts.governanceWorker.encryptionKey | string | `""`            | Encryption key (auto-configured from global.secrets.governanceWorker)        |
+| Key                                                   | Type   | Default | Description                                                                  |
+| ----------------------------------------------------- | ------ | ------- | ---------------------------------------------------------------------------- |
+| config.serviceAccounts.governanceWorker.enabled       | bool   | `true`  | Enable governance worker account                                             |
+| config.serviceAccounts.governanceWorker.audience      | string | `""`    | Token audience (**must be set**; Auth0 API identifier or Keycloak realm URL) |
+| config.serviceAccounts.governanceWorker.scope         | string | `""`    | Worker OAuth scope (**Entra only**; defaults to `api://<clientId>/.default`) |
+| config.serviceAccounts.governanceWorker.clientId      | string | `""`    | Worker client ID (auto-configured from global.secrets.governanceWorker)      |
+| config.serviceAccounts.governanceWorker.clientSecret  | string | `""`    | Worker client secret (auto-configured from global.secrets.governanceWorker)  |
+| config.serviceAccounts.governanceWorker.encryptionKey | string | `""`    | Encryption key (auto-configured from global.secrets.governanceWorker)        |
 
 #### Token Exchange Configuration (Optional, Keycloak Only)
 
@@ -609,15 +611,14 @@ Token exchange is only relevant for Keycloak deployments using federated authent
 
 ### Advanced: Extra Configuration
 
-| Key                   | Type   | Default | Description                               |
-| --------------------- | ------ | ------- | ----------------------------------------- |
-| volumes               | list   | `[]`    | Additional volumes on the Deployment      |
-| volumeMounts          | list   | `[]`    | Additional volumeMounts on the Deployment |
-| extraEnvVars          | list   | `[]`    | Extra environment variables               |
-| extraEnvVarsSecret    | string | `""`    | Secret containing extra env vars          |
-| extraEnvVarsConfigMap | string | `""`    | ConfigMap containing extra env vars       |
-| extraContainers       | list   | `[]`    | Extra containers to add to the pod        |
-| extraManifests        | list   | `[]`    | Extra manifests to deploy                 |
+| Key                   | Type   | Default                               | Description                                                                                                                       |
+| --------------------- | ------ | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| volumes               | list   | `[{"name":"tmp","emptyDir":{}}]`      | Additional volumes on the Deployment; overriding replaces the default `tmp` volume, so keep it (the root filesystem is read-only) |
+| volumeMounts          | list   | `[{"name":"tmp","mountPath":"/tmp"}]` | Additional volumeMounts on the Deployment; overriding replaces the default `/tmp` mount, so keep it                               |
+| extraEnvVars          | list   | `[]`                                  | Extra environment variables                                                                                                       |
+| extraEnvVarsSecret    | string | `""`                                  | Secret containing extra env vars                                                                                                  |
+| extraEnvVarsConfigMap | string | `""`                                  | ConfigMap containing extra env vars                                                                                               |
+| extraContainers       | list   | `[]`                                  | Extra containers to add to the pod                                                                                                |
 
 ## Configuration Inheritance
 

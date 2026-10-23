@@ -10,26 +10,48 @@
 # Decision points for a pilot are marked DECISION; the defaults are a
 # cloud-independent starting point (three-node Raft, Shamir seal, TLS on).
 
+# -- Upstream OpenBao Chart Values
+# @default -- See values below
 openbao:
+  # -- Full Name Override
+  # @default -- `openbao-custody`
   # Stable default resource names. Raft retry_join and NOTES follow upstream
   # naming when overridden; update certificate SANs and Auth's address as well.
   fullnameOverride: openbao-custody
 
+  # -- Upstream Global Settings
+  # @default -- See values below
   global:
+    # -- Enable Upstream Chart Resources
+    # @default -- `true`
     enabled: true
+    # -- Disable TLS
+    # @default -- `false`
     # TLS on every listener. Provide the Secret named below before installing.
     tlsDisable: false
 
+  # -- Agent Injector
+  # @default -- `{enabled: false}`
   # Not used by Guardian: no agent injector, no CSI provider, no web UI.
   injector:
     enabled: false
+  # -- CSI Provider
+  # @default -- `{enabled: false}`
   csi:
     enabled: false
+  # -- Web UI
+  # @default -- `{enabled: false}`
   ui:
     enabled: false
 
+  # -- OpenBao Server
+  # @default -- See values below
   server:
+    # -- Enable Server
+    # @default -- `true`
     enabled: true
+    # -- Server Image
+    # @default -- `quay.io/openbao/openbao:2.6.2`
     image:
       registry: quay.io
       repository: openbao/openbao
@@ -37,19 +59,29 @@ openbao:
       tag: "2.6.2"
       pullPolicy: IfNotPresent
 
+    # -- StatefulSet Update Strategy
+    # @default -- `OnDelete`
     # Upstream default. Pods are replaced by the operator during an upgrade
     # (standbys first, then the active node) so each replaced pod can be unsealed.
     updateStrategyType: OnDelete
 
+    # -- Log Level
+    # @default -- `info`
     logLevel: info
+    # -- Log Format
+    # @default -- `json`
     logFormat: json
 
+    # -- Auth Delegator
+    # @default -- `{enabled: true}`
     # OpenBao validates Auth's projected token with a TokenReview using its own
     # service account (in-cluster Kubernetes auth); this grants system:auth-delegator
     # to the OpenBao server service account only.
     authDelegator:
       enabled: true
 
+    # -- Server Volumes
+    # @default -- See values below
     # TLS material: Secret `openbao-custody-tls` with tls.crt, tls.key and ca.crt,
     # mounted at /openbao/userconfig/openbao-custody-tls. Required SANs are listed
     # in the README. `volumes`/`volumeMounts` (not `extraVolumes`) so the upstream
@@ -58,42 +90,72 @@ openbao:
       - name: openbao-custody-tls
         secret:
           secretName: openbao-custody-tls
+    # -- Server Volume Mounts
+    # @default -- See values below
     volumeMounts:
       - name: openbao-custody-tls
         mountPath: /openbao/userconfig/openbao-custody-tls
         readOnly: true
+    # -- Extra Environment Variables
+    # @default -- See values below
     extraEnvironmentVars:
       BAO_CACERT: /openbao/userconfig/openbao-custody-tls/ca.crt
 
+    # -- Data Storage
+    # @default -- See values below
     # DECISION: storage class, size and failure domains for the pilot.
     dataStorage:
       enabled: true
       size: 10Gi
       storageClass: null
       accessMode: ReadWriteOnce
+    # -- Audit Storage
+    # @default -- See values below
     auditStorage:
       enabled: true
       size: 10Gi
       storageClass: null
       accessMode: ReadWriteOnce
+    # -- PVC Retention Policy
+    # @default -- See values below
     # Volumes outlive the release: `helm uninstall` and scale-down keep the PVCs.
     persistentVolumeClaimRetentionPolicy:
       whenDeleted: Retain
       whenScaled: Retain
 
+    # -- Dev Mode
+    # @default -- `{enabled: false}`
     dev:
       enabled: false
+    # -- Standalone Mode
+    # @default -- `{enabled: false}`
     standalone:
       enabled: false
 
+    # -- High Availability
+    # @default -- See values below
     ha:
+      # -- Enable HA Mode
+      # @default -- `true`
       enabled: true
+      # -- Raft Replicas
+      # @default -- `3`
       # DECISION: three voters across three failure domains is the HA proposal;
       # three replicas on one host give no host-failure tolerance.
       replicas: 3
+      # -- Integrated Raft Storage
+      # @default -- See values below
       raft:
+        # -- Enable Raft
+        # @default -- `true`
         enabled: true
+        # -- Set Raft Node ID
+        # @default -- `true`
         setNodeId: true
+        # -- Server HCL Configuration
+        # @default -- See values below
+        # TLS listener, Raft retry_join per replica, Kubernetes service registration,
+        # and a file audit device
         config: |
           ui = false
 
@@ -131,10 +193,14 @@ openbao:
           # DECISION: seal model. No seal stanza means Shamir shares held by named
           # custodians; every restart needs a manual unseal. See the README for the
           # cloud-independent auto-unseal alternatives before choosing one.
+      # -- Pod Disruption Budget
+      # @default -- `{enabled: true, maxUnavailable: null}`
       disruptionBudget:
         enabled: true
         maxUnavailable: null
 
+    # -- Server Resources
+    # @default -- See values below
     resources:
       requests:
         cpu: 250m
@@ -142,6 +208,8 @@ openbao:
       limits:
         memory: 1Gi
 
+    # -- Network Policy
+    # @default -- See values below
     # Optional: the ingress below allows ALL namespaces on ports 8200/8201.
     # Enabling it restricts ports, not namespaces; egress remains unrestricted.
     # See examples/values-network-policy.yaml for Auth-only API ingress plus

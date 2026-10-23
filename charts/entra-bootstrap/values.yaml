@@ -99,7 +99,8 @@ entra:
 
   # -- Domain
   # @default -- `""`
-  # **REQUIRED**: Domain for redirect URIs
+  # Platform domain, printed in the job logs only; it is not used to build
+  # redirect URIs (set apps.frontend.redirectUris instead)
   domain: ""
 
   # -- Service Principal Secret

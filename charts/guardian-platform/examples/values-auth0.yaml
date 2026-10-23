@@ -8,7 +8,7 @@
 #     --values secrets-sample.yaml
 #
 # Usage:
-#   helm dependency update ./charts/guardian-platform
+#   helm dependency build ./charts/guardian-platform
 #   helm upgrade --install guardian-platform ./charts/guardian-platform \
 #     --namespace guardian \
 #     --create-namespace \

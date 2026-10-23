@@ -221,7 +221,8 @@ From global values:
 - Storage credentials (from `global.secrets.storage.*`)
 - Auth Service credentials for worker authentication (from `global.secrets.authService`)
 - Environment type (from `global.environmentType`)
-- Image pull secrets (from `global.secrets.imageRegistry`)
+- Image pull policy (from `global.imagePullPolicy`)
+- Image pull secrets (from `global.secrets.imageRegistry.secretName`, then `global.imagePullSecrets`)
 
 Generated defaults:
 
@@ -236,38 +237,40 @@ Generated defaults:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                          | Type   | Description                                       |
-| -------------------------------------------- | ------ | ------------------------------------------------- |
-| global.domain                                | string | Base domain for all services                      |
-| global.environmentType                       | string | Environment type (development/staging/production) |
-| global.postgresql.host                       | string | PostgreSQL host                                   |
-| global.postgresql.port                       | int    | PostgreSQL port                                   |
-| global.postgresql.database                   | string | PostgreSQL database name                          |
-| global.postgresql.username                   | string | PostgreSQL username                               |
-| global.secrets.database.secretName           | string | Name of database credentials secret               |
-| global.secrets.auth.provider                 | string | Auth provider (auth0, entra, or keycloak)         |
-| global.secrets.auth.auth0.secretName         | string | Auth0 credentials secret name                     |
-| global.secrets.auth.entra.secretName         | string | Entra ID credentials secret name                  |
-| global.secrets.auth.keycloak.secretName      | string | Keycloak credentials secret name                  |
-| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                       |
-| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                |
-| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                    |
-| global.secrets.authService.secretName        | string | Auth Service API key secret name                  |
-| global.secrets.imageRegistry.secretName      | string | Image registry credentials secret name            |
+| Key                                          | Type   | Description                                                              |
+| -------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| global.domain                                | string | Base domain for all services                                             |
+| global.environmentType                       | string | Environment type (development/staging/production)                        |
+| global.imagePullPolicy                       | string | Default image pull policy for every container                            |
+| global.imagePullSecrets                      | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty |
+| global.postgresql.host                       | string | PostgreSQL host                                                          |
+| global.postgresql.port                       | int    | PostgreSQL port                                                          |
+| global.postgresql.database                   | string | PostgreSQL database name                                                 |
+| global.postgresql.username                   | string | PostgreSQL username                                                      |
+| global.secrets.database.secretName           | string | Name of database credentials secret                                      |
+| global.secrets.auth.provider                 | string | Auth provider (auth0, entra, or keycloak)                                |
+| global.secrets.auth.auth0.secretName         | string | Auth0 credentials secret name                                            |
+| global.secrets.auth.entra.secretName         | string | Entra ID credentials secret name                                         |
+| global.secrets.auth.keycloak.secretName      | string | Keycloak credentials secret name                                         |
+| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                                              |
+| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                                       |
+| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                                           |
+| global.secrets.authService.secretName        | string | Auth Service API key secret name                                         |
+| global.secrets.imageRegistry.secretName      | string | Image registry credentials secret name                                   |
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                                | Description                                              |
-| ---------------- | ------ | -------------------------------------- | -------------------------------------------------------- |
-| enabled          | bool   | `true`                                 | Enable this subchart (umbrella chart only)               |
-| replicaCount     | int    | `2`                                    | Number of replicas to deploy                             |
-| image.repository | string | `"ghcr.io/eqtylab/governance-service"` | Container image repository                               |
-| image.pullPolicy | string | `"IfNotPresent"`                       | Image pull policy                                        |
-| image.tag        | string | `""`                                   | Overrides the image tag (default is chart appVersion)    |
-| image.digest     | string | `""`                                   | Immutable sha256 digest; takes precedence over image.tag |
-| imagePullSecrets | list   | `[]`                                   | Additional image pull secrets (beyond global)            |
-| command          | list   | `["./governance-service"]`             | Container entrypoint command                             |
-| args             | list   | `[]`                                   | Container arguments (-debug-config, -help, etc.)         |
+| Key              | Type   | Default                                | Description                                                                                                           |
+| ---------------- | ------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| enabled          | bool   | `true`                                 | Enable this subchart (umbrella chart only)                                                                            |
+| replicaCount     | int    | `2`                                    | Number of replicas to deploy                                                                                          |
+| image.repository | string | `"ghcr.io/eqtylab/governance-service"` | Container image repository                                                                                            |
+| image.pullPolicy | string | `""`                                   | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
+| image.tag        | string | `""`                                   | Overrides the image tag (default is chart appVersion)                                                                 |
+| image.digest     | string | `""`                                   | Immutable sha256 digest; takes precedence over image.tag                                                              |
+| imagePullSecrets | list   | `[]`                                   | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
+| command          | list   | `["./governance-service"]`             | Container entrypoint command                                                                                          |
+| args             | list   | `[]`                                   | Container arguments (-debug-config, -help, etc.)                                                                      |
 
 ### Service Account
 
@@ -280,12 +283,15 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Security
 
-| Key                | Type   | Default | Description                        |
-| ------------------ | ------ | ------- | ---------------------------------- |
-| podAnnotations     | object | `{}`    | Annotations to add to pods         |
-| podLabels          | object | `{}`    | Labels to add to pods              |
-| podSecurityContext | object | `{}`    | Security context for the pod       |
-| securityContext    | object | `{}`    | Security context for the container |
+| Key                                      | Type   | Default | Description                          |
+| ---------------------------------------- | ------ | ------- | ------------------------------------ |
+| podAnnotations                           | object | `{}`    | Annotations to add to pods           |
+| podLabels                                | object | `{}`    | Labels to add to pods                |
+| podSecurityContext.runAsNonRoot          | bool   | `true`  | Run the pod as a non-root user       |
+| securityContext.runAsNonRoot             | bool   | `true`  | Run the container as a non-root user |
+| securityContext.allowPrivilegeEscalation | bool   | `false` | Prevent privilege escalation         |
+| securityContext.readOnlyRootFilesystem   | bool   | `true`  | Read-only root filesystem            |
+| securityContext.capabilities.drop        | list   | `[ALL]` | Drop all capabilities                |
 
 ### Service
 
@@ -424,13 +430,13 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Application Settings
 
-| Key                | Type   | Default     | Description                                                           |
-| ------------------ | ------ | ----------- | --------------------------------------------------------------------- |
-| config.healthPath  | string | `"/health"` | Health check endpoint path                                            |
-| config.environment | string | `""`        | Application environment (auto-configured from global.environmentType) |
-| config.logLevel    | string | `"info"`    | Logging level (debug/info/warn/error)                                 |
-| config.logFormat   | string | `"json"`    | Log output format (json/text/console/pretty)                          |
-| config.skipPaths   | string | `"/health"` | Paths to skip in logs (prefix match)                                  |
+| Key                | Type   | Default     | Description                                                                                      |
+| ------------------ | ------ | ----------- | ------------------------------------------------------------------------------------------------ |
+| config.healthPath  | string | `"/health"` | Health check endpoint path                                                                       |
+| config.environment | string | `""`        | Application environment (auto-configured from global.environmentType; empty when both are unset) |
+| config.logLevel    | string | `"info"`    | Logging level (debug/info/warn/error)                                                            |
+| config.logFormat   | string | `"json"`    | Log output format (json/text/console/pretty)                                                     |
+| config.skipPaths   | string | `"/health"` | Paths to skip in logs (prefix match)                                                             |
 
 #### HTTP Server Configuration
 
@@ -535,9 +541,9 @@ The governance-service background worker authenticates against the auth-service 
 | Key                                             | Type   | Default               | Description                                                            |
 | ----------------------------------------------- | ------ | --------------------- | ---------------------------------------------------------------------- |
 | config.serviceAccount.enabled                   | bool   | `true`                | Enable service account authentication for the background worker        |
-| config.serviceAccount.authServiceUrl            | string | `""`                  | Auth-service URL for worker auth (falls back to config.authServiceUrl) |
+| config.serviceAccount.authServiceUrl            | string | `""`                  | Not read by any template; the worker uses `config.authServiceUrl`      |
 | config.serviceAccount.authServiceApiKey         | string | `""`                  | Auth-service API key (auto-configured from global.secrets.authService) |
-| config.serviceAccount.serviceName               | string | `"governance-worker"` | Worker identity name used when authenticating with the auth-service    |
+| config.serviceAccount.serviceName               | string | `"governance-worker"` | Not read by any template; has no effect                                |
 | config.serviceAccount.existingSecret            | string | `""`                  | Override secret name (falls back to secrets.authService)               |
 | config.serviceAccount.existingSecretKeys.apiKey | string | `"api-secret"`        | Key within the secret containing the auth-service API key              |
 
@@ -679,7 +685,7 @@ kubectl exec -it deployment/governance-service -n guardian -- curl localhost:100
 - Check Auth Service secret exists (`secrets.authService.name`)
 - Verify service account is configured in Auth Service
 - Ensure Auth Service API key is valid
-- Check `config.serviceAccount.authServiceUrl` is accessible
+- Check `config.authServiceUrl` is accessible
 
 **Configuration not applying**
 

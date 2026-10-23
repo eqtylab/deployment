@@ -364,15 +364,15 @@ helm upgrade guardian-platform ./charts/guardian-platform \
 
 These global values are automatically inherited by all subcharts:
 
-| Key                                  | Type   | Default                                    | Description                                                                                                  |
-| ------------------------------------ | ------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| global.domain                        | string | `"guardian.example.com"`                   | Base domain for all services (**MUST override**)                                                             |
-| global.environmentType               | string | `"production"`                             | Environment type (development/staging/production)                                                            |
-| global.imagePullPolicy               | string | `"IfNotPresent"`                           | Default image pull policy for all containers                                                                 |
-| global.imageRegistryOverride         | string | `""`                                       | Override runtime image registry hosts; upstream dependencies have their own settings                         |
-| global.imageRepositoryPrefixOverride | string | `""`                                       | Replace the EQTY Lab image prefix, preserving upstream sources                                               |
-| global.imagePullSecrets              | list   | `[{"name": "platform-image-pull-secret"}]` | Pull secrets shared by subcharts                                                                             |
-| global.utilityImages.busybox         | string | `""`                                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`) |
+| Key                                  | Type   | Default                                    | Description                                                                                                           |
+| ------------------------------------ | ------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| global.domain                        | string | `"guardian.example.com"`                   | Base domain for all services (**MUST override**)                                                                      |
+| global.environmentType               | string | `"production"`                             | Environment type (development/staging/production)                                                                     |
+| global.imagePullPolicy               | string | `"IfNotPresent"`                           | Default image pull policy for all containers                                                                          |
+| global.imageRegistryOverride         | string | `""`                                       | Override runtime image registry hosts; upstream dependencies have their own settings                                  |
+| global.imageRepositoryPrefixOverride | string | `""`                                       | Replace the EQTY Lab image prefix, preserving upstream sources                                                        |
+| global.imagePullSecrets              | list   | `[{"name": "platform-image-pull-secret"}]` | Pull secrets for subcharts when global.secrets.imageRegistry.secretName is empty, and for the identity provider hooks |
+| global.utilityImages.busybox         | string | `""`                                       | Complete image reference for the Auth, Governance and Integrity wait containers (empty keeps `busybox:1.36`)          |
 
 `global.utilityImages` deliberately covers only the three runtime dependency wait
 containers, and `imageRegistryOverride` does not reach the hook images either.

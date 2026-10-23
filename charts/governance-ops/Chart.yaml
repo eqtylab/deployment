@@ -2,8 +2,8 @@ apiVersion: v2
 name: governance-ops
 description: Operational monitoring and observability for Guardian Platform deployments. Includes Grafana dashboards and Prometheus alerts.
 type: application
-version: 1.0.4
-appVersion: "1.0.4"
+version: 1.0.5
+appVersion: "1.0.5"
 home: https://github.com/eqtylab/guardian-infrastructure
 sources:
   - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/governance-ops

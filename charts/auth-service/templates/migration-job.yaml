@@ -23,6 +23,9 @@ spec:
       {{- if and .Values.global ((.Values.global.secrets).imageRegistry).secretName }}
       imagePullSecrets:
         - name: {{ .Values.global.secrets.imageRegistry.secretName }}
+      {{- else if (.Values.global).imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       {{- else if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
@@ -30,7 +33,7 @@ spec:
       containers:
         - name: migrate
           image: {{ include "auth-service.image" . | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default ((.Values.global).imagePullPolicy | default "IfNotPresent") }}
           command: ["/migrate"]
           env:
             # ==========================================================================

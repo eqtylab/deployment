@@ -155,9 +155,9 @@ From global values:
 
 - All service URLs (API, Auth, Integrity) from `global.domain`
 - Environment type from `global.environmentType`
-- App hostname from `global.domain`
 - Auth provider from `global.secrets.auth.provider`
-- Image pull secrets from `global.secrets.imageRegistry`
+- Image pull policy (from `global.imagePullPolicy`)
+- Image pull secrets (from `global.secrets.imageRegistry.secretName`, then `global.imagePullSecrets`)
 
 Generated defaults:
 
@@ -171,27 +171,29 @@ Generated defaults:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                     | Type   | Description                                       |
-| --------------------------------------- | ------ | ------------------------------------------------- |
-| global.domain                           | string | Base domain for all services                      |
-| global.environmentType                  | string | Environment type (development/staging/production) |
-| global.secrets.imageRegistry.secretName | string | Name of image pull secret                         |
-| global.secrets.auth.provider            | string | Auth provider (auth0, entra, or keycloak)         |
-| global.secrets.auth.auth0.secretName    | string | Auth0 credentials secret name                     |
-| global.secrets.auth.entra.secretName    | string | Entra ID credentials secret name                  |
-| global.secrets.auth.keycloak.secretName | string | Keycloak credentials secret name                  |
+| Key                                     | Type   | Description                                                              |
+| --------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| global.domain                           | string | Base domain for all services                                             |
+| global.environmentType                  | string | Environment type (development/staging/production)                        |
+| global.imagePullPolicy                  | string | Default image pull policy for every container                            |
+| global.imagePullSecrets                 | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty |
+| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                |
+| global.secrets.auth.provider            | string | Auth provider (auth0, entra, or keycloak)                                |
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                      | Description                                              |
-| ---------------- | ------ | ---------------------------- | -------------------------------------------------------- |
-| enabled          | bool   | `true`                       | Enable this subchart (umbrella chart only)               |
-| replicaCount     | int    | `1`                          | Number of replicas to deploy                             |
-| image.repository | string | `"ghcr.io/eqtylab/guardian"` | Container image repository                               |
-| image.pullPolicy | string | `"IfNotPresent"`             | Image pull policy                                        |
-| image.tag        | string | `""`                         | Overrides the image tag (default is chart appVersion)    |
-| image.digest     | string | `""`                         | Immutable sha256 digest; takes precedence over image.tag |
-| imagePullSecrets | list   | `[]`                         | Additional image pull secrets (beyond global)            |
+| Key              | Type   | Default                      | Description                                                                                                           |
+| ---------------- | ------ | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| enabled          | bool   | `true`                       | Enable this subchart (umbrella chart only)                                                                            |
+| replicaCount     | int    | `1`                          | Number of replicas to deploy                                                                                          |
+| image.repository | string | `"ghcr.io/eqtylab/guardian"` | Container image repository                                                                                            |
+| image.pullPolicy | string | `""`                         | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
+| image.tag        | string | `""`                         | Overrides the image tag (default is chart appVersion)                                                                 |
+| image.digest     | string | `""`                         | Immutable sha256 digest; takes precedence over image.tag                                                              |
+| imagePullSecrets | list   | `[]`                         | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
+| nameOverride     | string | `""`                         | Override the chart name used for resource naming                                                                      |
+| fullnameOverride | string | `""`                         | Override the full name used for resource naming                                                                       |
+| containerPort    | int    | `8081`                       | Port the nginx container listens on; the Service targets it by name                                                   |
 
 ### Service Account
 
@@ -204,12 +206,16 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Security
 
-| Key                | Type   | Default | Description                        |
-| ------------------ | ------ | ------- | ---------------------------------- |
-| podAnnotations     | object | `{}`    | Annotations to add to pods         |
-| podLabels          | object | `{}`    | Labels to add to pods              |
-| podSecurityContext | object | `{}`    | Security context for the pod       |
-| securityContext    | object | `{}`    | Security context for the container |
+| Key                                      | Type   | Default | Description                          |
+| ---------------------------------------- | ------ | ------- | ------------------------------------ |
+| podAnnotations                           | object | `{}`    | Annotations to add to pods           |
+| podLabels                                | object | `{}`    | Labels to add to pods                |
+| podSecurityContext.runAsNonRoot          | bool   | `true`  | Run the pod as a non-root user       |
+| podSecurityContext.fsGroup               | int    | `1001`  | Filesystem group                     |
+| securityContext.runAsNonRoot             | bool   | `true`  | Run the container as a non-root user |
+| securityContext.allowPrivilegeEscalation | bool   | `false` | Prevent privilege escalation         |
+| securityContext.readOnlyRootFilesystem   | bool   | `true`  | Read-only root filesystem            |
+| securityContext.capabilities.drop        | list   | `[ALL]` | Drop all capabilities                |
 
 ### Service
 
@@ -289,7 +295,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 | config.integrityServiceUrl | string | `""`         | Integrity Service URL (auto-generated from global.domain)                                                                                    |
 | config.gatewayApiUrl       | string | `""`         | Gateway control-plane API URL (**must be set** when `config.features.gateway` is true, e.g., "https://control-plane.example.com/api")        |
 | config.llmGatewayUrl       | string | `""`         | Public LLM Gateway URL shown in agent onboarding commands (optional, used when `config.features.gateway` is true; blank shows a placeholder) |
-| config.environment         | string | `""`         | Environment (auto-configured from global.environmentType)                                                                                    |
+| config.environment         | string | `""`         | Environment (auto-configured from global.environmentType; empty when both are unset)                                                         |
 | config.appTitle            | string | `"Guardian"` | Application title displayed in browser                                                                                                       |
 | config.displayTimezone     | string | `"UTC"`      | Timezone used for displayed timestamps; defaults to UTC unless set to an IANA timezone name (e.g. America/New_York, Europe/London)           |
 
@@ -322,19 +328,19 @@ Authentication is automatically configured from global values in umbrella deploy
 
 #### All Authentication Values
 
-| Key                     | Type   | Default | Description                                                                                                          |
-| ----------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------- |
-| config.authProvider     | string | `""`    | Auth provider (auto-configured from global.secrets.auth.provider)                                                    |
-| config.auth0Domain      | string | `""`    | Auth0 tenant domain (**must be set**)                                                                                |
-| config.auth0ClientId    | string | `""`    | Auth0 SPA client ID (**must be set**, public)                                                                        |
-| config.auth0Audience    | string | `""`    | Auth0 API audience (**must be set**)                                                                                 |
-| config.entraClientId    | string | `""`    | Entra application (client) ID (**must be set**, public)                                                              |
-| config.entraTenantId    | string | `""`    | Entra directory (tenant) ID (**must be set**)                                                                        |
-| config.entraScopes      | string | `""`    | OAuth scopes (**must be set**, e.g., `openid profile email offline_access api://<backend-client-id>/access_as_user`) |
-| config.entraAuthority   | string | `""`    | Entra authority URL (optional, defaults to `https://login.microsoftonline.com/<tenantId>`)                           |
-| config.keycloakUrl      | string | `""`    | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                                          |
-| config.keycloakClientId | string | `""`    | Keycloak SPA client ID (**must be set**, public, e.g., "guardian-platform-frontend")                                 |
-| config.keycloakRealm    | string | `""`    | Keycloak realm name (**must be set**, e.g., "guardian")                                                              |
+| Key                     | Type   | Default                                                                          | Description                                                                                                          |
+| ----------------------- | ------ | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| config.authProvider     | string | `""`                                                                             | Auth provider (auto-configured from global.secrets.auth.provider)                                                    |
+| config.auth0Domain      | string | `""`                                                                             | Auth0 tenant domain (**must be set**)                                                                                |
+| config.auth0ClientId    | string | `""`                                                                             | Auth0 SPA client ID (**must be set**, public)                                                                        |
+| config.auth0Audience    | string | `""`                                                                             | Auth0 API audience (**must be set**)                                                                                 |
+| config.entraClientId    | string | `""`                                                                             | Entra application (client) ID (**must be set**, public)                                                              |
+| config.entraTenantId    | string | `""`                                                                             | Entra directory (tenant) ID (**must be set**)                                                                        |
+| config.entraScopes      | string | `"openid profile email offline_access api://<backend-client-id>/access_as_user"` | OAuth scopes (**must be set**: replace `<backend-client-id>` with the Guardian Platform Backend app registration ID) |
+| config.entraAuthority   | string | `""`                                                                             | Entra authority URL (optional, defaults to `https://login.microsoftonline.com/<tenantId>`)                           |
+| config.keycloakUrl      | string | `""`                                                                             | Keycloak server URL (**must be set**, e.g., "https://keycloak.example.com")                                          |
+| config.keycloakClientId | string | `""`                                                                             | Keycloak SPA client ID (**must be set**, public, e.g., "guardian-platform-frontend")                                 |
+| config.keycloakRealm    | string | `""`                                                                             | Keycloak realm name (**must be set**, e.g., "guardian")                                                              |
 
 ### Feature Flags
 
@@ -385,7 +391,7 @@ kubectl exec -it deployment/guardian-platform-guardian -n guardian -- env | sort
 Test health endpoint:
 
 ```bash
-kubectl exec -it deployment/guardian-platform-guardian -n guardian -- curl -s localhost:80/
+kubectl exec -it deployment/guardian-platform-guardian -n guardian -- curl -s localhost:8081/
 ```
 
 ### Common Issues

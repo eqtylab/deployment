@@ -2,16 +2,30 @@
 Auth0 Bootstrap Job has been created!
 
 The bootstrap job will:
-1. Authenticate with the Auth0 Management API ({{ .Values.auth0.domain }})
-2. Create the API: {{ .Values.auth0.api.name }} ({{ .Values.auth0.api.identifier }})
-3. Configure applications:
+- Authenticate with the Auth0 Management API ({{ .Values.auth0.domain }})
+- Create the API with its custom permissions/scopes: {{ .Values.auth0.api.name }} ({{ .Values.auth0.api.identifier }})
+- Configure applications:
    - Frontend (SPA): {{ .Values.applications.frontend.name }}
    - Backend (M2M): {{ .Values.applications.backend.name }}
    - Worker (M2M): {{ .Values.applications.worker.name }}
-4. Create custom permissions/scopes on the API
-5. Grant M2M applications access to the API
+- Grant M2M applications access to the API (and the backend limited Management API access)
 {{- if .Values.users.admin.enabled }}
-6. Create admin user: {{ .Values.users.admin.email }}
+- Create admin user: {{ .Values.users.admin.email }}
+{{- end }}
+{{- if .Values.users.testUsers.enabled }}
+- Create {{ len .Values.users.testUsers.users }} test user(s)
+{{- end }}
+{{- if .Values.actions.enabled }}
+{{- if .Values.actions.postLogin.enabled }}
+- Create, deploy, and bind the post-login Action: {{ .Values.actions.postLogin.name }}
+{{- end }}
+{{- if .Values.actions.clientCredentialsExchange.enabled }}
+- Create, deploy, and bind the credentials-exchange Action: {{ .Values.actions.clientCredentialsExchange.name }}
+{{- end }}
+
+The Actions read their JS source from the ConfigMap {{ .Values.actions.sourceConfigMap.name }},
+which scripts/auth0/bootstrap-auth0.sh creates from scripts/auth0/actions/. If you
+install this chart directly, create that ConfigMap first or set actions.enabled=false.
 {{- end }}
 
 To check the job status:

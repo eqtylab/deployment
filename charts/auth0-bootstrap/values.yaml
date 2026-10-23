@@ -57,8 +57,8 @@ bootstrap:
     tag: "latest"
 
   # -- Args
-  # @default -- See values below
-  # Arguments for the bootstrap command
+  # @default -- `["/scripts/bootstrap.sh"]`
+  # Arguments for the bootstrap command (the container command defaults to /bin/sh)
   args: ["/scripts/bootstrap.sh"]
 
   # -- Backoff Limit

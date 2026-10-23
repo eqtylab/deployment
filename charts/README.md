@@ -90,9 +90,11 @@ The platform requires object storage (for artifacts) and a key vault (for DID ke
 
 Set up ingress, DNS, and certificate management:
 
-- Install the [NGINX Ingress Controller](../scripts/services/nginx.sh) as the default ingress class
+- Install the [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/deploy/) as the default ingress class
 - Create a DNS A-record pointing your domain to the ingress external IP
-- Install [cert-manager](../scripts/services/cert-manager.sh) and create a Let's Encrypt Issuer for automatic TLS
+- Install [cert-manager](https://cert-manager.io/docs/installation/helm/) and create a Let's Encrypt Issuer for automatic TLS
+
+See [Domain and TLS](https://guardian.docs.eqtylab.io/deployment/domain-and-tls/) for details.
 
 **4. Create namespace**
 
@@ -130,7 +132,12 @@ Either pass `secrets.yaml` during helm install (`--values secrets.yaml`), or cre
 This creates the required identity provider configuration (apps/API/users for Auth0, app registrations for Entra, realm/clients for Keycloak):
 
 ```bash
-# Auth0
+# Auth0: the Job mounts the Auth0 Action sources from the auth0-actions-source
+# ConfigMap, so create it first (scripts/auth0/bootstrap-auth0.sh does this)
+kubectl create configmap auth0-actions-source \
+  --namespace guardian \
+  --from-file=../scripts/auth0/actions/ \
+  --dry-run=client -o yaml | kubectl apply -f -
 helm upgrade --install auth0-bootstrap ./auth0-bootstrap \
   --namespace guardian \
   --values bootstrap-values.yaml \
@@ -149,12 +156,13 @@ helm upgrade --install keycloak-bootstrap ./keycloak-bootstrap \
   --wait --timeout 10m
 ```
 
-Helper scripts are also available in `scripts/auth0/`, `scripts/entra/`, and `scripts/keycloak/` — see the identity provider pages on the [docs site](https://guardian.docs.eqtylab.io/deployment/authentication/) for details.
+Helper scripts are also available in `scripts/auth0/`, `scripts/entra/`, and `scripts/keycloak/`; `scripts/auth0/bootstrap-auth0.sh` creates the `auth0-actions-source` ConfigMap before installing the chart. See the identity provider pages on the [docs site](https://guardian.docs.eqtylab.io/deployment/authentication/) for details.
 
 **8. Deploy**
 
 ```bash
-helm dependency update ./guardian-platform
+helm dependency build ./gateway-stack
+helm dependency build ./guardian-platform
 helm upgrade --install guardian-platform ./guardian-platform \
   --namespace guardian \
   --values values.yaml
@@ -178,8 +186,9 @@ For complete documentation, see [Deployment Process](https://guardian.docs.eqtyl
 ### From Local Directory
 
 ```bash
-# Update dependencies
-helm dependency update ./guardian-platform
+# Build dependencies from Chart.lock (gateway-stack first)
+helm dependency build ./gateway-stack
+helm dependency build ./guardian-platform
 
 # Install
 helm upgrade --install guardian-platform ./guardian-platform \
@@ -213,7 +222,7 @@ echo $GITHUB_PAT | helm registry login ghcr.io -u USERNAME --password-stdin
 
 # Install from registry
 helm upgrade --install guardian-platform oci://ghcr.io/eqtylab/charts/guardian-platform \
-  --version 0.1.0 \
+  --version <released-version> \
   --namespace guardian \
   --create-namespace \
   --values values.yaml
@@ -272,7 +281,11 @@ helm diff upgrade guardian-platform ./guardian-platform \
 ### Updating Dependencies
 
 ```bash
-# Update all subchart dependencies
+# Build subchart dependencies from Chart.lock (gateway-stack first)
+helm dependency build ./gateway-stack
+helm dependency build ./guardian-platform
+
+# Re-resolve dependencies and rewrite Chart.lock (only when changing them)
 helm dependency update ./guardian-platform
 
 # List dependencies
@@ -282,8 +295,8 @@ helm dependency list ./guardian-platform
 ### Testing Changes
 
 ```bash
-# Run helm unittest (if configured)
-helm unittest ./guardian-platform
+# Lint strictly
+helm lint --strict ./guardian-platform --values values.yaml
 
 # Validate against Kubernetes API
 helm upgrade --install guardian-platform ./guardian-platform \
@@ -291,36 +304,6 @@ helm upgrade --install guardian-platform ./guardian-platform \
   --values values.yaml \
   --dry-run=server
 ```
-
-## Publishing Charts
-
-Charts are published to GitHub Container Registry (GHCR) as OCI artifacts.
-
-### Manual Publishing
-
-```bash
-# Authenticate
-export CR_PAT="YOUR-GITHUB-PERSONAL-ACCESS-TOKEN"
-echo $CR_PAT | helm registry login ghcr.io -u USERNAME --password-stdin
-
-# Package chart
-helm package ./guardian-platform
-
-# Push to registry
-helm push guardian-platform-0.1.0.tgz oci://ghcr.io/eqtylab/charts
-```
-
-### Automated Publishing
-
-Chart changes are validated on PRs and main. Infrastructure publication requires
-an explicit `workflow_dispatch` with `publish: true`; customer platform releases
-publish from deployment. See [publish.yaml](../.github/workflows/publish.yaml).
-
-Locally, `just publish openbao-custody` builds its locked dependency, packages,
-and pushes `oci://ghcr.io/eqtylab/charts/openbao-custody` at its own chart version.
-`just publish-all` deliberately includes this independent chart. Neither command
-adds custody to `guardian-platform` or installs it. README and example profiles
-are included in the custody archive for offline operator use.
 
 ## Chart Versioning
 
@@ -330,17 +313,20 @@ Charts follow [Semantic Versioning](https://semver.org/):
 - **MINOR**: New features, new configuration options
 - **PATCH**: Bug fixes, documentation updates
 
-The umbrella chart (`guardian-platform`) version is incremented when:
+The seven platform charts (`guardian-platform`, `auth-service`, `eqty-pdfgen`,
+`gateway-stack`, `governance-service`, `guardian`, and `integrity-service`)
+share one version, set for each platform release.
 
-- Any subchart version changes
-- Global configuration schema changes
-- New subcharts are added
+The bootstrap charts (`auth0-bootstrap`, `entra-bootstrap`,
+`keycloak-bootstrap`), `governance-ops`, and `openbao-custody` version
+independently of the platform release.
 
 `openbao-custody` is an explicit exception to platform version alignment: chart
-`version: 0.1.0` tracks the custody wrapper and `appVersion: 2.6.2` tracks OpenBao.
+`version: 0.1.1` tracks the custody wrapper and `appVersion: 2.6.2` tracks OpenBao.
 Its upstream chart is separately pinned to 0.29.5 in `Chart.yaml` and `Chart.lock`.
-Changing it does not require a platform version bump. See the
-[release-policy exception and downstream requirements](../docs/formal-release-process.md#independent-openbao-custody-release).
+Changing it does not require a platform version bump, and it is never added to
+the `guardian-platform` umbrella. Its README and example profiles are included
+in the chart archive for offline operator use.
 
 ## Documentation
 

@@ -121,7 +121,12 @@ global:
       # Only used if provider=auth0
       # Note: SPA client ID is set via config, not secrets (it's public)
       auth0:
+        # -- Secret Name
+        # @default -- `platform-auth0`
         secretName: "platform-auth0"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           clientId: "client-id"
           clientSecret: "client-secret"
@@ -146,7 +151,12 @@ global:
       # @default -- See values below
       # Only used if provider=entra
       entra:
+        # -- Secret Name
+        # @default -- `platform-entra`
         secretName: "platform-entra"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           clientId: "client-id"
           clientSecret: "client-secret"
@@ -175,7 +185,12 @@ global:
       # @default -- See values below
       # Only used if provider=keycloak
       keycloak:
+        # -- Secret Name
+        # @default -- `platform-keycloak`
         secretName: "platform-keycloak"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           serviceAccountClientId: "service-account-client-id"
           serviceAccountClientSecret: "service-account-client-secret"
@@ -196,7 +211,12 @@ global:
     # @default -- See values below
     # Used by: auth-service for application secrets
     authService:
+      # -- Secret Name
+      # @default -- `platform-auth-service`
       secretName: "platform-auth-service"
+      # -- Secret Keys
+      # @default -- See values below
+      # Key names to read from the Secret
       keys:
         apiSecret: "api-secret"
         jwtSecret: "jwt-secret"
@@ -213,7 +233,12 @@ global:
     # @default -- See values below
     # Used by: auth-service, governance-service, integrity-service
     database:
+      # -- Secret Name
+      # @default -- `platform-database`
       secretName: "platform-database"
+      # -- Secret Keys
+      # @default -- See values below
+      # Key names to read from the Secret
       keys:
         username: "username"
         password: "password"
@@ -236,7 +261,12 @@ global:
     # @default -- See values below
     # Used by: auth-service for managing the governance worker's service account credentials
     governanceWorker:
+      # -- Secret Name
+      # @default -- `platform-governance-worker`
       secretName: "platform-governance-worker"
+      # -- Secret Keys
+      # @default -- See values below
+      # Key names to read from the Secret
       keys:
         encryptionKey: "encryption-key"
         clientId: "client-id"
@@ -257,7 +287,11 @@ global:
     # @default -- See values below
     # Credentials for pulling images from private registries
     imageRegistry:
+      # -- Secret Name
+      # @default -- `platform-image-pull-secret`
       secretName: "platform-image-pull-secret"
+      # -- Registry Server
+      # @default -- `ghcr.io`
       registry: "ghcr.io"
       # Only used if create=true
       values:
@@ -276,7 +310,7 @@ global:
     # Used by: auth-service
     keyManagement:
       # -- Key Management Provider
-      # @default -- `azure`
+      # @default -- `azure_key_vault`
       # Options: aws_kms, azure_key_vault, gcp_kms, openbao
       # openbao needs no cloud credentials; see auth-service.config.keyManagement.openbao
       provider: "azure_key_vault"
@@ -285,7 +319,12 @@ global:
       # @default -- See values below
       # Only used if provider=aws_kms
       aws_kms:
+        # -- Secret Name
+        # @default -- `platform-aws-kms`
         secretName: "platform-aws-kms"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           accessKeyId: "access-key-id"
           secretAccessKey: "secret-access-key"
@@ -306,7 +345,12 @@ global:
       # @default -- See values below
       # Only used if provider=azure_key_vault
       azure_key_vault:
+        # -- Secret Name
+        # @default -- `platform-azure-key-vault`
         secretName: "platform-azure-key-vault"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           clientId: "client-id"
           clientSecret: "client-secret"
@@ -331,7 +375,12 @@ global:
       # @default -- See values below
       # Only used if provider=gcp_kms
       gcp_kms:
+        # -- Secret Name
+        # @default -- `platform-gcp-kms`
         secretName: "platform-gcp-kms"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           serviceAccountJson: "service-account-json"
         # Only used if create=true and provider=gcp_kms
@@ -347,6 +396,8 @@ global:
       # the umbrella never creates it, even with create=true. The kubernetes auth
       # method needs no Secret at all.
       openbao:
+        # -- Secret Name
+        # @default -- `""`
         secretName: ""
 
     # -- Storage Configuration
@@ -357,7 +408,12 @@ global:
       # -- AWS S3
       # @default -- See values below
       aws_s3:
+        # -- Secret Name
+        # @default -- `platform-aws-s3`
         secretName: "platform-aws-s3"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           accessKeyId: "access-key-id"
           secretAccessKey: "secret-access-key"
@@ -373,7 +429,12 @@ global:
       # -- Azure Blob Storage
       # @default -- See values below
       azure_blob:
+        # -- Secret Name
+        # @default -- `platform-azure-blob`
         secretName: "platform-azure-blob"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           accountKey: "account-key"
           connectionString: "connection-string"
@@ -389,7 +450,12 @@ global:
       # -- Google Cloud Storage
       # @default -- See values below
       gcs:
+        # -- Secret Name
+        # @default -- `platform-gcs`
         secretName: "platform-gcs"
+        # -- Secret Keys
+        # @default -- See values below
+        # Key names to read from the Secret
         keys:
           serviceAccountJson: "service-account-json"
         # Only used if create=true
@@ -422,9 +488,9 @@ auth-service:
     # @default -- `ghcr.io/eqtylab/auth-service`
     repository: ghcr.io/eqtylab/auth-service
     # -- Image Pull Policy
-    # @default -- `IfNotPresent`
+    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
     # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
@@ -434,8 +500,8 @@ auth-service:
     digest: ""
 
   # -- Image Pull Secrets
-  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
-  # Additional secrets for pulling images from private registries
+  # @default -- `[]`
+  # Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
   imagePullSecrets: []
 
   # -- Name Override
@@ -806,7 +872,7 @@ auth-service:
       # @default -- `0.0.0.0`
       host: "0.0.0.0"
       # -- Environment
-      # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+      # @default -- `""` (auto-configured from global.environmentType, defaults to "production")
       environment: ""
       # -- Auth Service URL
       # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}/api/v1/auth")
@@ -850,7 +916,7 @@ auth-service:
       level: "info"
       # -- Log Format
       # @default -- `json`
-      # Options: json, text
+      # Options: json, text, console, pretty
       format: "json"
       # -- Skip Paths
       # @default -- `/health`
@@ -1141,10 +1207,12 @@ auth-service:
       # Only used when provider is "gcp_kms"
       gcp_kms:
         # -- GCP Project ID
-        # @default -- `""` (auto-configured from global.secrets.keyManagement.gcp_kms.values.projectId)
+        # @default -- `""`
+        # **REQUIRED for GCP KMS**: Google Cloud project ID (not read from global values)
         projectId: ""
         # -- GCP KMS Location ID
-        # @default -- `""` (auto-configured from global.secrets.keyManagement.gcp_kms.values.locationId)
+        # @default -- `""`
+        # **REQUIRED for GCP KMS**: KMS location, e.g. "us-east1" (not read from global values)
         locationId: ""
         # -- GCP KMS Key Ring ID
         # @default -- `eqtylab-did`
@@ -1171,12 +1239,6 @@ auth-service:
         # @default -- `true`
         # Enable governance worker service account
         enabled: true
-        # -- Scopes
-        # @default -- See values below
-        # Scopes for service account
-        scopes:
-          - "governance:declarations:create"
-          - "integrity:statements:create"
         # -- Audience
         # @default -- `""`
         # **REQUIRED for Auth0**: API audience for worker (e.g., "https://guardian.yourcompany.com")
@@ -1335,11 +1397,6 @@ auth-service:
   # Extra containers to add to the pod
   extraContainers: []
 
-  # -- Extra Manifests
-  # @default -- `[]`
-  # Extra manifests to deploy
-  extraManifests: []
-
   # -- Host Aliases
   # @default -- `[]`
   # Optional pod host aliases (local qualification DNS only)
@@ -1369,9 +1426,9 @@ eqty-pdfgen:
     # @default -- `ghcr.io/eqtylab/eqty-pdfgen`
     repository: ghcr.io/eqtylab/eqty-pdfgen
     # -- Image Pull Policy
-    # @default -- `IfNotPresent`
+    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
     # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
@@ -1381,8 +1438,8 @@ eqty-pdfgen:
     digest: ""
 
   # -- Image Pull Secrets
-  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
-  # Additional secrets for pulling images from private registries
+  # @default -- `[]`
+  # Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
   imagePullSecrets: []
 
   # -- Name Override
@@ -1613,44 +1670,92 @@ eqty-pdfgen:
 # overlay in examples/values-gateway.yaml enables the complete integration
 # ------------------------------------------------------------------------------
 gateway-stack:
+  # -- Enable Gateway Stack
+  # @default -- `false`
   enabled: false
 
+  # -- Database Configuration
+  # @default -- See values below
   # Reuse the platform database Secret. When global.secrets.create=true, the
   # umbrella chart writes the DSN key below; external-secret users must provide it
   database:
+    # -- Existing Database Secret
+    # @default -- `platform-database`
     existingSecret: "platform-database"
+    # -- Database Secret Keys
+    # @default -- See values below
     secretKeys:
+      # -- DSN Key
+      # @default -- `gateway-dsn`
       dsn: "gateway-dsn"
+    # -- Database Name
+    # @default -- `guardian_gateway`
     name: "guardian_gateway"
 
+  # -- PostgreSQL Configuration
+  # @default -- See values below
   # The bundled platform PostgreSQL is authoritative for the umbrella chart
   postgresql:
+    # -- Enable Bundled PostgreSQL
+    # @default -- `false`
     enabled: false
 
+  # -- HAProxy Ingress Configuration
+  # @default -- See values below
   # The platform already installs an ingress controller separately
   haproxyIngress:
+    # -- Enable Bundled HAProxy Controller
+    # @default -- `false`
     enabled: false
 
+  # -- LLM Gateway Configuration
+  # @default -- See values below
   llmGateway:
+    # -- Deployment Environment
+    # @default -- `production`
     deploymentEnvironment: "production"
+    # -- Agent Registration Configuration
+    # @default -- See values below
     registration:
+      # -- Enable Agent Registration
+      # @default -- `false`
       # Enabling registration requires a credential signer seed Secret
       enabled: false
 
+  # -- Control Plane Configuration
+  # @default -- See values below
   controlPlane:
+    # -- Guardian Adapter Configuration
+    # @default -- See values below
     adapter:
+      # -- Enable Adapter
+      # @default -- `true`
       enabled: true
+    # -- Authentication Configuration
+    # @default -- See values below
     # Enabling the stack requires a registration token secret: set
     # auth.registrationTokenSecret or auth.existingSecret
     auth:
+      # -- Enable Authentication
+      # @default -- `true`
       enabled: true
+      # -- Bearer Token Verification
+      # @default -- See values below
       bearer:
+        # -- Enable Bearer Token Verification
+        # @default -- `true`
         enabled: true
+        # -- Bearer Verification Mode
+        # @default -- `auth_service`
         mode: "auth_service"
 
+  # -- Ingress Configuration
+  # @default -- See values below
   # Keep public routes opt-in until their hostnames and auth policy have been
   # selected for an environment
   ingress:
+    # -- Enable Ingress
+    # @default -- `false`
     enabled: false
 
 # =============================================================================
@@ -1677,9 +1782,9 @@ governance-service:
     # @default -- `ghcr.io/eqtylab/governance-service`
     repository: ghcr.io/eqtylab/governance-service
     # -- Image Pull Policy
-    # @default -- `IfNotPresent`
+    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
     # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
@@ -1699,8 +1804,8 @@ governance-service:
   args: []
 
   # -- Image Pull Secrets
-  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
-  # Additional secrets for pulling images from private registries
+  # @default -- `[]`
+  # Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
   imagePullSecrets: []
 
   # -- Name Override
@@ -2026,7 +2131,7 @@ governance-service:
     healthPath: "/health"
 
     # -- Application Environment
-    # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+    # @default -- `""` (auto-configured from global.environmentType, otherwise empty)
     environment: ""
 
     # -- Log Level
@@ -2259,14 +2364,14 @@ governance-service:
       enabled: true
       # -- Auth Service URL
       # @default -- `""`
-      # Auth Service URL for token retrieval (falls back to config.authServiceUrl)
+      # Not read by any template; the worker uses config.authServiceUrl
       authServiceUrl: ""
       # -- Auth Service API Key
       # @default -- `""` (auto-configured from global.secrets.authService)
       authServiceApiKey: ""
       # -- Service Name
       # @default -- `governance-worker`
-      # Service account name
+      # Not read by any template; setting it has no effect
       serviceName: "governance-worker"
       # -- Existing Secret
       # @default -- `""` (falls back to secrets.authService)
@@ -2320,9 +2425,9 @@ guardian:
     # @default -- `ghcr.io/eqtylab/guardian`
     repository: ghcr.io/eqtylab/guardian
     # -- Image Pull Policy
-    # @default -- `IfNotPresent`
+    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
     # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
@@ -2332,8 +2437,8 @@ guardian:
     digest: ""
 
   # -- Image Pull Secrets
-  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
-  # Additional secrets for pulling images from private registries
+  # @default -- `[]`
+  # Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
   imagePullSecrets: []
 
   # -- Name Override
@@ -2638,7 +2743,7 @@ guardian:
     # ---------------------------------------------------------------------------
 
     # -- Environment
-    # @default -- `""` (auto-configured from global.environmentType, defaults to "development")
+    # @default -- `""` (auto-configured from global.environmentType, otherwise empty)
     # Environment label
     environment: ""
 
@@ -2703,9 +2808,9 @@ integrity-service:
     # @default -- `ghcr.io/eqtylab/integrity-service`
     repository: ghcr.io/eqtylab/integrity-service
     # -- Image Pull Policy
-    # @default -- `IfNotPresent`
+    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
     # Options: IfNotPresent, Always, Never
-    pullPolicy: IfNotPresent
+    pullPolicy: ""
     # -- Image Tag
     # @default -- `""` (uses chart appVersion)
     tag: ""
@@ -2715,8 +2820,8 @@ integrity-service:
     digest: ""
 
   # -- Image Pull Secrets
-  # @default -- `[]` (auto-configured from global.secrets.imageRegistry.secretName)
-  # Additional secrets for pulling images from private registries
+  # @default -- `[]`
+  # Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
   imagePullSecrets: []
 
   # -- Name Override
@@ -2756,7 +2861,7 @@ integrity-service:
   podLabels: {}
 
   # -- Pod Security Context
-  # @default -- `{}`
+  # @default -- See values below
   # Security context applied at the pod level
   podSecurityContext:
     runAsNonRoot: true
@@ -3304,7 +3409,8 @@ fullnameOverride: ""
 # =============================================================================
 # Configuration for Auth0 identity provider integration
 # Creates the necessary organization and admin user in the governance database
-# Only used when global.secrets.auth.provider is set to "auth0"
+# Runs only when auth0.createOrganization is true; global.secrets.auth.provider
+# does not gate it
 # ------------------------------------------------------------------------------
 auth0:
   # -- Create Organization
@@ -3350,7 +3456,8 @@ auth0:
 # ------------------------------------------------------------------------------
 # Configuration for Microsoft Entra ID identity provider integration
 # Creates the necessary organization and admin user in the governance database
-# Only used when global.secrets.auth.provider is set to "entra"
+# Runs only when entra.createOrganization is true; global.secrets.auth.provider
+# does not gate it
 # ------------------------------------------------------------------------------
 entra:
   # -- Create Organization
@@ -3360,7 +3467,7 @@ entra:
   createOrganization: false
 
   # -- Organization Name
-  # @default -- `governance`
+  # @default -- `guardian`
   # Organization identifier in the database
   organizationName: "guardian"
 
@@ -3395,7 +3502,8 @@ entra:
 # ------------------------------------------------------------------------------
 # Configuration for Keycloak identity provider integration
 # Creates the necessary organization and admin user in the governance database
-# Only used when global.secrets.auth.provider is set to "keycloak"
+# Runs only when keycloak.createOrganization is true; global.secrets.auth.provider
+# does not gate it
 # ------------------------------------------------------------------------------
 keycloak:
   # -- Create Organization

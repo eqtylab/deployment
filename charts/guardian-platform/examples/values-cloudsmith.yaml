@@ -1,5 +1,4 @@
-# =============================================================================
-# Cloudsmith Customer Registry Overlay
+# Cloudsmith Registry Overlay Example
 # =============================================================================
 # Usage (only for a stable version verified in cloudsmith-delivery.json):
 #   Add the cloudsmith-prod native Helm repository first; see docs/cloudsmith.md.

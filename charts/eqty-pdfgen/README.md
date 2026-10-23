@@ -80,7 +80,7 @@ From global values (umbrella chart):
 
 - Image repository/registry (from `global.imageRegistryOverride` and `global.imageRepositoryPrefixOverride`)
 - Image pull policy (from `global.imagePullPolicy`)
-- Image pull secrets (from `global.secrets.imageRegistry`)
+- Image pull secrets (from `global.secrets.imageRegistry.secretName`, then `global.imagePullSecrets`)
 
 Generated defaults:
 
@@ -98,21 +98,22 @@ When deployed via the umbrella chart, these global values are automatically used
 | global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)          |
 | global.imageRepositoryPrefixOverride    | string | Replace the full EQTY Lab image repository prefix (e.g., `registry.example/eqty`) |
 | global.imagePullPolicy                  | string | Default image pull policy for platform installs                                   |
+| global.imagePullSecrets                 | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty          |
 | global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                         |
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                         | Description                                              |
-| ---------------- | ------ | ------------------------------- | -------------------------------------------------------- |
-| enabled          | bool   | `true`                          | Enable this subchart (umbrella chart only)               |
-| replicaCount     | int    | `2`                             | Number of replicas to deploy                             |
-| image.repository | string | `"ghcr.io/eqtylab/eqty-pdfgen"` | Container image repository                               |
-| image.pullPolicy | string | `"IfNotPresent"`                | Image pull policy                                        |
-| image.tag        | string | `""`                            | Overrides the image tag (default is chart appVersion)    |
-| image.digest     | string | `""`                            | Immutable sha256 digest; takes precedence over image.tag |
-| imagePullSecrets | list   | `[]`                            | Additional image pull secrets (beyond global)            |
-| nameOverride     | string | `""`                            | Override the chart name used for resource naming         |
-| fullnameOverride | string | `""`                            | Override the fully qualified resource name               |
+| Key              | Type   | Default                         | Description                                                                                                           |
+| ---------------- | ------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| enabled          | bool   | `true`                          | Enable this subchart (umbrella chart only)                                                                            |
+| replicaCount     | int    | `2`                             | Number of replicas to deploy                                                                                          |
+| image.repository | string | `"ghcr.io/eqtylab/eqty-pdfgen"` | Container image repository                                                                                            |
+| image.pullPolicy | string | `""`                            | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
+| image.tag        | string | `""`                            | Overrides the image tag (default is chart appVersion)                                                                 |
+| image.digest     | string | `""`                            | Immutable sha256 digest; takes precedence over image.tag                                                              |
+| imagePullSecrets | list   | `[]`                            | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
+| nameOverride     | string | `""`                            | Override the chart name used for resource naming                                                                      |
+| fullnameOverride | string | `""`                            | Override the fully qualified resource name                                                                            |
 
 ### Service Account
 

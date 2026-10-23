@@ -162,7 +162,8 @@ From global values:
 - Storage credentials (from `global.secrets.storage.aws_s3`, `global.secrets.storage.azure_blob`, or `global.secrets.storage.gcs`)
 - Auth Service URL (generated as `http://{Release.Name}-auth-service:8080`)
 - Environment type (from `global.environmentType`)
-- Image pull secrets (from `global.secrets.imageRegistry`)
+- Image pull policy (from `global.imagePullPolicy`)
+- Image pull secrets (from `global.secrets.imageRegistry.secretName`, then `global.imagePullSecrets`)
 - Public service URL (from `global.domain`)
 
 Generated defaults:
@@ -176,31 +177,33 @@ Generated defaults:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                          | Type   | Description                                             |
-| -------------------------------------------- | ------ | ------------------------------------------------------- |
-| global.domain                                | string | Base domain for all services                            |
-| global.environmentType                       | string | Environment type (development/staging/production)       |
-| global.postgresql.host                       | string | PostgreSQL host (defaults to {Release.Name}-postgresql) |
-| global.postgresql.port                       | int    | PostgreSQL port (defaults to 5432)                      |
-| global.postgresql.database                   | string | PostgreSQL database name                                |
-| global.postgresql.username                   | string | PostgreSQL username                                     |
-| global.secrets.database.secretName           | string | Name of database credentials secret                     |
-| global.secrets.imageRegistry.secretName      | string | Name of image pull secret                               |
-| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                      |
-| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                          |
-| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                             |
+| Key                                          | Type   | Description                                                              |
+| -------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| global.domain                                | string | Base domain for all services                                             |
+| global.environmentType                       | string | Environment type (development/staging/production)                        |
+| global.imagePullPolicy                       | string | Default image pull policy for every container                            |
+| global.imagePullSecrets                      | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty |
+| global.postgresql.host                       | string | PostgreSQL host (defaults to {Release.Name}-postgresql)                  |
+| global.postgresql.port                       | int    | PostgreSQL port (defaults to 5432)                                       |
+| global.postgresql.database                   | string | PostgreSQL database name                                                 |
+| global.postgresql.username                   | string | PostgreSQL username                                                      |
+| global.secrets.database.secretName           | string | Name of database credentials secret                                      |
+| global.secrets.imageRegistry.secretName      | string | Name of image pull secret                                                |
+| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                                       |
+| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                                           |
+| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                                              |
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                               | Description                                              |
-| ---------------- | ------ | ------------------------------------- | -------------------------------------------------------- |
-| enabled          | bool   | `true`                                | Enable this subchart (umbrella chart only)               |
-| replicaCount     | int    | `2`                                   | Number of replicas to deploy                             |
-| image.repository | string | `"ghcr.io/eqtylab/integrity-service"` | Container image repository                               |
-| image.pullPolicy | string | `"IfNotPresent"`                      | Image pull policy                                        |
-| image.tag        | string | `""`                                  | Overrides the image tag (default is chart appVersion)    |
-| image.digest     | string | `""`                                  | Immutable sha256 digest; takes precedence over image.tag |
-| imagePullSecrets | list   | `[]`                                  | Additional image pull secrets (beyond global)            |
+| Key              | Type   | Default                               | Description                                                                                                           |
+| ---------------- | ------ | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| enabled          | bool   | `true`                                | Enable this subchart (umbrella chart only)                                                                            |
+| replicaCount     | int    | `2`                                   | Number of replicas to deploy                                                                                          |
+| image.repository | string | `"ghcr.io/eqtylab/integrity-service"` | Container image repository                                                                                            |
+| image.pullPolicy | string | `""`                                  | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
+| image.tag        | string | `""`                                  | Overrides the image tag (default is chart appVersion)                                                                 |
+| image.digest     | string | `""`                                  | Immutable sha256 digest; takes precedence over image.tag                                                              |
+| imagePullSecrets | list   | `[]`                                  | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
 
 ### Service Account
 
@@ -213,12 +216,15 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Security
 
-| Key                                    | Type   | Default | Description                                                       |
-| -------------------------------------- | ------ | ------- | ----------------------------------------------------------------- |
-| podAnnotations                         | object | `{}`    | Annotations to add to pods                                        |
-| podLabels                              | object | `{}`    | Labels to add to pods                                             |
-| podSecurityContext                     | object | `{}`    | Security context for the pod                                      |
-| securityContext.readOnlyRootFilesystem | bool   | `false` | Read-only root filesystem (disabled for Rust app file operations) |
+| Key                                      | Type   | Default | Description                          |
+| ---------------------------------------- | ------ | ------- | ------------------------------------ |
+| podAnnotations                           | object | `{}`    | Annotations to add to pods           |
+| podLabels                                | object | `{}`    | Labels to add to pods                |
+| podSecurityContext.runAsNonRoot          | bool   | `true`  | Run the pod as a non-root user       |
+| securityContext.runAsNonRoot             | bool   | `true`  | Run the container as a non-root user |
+| securityContext.allowPrivilegeEscalation | bool   | `false` | Prevent privilege escalation         |
+| securityContext.readOnlyRootFilesystem   | bool   | `true`  | Read-only root filesystem            |
+| securityContext.capabilities.drop        | list   | `[ALL]` | Drop all capabilities                |
 
 ### Service
 

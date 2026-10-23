@@ -54,8 +54,8 @@ bootstrap:
     tag: "latest"
 
   # -- Args
-  # @default -- See values below
-  # Arguments for the bootstrap command
+  # @default -- `["/scripts/bootstrap.sh"]`
+  # Arguments for the bootstrap command (the container command defaults to /bin/sh)
   args: ["/scripts/bootstrap.sh"]
 
   # -- Backoff Limit
@@ -99,7 +99,7 @@ bootstrap:
   wait:
     # -- Enabled
     # @default -- `false`
-    # Enable waiting for Keycloak to be ready
+    # Add an init container that polls keycloak.healthUrl before the bootstrap runs
     enabled: false
     # -- Max Attempts
     # @default -- `60`
@@ -124,7 +124,7 @@ keycloak:
 
   # -- Health URL
   # @default -- `http://keycloak:9000/keycloak/health/ready`
-  # Keycloak health check URL
+  # Keycloak health check URL, used only when bootstrap.wait.enabled is true
   healthUrl: "http://keycloak:9000/keycloak/health/ready"
 
   # -- Admin Username
@@ -246,7 +246,9 @@ clients:
       - "http://localhost:5173"
       - "https://guardian.example.com"
     # -- Default Scopes
-    # @default -- `[openid, profile, email, roles]`
+    # @default -- `[openid, profile, email, roles, sub]`
+    # Not read by any template; the bootstrap script always sets openid, profile,
+    # email and roles, and assigns the sub scope through customScopes
     defaultScopes:
       - "openid"
       - "profile"
@@ -255,6 +257,7 @@ clients:
       - "sub"
     # -- Optional Scopes
     # @default -- `[offline_access]`
+    # Not read by any template; the bootstrap script always sets offline_access
     optionalScopes:
       - "offline_access"
 
@@ -321,6 +324,8 @@ clients:
       - "http://localhost:8000"
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
+    # Not read by any template; the bootstrap script always sets openid, profile,
+    # email and roles
     defaultScopes:
       - "openid"
       - "profile"
@@ -364,6 +369,8 @@ clients:
     serviceAccountsEnabled: true
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
+    # Not read by any template; the bootstrap script always sets openid, profile,
+    # email and roles
     defaultScopes:
       - "openid"
       - "profile"
@@ -453,7 +460,7 @@ users:
     lastName: "Admin"
     # -- Email Verified
     # @default -- `true`
-    # Mark email as verified
+    # Not read by any template; the bootstrap script always marks the email as verified
     emailVerified: true
     # -- Temporary Password
     # @default -- `false`

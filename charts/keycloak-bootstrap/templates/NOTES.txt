@@ -2,16 +2,22 @@
 Keycloak Bootstrap Job has been created!
 
 The bootstrap job will:
-1. Wait for Keycloak to be ready at {{ .Values.keycloak.url }}
-2. Create the realm: {{ .Values.keycloak.realm.name }}
-3. Configure clients:
+{{- if .Values.bootstrap.wait.enabled }}
+- Wait for Keycloak to be ready at {{ .Values.keycloak.healthUrl }}
+{{- end }}
+- Connect to Keycloak at {{ .Values.keycloak.url }}
+- Create the realm: {{ .Values.keycloak.realm.name }}
+- Create custom scopes for the Guardian Platform
+- Configure clients:
    - Frontend: {{ .Values.clients.frontend.clientId }}
    - Backend: {{ .Values.clients.backend.clientId }}
    - Worker: {{ .Values.clients.worker.clientId }}
-4. Create custom scopes for the Guardian Platform
 {{- if .Values.users.admin.enabled }}
-5. Create admin user: {{ .Values.users.admin.username }}
+- Create admin user: {{ .Values.users.admin.username }}
 {{- end }}
+
+Keycloak generates the backend and worker client secrets. Retrieve them from
+the Keycloak admin UI or API and store them in the platform-keycloak secret.
 
 To check the job status:
   kubectl get jobs -l "app.kubernetes.io/name={{ include "keycloak-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"

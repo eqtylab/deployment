@@ -9,7 +9,7 @@ The Entra ID Bootstrap provides automated app registration and OAuth configurati
 Key capabilities:
 
 - **App Registration**: Creates frontend (SPA), backend (confidential), and worker (confidential) app registrations
-- **Token Configuration**: Sets `accessTokenAcceptedVersion` to 2 on all apps for v2.0 token validation
+- **Token Configuration**: Sets `accessTokenAcceptedVersion` to 2 on the frontend and backend apps for v2.0 token validation (the worker app is left unchanged)
 - **API Scope**: Creates `access_as_user` OAuth2 delegated scope on the backend app
 - **Graph Permissions**: Configures Microsoft Graph API permissions (User.Read, profile, openid, User.Read.All)
 - **Frontend-Backend Linking**: Adds frontend → backend API permission for the `access_as_user` scope
@@ -107,7 +107,7 @@ helm uninstall entra-bootstrap --namespace guardian
 
 This removes all Kubernetes components associated with the chart and deletes the release.
 
-> **Warning**: This will not remove the created Entra ID app registrations. To fully reset, manually delete the app registrations in the Azure portal.
+> **Warning:** This will not remove the created Entra ID app registrations. To fully reset, manually delete the app registrations in the Azure portal.
 
 ## Values
 
@@ -150,13 +150,13 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Entra ID Configuration
 
-| Key                                          | Type   | Default                | Description                                            |
-| -------------------------------------------- | ------ | ---------------------- | ------------------------------------------------------ |
-| entra.tenantId                               | string | `""`                   | **Required.** Microsoft Entra tenant ID (directory ID) |
-| entra.domain                                 | string | `""`                   | **Required.** Domain for redirect URIs                 |
-| entra.servicePrincipalSecret.name            | string | `"entra-bootstrap-sp"` | Secret containing bootstrap SP credentials             |
-| entra.servicePrincipalSecret.clientIdKey     | string | `"client-id"`          | Key in secret for the SP client ID                     |
-| entra.servicePrincipalSecret.clientSecretKey | string | `"client-secret"`      | Key in secret for the SP client secret                 |
+| Key                                          | Type   | Default                | Description                                                                                        |
+| -------------------------------------------- | ------ | ---------------------- | -------------------------------------------------------------------------------------------------- |
+| entra.tenantId                               | string | `""`                   | **Required.** Microsoft Entra tenant ID (directory ID)                                             |
+| entra.domain                                 | string | `""`                   | Platform domain, printed in the job logs only; set redirect URIs with `apps.frontend.redirectUris` |
+| entra.servicePrincipalSecret.name            | string | `"entra-bootstrap-sp"` | Secret containing bootstrap SP credentials                                                         |
+| entra.servicePrincipalSecret.clientIdKey     | string | `"client-id"`          | Key in secret for the SP client ID                                                                 |
+| entra.servicePrincipalSecret.clientSecretKey | string | `"client-secret"`      | Key in secret for the SP client secret                                                             |
 
 ### Frontend App Configuration
 
@@ -261,10 +261,11 @@ The `platform-entra` secret should contain these keys after bootstrap:
 | --------------------- | ---------------------------------------------------- |
 | `client-id`           | Backend app client ID (OIDC client for auth-service) |
 | `client-secret`       | Backend app client secret                            |
+| `tenant-id`           | Microsoft Entra tenant ID (`entra.tenantId`)         |
 | `graph-client-id`     | Backend app client ID (for Graph API calls)          |
 | `graph-client-secret` | Backend app client secret (for Graph API calls)      |
 
-> **Note:** The frontend app ID and tenant ID are configured as chart values (not stored in secrets). See each service's chart documentation for details.
+> **Note:** The frontend app ID is configured as a chart value (not stored in secrets), and the `guardian` chart also takes the tenant ID as a value. The worker app's client ID and secret go in a separate `platform-governance-worker` secret; the job logs print both. See each service's chart documentation for details.
 
 ## Troubleshooting
 

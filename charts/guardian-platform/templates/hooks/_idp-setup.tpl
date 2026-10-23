@@ -81,6 +81,7 @@ Init container that waits for the auth and governance migrations to create the t
 {{- define "guardian-platform.idpSetup.waitForSchema" -}}
 - name: wait-for-schema
   image: {{ include "guardian-platform.idpSetup.image" . }}
+  imagePullPolicy: {{ .Values.global.imagePullPolicy | default "IfNotPresent" }}
   command: ["/bin/sh", "-c"]
   args:
     - |

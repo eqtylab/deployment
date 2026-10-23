@@ -12,7 +12,7 @@ bootstrap:
     tag: "latest"
     pullPolicy: IfNotPresent
 
-  # Skip apk install since this image already has curl and jq
+  # Bootstrap script mounted from the chart ConfigMap (run with /bin/sh)
   args: ["/scripts/bootstrap.sh"]
 
   # Job settings
@@ -20,7 +20,7 @@ bootstrap:
   ttlSecondsAfterFinished: 300
   activeDeadlineSeconds: 600
 
-  # Disable the built-in wait since it checks the wrong port
+  # Init container that polls keycloak.healthUrl before bootstrapping (chart default: off)
   wait:
     enabled: false
 

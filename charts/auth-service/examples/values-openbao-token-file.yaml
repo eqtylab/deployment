@@ -1,3 +1,5 @@
+# OpenBao Token File Example
+#
 # OpenBao Transit with an operator-managed scoped token.
 #
 # This example targets an external, operator-managed OpenBao endpoint.

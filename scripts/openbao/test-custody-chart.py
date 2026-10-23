@@ -244,7 +244,7 @@ class CustodyChartTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("package exclusion fixture\n")
             helm("package", chart, "--destination", work)
-            archive = Path(work) / "openbao-custody-0.1.0.tgz"
+            archive = Path(work) / "openbao-custody-0.1.1.tgz"
             with tarfile.open(archive) as package:
                 names = set(package.getnames())
                 for filename in (
@@ -270,7 +270,7 @@ class CustodyChartTests(unittest.TestCase):
                 metadata = yaml.safe_load(
                     package.extractfile("openbao-custody/Chart.yaml")
                 )
-                self.assertEqual(metadata["version"], "0.1.0")
+                self.assertEqual(metadata["version"], "0.1.1")
                 self.assertEqual(metadata["appVersion"], "2.6.2")
                 upstream = yaml.safe_load(
                     package.extractfile("openbao-custody/charts/openbao/Chart.yaml")

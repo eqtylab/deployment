@@ -111,7 +111,7 @@ helm uninstall auth0-bootstrap --namespace guardian
 
 This removes all Kubernetes components associated with the chart and deletes the release.
 
-> **Warning**: This will not remove the created Auth0 applications, API, or users. To fully reset, manually delete them from the Auth0 Dashboard.
+> **Warning:** This will not remove the created Auth0 applications, API, or users. To fully reset, manually delete them from the Auth0 Dashboard.
 
 ## Values
 
@@ -125,16 +125,17 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Bootstrap Job Configuration
 
-| Key                               | Type   | Default                     | Description                              |
-| --------------------------------- | ------ | --------------------------- | ---------------------------------------- |
-| bootstrap.enabled                 | bool   | `true`                      | Enable the bootstrap job                 |
-| bootstrap.image.repository        | string | `"dwdraju/alpine-curl-jq"`  | Container image (must include curl + jq) |
-| bootstrap.image.pullPolicy        | string | `"IfNotPresent"`            | Image pull policy                        |
-| bootstrap.image.tag               | string | `"latest"`                  | Image tag                                |
-| bootstrap.args                    | list   | `["/scripts/bootstrap.sh"]` | Args passed to `/bin/sh`                 |
-| bootstrap.backoffLimit            | int    | `3`                         | Job backoff limit                        |
-| bootstrap.activeDeadlineSeconds   | int    | `600`                       | Job active deadline in seconds           |
-| bootstrap.ttlSecondsAfterFinished | int    | `300`                       | TTL for completed jobs                   |
+| Key                               | Type   | Default                     | Description                                                                           |
+| --------------------------------- | ------ | --------------------------- | ------------------------------------------------------------------------------------- |
+| bootstrap.enabled                 | bool   | `true`                      | Enable the bootstrap job                                                              |
+| bootstrap.image.repository        | string | `"dwdraju/alpine-curl-jq"`  | Container image (must include curl + jq)                                              |
+| bootstrap.image.pullPolicy        | string | `"IfNotPresent"`            | Image pull policy                                                                     |
+| bootstrap.image.tag               | string | `"latest"`                  | Image tag                                                                             |
+| bootstrap.command                 | list   | unset (`["/bin/sh"]`)       | Container command; not declared in values.yaml, set it to override the shell          |
+| bootstrap.args                    | list   | `["/scripts/bootstrap.sh"]` | Args passed to the container command; empty falls back to `["/scripts/bootstrap.sh"]` |
+| bootstrap.backoffLimit            | int    | `3`                         | Job backoff limit                                                                     |
+| bootstrap.activeDeadlineSeconds   | int    | `600`                       | Job active deadline in seconds                                                        |
+| bootstrap.ttlSecondsAfterFinished | int    | `300`                       | TTL for completed jobs                                                                |
 
 ### Bootstrap Resources
 
@@ -293,10 +294,10 @@ Pass `--skip-actions` to `bootstrap-auth0.sh` to skip both the ConfigMap creatio
 
 ### Users — Test Users (development only)
 
-| Key                     | Type | Default | Description                                                          |
-| ----------------------- | ---- | ------- | -------------------------------------------------------------------- |
-| users.testUsers.enabled | bool | `false` | Enable creation of test users                                        |
-| users.testUsers.users   | list | `[]`    | List of `{ email, firstName, lastName, password }` test user objects |
+| Key                     | Type | Default                                                               | Description                                                                                                                 |
+| ----------------------- | ---- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| users.testUsers.enabled | bool | `false`                                                               | Enable creation of test users                                                                                               |
+| users.testUsers.users   | list | Two sample users (`test1@governance.local`, `test2@governance.local`) | List of `{ email, firstName, lastName, password }` test user objects; created only when `users.testUsers.enabled` is `true` |
 
 > **Warning:** Test user passwords are inlined in plain text in values and rendered into the bootstrap script. Use only in development.
 

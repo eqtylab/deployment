@@ -19,10 +19,11 @@ charts/openbao-custody/README.md:
      access to this Service. kubectl exec does not forward a local BAO_TOKEN.
   4. Configure the Auth mount, policy and Kubernetes role with a short-lived operator token:
        scripts/openbao/configure-auth.sh --service-account <release>-auth-service --namespace <auth namespace>
-     Use the companion operator tooling from infrastructure PR #115 (including helpers
-     and policy files). With no --kubernetes-host, the script writes auth/<mount>/config
-     for https://kubernetes.default.svc:443 using the server's local token and CA.
-     Verify the config before Auth logs in; the README covers older tooling too.
+     Run it from a checkout of this repository; it needs scripts/helpers/output.sh and
+     scripts/openbao/policies/guardian-auth.hcl, which are not in the chart archive.
+     With no --kubernetes-host, the script writes auth/<mount>/config for
+     https://kubernetes.default.svc:443 using the server's local token and CA.
+     Verify the config before Auth logs in; the README covers manual configuration.
   5. Revoke the initial root token.
 
 Auth endpoint for charts/auth-service: {{ include "openbao-custody.endpoint" . }}

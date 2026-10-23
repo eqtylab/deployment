@@ -1,3 +1,5 @@
+# OpenBao Kubernetes Authentication Example
+#
 # OpenBao Transit with Kubernetes workload authentication.
 #
 # Prerequisites (operator-managed, outside this chart):

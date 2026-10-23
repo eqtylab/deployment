@@ -1,4 +1,4 @@
-# Cloud-Managed PostgreSQL — Database Overlay
+# Cloud-Managed PostgreSQL Overlay Example
 # -----------------------------------------------------------------------------
 # This file is a DATABASE-CONFIG OVERLAY for pointing the Guardian Platform
 # at a cloud-managed PostgreSQL instance (AWS RDS, Azure Database for
@@ -34,9 +34,11 @@
 #        kubectl create secret generic postgres-ca \
 #          --from-file=ca.crt=<bundle>.pem \
 #          --namespace guardian
-#   If you are installing with `global.secrets.create: true` (for example, via
-#   govctl-generated `secrets.yaml`), the chart can create `platform-database`
-#   for you and only the optional CA Secret/ConfigMap must exist ahead of time
+#   This overlay sets `global.secrets.create: false`, so `platform-database`
+#   must exist before install. To have the chart create it instead (for
+#   example, with govctl-generated `secrets.yaml`), pass a later values file
+#   that sets `global.secrets.create: true`; then only the optional CA
+#   Secret/ConfigMap must exist ahead of time
 # -----------------------------------------------------------------------------
 # Provider-specific notes:
 #

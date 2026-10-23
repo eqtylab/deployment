@@ -37,6 +37,7 @@ spec:
       containers:
         - name: create-org
           image: {{ include "guardian-platform.idpSetup.image" . }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy | default "IfNotPresent" }}
           command: ["/bin/sh", "-c"]
           args:
             - |

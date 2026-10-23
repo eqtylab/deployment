@@ -13,7 +13,6 @@ Key capabilities:
 - **Scope Creation**: Creates custom OAuth scopes for fine-grained authorization
 - **User Profile Attributes**: Adds custom attributes to the realm user profile
 - **User Provisioning**: Creates initial platform admin user
-- **Secret Generation**: Outputs configuration secrets for platform services
 
 ## Prerequisites
 
@@ -92,7 +91,7 @@ helm uninstall keycloak-bootstrap --namespace guardian
 
 This removes all Kubernetes components associated with the chart and deletes the release.
 
-> **Warning**: This will not remove the created Keycloak resources (realm, clients, users). To fully reset, manually delete the realm in Keycloak.
+> **Warning:** This will not remove the created Keycloak resources (realm, clients, users). To fully reset, manually delete the realm in Keycloak.
 
 ## Values
 
@@ -106,16 +105,17 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Bootstrap Job Configuration
 
-| Key                               | Type   | Default                     | Description                     |
-| --------------------------------- | ------ | --------------------------- | ------------------------------- |
-| bootstrap.enabled                 | bool   | `true`                      | Enable the bootstrap job        |
-| bootstrap.image.repository        | string | `"dwdraju/alpine-curl-jq"`  | Container image repository      |
-| bootstrap.image.pullPolicy        | string | `"IfNotPresent"`            | Image pull policy               |
-| bootstrap.image.tag               | string | `"latest"`                  | Image tag                       |
-| bootstrap.args                    | list   | `["/scripts/bootstrap.sh"]` | Arguments for bootstrap command |
-| bootstrap.backoffLimit            | int    | `3`                         | Job backoff limit               |
-| bootstrap.activeDeadlineSeconds   | int    | `600`                       | Job active deadline in seconds  |
-| bootstrap.ttlSecondsAfterFinished | int    | `300`                       | TTL for completed jobs          |
+| Key                               | Type   | Default                     | Description                                                                      |
+| --------------------------------- | ------ | --------------------------- | -------------------------------------------------------------------------------- |
+| bootstrap.enabled                 | bool   | `true`                      | Enable the bootstrap job                                                         |
+| bootstrap.image.repository        | string | `"dwdraju/alpine-curl-jq"`  | Container image repository                                                       |
+| bootstrap.image.pullPolicy        | string | `"IfNotPresent"`            | Image pull policy                                                                |
+| bootstrap.image.tag               | string | `"latest"`                  | Image tag                                                                        |
+| bootstrap.command                 | list   | unset (`["/bin/sh"]`)       | Container command; not declared in values.yaml, set it to override the shell     |
+| bootstrap.args                    | list   | `["/scripts/bootstrap.sh"]` | Arguments for bootstrap command; empty falls back to `["/scripts/bootstrap.sh"]` |
+| bootstrap.backoffLimit            | int    | `3`                         | Job backoff limit                                                                |
+| bootstrap.activeDeadlineSeconds   | int    | `600`                       | Job active deadline in seconds                                                   |
+| bootstrap.ttlSecondsAfterFinished | int    | `300`                       | TTL for completed jobs                                                           |
 
 ### Bootstrap Resources
 
@@ -136,21 +136,21 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Bootstrap Wait Configuration
 
-| Key                         | Type | Default | Description                       |
-| --------------------------- | ---- | ------- | --------------------------------- |
-| bootstrap.wait.enabled      | bool | `false` | Enable waiting for Keycloak ready |
-| bootstrap.wait.maxAttempts  | int  | `60`    | Maximum number of retry attempts  |
-| bootstrap.wait.sleepSeconds | int  | `5`     | Seconds to sleep between attempts |
+| Key                         | Type | Default | Description                                                                |
+| --------------------------- | ---- | ------- | -------------------------------------------------------------------------- |
+| bootstrap.wait.enabled      | bool | `false` | Add an init container that polls `keycloak.healthUrl` before bootstrapping |
+| bootstrap.wait.maxAttempts  | int  | `60`    | Maximum number of retry attempts                                           |
+| bootstrap.wait.sleepSeconds | int  | `5`     | Seconds to sleep between attempts                                          |
 
 ### Keycloak Configuration
 
-| Key                               | Type   | Default                                        | Description                    |
-| --------------------------------- | ------ | ---------------------------------------------- | ------------------------------ |
-| keycloak.url                      | string | `"http://keycloak:8080/keycloak"`              | Keycloak server URL            |
-| keycloak.healthUrl                | string | `"http://keycloak:9000/keycloak/health/ready"` | Health check URL               |
-| keycloak.adminUsername            | string | `"admin"`                                      | Admin username                 |
-| keycloak.adminPasswordSecret.name | string | `"keycloak-admin"`                             | Secret name for admin password |
-| keycloak.adminPasswordSecret.key  | string | `"password"`                                   | Secret key for admin password  |
+| Key                               | Type   | Default                                        | Description                                                         |
+| --------------------------------- | ------ | ---------------------------------------------- | ------------------------------------------------------------------- |
+| keycloak.url                      | string | `"http://keycloak:8080/keycloak"`              | Keycloak server URL                                                 |
+| keycloak.healthUrl                | string | `"http://keycloak:9000/keycloak/health/ready"` | Health check URL; used only when `bootstrap.wait.enabled` is `true` |
+| keycloak.adminUsername            | string | `"admin"`                                      | Admin username                                                      |
+| keycloak.adminPasswordSecret.name | string | `"keycloak-admin"`                             | Secret name for admin password                                      |
+| keycloak.adminPasswordSecret.key  | string | `"password"`                                   | Secret key for admin password                                       |
 
 ### Realm Configuration
 
@@ -177,17 +177,17 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Frontend Client Configuration
 
-| Key                             | Type   | Default                                      | Description                                                             |
-| ------------------------------- | ------ | -------------------------------------------- | ----------------------------------------------------------------------- |
-| clients.frontend.clientId       | string | `"guardian-platform-frontend"`               | Client ID                                                               |
-| clients.frontend.name           | string | `"Guardian Platform Frontend"`               | Display name                                                            |
-| clients.frontend.description    | string | See values.yaml                              | Client description                                                      |
-| clients.frontend.publicClient   | bool   | `true`                                       | Public client (no secret)                                               |
-| clients.frontend.redirectUris   | list   | See values.yaml                              | Valid redirect URIs                                                     |
-| clients.frontend.webOrigins     | list   | See values.yaml                              | Allowed web origins for CORS                                            |
-| clients.frontend.defaultScopes  | list   | `["openid","profile","email","roles","sub"]` | Default client scopes                                                   |
-| clients.frontend.optionalScopes | list   | `["offline_access"]`                         | Optional client scopes                                                  |
-| clients.frontend.customScopes   | list   | See values.yaml                              | Custom scopes with protocol mappers to create and assign to this client |
+| Key                             | Type   | Default                                      | Description                                                                                                                                    |
+| ------------------------------- | ------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| clients.frontend.clientId       | string | `"guardian-platform-frontend"`               | Client ID                                                                                                                                      |
+| clients.frontend.name           | string | `"Guardian Platform Frontend"`               | Display name                                                                                                                                   |
+| clients.frontend.description    | string | See values.yaml                              | Client description                                                                                                                             |
+| clients.frontend.publicClient   | bool   | `true`                                       | Public client (no secret)                                                                                                                      |
+| clients.frontend.redirectUris   | list   | See values.yaml                              | Valid redirect URIs                                                                                                                            |
+| clients.frontend.webOrigins     | list   | See values.yaml                              | Allowed web origins for CORS                                                                                                                   |
+| clients.frontend.defaultScopes  | list   | `["openid","profile","email","roles","sub"]` | Default client scopes. Not read by any template; the script always sets `openid`, `profile`, `email`, `roles`; `sub` comes from `customScopes` |
+| clients.frontend.optionalScopes | list   | `["offline_access"]`                         | Optional client scopes. Not read by any template; the script always sets `offline_access`                                                      |
+| clients.frontend.customScopes   | list   | See values.yaml                              | Custom scopes with protocol mappers to create and assign to this client                                                                        |
 
 Default custom scopes created for frontend client:
 
@@ -196,28 +196,28 @@ Default custom scopes created for frontend client:
 
 ### Backend Client Configuration
 
-| Key                                    | Type   | Default                                | Description                                    |
-| -------------------------------------- | ------ | -------------------------------------- | ---------------------------------------------- |
-| clients.backend.clientId               | string | `"guardian-platform-backend"`          | Client ID                                      |
-| clients.backend.name                   | string | `"Guardian Platform Backend"`          | Display name                                   |
-| clients.backend.description            | string | See values.yaml                        | Client description                             |
-| clients.backend.publicClient           | bool   | `false`                                | Confidential client                            |
-| clients.backend.serviceAccountsEnabled | bool   | `true`                                 | Enable service account                         |
-| clients.backend.redirectUris           | list   | See values.yaml                        | Valid redirect URIs                            |
-| clients.backend.webOrigins             | list   | See values.yaml                        | Allowed web origins for CORS                   |
-| clients.backend.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes                          |
-| clients.backend.serviceAccountRoles    | list   | See values.yaml                        | Realm-management roles for the service account |
+| Key                                    | Type   | Default                                | Description                                                                                                   |
+| -------------------------------------- | ------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| clients.backend.clientId               | string | `"guardian-platform-backend"`          | Client ID                                                                                                     |
+| clients.backend.name                   | string | `"Guardian Platform Backend"`          | Display name                                                                                                  |
+| clients.backend.description            | string | See values.yaml                        | Client description                                                                                            |
+| clients.backend.publicClient           | bool   | `false`                                | Confidential client                                                                                           |
+| clients.backend.serviceAccountsEnabled | bool   | `true`                                 | Enable service account                                                                                        |
+| clients.backend.redirectUris           | list   | See values.yaml                        | Valid redirect URIs                                                                                           |
+| clients.backend.webOrigins             | list   | See values.yaml                        | Allowed web origins for CORS                                                                                  |
+| clients.backend.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes. Not read by any template; the script always sets `openid`, `profile`, `email`, `roles` |
+| clients.backend.serviceAccountRoles    | list   | See values.yaml                        | Realm-management roles for the service account                                                                |
 
 ### Worker Client Configuration
 
-| Key                                   | Type   | Default                                | Description            |
-| ------------------------------------- | ------ | -------------------------------------- | ---------------------- |
-| clients.worker.clientId               | string | `"governance-worker"`                  | Client ID              |
-| clients.worker.name                   | string | `"Governance Worker"`                  | Display name           |
-| clients.worker.description            | string | See values.yaml                        | Client description     |
-| clients.worker.publicClient           | bool   | `false`                                | Confidential client    |
-| clients.worker.serviceAccountsEnabled | bool   | `true`                                 | Enable service account |
-| clients.worker.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes  |
+| Key                                   | Type   | Default                                | Description                                                                                                   |
+| ------------------------------------- | ------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| clients.worker.clientId               | string | `"governance-worker"`                  | Client ID                                                                                                     |
+| clients.worker.name                   | string | `"Governance Worker"`                  | Display name                                                                                                  |
+| clients.worker.description            | string | See values.yaml                        | Client description                                                                                            |
+| clients.worker.publicClient           | bool   | `false`                                | Confidential client                                                                                           |
+| clients.worker.serviceAccountsEnabled | bool   | `true`                                 | Enable service account                                                                                        |
+| clients.worker.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes. Not read by any template; the script always sets `openid`, `profile`, `email`, `roles` |
 
 ### Custom Scopes
 
@@ -252,17 +252,17 @@ Attributes that already exist in the realm user profile are left unchanged.
 
 The admin user is the initial account for logging into Guardian. This is a realm user in Keycloak, not the Keycloak server admin.
 
-| Key                           | Type   | Default                    | Description                               |
-| ----------------------------- | ------ | -------------------------- | ----------------------------------------- |
-| users.admin.enabled           | bool   | `true`                     | Enable creation of Guardian admin user    |
-| users.admin.username          | string | `"platform-admin"`         | Admin username                            |
-| users.admin.email             | string | `"admin@governance.local"` | Admin email address                       |
-| users.admin.firstName         | string | `"Platform"`               | Admin first name                          |
-| users.admin.lastName          | string | `"Admin"`                  | Admin last name                           |
-| users.admin.emailVerified     | bool   | `true`                     | Mark email as verified                    |
-| users.admin.temporaryPassword | bool   | `false`                    | Require password change on login          |
-| users.admin.secretName        | string | `"platform-admin"`         | Secret containing Guardian admin password |
-| users.admin.secretKey         | string | `"password"`               | Secret key for the password               |
+| Key                           | Type   | Default                    | Description                                                                                    |
+| ----------------------------- | ------ | -------------------------- | ---------------------------------------------------------------------------------------------- |
+| users.admin.enabled           | bool   | `true`                     | Enable creation of Guardian admin user                                                         |
+| users.admin.username          | string | `"platform-admin"`         | Admin username                                                                                 |
+| users.admin.email             | string | `"admin@governance.local"` | Admin email address                                                                            |
+| users.admin.firstName         | string | `"Platform"`               | Admin first name                                                                               |
+| users.admin.lastName          | string | `"Admin"`                  | Admin last name                                                                                |
+| users.admin.emailVerified     | bool   | `true`                     | Mark email as verified. Not read by any template; the script always sets `emailVerified: true` |
+| users.admin.temporaryPassword | bool   | `false`                    | Require password change on login                                                               |
+| users.admin.secretName        | string | `"platform-admin"`         | Secret containing Guardian admin password                                                      |
+| users.admin.secretKey         | string | `"password"`               | Secret key for the password                                                                    |
 
 ### Test Users Configuration
 
@@ -380,14 +380,17 @@ kubectl logs -n guardian -l app.kubernetes.io/name=keycloak-bootstrap
 
 **Timeout waiting for Keycloak**
 
+- Applies only when `bootstrap.wait.enabled` is `true`
 - Increase `bootstrap.wait.maxAttempts`
 - Check Keycloak pod status
 - Verify `keycloak.healthUrl` is correct
 
-**Client secret not found**
+**Backend or worker client secret missing**
 
-- Ensure client secret secrets are created before running bootstrap
-- Verify secret names match configuration
+- The bootstrap does not set client secrets; Keycloak generates them when it
+  creates the backend and worker clients
+- Retrieve the generated secret from the Keycloak admin UI or API and store it
+  in the `platform-keycloak` secret
 
 **Connection refused**
 

@@ -125,7 +125,7 @@ helm install governance-ops ./charts/governance-ops \
 helm uninstall governance-ops --namespace monitoring
 ```
 
-This removes all monitoring resources (ConfigMaps and PrometheusRules) but does not affect your Guardian Platform deployment.
+This removes all monitoring resources (ConfigMaps, PrometheusRules, and Probes) but does not affect your Guardian Platform deployment.
 
 ## Values
 
@@ -170,11 +170,12 @@ All alert rules can be individually enabled/disabled and have configurable thres
 
 **Service Availability Alerts:**
 
-| Alert           | Default Enabled | Default Threshold | Description                        |
-| --------------- | --------------- | ----------------- | ---------------------------------- |
-| serviceDown     | `true`          | 5m                | Service has no available replicas  |
-| podNotReady     | `true`          | 10m               | Pods not ready for extended period |
-| podCrashLooping | `true`          | 5m                | Pods crash looping                 |
+| Alert           | Default Enabled | Default Duration | Default Severity | Description                                                              |
+| --------------- | --------------- | ---------------- | ---------------- | ------------------------------------------------------------------------ |
+| serviceDown     | `true`          | 5m               | `critical`       | Service has no available replicas                                        |
+| podNotReady     | `true`          | 10m              | `warning`        | Pods not ready for extended period                                       |
+| podCrashLooping | `true`          | 5m               | `warning`        | Pods crash looping                                                       |
+| endpointDown    | `true`          | 2m               | `critical`       | Blackbox probe failing; created only when blackbox-exporter is available |
 
 **Resource Usage Alerts (Tiered):**
 
@@ -189,9 +190,70 @@ All alert rules can be individually enabled/disabled and have configurable thres
 
 | Alert       | Default Threshold | Description                                  |
 | ----------- | ----------------- | -------------------------------------------- |
-| memorySpike | 30% in 5min       | Detects rapid memory growth (potential leak) |
+| memorySpike | 50% in 5min       | Detects rapid memory growth (potential leak) |
 
-All thresholds can be customized via values. See [Customizing Alert Thresholds](#customizing-alert-thresholds) above.
+Tiered alerts fire with `warning` and `critical` severity, and `memorySpike`
+fires with `warning`; these severities are fixed. All thresholds can be
+customized via values. See
+[Customizing Alerts and Probes](#customizing-alerts-and-probes) above.
+
+### Alert Rule Keys
+
+| Key                                                  | Type   | Default      | Description                                                                      |
+| ---------------------------------------------------- | ------ | ------------ | -------------------------------------------------------------------------------- |
+| alerts.rules.serviceDown.enabled                     | bool   | `true`       | Enable the service down alert                                                    |
+| alerts.rules.serviceDown.for                         | string | `"5m"`       | Duration before the alert fires                                                  |
+| alerts.rules.serviceDown.severity                    | string | `"critical"` | Alert severity label                                                             |
+| alerts.rules.podNotReady.enabled                     | bool   | `true`       | Enable the pod not ready alert                                                   |
+| alerts.rules.podNotReady.for                         | string | `"10m"`      | Duration before the alert fires                                                  |
+| alerts.rules.podNotReady.severity                    | string | `"warning"`  | Alert severity label                                                             |
+| alerts.rules.podCrashLooping.enabled                 | bool   | `true`       | Enable the pod crash looping alert                                               |
+| alerts.rules.podCrashLooping.for                     | string | `"5m"`       | Duration before the alert fires                                                  |
+| alerts.rules.podCrashLooping.severity                | string | `"warning"`  | Alert severity label                                                             |
+| alerts.rules.highMemoryUsage.enabled                 | bool   | `true`       | Enable the tiered memory usage alerts                                            |
+| alerts.rules.highMemoryUsage.warningThreshold        | float  | `0.75`       | Fraction of the memory limit for the warning alert                               |
+| alerts.rules.highMemoryUsage.warningFor              | string | `"10m"`      | Duration before the warning alert fires                                          |
+| alerts.rules.highMemoryUsage.criticalThreshold       | float  | `0.90`       | Fraction of the memory limit for the critical alert                              |
+| alerts.rules.highMemoryUsage.criticalFor             | string | `"5m"`       | Duration before the critical alert fires                                         |
+| alerts.rules.memorySpike.enabled                     | bool   | `true`       | Enable the memory spike alert                                                    |
+| alerts.rules.memorySpike.threshold                   | float  | `0.50`       | Fractional memory increase over 5 minutes                                        |
+| alerts.rules.memorySpike.for                         | string | `"5m"`       | Duration before the alert fires                                                  |
+| alerts.rules.highCpuUsage.enabled                    | bool   | `true`       | Enable the tiered CPU usage alerts                                               |
+| alerts.rules.highCpuUsage.warningThreshold           | float  | `0.75`       | Fraction of the CPU limit for the warning alert                                  |
+| alerts.rules.highCpuUsage.warningFor                 | string | `"10m"`      | Duration before the warning alert fires                                          |
+| alerts.rules.highCpuUsage.criticalThreshold          | float  | `0.90`       | Fraction of the CPU limit for the critical alert                                 |
+| alerts.rules.highCpuUsage.criticalFor                | string | `"5m"`       | Duration before the critical alert fires                                         |
+| alerts.rules.highErrorRate.enabled                   | bool   | `true`       | Enable the tiered HTTP 5xx error rate alerts                                     |
+| alerts.rules.highErrorRate.warningThreshold          | float  | `0.01`       | Error rate for the warning alert                                                 |
+| alerts.rules.highErrorRate.warningFor                | string | `"5m"`       | Duration before the warning alert fires                                          |
+| alerts.rules.highErrorRate.criticalThreshold         | float  | `0.05`       | Error rate for the critical alert                                                |
+| alerts.rules.highErrorRate.criticalFor               | string | `"2m"`       | Duration before the critical alert fires                                         |
+| alerts.rules.persistentVolumeUsage.enabled           | bool   | `true`       | Enable the tiered persistent volume usage alerts                                 |
+| alerts.rules.persistentVolumeUsage.warningThreshold  | float  | `0.75`       | Fraction of volume capacity for the warning alert                                |
+| alerts.rules.persistentVolumeUsage.warningFor        | string | `"15m"`      | Duration before the warning alert fires                                          |
+| alerts.rules.persistentVolumeUsage.criticalThreshold | float  | `0.90`       | Fraction of volume capacity for the critical alert                               |
+| alerts.rules.persistentVolumeUsage.criticalFor       | string | `"5m"`       | Duration before the critical alert fires                                         |
+| alerts.rules.endpointDown.enabled                    | bool   | `true`       | Enable the endpoint down alert; created only when blackbox-exporter is available |
+| alerts.rules.endpointDown.for                        | string | `"2m"`       | Duration before the alert fires                                                  |
+| alerts.rules.endpointDown.severity                   | string | `"critical"` | Alert severity label                                                             |
+
+### Probe Configuration
+
+Probes are created only when the Probe CRD exists and a Service whose name
+starts with `prometheus-blackbox-exporter` is present in the cluster. Every
+Probe gets the `release: kube-prometheus-stack` label.
+
+| Key                                       | Type   | Default         | Description                                                                                             |
+| ----------------------------------------- | ------ | --------------- | ------------------------------------------------------------------------------------------------------- |
+| probes.enabled                            | bool   | `true`          | Enable blackbox exporter Probe resources                                                                |
+| probes.labels                             | map    | `{}`            | Additional labels for Probe resources                                                                   |
+| probes.annotations                        | map    | `{}`            | Additional annotations for Probe resources                                                              |
+| probes.interval                           | string | `"30s"`         | How often to probe each endpoint                                                                        |
+| probes.scrapeTimeout                      | string | `"10s"`         | Timeout for each probe attempt                                                                          |
+| probes.module                             | string | `"https_2xx"`   | Blackbox exporter module (`http_2xx`, `https_2xx`, `http_post_2xx`)                                     |
+| probes.ingressDiscovery.enabled           | bool   | `true`          | Create a Probe for each host and path on ingresses labeled `app.kubernetes.io/instance=<targetRelease>` |
+| probes.ingressDiscovery.namespaceSelector | map    | `{ any: true }` | Not read by any template; ingress discovery always looks up all namespaces                              |
+| probes.staticProbes                       | list   | `[]`            | Additional static endpoints (`name`, `url`, optional `module`)                                          |
 
 ## Verifying Deployment
 
@@ -301,12 +363,13 @@ The PrometheusRule must have labels that match your Prometheus `ruleSelector`. C
 kubectl get prometheus -n monitoring -o yaml | grep -A 5 ruleSelector
 ```
 
-If needed, add matching labels:
+The chart always adds `release: kube-prometheus-stack`. If your Prometheus
+`ruleSelector` matches a different label, add it:
 
 ```yaml
 alerts:
   labels:
-    release: kube-prometheus-stack # Match your Prometheus ruleSelector
+    prometheus: my-prometheus # Match your Prometheus ruleSelector
 ```
 
 ### Metrics Not Showing in Dashboard
