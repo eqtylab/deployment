@@ -3,7 +3,7 @@ name: openbao-custody
 description: Separately managed OpenBao release holding Auth Service's DID signing keys (Transit). Pins the upstream OpenBao chart and image; installed and operated independently of guardian-platform.
 type: application
 # Independent release lifecycle: this version is not tied to guardian-platform releases.
-version: 0.1.1
+version: 0.1.2
 appVersion: "2.6.2"
 # Upstream openbao 0.29.5 has the same minimum; this optional release does not
 # change the platform's Kubernetes 1.29 minimum or external OpenBao support.

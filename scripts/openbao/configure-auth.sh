@@ -182,10 +182,21 @@ run() {
   fi
 }
 
+# Print the type of the secrets or auth mount at a path, or nothing when it is not mounted
+mount_type() {
+  if [[ "$DRY_RUN" != true ]]; then
+    bao "$1" list -format=table | awk -v path="$2/" '$1 == path { print $2 }'
+  fi
+}
+
 # 1. Dedicated Transit mount (never shared with other applications).
-if [[ "$DRY_RUN" == true ]] || ! bao secrets list -format=json | grep -q "\"$TRANSIT_MOUNT/\""; then
+transit_type="$(mount_type secrets "$TRANSIT_MOUNT")"
+if [[ -z "$transit_type" ]]; then
   print_info "Enabling Transit mount $TRANSIT_MOUNT/"
   run bao secrets enable -path="$TRANSIT_MOUNT" transit
+elif [[ "$transit_type" != transit ]]; then
+  print_error "$TRANSIT_MOUNT/ is a $transit_type mount, not transit"
+  exit 1
 else
   print_info "Transit mount $TRANSIT_MOUNT/ already enabled"
 fi
@@ -199,9 +210,13 @@ print_info "Writing policy $POLICY_NAME"
 run bao policy write "$POLICY_NAME" "$policy_file"
 
 # 3. Kubernetes auth method.
-if [[ "$DRY_RUN" == true ]] || ! bao auth list -format=json | grep -q "\"$AUTH_MOUNT/\""; then
+auth_type="$(mount_type auth "$AUTH_MOUNT")"
+if [[ -z "$auth_type" ]]; then
   print_info "Enabling Kubernetes auth at auth/$AUTH_MOUNT/"
   run bao auth enable -path="$AUTH_MOUNT" kubernetes
+elif [[ "$auth_type" != kubernetes ]]; then
+  print_error "auth/$AUTH_MOUNT/ is a $auth_type auth method, not kubernetes"
+  exit 1
 else
   print_info "Kubernetes auth mount auth/$AUTH_MOUNT/ already enabled"
 fi

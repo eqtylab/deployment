@@ -38,11 +38,15 @@ Examples:
 check_prerequisites() {
   print_warn "Checking prerequisites..."
 
-  # The bootstrap job mounts auth0-management (Management API M2M creds, and
-  # the shared auth-service bearer token when actions are enabled).
-  # platform-admin is also required when users.admin.enabled is true (default).
+  # The bootstrap job mounts the management secret (Management API M2M creds,
+  # and the shared auth-service bearer token when actions are enabled), and the
+  # platform admin secret when users.admin.enabled is true (default)
+  local required_secrets=("$MANAGEMENT_SECRET")
+  if [ "$PLATFORM_ADMIN_ENABLED" != "false" ]; then
+    required_secrets+=("$PLATFORM_ADMIN_SECRET")
+  fi
   local missing_secrets=()
-  for secret in auth0-management platform-admin; do
+  for secret in "${required_secrets[@]}"; do
     if ! kubectl get secret "$secret" -n "$NAMESPACE" &>/dev/null; then
       missing_secrets+=("$secret")
     fi
@@ -53,18 +57,20 @@ check_prerequisites() {
     printf '%s\n' "${missing_secrets[@]}"
     echo ""
     echo "Create the Management API M2M secret with credentials from the Auth0 Dashboard."
-    echo "Add auth-service-api-secret too when actions.postLogin.enabled is true (default):"
-    echo "  kubectl create secret generic auth0-management \\"
-    echo "    --from-literal=client-id=<mgmt-m2m-client-id> \\"
-    echo "    --from-literal=client-secret=<mgmt-m2m-client-secret> \\"
-    echo "    --from-literal=auth-service-api-secret=\"\$(openssl rand -base64 32)\" \\"
+    echo "Add $MANAGEMENT_API_SECRET_KEY too when actions.postLogin.enabled is true (default):"
+    echo "  kubectl create secret generic $MANAGEMENT_SECRET \\"
+    echo "    --from-literal=$(values_get '.auth0.managementSecret.clientIdKey' client-id)=<mgmt-m2m-client-id> \\"
+    echo "    --from-literal=$(values_get '.auth0.managementSecret.clientSecretKey' client-secret)=<mgmt-m2m-client-secret> \\"
+    echo "    --from-literal=$MANAGEMENT_API_SECRET_KEY=\"\$(openssl rand -base64 32)\" \\"
     echo "    -n $NAMESPACE"
     echo ""
-    echo "Create the platform admin password secret:"
-    echo "  kubectl create secret generic platform-admin \\"
-    echo "    --from-literal=password=\"\$(openssl rand -base64 16)\" \\"
-    echo "    -n $NAMESPACE"
-    echo ""
+    if [ "$PLATFORM_ADMIN_ENABLED" != "false" ]; then
+      echo "Create the platform admin password secret:"
+      echo "  kubectl create secret generic $PLATFORM_ADMIN_SECRET \\"
+      echo "    --from-literal=$(values_get '.users.admin.secretKey' password)=\"\$(openssl rand -base64 16)\" \\"
+      echo "    -n $NAMESPACE"
+      echo ""
+    fi
     echo "The Management API M2M application must be authorized for these scopes:"
     echo "  - read:clients, create:clients, update:clients"
     echo "  - read:resource_servers, create:resource_servers, update:resource_servers"
@@ -77,13 +83,13 @@ check_prerequisites() {
 
   # auth-service-api-secret is optional in the chart, so warn instead of failing
   if [ "$SKIP_ACTIONS" != "true" ]; then
-    if ! kubectl get secret auth0-management -n "$NAMESPACE" -o jsonpath='{.data.auth-service-api-secret}' 2>/dev/null | grep -q .; then
-      print_warn "Key 'auth-service-api-secret' not found in the auth0-management secret."
+    if ! kubectl get secret "$MANAGEMENT_SECRET" -n "$NAMESPACE" -o jsonpath="{.data.$MANAGEMENT_API_SECRET_KEY}" 2>/dev/null | grep -q .; then
+      print_warn "Key '$MANAGEMENT_API_SECRET_KEY' not found in the $MANAGEMENT_SECRET secret."
       echo "  The post-login action will deploy without AUTH_SERVICE_API_SECRET,"
       echo "  which will cause claims-enrichment calls to fail with HTTP 401."
       echo "  Patch the secret with:"
-      echo "    kubectl patch secret auth0-management -n $NAMESPACE \\"
-      echo "      -p '{\"stringData\":{\"auth-service-api-secret\":\"<shared-bearer-token>\"}}'"
+      echo "    kubectl patch secret $MANAGEMENT_SECRET -n $NAMESPACE \\"
+      echo "      -p '{\"stringData\":{\"$MANAGEMENT_API_SECRET_KEY\":\"<shared-bearer-token>\"}}'"
     fi
   fi
 }
@@ -119,7 +125,7 @@ create_actions_source_configmap() {
   print_info "Loaded $js_count action source file(s)"
 }
 
-# Deploy the auth0-bootstrap Helm chart and monitor the job to completion
+# Deploy the auth0-bootstrap Helm chart, which waits for the bootstrap job
 run_bootstrap() {
   # Clean up any existing bootstrap jobs
   print_warn "Cleaning up any existing bootstrap jobs..."
@@ -133,12 +139,16 @@ run_bootstrap() {
     helm_extra_args+=(--set "actions.enabled=false")
   fi
 
-  helm upgrade --install "$BOOTSTRAP_RELEASE" "$CHART_DIR" \
+  if ! helm upgrade --install "$BOOTSTRAP_RELEASE" "$CHART_DIR" \
     -n "$NAMESPACE" \
     -f "$VALUES_FILE" \
     "${helm_extra_args[@]}" \
     --wait \
-    --timeout 10m
+    --timeout 10m; then
+    print_error "Bootstrap job failed or timed out"
+    kubectl logs -l app.kubernetes.io/instance="$BOOTSTRAP_RELEASE" -n "$NAMESPACE" --tail=50 || true
+    exit 1
+  fi
 
   # Get the job name
   local job_name
@@ -149,39 +159,7 @@ run_bootstrap() {
     exit 1
   fi
 
-  echo "Bootstrap job: $job_name"
-
-  # Monitor job completion
-  print_warn "Monitoring bootstrap job..."
-
-  local timeout=600
-  local elapsed=0
-  while [ $elapsed -lt $timeout ]; do
-    local job_status
-    local job_failed
-    job_status=$(kubectl get job "$job_name" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null)
-    job_failed=$(kubectl get job "$job_name" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null)
-
-    if [ "$job_status" = "True" ]; then
-      print_info "Bootstrap completed successfully"
-      break
-    elif [ "$job_failed" = "True" ]; then
-      print_error "Bootstrap job failed"
-      echo "Job logs:"
-      kubectl logs job/"$job_name" -n "$NAMESPACE" --tail=50
-      exit 1
-    fi
-
-    echo -n "."
-    sleep 5
-    elapsed=$((elapsed + 5))
-  done
-
-  if [ $elapsed -ge $timeout ]; then
-    print_error "Bootstrap job timed out"
-    kubectl logs job/"$job_name" -n "$NAMESPACE" --tail=50
-    exit 1
-  fi
+  print_info "Bootstrap job $job_name completed"
 
   # Show logs (client secrets are printed once here — preserve full output)
   echo ""
@@ -196,10 +174,8 @@ run_bootstrap() {
 
 # Read a key from the values file with yq, falling back to the chart default
 values_get() {
-  local value=""
-  if command -v yq &>/dev/null; then
-    value=$(yq "$1 // \"\"" "$VALUES_FILE" 2>/dev/null)
-  fi
+  local value
+  value=$(yq "$1 // \"\"" "$VALUES_FILE" 2>/dev/null)
   echo "${value:-$2}"
 }
 
@@ -310,6 +286,11 @@ done
 # Validate prerequisites
 assert_is_installed "helm"
 assert_is_installed "kubectl"
+assert_is_installed "yq"
+if ! yq --version 2>&1 | grep -q mikefarah; then
+  print_error "yq must be mikefarah/yq v4 (https://github.com/mikefarah/yq)"
+  exit 1
+fi
 
 # Validate required arguments
 assert_not_empty "namespace" "$NAMESPACE" "Use -n or --namespace to provide a namespace."
@@ -322,6 +303,12 @@ if [ ! -f "$VALUES_FILE" ]; then
   print_error "Values file not found: $VALUES_FILE"
   exit 1
 fi
+
+# Secret names and keys the bootstrap job reads, from the values file
+MANAGEMENT_SECRET=$(values_get '.auth0.managementSecret.name' auth0-management)
+MANAGEMENT_API_SECRET_KEY=$(values_get '.auth0.managementSecret.authServiceApiSecretKey' auth-service-api-secret)
+PLATFORM_ADMIN_ENABLED=$(values_get '.users.admin.enabled | select(. != null) | tostring' true)
+PLATFORM_ADMIN_SECRET=$(values_get '.users.admin.secretName' platform-admin)
 
 echo -e "\
 Namespace:    $NAMESPACE

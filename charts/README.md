@@ -322,7 +322,7 @@ The bootstrap charts (`auth0-bootstrap`, `entra-bootstrap`,
 independently of the platform release.
 
 `openbao-custody` is an explicit exception to platform version alignment: chart
-`version: 0.1.1` tracks the custody wrapper and `appVersion: 2.6.2` tracks OpenBao.
+`version: 0.1.2` tracks the custody wrapper and `appVersion: 2.6.2` tracks OpenBao.
 Its upstream chart is separately pinned to 0.29.5 in `Chart.yaml` and `Chart.lock`.
 Changing it does not require a platform version bump, and it is never added to
 the `guardian-platform` umbrella. Its README and example profiles are included

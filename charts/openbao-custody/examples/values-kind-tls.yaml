@@ -1,4 +1,6 @@
 # Three voters on one disposable host: topology simulation, not host-failure HA.
+# Needs a kind cluster with three schedulable nodes; the upstream required
+# hostname anti-affinity places one voter per node.
 # Keep the wrapper's TLS/Raft/audit settings; DO NOT layer values-dev-kind.yaml.
 openbao:
   server:
@@ -10,14 +12,3 @@ openbao:
       size: 10Gi
     ha:
       replicas: 3
-      disruptionBudget:
-        maxUnavailable: 1
-    affinity: |
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchLabels:
-                app.kubernetes.io/name: openbao
-                app.kubernetes.io/instance: openbao-custody
-                component: server
-            topologyKey: kubernetes.io/hostname

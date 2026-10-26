@@ -35,7 +35,7 @@ check_prerequisites() {
   # Check required secrets
   # The bootstrap job needs the service principal secret for Graph API access
   local missing_secrets=()
-  for secret in entra-bootstrap-sp; do
+  for secret in "$SP_SECRET"; do
     if ! kubectl get secret "$secret" -n "$NAMESPACE" &>/dev/null; then
       missing_secrets+=("$secret")
     fi
@@ -46,9 +46,9 @@ check_prerequisites() {
     printf '%s\n' "${missing_secrets[@]}"
     echo ""
     echo "Create the bootstrap service principal secret with:"
-    echo "  kubectl create secret generic entra-bootstrap-sp \\"
-    echo "    --from-literal=client-id=<sp-client-id> \\"
-    echo "    --from-literal=client-secret=<sp-client-secret> \\"
+    echo "  kubectl create secret generic $SP_SECRET \\"
+    echo "    --from-literal=$(values_get '.entra.servicePrincipalSecret.clientIdKey' client-id)=<sp-client-id> \\"
+    echo "    --from-literal=$(values_get '.entra.servicePrincipalSecret.clientSecretKey' client-secret)=<sp-client-secret> \\"
     echo "    -n $NAMESPACE"
     echo ""
     echo "The service principal must have the following Microsoft Graph API permissions:"
@@ -59,7 +59,7 @@ check_prerequisites() {
   print_info "All required secrets exist"
 }
 
-# Deploy the entra-bootstrap Helm chart and monitor the job to completion
+# Deploy the entra-bootstrap Helm chart, which waits for the bootstrap job
 run_bootstrap() {
   # Clean up any existing bootstrap jobs
   print_warn "Cleaning up any existing bootstrap jobs..."
@@ -68,11 +68,15 @@ run_bootstrap() {
   # Run the bootstrap
   print_warn "Running Entra ID bootstrap..."
 
-  helm upgrade --install "$BOOTSTRAP_RELEASE" "$CHART_DIR" \
+  if ! helm upgrade --install "$BOOTSTRAP_RELEASE" "$CHART_DIR" \
     -n "$NAMESPACE" \
     -f "$VALUES_FILE" \
     --wait \
-    --timeout 10m
+    --timeout 10m; then
+    print_error "Bootstrap job failed or timed out"
+    kubectl logs -l app.kubernetes.io/instance="$BOOTSTRAP_RELEASE" -n "$NAMESPACE" --tail=50 || true
+    exit 1
+  fi
 
   # Get the job name
   local job_name
@@ -83,39 +87,7 @@ run_bootstrap() {
     exit 1
   fi
 
-  echo "Bootstrap job: $job_name"
-
-  # Monitor job completion
-  print_warn "Monitoring bootstrap job..."
-
-  local timeout=600
-  local elapsed=0
-  while [ $elapsed -lt $timeout ]; do
-    local job_status
-    local job_failed
-    job_status=$(kubectl get job "$job_name" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null)
-    job_failed=$(kubectl get job "$job_name" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null)
-
-    if [ "$job_status" = "True" ]; then
-      print_info "Bootstrap completed successfully"
-      break
-    elif [ "$job_failed" = "True" ]; then
-      print_error "Bootstrap job failed"
-      echo "Job logs:"
-      kubectl logs job/"$job_name" -n "$NAMESPACE" --tail=50
-      exit 1
-    fi
-
-    echo -n "."
-    sleep 5
-    elapsed=$((elapsed + 5))
-  done
-
-  if [ $elapsed -ge $timeout ]; then
-    print_error "Bootstrap job timed out"
-    kubectl logs job/"$job_name" -n "$NAMESPACE" --tail=50
-    exit 1
-  fi
+  print_info "Bootstrap job $job_name completed"
 
   # Show logs
   echo ""
@@ -130,10 +102,8 @@ run_bootstrap() {
 
 # Read a key from the values file with yq, falling back to the chart default
 values_get() {
-  local value=""
-  if command -v yq &>/dev/null; then
-    value=$(yq "$1 // \"\"" "$VALUES_FILE" 2>/dev/null)
-  fi
+  local value
+  value=$(yq "$1 // \"\"" "$VALUES_FILE" 2>/dev/null)
   echo "${value:-$2}"
 }
 
@@ -219,6 +189,11 @@ done
 # Validate prerequisites
 assert_is_installed "helm"
 assert_is_installed "kubectl"
+assert_is_installed "yq"
+if ! yq --version 2>&1 | grep -q mikefarah; then
+  print_error "yq must be mikefarah/yq v4 (https://github.com/mikefarah/yq)"
+  exit 1
+fi
 
 # Validate required arguments
 assert_not_empty "namespace" "$NAMESPACE" "Use -n or --namespace to provide a namespace."
@@ -231,6 +206,9 @@ if [ ! -f "$VALUES_FILE" ]; then
   print_error "Values file not found: $VALUES_FILE"
   exit 1
 fi
+
+# Secret name the bootstrap job reads, from the values file
+SP_SECRET=$(values_get '.entra.servicePrincipalSecret.name' entra-bootstrap-sp)
 
 echo -e "\
 Namespace:    $NAMESPACE

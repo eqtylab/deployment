@@ -114,7 +114,8 @@ Any upstream value can be set under `openbao.`; see
 disposable development clusters only. `examples/values-kind-tls.yaml` keeps the
 wrapper's TLS/Raft/audit settings with three voters on one disposable host (a
 topology simulation, not host-failure HA); do not layer `values-dev-kind.yaml`
-over it.
+over it. It keeps the upstream required hostname anti-affinity, so the kind
+cluster needs three schedulable nodes.
 
 ## Configuration Inheritance
 

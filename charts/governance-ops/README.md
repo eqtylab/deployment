@@ -249,6 +249,12 @@ in the cluster. If blackbox-exporter is not `prometheus-blackbox-exporter` in th
 `probes.proberUrl` that is not a Service DNS name only requires the Probe CRD.
 Every Probe gets the `release: kube-prometheus-stack` label.
 
+These checks and ingress discovery read the live cluster with Helm `lookup`.
+`helm template`, client-side `--dry-run`, and GitOps tools that render without
+cluster access see no CRD, Service, or ingresses, so they render no Probes and
+no `endpointDown` alert. Install with `helm upgrade --install`, and upgrade the
+release again after adding ingresses so new hosts get Probes.
+
 | Key                             | Type   | Default                                                            | Description                                                                                             |
 | ------------------------------- | ------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | probes.enabled                  | bool   | `true`                                                             | Enable blackbox exporter Probe resources                                                                |
