@@ -633,14 +633,14 @@ rotated Secret before running the upgrade.
 
 ### Advanced: Extra Configuration
 
-| Key                   | Type   | Default                               | Description                                                                                                                       |
-| --------------------- | ------ | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| volumes               | list   | `[{"name":"tmp","emptyDir":{}}]`      | Additional volumes on the Deployment; overriding replaces the default `tmp` volume, so keep it (the root filesystem is read-only) |
-| volumeMounts          | list   | `[{"name":"tmp","mountPath":"/tmp"}]` | Additional volumeMounts on the Deployment; overriding replaces the default `/tmp` mount, so keep it                               |
-| extraEnvVars          | list   | `[]`                                  | Extra environment variables                                                                                                       |
-| extraEnvVarsSecret    | string | `""`                                  | Secret containing extra env vars                                                                                                  |
-| extraEnvVarsConfigMap | string | `""`                                  | ConfigMap containing extra env vars                                                                                               |
-| extraContainers       | list   | `[]`                                  | Extra containers to add to the pod                                                                                                |
+| Key                   | Type   | Default | Description                                                            |
+| --------------------- | ------ | ------- | ---------------------------------------------------------------------- |
+| volumes               | list   | `[]`    | Additional volumes on the Deployment; a `tmp` emptyDir is always added |
+| volumeMounts          | list   | `[]`    | Additional volumeMounts on the Deployment; `/tmp` is always mounted    |
+| extraEnvVars          | list   | `[]`    | Extra environment variables                                            |
+| extraEnvVarsSecret    | string | `""`    | Secret containing extra env vars                                       |
+| extraEnvVarsConfigMap | string | `""`    | ConfigMap containing extra env vars                                    |
+| extraContainers       | list   | `[]`    | Extra containers to add to the pod                                     |
 
 ## Configuration Inheritance
 

@@ -342,20 +342,14 @@ readinessProbe:
   successThreshold: 1
 
 # -- Volumes
-# @default -- `[{"name": "tmp", "emptyDir": {}}]`
-# Additional volumes on the Deployment. Setting this replaces the default list,
-# so keep the `tmp` volume when overriding (the root filesystem is read-only)
-volumes:
-  - name: tmp
-    emptyDir: {}
+# @default -- `[]`
+# Additional volumes on the Deployment; a `tmp` emptyDir is always added
+volumes: []
 
 # -- Volume Mounts
-# @default -- `[{"name": "tmp", "mountPath": "/tmp"}]`
-# Additional volumeMounts on the Deployment. Setting this replaces the default
-# list, so keep the `/tmp` mount when overriding (the root filesystem is read-only)
-volumeMounts:
-  - name: tmp
-    mountPath: /tmp
+# @default -- `[]`
+# Additional volumeMounts on the Deployment; `/tmp` is always mounted
+volumeMounts: []
 
 # =============================================================================
 # DATABASE CONFIGURATION

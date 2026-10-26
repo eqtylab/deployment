@@ -743,12 +743,12 @@ auth-service:
 
   # -- Volumes
   # @default -- `[]`
-  # Additional volumes on the Deployment
+  # Additional volumes on the Deployment; a `tmp` emptyDir is always added
   volumes: []
 
   # -- Volume Mounts
   # @default -- `[]`
-  # Additional volumeMounts on the Deployment
+  # Additional volumeMounts on the Deployment; `/tmp` is always mounted
   volumeMounts: []
 
   # =============================================================================
