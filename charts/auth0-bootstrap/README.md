@@ -186,7 +186,7 @@ The frontend application is configured as a **Single Page Application (SPA)** wi
 
 - `token_endpoint_auth_method: none` (PKCE auth code flow, no client secret)
 - `oidc_conformant: true`
-- Grant types: `authorization_code`, `implicit`, `refresh_token`
+- Grant types: `authorization_code`, `refresh_token`
 
 ### Backend Application (M2M)
 

@@ -5,6 +5,7 @@ from typing import Any
 from govctl.core.artifacts import runtime_image_values
 
 from govctl.core.models import PlatformConfig, CloudProvider, AuthProvider
+from govctl.generators.shared import path_prefix_ingress_values
 
 
 def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any]:
@@ -12,36 +13,12 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
     section: dict[str, Any] = {
         "replicaCount": 2,
         "image": runtime_image_values(config),
+        "ingress": path_prefix_ingress_values(
+            config,
+            "governanceService",
+            {"nginx.ingress.kubernetes.io/proxy-body-size": "64m"},
+        ),
     }
-
-    if config.enable_ingress:
-        section["ingress"] = {
-            "enabled": True,
-            "className": "nginx",
-            "annotations": {
-                "cert-manager.io/issuer": "letsencrypt-prod",
-                "nginx.ingress.kubernetes.io/use-regex": "true",
-                "nginx.ingress.kubernetes.io/rewrite-target": "/$2",
-                "nginx.ingress.kubernetes.io/proxy-body-size": "64m",
-            },
-            "hosts": [
-                {
-                    "host": config.domain,
-                    "paths": [
-                        {
-                            "path": "/governanceService(/|$)(.*)",
-                            "pathType": "ImplementationSpecific",
-                        }
-                    ],
-                }
-            ],
-            "tls": [
-                {
-                    "secretName": f"{config.environment}-tls-secret",
-                    "hosts": [config.domain],
-                }
-            ],
-        }
 
     # Application configuration
     section["config"] = {
@@ -73,16 +50,13 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
 
     # Auth provider config
     if config.auth_provider == AuthProvider.AUTH0:
-        section["config"]["auth0Domain"] = (
-            config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com"
-        )
+        section["config"]["auth0Domain"] = config.auth0_tenant_domain
     elif config.auth_provider == AuthProvider.ENTRA:
         section["config"]["entraTenantId"] = (
             config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
         )
     elif config.auth_provider == AuthProvider.KEYCLOAK:
-        keycloak_url = config.keycloak_url or f"https://{config.domain}/keycloak"
-        section["config"]["keycloakUrl"] = keycloak_url
+        section["config"]["keycloakUrl"] = config.keycloak_base_url
         section["config"]["keycloakRealm"] = config.keycloak_realm
 
     return section

@@ -1,4 +1,4 @@
-"""Generated gateway DSN uses the right sslmode for each database mode."""
+"""Generated secrets have the requested length and the right gateway DSN."""
 
 from pathlib import Path
 import sys
@@ -13,7 +13,7 @@ from govctl.core.models import (
     AuthProvider,
     DatabaseMode,
 )
-from govctl.generators.secrets import generate_secrets
+from govctl.generators.secrets import _generate_secret, generate_secrets
 
 
 class GatewayDsnTests(unittest.TestCase):
@@ -41,6 +41,18 @@ class GatewayDsnTests(unittest.TestCase):
     ):
         dsn = self.gateway_dsn(DatabaseMode.BUNDLED)
         self.assertIn("@guardian-platform-postgresql:5432/", dsn)
+
+
+class GenerateSecretTests(unittest.TestCase):
+    def test_length_is_a_character_count(self):
+        for length in (1, 16, 32, 43, 44, 64):
+            with self.subTest(length=length):
+                self.assertEqual(len(_generate_secret(length)), length)
+
+    def test_default_secret_is_44_base64_characters(self):
+        secret = _generate_secret()
+        self.assertEqual(len(secret), 44)
+        self.assertRegex(secret, r"^[A-Za-z0-9+/]+$")
 
 
 if __name__ == "__main__":

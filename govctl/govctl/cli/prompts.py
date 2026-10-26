@@ -2,7 +2,7 @@
 
 from rich.prompt import Prompt
 
-from govctl.core.artifacts import configure_artifacts
+from govctl.core.artifacts import configure_artifacts, uses_custom_registry
 
 from govctl.core.models import (
     PlatformConfig,
@@ -12,7 +12,6 @@ from govctl.core.models import (
     KeyManagementProvider,
     CLOUD_TO_KEY_MANAGEMENT,
 )
-from govctl.utils.naming import generate_domain_code
 from govctl.utils.validate import (
     is_valid_aws_region,
     is_valid_domain,
@@ -44,14 +43,11 @@ def collect_interactive_config(
         domain_value = domain
     else:
         while True:
-            domain_value = Prompt.ask(
-                "[bold]Domain[/bold]",
-                default=f"guardian.{generate_domain_code()}.eqtylab.io",
-            )
+            domain_value = Prompt.ask("[bold]Domain[/bold]").strip()
             if is_valid_domain(domain_value):
                 break
             console.print(
-                "[red]Invalid domain format. Please enter a valid domain (e.g. guardian.example.eqtylab.io)[/red]"
+                "[red]Invalid domain format. Please enter a valid domain (e.g. guardian.example.com)[/red]"
             )
 
     # --- Environment ---
@@ -270,11 +266,10 @@ def collect_interactive_config(
             )
         config.entra_tenant_id = entra_tenant_id
     elif auth_provider == AuthProvider.KEYCLOAK:
-        keycloak_default = f"https://{domain_value}/keycloak"
         while True:
             keycloak_url = Prompt.ask(
                 "  Keycloak URL",
-                default=keycloak_default,
+                default=config.keycloak_base_url,
             )
             if is_valid_https_url(keycloak_url):
                 break
@@ -313,7 +308,7 @@ def collect_interactive_config(
             "[red]Invalid domain format. Expected format: ghcr.io, registry.example.com, etc.[/red]"
         )
     config.image_registry_url = registry_url
-    if registry_url not in ("ghcr.io", "docker.cloudsmith.io"):
+    if uses_custom_registry(config):
         # A custom credential host alone cannot redirect the chart's image paths.
         while True:
             prefix = Prompt.ask(

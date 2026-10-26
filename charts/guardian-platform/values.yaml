@@ -99,6 +99,7 @@ global:
       key: "ca.crt"
 
   # -- Secrets Configuration
+  # @default -- See values below
   # Centralized secret configuration for all platform components
   # Secrets can be created automatically by the chart or pre-created manually
   secrets:
@@ -132,6 +133,8 @@ global:
           clientSecret: "client-secret"
           mgmtClientId: "mgmt-client-id"
           mgmtClientSecret: "mgmt-client-secret"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true and provider=auth0
         values:
           # -- Auth0 Client ID (EQTYLab Platform API M2M - token validation)
@@ -163,6 +166,8 @@ global:
           tenantId: "tenant-id"
           graphClientId: "graph-client-id"
           graphClientSecret: "graph-client-secret"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true and provider=entra
         values:
           # -- Entra Client ID (Application (client) ID from Azure app registration)
@@ -195,6 +200,8 @@ global:
           serviceAccountClientId: "service-account-client-id"
           serviceAccountClientSecret: "service-account-client-secret"
           tokenExchangePrivateKey: "token-exchange-private-key"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true and provider=keycloak
         values:
           # -- Service Account Client ID
@@ -220,6 +227,8 @@ global:
       keys:
         apiSecret: "api-secret"
         jwtSecret: "jwt-secret"
+      # -- Secret Values
+      # @default -- See values below
       # Only used if create=true
       values:
         # -- API Secret
@@ -244,6 +253,8 @@ global:
         password: "password"
         # DSN consumed by Agent Gateway services when gateway-stack is enabled
         gatewayDsn: "gateway-dsn"
+      # -- Secret Values
+      # @default -- See values below
       # Only used if create=true
       values:
         # -- Database Username
@@ -271,6 +282,8 @@ global:
         encryptionKey: "encryption-key"
         clientId: "client-id"
         clientSecret: "client-secret"
+      # -- Secret Values
+      # @default -- See values below
       # Only used if create=true
       values:
         # -- Encryption Key
@@ -293,6 +306,8 @@ global:
       # -- Registry Server
       # @default -- `ghcr.io`
       registry: "ghcr.io"
+      # -- Secret Values
+      # @default -- See values below
       # Only used if create=true
       values:
         # -- Registry Username
@@ -329,6 +344,8 @@ global:
           accessKeyId: "access-key-id"
           secretAccessKey: "secret-access-key"
           sessionToken: "session-token"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true and provider=aws_kms
         values:
           # -- AWS Access Key ID
@@ -356,6 +373,8 @@ global:
           clientSecret: "client-secret"
           tenantId: "tenant-id"
           vaultUrl: "vault-url"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true and provider=azure_key_vault
         values:
           # -- Azure Client ID
@@ -383,6 +402,8 @@ global:
         # Key names to read from the Secret
         keys:
           serviceAccountJson: "service-account-json"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true and provider=gcp_kms
         values:
           # -- GCP Service Account JSON (optional if using Workload Identity/ADC)
@@ -417,6 +438,8 @@ global:
         keys:
           accessKeyId: "access-key-id"
           secretAccessKey: "secret-access-key"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true
         values:
           # -- AWS Access Key ID
@@ -438,6 +461,8 @@ global:
         keys:
           accountKey: "account-key"
           connectionString: "connection-string"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true
         values:
           # -- Azure Account Key
@@ -458,6 +483,8 @@ global:
         # Key names to read from the Secret
         keys:
           serviceAccountJson: "service-account-json"
+        # -- Secret Values
+        # @default -- See values below
         # Only used if create=true
         values:
           # -- GCS Service Account JSON
@@ -1634,7 +1661,8 @@ eqty-pdfgen:
     # Requires compatible PDFgen and Auth images from guardian#234, including
     # Auth's curve-correct certificates from #233. See eqty-pdfgen README.
     # The supporting PDFgen client fails closed against incompatible Auth images.
-    # Independent of key-management provider; OpenBao is optional and dev-only.
+    # Independent of key-management provider; OpenBao is optional and supported
+    # for fresh installations.
     signingBound: false
 
   # -- NetworkPolicy Configuration

@@ -11,12 +11,6 @@ data:
     #!/bin/sh
     set -e
 
-    # Colors for output
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[1;33m'
-    NC='\033[0m' # No Color
-
     # Configuration from environment
     KEYCLOAK_URL="${KEYCLOAK_URL}"
     KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN_USERNAME}"
@@ -356,7 +350,6 @@ data:
       ROLES_TO_ASSIGN="["
       FIRST=true
       for ROLE_NAME in $(echo "$ROLES" | tr ',' ' '); do
-        ROLE_ID=$(echo "$AVAILABLE_ROLES" | jq -r --arg name "$ROLE_NAME" '.[] | select(.name == $name) | .id')
         ROLE_OBJ=$(echo "$AVAILABLE_ROLES" | jq -c --arg name "$ROLE_NAME" '.[] | select(.name == $name)')
 
         if [ -n "$ROLE_OBJ" ] && [ "$ROLE_OBJ" != "null" ]; then

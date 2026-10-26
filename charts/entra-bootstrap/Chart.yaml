@@ -2,8 +2,8 @@ apiVersion: v2
 name: entra-bootstrap
 description: A Helm chart for deploying the Entra Bootstrap - automated app registration and configuration for the Guardian Platform
 type: application
-version: 1.0.3
-appVersion: "1.0.3"
+version: 1.0.4
+appVersion: "1.0.4"
 home: https://github.com/eqtylab/guardian-infrastructure
 sources:
   - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/entra-bootstrap

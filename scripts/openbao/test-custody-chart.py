@@ -17,6 +17,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 CHART = ROOT / "charts/openbao-custody"
+CHART_VERSION = yaml.safe_load((CHART / "Chart.yaml").read_text())["version"]
 
 
 def helm(*args, success=True):
@@ -244,7 +245,7 @@ class CustodyChartTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("package exclusion fixture\n")
             helm("package", chart, "--destination", work)
-            archive = Path(work) / "openbao-custody-0.1.1.tgz"
+            archive = Path(work) / f"openbao-custody-{CHART_VERSION}.tgz"
             with tarfile.open(archive) as package:
                 names = set(package.getnames())
                 for filename in (
@@ -270,7 +271,7 @@ class CustodyChartTests(unittest.TestCase):
                 metadata = yaml.safe_load(
                     package.extractfile("openbao-custody/Chart.yaml")
                 )
-                self.assertEqual(metadata["version"], "0.1.1")
+                self.assertEqual(metadata["version"], CHART_VERSION)
                 self.assertEqual(metadata["appVersion"], "2.6.2")
                 upstream = yaml.safe_load(
                     package.extractfile("openbao-custody/charts/openbao/Chart.yaml")

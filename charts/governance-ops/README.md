@@ -137,12 +137,13 @@ This removes all monitoring resources (ConfigMaps, PrometheusRules, and Probes) 
 
 ### Dashboard Configuration
 
-| Key                                 | Type | Default | Description                                     |
-| ----------------------------------- | ---- | ------- | ----------------------------------------------- |
-| dashboards.enabled                  | bool | `true`  | Enable dashboard provisioning                   |
-| dashboards.labels                   | map  | `{}`    | Additional labels for dashboard ConfigMaps      |
-| dashboards.annotations              | map  | `{}`    | Additional annotations for dashboard ConfigMaps |
-| dashboards.platformOverview.enabled | bool | `true`  | Enable the Guardian Platform Overview dashboard |
+| Key                                 | Type   | Default               | Description                                                                |
+| ----------------------------------- | ------ | --------------------- | -------------------------------------------------------------------------- |
+| dashboards.enabled                  | bool   | `true`                | Enable dashboard provisioning                                              |
+| dashboards.labels                   | map    | `{}`                  | Additional labels for dashboard ConfigMaps                                 |
+| dashboards.annotations              | map    | `{}`                  | Additional annotations for dashboard ConfigMaps                            |
+| dashboards.platformOverview.enabled | bool   | `true`                | Enable the Guardian Platform Overview dashboard                            |
+| dashboards.platformOverview.uid     | string | `"platform-overview"` | Grafana dashboard UID; use a distinct value per target sharing one Grafana |
 
 **Guardian Platform Dashboard** includes:
 

@@ -5,6 +5,7 @@ from typing import Any
 from govctl.core.artifacts import runtime_image_values
 
 from govctl.core.models import PlatformConfig, AuthProvider, KeyManagementProvider
+from govctl.generators.shared import path_prefix_ingress_values
 
 
 def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
@@ -12,39 +13,17 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
     section: dict[str, Any] = {
         "replicaCount": 2,
         "image": runtime_image_values(config),
-    }
-
-    if config.enable_ingress:
-        section["ingress"] = {
-            "enabled": True,
-            "className": "nginx",
-            "annotations": {
-                "cert-manager.io/issuer": "letsencrypt-prod",
-                "nginx.ingress.kubernetes.io/use-regex": "true",
-                "nginx.ingress.kubernetes.io/rewrite-target": "/$2",
+        "ingress": path_prefix_ingress_values(
+            config,
+            "authService",
+            {
                 "nginx.ingress.kubernetes.io/proxy-body-size": "64m",
                 "nginx.ingress.kubernetes.io/proxy-buffer-size": "16k",
                 "nginx.ingress.kubernetes.io/client-header-buffer-size": "16k",
                 "nginx.ingress.kubernetes.io/large-client-header-buffers": "4 16k",
             },
-            "hosts": [
-                {
-                    "host": config.domain,
-                    "paths": [
-                        {
-                            "path": "/authService(/|$)(.*)",
-                            "pathType": "ImplementationSpecific",
-                        }
-                    ],
-                }
-            ],
-            "tls": [
-                {
-                    "secretName": f"{config.environment}-tls-secret",
-                    "hosts": [config.domain],
-                }
-            ],
-        }
+        ),
+    }
 
     # Add auth provider config
     section["config"] = {
@@ -54,7 +33,7 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
     }
 
     if config.auth_provider == AuthProvider.AUTH0:
-        auth0_domain = config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com"
+        auth0_domain = config.auth0_tenant_domain
         section["config"]["idp"]["issuer"] = f"https://{auth0_domain}/"
         section["config"]["idp"]["skipIssuerVerification"] = True
         section["config"]["idp"]["auth0"] = {
@@ -73,7 +52,7 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "defaultRoles": "user",
         }
     elif config.auth_provider == AuthProvider.KEYCLOAK:
-        keycloak_url = config.keycloak_url or f"https://{config.domain}/keycloak"
+        keycloak_url = config.keycloak_base_url
         section["config"]["idp"][
             "issuer"
         ] = f"{keycloak_url}/realms/{config.keycloak_realm}"
@@ -103,8 +82,6 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             aws_kms_config["endpoint"] = config.aws_kms_endpoint
         if config.aws_kms_alias_prefix:
             aws_kms_config["aliasPrefix"] = config.aws_kms_alias_prefix
-        if config.aws_kms_deletion_window_days != 7:
-            aws_kms_config["deletionWindowDays"] = config.aws_kms_deletion_window_days
         if aws_kms_config:
             section["config"]["keyManagement"]["aws_kms"] = aws_kms_config
     elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
@@ -113,15 +90,10 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "tenantId": config.azure_tenant_id,
         }
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
-        gcp_kms_config: dict[str, Any] = {
+        section["config"]["keyManagement"]["gcp_kms"] = {
             "projectId": config.gcp_kms_project_id,
             "locationId": config.gcp_kms_location_id,
             "keyRingId": config.gcp_kms_key_ring_id,
         }
-        if config.gcp_kms_scheduled_destroy_days != 24:
-            gcp_kms_config["scheduledDestroyDays"] = (
-                config.gcp_kms_scheduled_destroy_days
-            )
-        section["config"]["keyManagement"]["gcp_kms"] = gcp_kms_config
 
     return section

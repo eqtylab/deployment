@@ -19,9 +19,6 @@ def generate_entra_bootstrap(config: PlatformConfig) -> str:
                 "tag": "latest",
                 "pullPolicy": "IfNotPresent",
             },
-            "backoffLimit": 3,
-            "ttlSecondsAfterFinished": 300,
-            "activeDeadlineSeconds": 600,
             "resources": {
                 "limits": {"cpu": "500m", "memory": "512Mi"},
                 "requests": {"cpu": "100m", "memory": "256Mi"},

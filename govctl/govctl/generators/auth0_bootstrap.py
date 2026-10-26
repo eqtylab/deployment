@@ -3,13 +3,14 @@
 from typing import Any
 
 from govctl.core.models import PlatformConfig
+from govctl.generators.shared import api_scopes
 from govctl.utils.yaml import dump_yaml_with_header
 
 
 def generate_auth0_bootstrap(config: PlatformConfig) -> str:
     """Generate auth0-bootstrap values.yaml content based on configuration."""
     domain = config.domain
-    auth0_domain = config.auth0_domain or "YOUR_AUTH0_DOMAIN.us.auth0.com"
+    auth0_domain = config.auth0_tenant_domain
     api_identifier = config.auth0_api_identifier
     admin_email = f"admin@{domain}"
 
@@ -21,10 +22,6 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
                 "tag": "latest",
                 "pullPolicy": "IfNotPresent",
             },
-            "args": ["/scripts/bootstrap.sh"],
-            "backoffLimit": 3,
-            "ttlSecondsAfterFinished": 300,
-            "activeDeadlineSeconds": 600,
             "resources": {
                 "limits": {"cpu": "500m", "memory": "256Mi"},
                 "requests": {"cpu": "100m", "memory": "128Mi"},
@@ -95,28 +92,7 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
                 ],
             },
         },
-        "scopes": [
-            {
-                "name": "governance:declarations:create",
-                "description": "Create governance declarations",
-            },
-            {
-                "name": "integrity:statements:create",
-                "description": "Create integrity statements",
-            },
-            {
-                "name": "read:organizations",
-                "description": "Read access to organizations",
-            },
-            {
-                "name": "write:organizations",
-                "description": "Write access to organizations",
-            },
-            {"name": "read:projects", "description": "Read access to projects"},
-            {"name": "write:projects", "description": "Write access to projects"},
-            {"name": "read:evaluations", "description": "Read access to evaluations"},
-            {"name": "write:evaluations", "description": "Write access to evaluations"},
-        ],
+        "scopes": api_scopes(),
         "users": {
             "admin": {
                 "enabled": True,

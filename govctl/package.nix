@@ -1,8 +1,11 @@
 { lib, python3Packages }:
 
+let
+  pyprojectToml = builtins.fromTOML (builtins.readFile ./pyproject.toml);
+in
 python3Packages.buildPythonApplication {
   pname = "govctl";
-  version = "0.1.0";
+  inherit (pyprojectToml.project) version;
   pyproject = true;
 
   src = ./.;

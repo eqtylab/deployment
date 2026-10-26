@@ -1,4 +1,4 @@
-# Keycloak Bootstrap values example
+# Keycloak Bootstrap Example
 # This configures the bootstrap job without SPI mappers or group management
 # Groups/projects are now managed in the Governance Service
 

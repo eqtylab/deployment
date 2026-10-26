@@ -144,11 +144,12 @@ values_get() {
 
 # Display credentials, OAuth clients, and Keycloak URLs
 show_summary() {
-  local realm frontend_client backend_client worker_client
+  local realm frontend_client backend_client worker_client backend_roles
   realm=$(values_get '.keycloak.realm.name' guardian)
   frontend_client=$(values_get '.clients.frontend.clientId' guardian-platform-frontend)
   backend_client=$(values_get '.clients.backend.clientId' guardian-platform-backend)
   worker_client=$(values_get '.clients.worker.clientId' governance-worker)
+  backend_roles=$(values_get '([.clients.backend.serviceAccountRoles[]? | (.roles | join(", ")) + " (" + .clientId + ")"] | join("; "))' "query-users, view-users (realm-management)")
 
   echo ""
   print_info "Bootstrap Complete!"
@@ -182,7 +183,7 @@ show_summary() {
   echo "- Backend: ${backend_client} (confidential with service account)"
   echo "- Worker: ${worker_client} (service account only)"
   echo ""
-  echo "Backend service account roles: query-users, view-users (realm-management)"
+  echo "Backend service account roles: ${backend_roles}"
 
   echo ""
   print_info "Bootstrap process completed!"

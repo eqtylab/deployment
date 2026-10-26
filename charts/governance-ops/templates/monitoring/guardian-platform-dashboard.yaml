@@ -1,5 +1,9 @@
 {{- if .Values.dashboards.enabled }}
 {{- if .Values.dashboards.platformOverview.enabled }}
+{{- $uid := .Values.dashboards.platformOverview.uid | toString }}
+{{- if not (regexMatch "^[A-Za-z0-9_-]{1,40}$" $uid) }}
+{{- fail "dashboards.platformOverview.uid must be 1-40 letters, digits, '-', or '_'" }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -17,6 +21,6 @@ metadata:
   {{- end }}
 data:
   guardian-platform.json: |-
-{{ .Files.Get "dashboards/guardian-platform.json" | replace "\"guardian-platform\"" (include "governance-ops.targetRelease" . | quote) | indent 4 }}
+{{ .Files.Get "dashboards/guardian-platform.json" | replace "\"guardian-platform\"" (include "governance-ops.targetRelease" . | quote) | replace "\"uid\": \"platform-overview\"" (printf "\"uid\": %s" ($uid | quote)) | indent 4 }}
 {{- end }}
 {{- end }}

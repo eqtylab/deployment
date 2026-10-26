@@ -1,4 +1,4 @@
-# Auth0 Bootstrap values example
+# Auth0 Bootstrap Example
 # This configures the bootstrap job to set up Auth0 for the Guardian Platform
 #
 # PREREQUISITE: Before running this chart, you must:

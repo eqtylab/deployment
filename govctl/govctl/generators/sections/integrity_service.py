@@ -5,6 +5,7 @@ from typing import Any
 from govctl.core.artifacts import runtime_image_values
 
 from govctl.core.models import PlatformConfig, CloudProvider
+from govctl.generators.shared import path_prefix_ingress_values
 
 
 def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]:
@@ -12,36 +13,12 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
     section: dict[str, Any] = {
         "replicaCount": 2,
         "image": runtime_image_values(config),
+        "ingress": path_prefix_ingress_values(
+            config,
+            "integrityService",
+            {"nginx.ingress.kubernetes.io/proxy-body-size": "0"},
+        ),
     }
-
-    if config.enable_ingress:
-        section["ingress"] = {
-            "enabled": True,
-            "className": "nginx",
-            "annotations": {
-                "cert-manager.io/issuer": "letsencrypt-prod",
-                "nginx.ingress.kubernetes.io/use-regex": "true",
-                "nginx.ingress.kubernetes.io/rewrite-target": "/$2",
-                "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-            },
-            "hosts": [
-                {
-                    "host": config.domain,
-                    "paths": [
-                        {
-                            "path": "/integrityService(/|$)(.*)",
-                            "pathType": "ImplementationSpecific",
-                        }
-                    ],
-                }
-            ],
-            "tls": [
-                {
-                    "secretName": f"{config.environment}-tls-secret",
-                    "hosts": [config.domain],
-                }
-            ],
-        }
 
     # Persistence
     section["persistence"] = {"enabled": True}

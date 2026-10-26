@@ -12,7 +12,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from govctl.cli.commands.init import init_cmd
+from govctl.cli.display import show_config_summary
+from govctl.cli.prompts import collect_interactive_config
+from govctl.core.artifacts import configure_artifacts
 from govctl.core.models import AuthProvider, CloudProvider, PlatformConfig
+from govctl.utils.output import console
 
 KEY_MANAGEMENT = {"aws": "aws_kms", "azure": "azure_key_vault", "gcp": "gcp_kms"}
 
@@ -109,6 +113,43 @@ class InitTests(unittest.TestCase):
             self.assertIn("already exist", result.output)
             self.assertIn("Aborted", result.output)
             self.assertEqual(secrets.read_text(), original)
+
+
+class InteractiveTests(unittest.TestCase):
+    def test_domain_has_no_default_and_is_required(self):
+        domain_prompts = []
+        answers = iter(["", "not a domain", "guardian.example.com"])
+
+        def ask(prompt, **kwargs):
+            if "Domain" in prompt:
+                domain_prompts.append(kwargs)
+                return next(answers)
+            return kwargs.get("default", "")
+
+        with mock.patch(
+            "govctl.cli.prompts.Prompt.ask", side_effect=ask
+        ), mock.patch.object(console, "quiet", True):
+            config = collect_interactive_config(
+                "gcp", None, "staging", "keycloak", "bundled", "cloudsmith"
+            )
+        self.assertEqual(config.domain, "guardian.example.com")
+        self.assertEqual(len(domain_prompts), 3)
+        for kwargs in domain_prompts:
+            self.assertNotIn("default", kwargs)
+
+    def test_summary_labels_a_custom_registry(self):
+        config = PlatformConfig(
+            cloud_provider=CloudProvider.GCP,
+            domain="guardian.example.com",
+            environment="staging",
+            auth_provider=AuthProvider.KEYCLOAK,
+        )
+        configure_artifacts(config, "cloudsmith")
+        config.image_registry_url = "mirror.example.com"
+        config.image_repository_prefix = "mirror.example.com/eqtylab"
+        with console.capture() as capture:
+            show_config_summary(config)
+        self.assertIn("custom registry (cloudsmith image tags)", capture.get())
 
 
 if __name__ == "__main__":

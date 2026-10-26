@@ -194,20 +194,35 @@ run_bootstrap() {
   kubectl delete job "$job_name" -n "$NAMESPACE" --ignore-not-found
 }
 
+# Read a key from the values file with yq, falling back to the chart default
+values_get() {
+  local value=""
+  if command -v yq &>/dev/null; then
+    value=$(yq "$1 // \"\"" "$VALUES_FILE" 2>/dev/null)
+  fi
+  echo "${value:-$2}"
+}
+
 # Display summary with next steps
 show_summary() {
+  local frontend_app backend_app worker_app api_name
+  frontend_app=$(values_get '.applications.frontend.name' "Guardian Platform Frontend")
+  backend_app=$(values_get '.applications.backend.name' "Guardian Platform Backend")
+  worker_app=$(values_get '.applications.worker.name' "Governance Worker")
+  api_name=$(values_get '.auth0.api.name' "Guardian Platform API")
+
   echo ""
   print_info "Auth0 Bootstrap Complete!"
   echo ""
   echo "The bootstrap job created the following Auth0 resources:"
   echo ""
   echo "Applications:"
-  echo "- Frontend: Guardian Platform Frontend (SPA / public client)"
-  echo "- Backend:  Guardian Platform Backend (M2M / non_interactive)"
-  echo "- Worker:   Governance Worker (M2M / non_interactive)"
+  echo "- Frontend: ${frontend_app} (SPA / public client)"
+  echo "- Backend:  ${backend_app} (M2M / non_interactive)"
+  echo "- Worker:   ${worker_app} (M2M / non_interactive)"
   echo ""
   echo "Resource Server:"
-  echo "- Guardian Platform API (with custom scopes + client grants)"
+  echo "- ${api_name} (with custom scopes + client grants)"
   echo ""
   if [ "$SKIP_ACTIONS" != "true" ]; then
     echo "Actions:"

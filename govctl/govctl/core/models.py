@@ -27,6 +27,9 @@ class DatabaseMode(str, Enum):
     EXTERNAL = "external"
 
 
+# Placeholder for an Auth0 tenant domain that was not supplied
+AUTH0_DOMAIN_PLACEHOLDER = "YOUR_AUTH0_DOMAIN.us.auth0.com"
+
 # Mapping of cloud provider to storage provider
 CLOUD_TO_STORAGE = {
     CloudProvider.AWS: "aws_s3",
@@ -52,17 +55,8 @@ class PlatformConfig:
     environment: str
     auth_provider: AuthProvider
 
-    # Feature flags
-    enable_ingress: bool = True
-
     # Database mode (bundled Bitnami PostgreSQL or external managed PostgreSQL)
     database_mode: DatabaseMode = DatabaseMode.BUNDLED
-
-    # Derived settings (computed from cloud_provider)
-    @property
-    def storage_provider(self) -> str:
-        """Get the storage provider based on cloud provider."""
-        return CLOUD_TO_STORAGE[self.cloud_provider]
 
     # Cloud region
     cloud_region: str = ""
@@ -84,7 +78,6 @@ class PlatformConfig:
     aws_kms_region: str = ""
     aws_kms_endpoint: str = ""
     aws_kms_alias_prefix: str = ""
-    aws_kms_deletion_window_days: int = 7
 
     # Azure Key Vault-specific
     azure_key_vault_url: str = ""
@@ -94,20 +87,13 @@ class PlatformConfig:
     gcp_kms_project_id: str = ""
     gcp_kms_location_id: str = ""
     gcp_kms_key_ring_id: str = "eqtylab-did"
-    gcp_kms_scheduled_destroy_days: int = 24
 
     # Auth0-specific
     auth0_domain: str = ""
     auth0_audience: str = ""
 
-    @property
-    def auth0_api_identifier(self) -> str:
-        """Get the Guardian API identifier, defaulting to the platform URL."""
-        return self.auth0_audience or f"https://{self.domain}"
-
     # Entra-specific
     entra_tenant_id: str = ""
-    entra_client_id: str = ""
 
     # Keycloak-specific
     keycloak_url: str = ""
@@ -119,14 +105,25 @@ class PlatformConfig:
     image_repository_prefix: str = ""
     image_registry_url: str = "ghcr.io"
     image_registry_username: str = ""
-    image_registry_password: str = ""
     image_registry_email: str = ""
 
+    # Derived settings
+    @property
+    def storage_provider(self) -> str:
+        """Get the storage provider based on cloud provider."""
+        return CLOUD_TO_STORAGE[self.cloud_provider]
 
-@dataclass
-class GeneratedFiles:
-    """Container for generated file contents."""
+    @property
+    def auth0_tenant_domain(self) -> str:
+        """Get the Auth0 tenant domain, or a placeholder when it is not set."""
+        return self.auth0_domain or AUTH0_DOMAIN_PLACEHOLDER
 
-    values_yaml: str
-    secrets_yaml: str
-    output_dir: str
+    @property
+    def auth0_api_identifier(self) -> str:
+        """Get the Guardian API identifier, defaulting to the platform URL."""
+        return self.auth0_audience or f"https://{self.domain}"
+
+    @property
+    def keycloak_base_url(self) -> str:
+        """Get the Keycloak URL, defaulting to /keycloak on the platform domain."""
+        return self.keycloak_url or f"https://{self.domain}/keycloak"

@@ -98,21 +98,21 @@ not yet delivered to Cloudsmith, generate GHCR settings with
 
 The interactive wizard walks you through:
 
-1. **Cloud provider** — AWS, Azure, or GCP
-2. **Domain** — your deployment domain
-3. **Environment** — freeform (e.g. `dev`, `staging`, `prod`)
-4. **Database mode** — bundled Bitnami PostgreSQL (default for non-prod) or external managed PostgreSQL (default for `production`)
-5. **Auth provider** — Auth0, Microsoft Entra ID, or Keycloak
-6. **Provider-specific settings** — key management, auth config, etc.
-7. **Image registry** — container registry credentials
+1. **Domain** — your deployment domain (required; there is no default)
+2. **Environment** — freeform name such as `development` (the default), `staging`, or `production`
+3. **Database mode** — bundled Bitnami PostgreSQL (default unless the environment is `production`) or external managed PostgreSQL (default for `production`)
+4. **Cloud provider** — AWS, Azure, or GCP. AWS also asks for the region and whether S3 uses an IAM role (IRSA) or static keys
+5. **Key management** — AWS KMS, Azure Key Vault, or GCP KMS for DID keys (defaults to the cloud provider's service), with its settings
+6. **Auth provider** — Auth0, Microsoft Entra ID, or Keycloak, with its settings
+7. **Image registry** — container registry host, image prefix for a custom registry, and credentials
 
 Generated files:
 
-| File                   | Contents                                            | When                      |
-| ---------------------- | --------------------------------------------------- | ------------------------- |
-| `values-{env}.yaml`    | Helm values for your deployment                     | Always                    |
-| `secrets-{env}.yaml`   | Secret placeholders to fill in before deploying     | Always                    |
-| `bootstrap-{env}.yaml` | IdP bootstrap values for the selected auth provider | Auth0, Entra, or Keycloak |
+| File                   | Contents                                            |
+| ---------------------- | --------------------------------------------------- |
+| `values-{env}.yaml`    | Helm values for your deployment                     |
+| `secrets-{env}.yaml`   | Secret placeholders to fill in before deploying     |
+| `bootstrap-{env}.yaml` | IdP bootstrap values for the selected auth provider |
 
 ### Non-Interactive Mode
 
@@ -121,7 +121,7 @@ Generated files:
 ```bash
 govctl init -I \
   --cloud gcp \
-  --domain guardian.staging.eqtylab.io \
+  --domain guardian.example.com \
   --environment staging \
   --auth keycloak \
   --database bundled
@@ -133,7 +133,7 @@ govctl init -I \
 | -------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
 | `--cloud`                        | `-c`    | Cloud provider (`aws`, `azure`, `gcp`)                                                                                |
 | `--domain`                       | `-d`    | Deployment domain                                                                                                     |
-| `--environment`                  | `-e`    | Environment name                                                                                                      |
+| `--environment`                  | `-e`    | Environment name (e.g. `development`, `staging`, `production`)                                                        |
 | `--auth`                         | `-a`    | Auth provider (`auth0`, `entra`, `keycloak`)                                                                          |
 | `--database`                     | `-D`    | Database mode (`bundled` or `external`). Defaults to `external` when environment is `production`, otherwise `bundled` |
 | `--artifact-source`              |         | `cloudsmith` (default) for verified customer releases; `github` for existing GHCR installs                            |
@@ -150,13 +150,13 @@ Existing `values-{env}.yaml`, `secrets-{env}.yaml`, or `bootstrap-{env}.yaml` fi
 Configures all platform services based on your selections:
 
 - **global** — environment name, domain. Also `global.postgresql.{host, port, database, username, sslMode, sslRootCert}` placeholders when database mode is `external`
-- **auth-service** — IDP provider config, token exchange, ingress
-- **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: true` by default, image tag/pull policy; no ingress)
-- **gateway-stack** — LLM Gateway and Control Plane (`enabled: false` by default, image tags/pull policies only; hostnames, TLS, and plugin storage are not prompted for)
+- **auth-service** — IDP provider config, key management, ingress, and token exchange for Keycloak
+- **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: true` by default, image pull policy; no ingress)
+- **gateway-stack** — LLM Gateway and Control Plane (`enabled: false` by default, image pull policies only; hostnames, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **guardian** — Guardian: frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, persistence, ingress
-- **postgresql** — `enabled: true` plus storage class and resource limits when database mode is `bundled`; just `enabled: false` when `external`
+- **postgresql** — `enabled: true` plus persistence size and resource requests and limits when database mode is `bundled`; just `enabled: false` when `external`
 
 To enable the gateway, layer [`values-gateway.yaml`](../charts/guardian-platform/examples/values-gateway.yaml) over the generated file and see [`charts/gateway-stack/README.md`](../charts/gateway-stack/README.md) for hostnames, TLS, and plugin setup.
 
@@ -164,7 +164,7 @@ PDFgen bound signing and optional timestamping are available through explicit va
 
 When database mode is `external`, the generated file contains `TODO-set-managed-pg-host.example.com` for `global.postgresql.host` — fill this in before deploying. The same placeholder appears inside the generated `gatewayDsn`, so replace it in both places. The `gatewayDsn` uses `sslmode=require`: gateway-stack does not read `global.postgresql.sslMode` or `sslRootCert`, so the gateway's connection is encrypted but the server certificate is not verified. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default; only the optional CA Secret/ConfigMap must exist ahead of time when using `sslMode: verify-ca` or `verify-full`. See the [Cloud-Managed PostgreSQL Configuration](../charts/guardian-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
 
-### bootstrap-{env}.yaml _(Auth0, Entra, or Keycloak)_
+### bootstrap-{env}.yaml
 
 Pre-configured values for the matching `<provider>-bootstrap` chart with your domain filled in:
 
@@ -209,7 +209,8 @@ without collecting token contents. Existing cloud output must remain unchanged.
 `govctl init` defaults to Cloudsmith for customer installs. Use this profile only
 with a stable chart version whose `cloudsmith-delivery.json` confirms delivery.
 Generated Cloudsmith values inherit that chart’s released image tags and digests;
-they do not override images to `latest`. Use
+they do not override images to `latest`. GitHub output sets each image to
+`tag: latest` with `pullPolicy: Always`. Use
 `--artifact-source github` for internal GHCR installations or versions not yet delivered to Cloudsmith. Cloudsmith output
 sets the EQTY Lab image prefix, pull-secret registry, and entitlement username
 (`eqtylab/prod`) together. Fill the token placeholder through your existing

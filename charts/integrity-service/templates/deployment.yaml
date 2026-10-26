@@ -144,12 +144,12 @@ spec:
             # Storage Configuration
             # ========================================================================
             {{- $storageProvider := .Values.config.integrityAppBlobStoreType }}
-            
+
             {{- if $storageProvider }}
             - name: INTEGRITY_APP__blob_store__type
               value: {{ $storageProvider | quote }}
             {{- end }}
-            
+
             {{- if eq $storageProvider "local_fs" }}
 
             # Local Filesystem Configuration
@@ -189,7 +189,7 @@ spec:
             {{- end }}
 
             {{- if eq $storageProvider "azure_blob" }}
-            
+
             # Azure Blob Storage Configuration
             - name: INTEGRITY_APP__blob_store__account
               value: {{ .Values.config.integrityAppBlobStoreAccount | quote }}
@@ -207,7 +207,7 @@ spec:
             {{- end }}
 
             {{- if eq $storageProvider "gcs" }}
-            
+
             # GCS Configuration
             - name: INTEGRITY_APP__blob_store__bucket
               value: {{ .Values.config.integrityAppBlobStoreGcsBucket | quote }}

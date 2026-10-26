@@ -42,7 +42,7 @@ data:
   AUTH_PROVIDER: {{ .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "" | quote }}
 
   {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "auth0" }}
-  
+
   # Auth0 Configuration
   AUTH0_DOMAIN: {{ .Values.config.auth0Domain | quote }}
   AUTH0_CLIENT_ID: {{ .Values.config.auth0ClientId | quote }}
@@ -50,7 +50,7 @@ data:
   {{- end }}
 
   {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "keycloak" }}
-  
+
   # Keycloak Configuration
   KEYCLOAK_URL: {{ .Values.config.keycloakUrl | default "" | quote }}
   KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | default "" | quote }}
@@ -58,7 +58,7 @@ data:
   {{- end }}
 
   {{- if eq (.Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "") "entra" }}
-  
+
   # Microsoft Entra ID Configuration
   ENTRA_CLIENT_ID: {{ .Values.config.entraClientId | default "" | quote }}
   ENTRA_TENANT_ID: {{ .Values.config.entraTenantId | default "" | quote }}

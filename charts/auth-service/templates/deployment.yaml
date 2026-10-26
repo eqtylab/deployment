@@ -143,7 +143,7 @@ spec:
             {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
 
             {{- if eq $idpProvider "keycloak" }}
-            
+
             # Keycloak Configuration
             {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
             - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID
@@ -166,7 +166,7 @@ spec:
               {{- end }}
 
             {{- else if eq $idpProvider "entra" }}
-            
+
             # Microsoft Entra ID Configuration
             {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
             - name: IDP_CLIENT_ID
@@ -209,7 +209,7 @@ spec:
             {{- end }}
 
             {{- else }}
-            
+
             # Auth0 Configuration
             {{- $authSecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}
             - name: IDP_CLIENT_ID
@@ -279,7 +279,7 @@ spec:
             {{- $keyMgmtProvider := include "auth-service.keyManagementProvider" . }}
 
             {{- if eq $keyMgmtProvider "azure_key_vault" }}
-            
+
             # Azure Key Vault Configuration
             {{- $azureKeyVaultSecretName := .Values.secrets.keyManagement.azure_key_vault.name | default ((((.Values.global).secrets).keyManagement).azure_key_vault).secretName | default "" }}
             - name: AZURE_CLIENT_ID
@@ -303,7 +303,7 @@ spec:
             {{- end }}
 
             {{- if eq $keyMgmtProvider "aws_kms" }}
-            
+
             # AWS KMS Configuration
             {{- $awsKmsSecretName := .Values.secrets.keyManagement.aws_kms.name | default ((((.Values.global).secrets).keyManagement).aws_kms).secretName | default "" }}
             - name: AWS_ACCESS_KEY_ID

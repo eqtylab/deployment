@@ -128,17 +128,31 @@ run_bootstrap() {
   kubectl delete job "$job_name" -n "$NAMESPACE" --ignore-not-found
 }
 
+# Read a key from the values file with yq, falling back to the chart default
+values_get() {
+  local value=""
+  if command -v yq &>/dev/null; then
+    value=$(yq "$1 // \"\"" "$VALUES_FILE" 2>/dev/null)
+  fi
+  echo "${value:-$2}"
+}
+
 # Display summary with next steps
 show_summary() {
+  local frontend_app backend_app worker_app
+  frontend_app=$(values_get '.apps.frontend.displayName' "Guardian Platform Frontend")
+  backend_app=$(values_get '.apps.backend.displayName' "Guardian Platform Backend")
+  worker_app=$(values_get '.apps.worker.displayName' "Governance Worker")
+
   echo ""
   print_info "Entra ID Bootstrap Complete!"
   echo ""
   echo "The bootstrap job created the following app registrations:"
   echo ""
   echo "App Registrations:"
-  echo "- Frontend: Guardian Platform Frontend (SPA / public client)"
-  echo "- Backend:  Guardian Platform Backend (confidential with service account)"
-  echo "- Worker:   Governance Worker (confidential, service account only)"
+  echo "- Frontend: ${frontend_app} (SPA / public client)"
+  echo "- Backend:  ${backend_app} (confidential with service account)"
+  echo "- Worker:   ${worker_app} (confidential, service account only)"
   echo ""
   echo "Next Steps:"
   echo "  1. Check the bootstrap job logs above for app IDs and client secrets"

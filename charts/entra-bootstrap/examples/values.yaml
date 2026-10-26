@@ -1,4 +1,4 @@
-# Entra ID Bootstrap values example
+# Entra ID Bootstrap Example
 # This configures the bootstrap job to create app registrations
 # and configure OAuth for the Guardian Platform via Microsoft Graph API
 

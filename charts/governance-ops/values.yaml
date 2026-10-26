@@ -54,6 +54,12 @@ dashboards:
     # Requirements: kube-state-metrics, nginx-ingress-controller metrics
     enabled: true
 
+    # -- Dashboard UID
+    # @default -- `platform-overview`
+    # Grafana dashboard UID; set a distinct value per target when several
+    # targets share one Grafana. Up to 40 letters, digits, `-`, or `_`
+    uid: "platform-overview"
+
 # =============================================================================
 # PROMETHEUS ALERTS
 # =============================================================================

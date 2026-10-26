@@ -40,7 +40,7 @@ exports.onExecutePostLogin = async (event, api) => {
   const auth0OrgDisplayName = event.organization?.display_name;
 
   // Service-account users that reach post-login (e.g. interactive login rather
-  // than the M2M flow handled at line 13) still need their tokens enriched
+  // than the M2M flow skipped above) still need their tokens enriched
   const isServiceAccount = event.user.app_metadata?.is_service_account === true;
 
   if (isServiceAccount) {

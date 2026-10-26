@@ -4,6 +4,7 @@ from pathlib import Path
 
 from rich.table import Table
 
+from govctl.core.artifacts import uses_custom_registry
 from govctl.core.models import (
     AuthProvider,
     DatabaseMode,
@@ -60,7 +61,12 @@ def show_config_summary(config: PlatformConfig) -> None:
         table.add_row("Keycloak Realm", config.keycloak_realm)
 
     # Image registry
-    table.add_row("Artifact Source", config.artifact_source)
+    if uses_custom_registry(config):
+        table.add_row(
+            "Artifact Source", f"custom registry ({config.artifact_source} image tags)"
+        )
+    else:
+        table.add_row("Artifact Source", config.artifact_source)
     if config.image_repository_prefix:
         table.add_row("Image Prefix", config.image_repository_prefix)
     if config.image_registry_url:
@@ -111,18 +117,8 @@ def show_next_steps(
     step += 1
 
     if bootstrap_file:
-        if config.auth_provider == AuthProvider.AUTH0:
-            chart_name = "auth0-bootstrap"
-            chart_path = "./charts/auth0-bootstrap"
-        elif config.auth_provider == AuthProvider.ENTRA:
-            chart_name = "entra-bootstrap"
-            chart_path = "./charts/entra-bootstrap"
-        elif config.auth_provider == AuthProvider.KEYCLOAK:
-            chart_name = "keycloak-bootstrap"
-            chart_path = "./charts/keycloak-bootstrap"
-        else:
-            chart_name = "bootstrap"
-            chart_path = "./charts/bootstrap"
+        chart_name = f"{config.auth_provider.value}-bootstrap"
+        chart_path = f"./charts/{chart_name}"
 
         console.print(f"  {step}. Run the {config.auth_provider.value} bootstrap:")
         console.print()

@@ -280,7 +280,11 @@ actions:
     # -- Trigger
     # @default -- See values below
     trigger:
+      # -- Trigger ID
+      # @default -- `post-login`
       id: "post-login"
+      # -- Trigger Version
+      # @default -- `v3`
       version: "v3"
     # -- Runtime
     # @default -- `node22`
@@ -326,7 +330,11 @@ actions:
     # -- Trigger
     # @default -- See values below
     trigger:
+      # -- Trigger ID
+      # @default -- `credentials-exchange`
       id: "credentials-exchange"
+      # -- Trigger Version
+      # @default -- `v2`
       version: "v2"
     # -- Runtime
     # @default -- `node22`

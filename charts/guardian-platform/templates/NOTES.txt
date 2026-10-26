@@ -1,4 +1,4 @@
-{{- define "guardianplatform.notes" }}
+{{- define "guardian-platform.notes" }}
 
 {{- /* Database Configuration Validation */}}
 {{- $bundledPgEnabled := .Values.postgresql.enabled }}
@@ -170,7 +170,7 @@ Revision:         {{ .Release.Revision }}
     `global.secrets`. All secrets are created in the {{ .Release.Namespace }} namespace
     with the `platform-*` naming convention.
     {{- if .Values.global.secrets.create }}
-    
+
     ✓ Secrets automatically created by this chart:
       - platform-database (PostgreSQL credentials)
       - platform-auth0 (Auth0 credentials)
@@ -179,7 +179,7 @@ Revision:         {{ .Release.Revision }}
       - platform-auth-service (Auth Service application secrets)
       - platform-governance-worker (Governance worker credentials)
     {{- else }}
-    
+
     ⚠ Secret creation disabled - ensure all required secrets exist manually!
     {{- end }}
 
@@ -221,4 +221,4 @@ Enjoy using the Guardian Platform!
 {{- end }}
 
 {{- /* Call the defined template */}}
-{{- template "guardianplatform.notes" . }}
+{{- template "guardian-platform.notes" . }}

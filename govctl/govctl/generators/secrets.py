@@ -1,6 +1,7 @@
 """Secrets.yaml generator."""
 
 import base64
+import re
 import secrets
 from typing import Any
 
@@ -14,12 +15,12 @@ from govctl.core.models import (
     DatabaseMode,
     KeyManagementProvider,
 )
-from govctl.utils.yaml import dump_yaml_with_header, _LiteralStr, _QuotedStr
+from govctl.utils.yaml import LiteralStr, QuotedStr, dump_yaml_with_header
 
 
-def _generate_secret(length: int = 32) -> str:
-    """Generate a cryptographically secure random secret (base64-encoded)."""
-    return base64.b64encode(secrets.token_bytes(length)).decode()
+def _generate_secret(length: int = 44) -> str:
+    """Generate a cryptographically secure random secret of length base64 characters."""
+    return base64.b64encode(secrets.token_bytes(length)).decode()[:length]
 
 
 def _generate_db_secret(length: int = 32) -> str:
@@ -39,18 +40,16 @@ def _generate_rsa_private_key(bits: int = 2048) -> str:
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     ).decode()
-    return _LiteralStr(pem)
+    return LiteralStr(pem)
 
 
 def _required(comment: str) -> str:
     """Mark a value as requiring user input. Post-processed into a YAML comment."""
-    return _QuotedStr(f"__REQUIRED__{comment}")
+    return QuotedStr(f"__REQUIRED__{comment}")
 
 
 def _add_yaml_comments(yaml_str: str) -> str:
     """Replace __REQUIRED__ markers with empty values and inline comments."""
-    import re
-
     return re.sub(
         r"'__REQUIRED__(.+?)'",
         r"''  # REQUIRED: \1",

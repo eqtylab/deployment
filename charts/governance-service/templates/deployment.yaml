@@ -107,8 +107,6 @@ spec:
           # ========================================================================
           # Application Configuration
           # ========================================================================
-          - name: LOG_LEVEL
-            value: {{ .Values.config.logLevel | quote }}
           - name: ENVIRONMENT
             value: {{ .Values.config.environment | default ((.Values.global).environmentType | default "") | quote }}
 
@@ -150,7 +148,7 @@ spec:
           {{- end }}
 
           {{- if eq $storageProvider "gcs" }}
-          
+
           # GCS Configuration
           - name: GCS_BUCKET_NAME
             value: {{ .Values.config.gcsBucketName | quote }}
@@ -159,7 +157,7 @@ spec:
           {{- end }}
 
           {{- if eq $storageProvider "azure_blob" }}
-          
+
           # Azure Blob Storage Configuration
           {{- $azureSecretName := .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | default "" }}
           - name: AZURE_STORAGE_ACCOUNT_NAME
@@ -191,7 +189,7 @@ spec:
           {{- end }}
 
           {{- if eq $storageProvider "aws_s3" }}
-          
+
           # AWS S3 Configuration
           - name: AWS_REGION
             value: {{ .Values.config.awsS3Region | quote }}
@@ -226,7 +224,7 @@ spec:
           {{- $authProvider := .Values.config.authProvider | default (((.Values.global).secrets).auth).provider | default "auth0" }}
 
           {{- if eq $authProvider "auth0" }}
-          
+
           # Auth0 Configuration
           {{- $auth0SecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}
           {{- if .Values.config.auth0Domain }}
@@ -258,7 +256,7 @@ spec:
           {{- end }}
 
           {{- if eq $authProvider "keycloak" }}
-          
+
           # Keycloak Configuration
           {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
           - name: KEYCLOAK_URL
@@ -286,7 +284,7 @@ spec:
           {{- end }}
 
           {{- if eq $authProvider "entra" }}
-          
+
           # Microsoft Entra ID Configuration
           {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
           - name: ENTRA_TENANT_ID
@@ -353,8 +351,6 @@ spec:
             {{- end }}
           {{- end }}
 
-          {{- if .Values.migrations }}
-
           # ========================================================================
           # Migration Configuration
           # ========================================================================
@@ -362,7 +358,6 @@ spec:
             value: {{ .Values.migrations.runAtStartup | quote }}
           - name: MIGRATIONS_PATH
             value: {{ .Values.migrations.path | quote }}
-          {{- end }}
 
           {{- if .Values.localStorageCA.configMapName }}
           # The image sets SSL_CERT_FILE to its public CA bundle; Go loads that file
