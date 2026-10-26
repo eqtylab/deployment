@@ -10,21 +10,36 @@ def is_valid_domain(domain: str) -> bool:
     return (
         bool(
             re.compile(
-                r"^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)"
-                r"(\.[a-zA-Z0-9-]{1,63})*"
-                r"\.[a-zA-Z]{2,}$"
+                r"^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$"
             ).match(domain)
         )
         and len(domain) <= 253
     )
 
 
-# Azure Key Vault URL: https://{vault-name}.vault.azure.net/
+# Registry host: a DNS domain with an optional port (e.g. registry.example.com:5000)
+def is_valid_registry_host(host: str) -> bool:
+    """Check if a string is a valid registry host, with an optional port."""
+    name, separator, port = host.partition(":")
+    if separator and not (re.fullmatch(r"[0-9]{1,5}", port) and 0 < int(port) <= 65535):
+        return False
+    return is_valid_domain(name)
+
+
+# Environment name: a lowercase DNS label (e.g. development, staging, production)
+def is_valid_environment(environment: str) -> bool:
+    """Check if a string is a valid environment name."""
+    return bool(re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$").match(environment))
+
+
+# Azure Key Vault URL: https://{vault-name}.vault.azure.net/, or a sovereign cloud
+# suffix (vault.azure.cn, vault.usgovcloudapi.net, vault.microsoftazure.de)
 def is_valid_keyvault_url(url: str) -> bool:
     """Check if a string is a valid Azure Key Vault URL."""
     return bool(
         re.compile(
-            r"^https://[a-zA-Z][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]\.vault\.azure\.net/?$"
+            r"^https://[a-zA-Z][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]\.vault\."
+            r"(azure\.net|azure\.cn|usgovcloudapi\.net|microsoftazure\.de)/?$"
         ).match(url)
     )
 
@@ -49,10 +64,10 @@ def is_valid_https_url(url: str) -> bool:
     )
 
 
-# AWS region format (e.g. us-east-1, eu-west-2, ap-southeast-1)
+# AWS region format in any partition (e.g. us-east-1, us-gov-west-1, cn-north-1)
 def is_valid_aws_region(region: str) -> bool:
     """Check if a string is a valid AWS region format."""
-    return bool(re.compile(r"^[a-z]{2}-[a-z]+-\d$").match(region))
+    return bool(re.compile(r"^[a-z]{2}(-[a-z]+)+-\d+$").match(region))
 
 
 # Keycloak realm: alphanumeric, hyphens, underscores
@@ -67,10 +82,13 @@ def is_valid_gcp_project_id(project_id: str) -> bool:
     return bool(re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$").match(project_id))
 
 
-# GCP location/region: e.g. us-east1, europe-west4, global
+# GCP KMS location: a region (us-east1), a multi-region (us, europe, asia),
+# a dual-region (nam4, eur4), nam-eur-asia1, or global
 def is_valid_gcp_location(location: str) -> bool:
     """Check if a string is a valid GCP location."""
-    return bool(re.compile(r"^[a-z]+-[a-z]+\d+$|^global$").match(location))
+    return bool(
+        re.compile(r"^([a-z]+-[a-z]+\d+|[a-z]+\d*|nam-eur-asia1)$").match(location)
+    )
 
 
 # GCP KMS key ring ID: alphanumeric, hyphens, underscores

@@ -16,15 +16,23 @@ from govctl.utils.validate import (
     is_valid_aws_region,
     is_valid_domain,
     is_valid_email,
+    is_valid_environment,
     is_valid_gcp_key_ring_id,
     is_valid_gcp_location,
     is_valid_gcp_project_id,
     is_valid_https_url,
     is_valid_keyvault_url,
     is_valid_realm,
+    is_valid_registry_host,
     is_valid_uuid,
 )
 from govctl.utils.output import console
+
+# Environment name rule, shown when validation fails
+ENVIRONMENT_FORMAT = (
+    "use up to 63 lowercase letters, digits, and hyphens, starting and ending "
+    "with a letter or digit (e.g. staging)"
+)
 
 
 def collect_interactive_config(
@@ -54,10 +62,18 @@ def collect_interactive_config(
     if environment:
         env = environment.lower()
     else:
-        env = Prompt.ask(
-            "[bold]Environment[/bold]",
-            default="development",
-        )
+        while True:
+            env = (
+                Prompt.ask(
+                    "[bold]Environment[/bold]",
+                    default="development",
+                )
+                .strip()
+                .lower()
+            )
+            if is_valid_environment(env):
+                break
+            console.print(f"[red]Invalid environment name: {ENVIRONMENT_FORMAT}[/red]")
 
     # --- Database mode ---
     # Default to external for production, bundled otherwise.
@@ -96,7 +112,7 @@ def collect_interactive_config(
             if is_valid_aws_region(aws_region):
                 break
             console.print(
-                "[red]Invalid AWS region format. Expected format: us-east-1, eu-west-2, etc.[/red]"
+                "[red]Invalid AWS region format. Expected format: us-east-1, us-gov-west-1, etc.[/red]"
             )
 
     # Create base config
@@ -123,7 +139,8 @@ def collect_interactive_config(
                 "  [dim]For IRSA, a service account with an eks.amazonaws.com/role-arn "
                 "annotation will be scaffolded (replace YOUR_IAM_ROLE_ARN); drop the "
                 "annotation if you use an instance profile. No platform-aws-s3 secret "
-                "will be generated.[/dim]"
+                "will be generated. The IAM role covers S3 only: AWS KMS still needs "
+                "static access keys in the platform-aws-kms secret.[/dim]"
             )
 
     # --- Key Management (required for DID keys) ---
@@ -145,7 +162,7 @@ def collect_interactive_config(
             if is_valid_aws_region(aws_kms_region):
                 break
             console.print(
-                "[red]Invalid AWS region format. Expected format: us-east-1, eu-west-2, etc.[/red]"
+                "[red]Invalid AWS region format. Expected format: us-east-1, us-gov-west-1, etc.[/red]"
             )
         config.aws_kms_region = aws_kms_region
         aws_kms_endpoint = Prompt.ask(
@@ -160,14 +177,12 @@ def collect_interactive_config(
         config.aws_kms_alias_prefix = aws_kms_alias_prefix
     elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
         while True:
-            keyvault_url = Prompt.ask(
-                "  Azure Key Vault URL",
-                default="https://your-keyvault.vault.azure.net/",
-            )
+            keyvault_url = Prompt.ask("  Azure Key Vault URL").strip()
             if is_valid_keyvault_url(keyvault_url):
                 break
             console.print(
-                "[red]Invalid Key Vault URL. Expected format: https://{vault-name}.vault.azure.net/[/red]"
+                "[red]Invalid Key Vault URL. Expected format: https://{vault-name}.vault.azure.net/ "
+                "(or a sovereign cloud suffix such as vault.azure.cn)[/red]"
             )
         config.azure_key_vault_url = keyvault_url
         while True:
@@ -183,10 +198,7 @@ def collect_interactive_config(
         config.azure_tenant_id = kv_tenant_id
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
         while True:
-            gcp_kms_project_id = Prompt.ask(
-                "  GCP Project ID",
-                default="your-gcp-project-id",
-            )
+            gcp_kms_project_id = Prompt.ask("  GCP Project ID").strip()
             if is_valid_gcp_project_id(gcp_kms_project_id):
                 break
             console.print(
@@ -201,7 +213,7 @@ def collect_interactive_config(
             if is_valid_gcp_location(gcp_kms_location):
                 break
             console.print(
-                "[red]Invalid GCP location. Expected format: us-east1, europe-west4, etc.[/red]"
+                "[red]Invalid GCP location. Expected format: us-east1, europe-west4, us, nam4, global, etc.[/red]"
             )
         config.gcp_kms_location_id = gcp_kms_location
         while True:
@@ -232,10 +244,7 @@ def collect_interactive_config(
 
     if auth_provider == AuthProvider.AUTH0:
         while True:
-            auth0_domain = Prompt.ask(
-                "  Auth0 Domain",
-                default="your-tenant.us.auth0.com",
-            )
+            auth0_domain = Prompt.ask("  Auth0 Domain").strip()
             if is_valid_domain(auth0_domain):
                 break
             console.print(
@@ -267,9 +276,13 @@ def collect_interactive_config(
         config.entra_tenant_id = entra_tenant_id
     elif auth_provider == AuthProvider.KEYCLOAK:
         while True:
-            keycloak_url = Prompt.ask(
-                "  Keycloak URL",
-                default=config.keycloak_base_url,
+            keycloak_url = (
+                Prompt.ask(
+                    "  Keycloak URL",
+                    default=config.keycloak_base_url,
+                )
+                .strip()
+                .rstrip("/")
             )
             if is_valid_https_url(keycloak_url):
                 break
@@ -302,10 +315,10 @@ def collect_interactive_config(
             .strip()
             .lower()
         )
-        if is_valid_domain(registry_url):
+        if is_valid_registry_host(registry_url):
             break
         console.print(
-            "[red]Invalid domain format. Expected format: ghcr.io, registry.example.com, etc.[/red]"
+            "[red]Invalid registry host. Expected format: ghcr.io, registry.example.com:5000, etc.[/red]"
         )
     config.image_registry_url = registry_url
     if uses_custom_registry(config):

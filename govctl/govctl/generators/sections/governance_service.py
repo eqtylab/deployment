@@ -12,7 +12,7 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
     """Generate the governance-service section of values.yaml."""
     section: dict[str, Any] = {
         "replicaCount": 2,
-        "image": runtime_image_values(config),
+        **runtime_image_values(config),
         "ingress": path_prefix_ingress_values(
             config,
             "governanceService",
@@ -23,7 +23,6 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
     # Application configuration
     section["config"] = {
         "environment": config.environment,
-        "logLevel": "debug",
         "storageProvider": config.storage_provider,
     }
 
@@ -52,9 +51,9 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
     if config.auth_provider == AuthProvider.AUTH0:
         section["config"]["auth0Domain"] = config.auth0_tenant_domain
     elif config.auth_provider == AuthProvider.ENTRA:
-        section["config"]["entraTenantId"] = (
-            config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
-        )
+        # Without a tenant ID the chart reads it from the platform-entra Secret
+        if config.entra_tenant_id:
+            section["config"]["entraTenantId"] = config.entra_tenant_id
     elif config.auth_provider == AuthProvider.KEYCLOAK:
         section["config"]["keycloakUrl"] = config.keycloak_base_url
         section["config"]["keycloakRealm"] = config.keycloak_realm

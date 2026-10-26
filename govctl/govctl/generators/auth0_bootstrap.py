@@ -3,7 +3,7 @@
 from typing import Any
 
 from govctl.core.models import PlatformConfig
-from govctl.generators.shared import api_scopes
+from govctl.generators.shared import api_scopes, local_origins
 from govctl.utils.yaml import dump_yaml_with_header
 
 
@@ -46,15 +46,15 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
                 "name": "Guardian Platform Frontend",
                 "callbacks": [
                     f"https://{domain}",
-                    "http://localhost:5173",
+                    *local_origins(config),
                 ],
                 "logoutUrls": [
                     f"https://{domain}",
-                    "http://localhost:5173",
+                    *local_origins(config),
                 ],
                 "webOrigins": [
                     f"https://{domain}",
-                    "http://localhost:5173",
+                    *local_origins(config),
                 ],
             },
             "backend": {

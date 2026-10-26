@@ -69,6 +69,11 @@ def path_prefix_ingress_values(
     )
 
 
+def local_origins(config: PlatformConfig, suffix: str = "") -> list[str]:
+    """Generate the local frontend origin for development environments only."""
+    return [f"http://localhost:5173{suffix}"] if config.is_development else []
+
+
 def api_scopes() -> list[dict[str, str]]:
     """Generate the Guardian API scope definitions for a bootstrap file."""
     return [

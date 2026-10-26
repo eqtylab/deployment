@@ -19,7 +19,7 @@ def generate_eqty_pdfgen_section(config: PlatformConfig) -> dict[str, Any]:
     section: dict[str, Any] = {
         "enabled": True,
         "replicaCount": 2,
-        "image": runtime_image_values(config),
+        **runtime_image_values(config),
     }
 
     return section

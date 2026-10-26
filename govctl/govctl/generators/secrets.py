@@ -15,7 +15,12 @@ from govctl.core.models import (
     DatabaseMode,
     KeyManagementProvider,
 )
-from govctl.utils.yaml import LiteralStr, QuotedStr, dump_yaml_with_header
+from govctl.utils.yaml import (
+    LiteralStr,
+    dump_yaml_with_header,
+    optional,
+    required,
+)
 
 
 def _generate_secret(length: int = 44) -> str:
@@ -43,20 +48,6 @@ def _generate_rsa_private_key(bits: int = 2048) -> str:
     return LiteralStr(pem)
 
 
-def _required(comment: str) -> str:
-    """Mark a value as requiring user input. Post-processed into a YAML comment."""
-    return QuotedStr(f"__REQUIRED__{comment}")
-
-
-def _add_yaml_comments(yaml_str: str) -> str:
-    """Replace __REQUIRED__ markers with empty values and inline comments."""
-    return re.sub(
-        r"'__REQUIRED__(.+?)'",
-        r"''  # REQUIRED: \1",
-        yaml_str,
-    )
-
-
 def generate_secrets(config: PlatformConfig) -> str:
     """Generate secrets.yaml content based on configuration."""
     secrets: dict[str, Any] = {
@@ -66,7 +57,16 @@ def generate_secrets(config: PlatformConfig) -> str:
     }
 
     yaml_output = dump_yaml_with_header(secrets, "secrets", config)
-    return _add_yaml_comments(yaml_output)
+    if config.database_mode == DatabaseMode.BUNDLED:
+        yaml_output = re.sub(
+            r"^( +gatewayDsn: .*)$",
+            rf"\1  # Host assumes Helm release name {config.release_name}; "
+            "change it for another release name",
+            yaml_output,
+            count=1,
+            flags=re.MULTILINE,
+        )
+    return yaml_output
 
 
 def _gateway_dsn(config: PlatformConfig, password: str) -> str:
@@ -122,8 +122,13 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "secretName": "platform-image-pull-secret",
             "registry": config.image_registry_url or "ghcr.io",
             "values": {
-                "username": config.image_registry_username or "",  # Registry username
-                "password": _required(
+                "username": config.image_registry_username
+                or required(
+                    "GitHub username"
+                    if config.image_registry_url == "ghcr.io"
+                    else "Registry username"
+                ),
+                "password": required(
                     "Cloudsmith prod entitlement token"
                     if config.image_registry_url == "docker.cloudsmith.io"
                     else (
@@ -142,21 +147,21 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
         secrets["auth"]["auth0"] = {
             "secretName": "platform-auth0",
             "values": {
-                "clientId": _required("Auth0 M2M Client ID"),
-                "clientSecret": _required("Auth0 M2M Client Secret"),
-                "mgmtClientId": _required("Auth0 Management API Client ID"),
-                "mgmtClientSecret": _required("Auth0 Management API Client Secret"),
+                "clientId": required("Auth0 M2M Client ID"),
+                "clientSecret": required("Auth0 M2M Client Secret"),
+                "mgmtClientId": required("Auth0 Management API Client ID"),
+                "mgmtClientSecret": required("Auth0 Management API Client Secret"),
             },
         }
     elif config.auth_provider == AuthProvider.ENTRA:
         secrets["auth"]["entra"] = {
             "secretName": "platform-entra",
             "values": {
-                "clientId": _required("Entra App Registration Client ID"),
-                "clientSecret": _required("Entra App Registration Client Secret"),
-                "tenantId": config.entra_tenant_id or _required("Entra Tenant ID"),
-                "graphClientId": _required("Microsoft Graph API Client ID"),
-                "graphClientSecret": _required("Microsoft Graph API Client Secret"),
+                "clientId": required("Entra App Registration Client ID"),
+                "clientSecret": required("Entra App Registration Client Secret"),
+                "tenantId": config.entra_tenant_id or required("Entra Tenant ID"),
+                "graphClientId": required("Microsoft Graph API Client ID"),
+                "graphClientSecret": required("Microsoft Graph API Client Secret"),
             },
         }
     elif config.auth_provider == AuthProvider.KEYCLOAK:
@@ -164,7 +169,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "secretName": "platform-keycloak",
             "values": {
                 "serviceAccountClientId": "guardian-platform-backend",
-                "serviceAccountClientSecret": _required("Keycloak client secret"),
+                "serviceAccountClientSecret": required("Keycloak client secret"),
                 "tokenExchangePrivateKey": _generate_rsa_private_key(),
             },
         }
@@ -174,8 +179,8 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
         "secretName": "platform-governance-worker",
         "values": {
             "encryptionKey": _generate_secret(),
-            "clientId": _required("Worker service account client ID"),
-            "clientSecret": _required("Worker service account client secret"),
+            "clientId": required("Worker service account client ID"),
+            "clientSecret": required("Worker service account client secret"),
         },
     }
 
@@ -188,23 +193,23 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             secrets["storage"]["aws_s3"] = {
                 "secretName": "platform-aws-s3",
                 "values": {
-                    "accessKeyId": _required("AWS Access Key ID"),
-                    "secretAccessKey": _required("AWS Secret Access Key"),
+                    "accessKeyId": required("AWS Access Key ID"),
+                    "secretAccessKey": required("AWS Secret Access Key"),
                 },
             }
     elif config.cloud_provider == CloudProvider.AZURE:
         secrets["storage"]["azure_blob"] = {
             "secretName": "platform-azure-blob",
             "values": {
-                "accountKey": _required("Azure Storage Account Key"),
-                "connectionString": _required("Azure Storage Connection String"),
+                "accountKey": required("Azure Storage Account Key"),
+                "connectionString": required("Azure Storage Connection String"),
             },
         }
     elif config.cloud_provider == CloudProvider.GCP:
         secrets["storage"]["gcs"] = {
             "secretName": "platform-gcs",
             "values": {
-                "serviceAccountJson": _required(
+                "serviceAccountJson": required(
                     "Base64-encoded GCP service account JSON"
                 ),
             },
@@ -219,8 +224,8 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
         secrets["keyManagement"]["aws_kms"] = {
             "secretName": "platform-aws-kms",
             "values": {
-                "accessKeyId": _required("AWS Access Key ID for KMS"),
-                "secretAccessKey": _required("AWS Secret Access Key for KMS"),
+                "accessKeyId": required("AWS Access Key ID for KMS"),
+                "secretAccessKey": required("AWS Secret Access Key for KMS"),
                 "sessionToken": "",
             },
         }
@@ -228,19 +233,19 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
         secrets["keyManagement"]["azure_key_vault"] = {
             "secretName": "platform-azure-key-vault",
             "values": {
-                "clientId": _required("Azure AD App Client ID"),
-                "clientSecret": _required("Azure AD App Client Secret"),
-                "tenantId": config.azure_tenant_id or _required("Azure Tenant ID"),
+                "clientId": required("Azure AD App Client ID"),
+                "clientSecret": required("Azure AD App Client Secret"),
+                "tenantId": config.azure_tenant_id or required("Azure Tenant ID"),
                 "vaultUrl": config.azure_key_vault_url
-                or _required("Azure Key Vault URL"),
+                or required("Azure Key Vault URL"),
             },
         }
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
         secrets["keyManagement"]["gcp_kms"] = {
             "secretName": "platform-gcp-kms",
             "values": {
-                "serviceAccountJson": _required(
-                    "Base64-encoded GCP service account JSON (optional if using Workload Identity)"
+                "serviceAccountJson": optional(
+                    "Base64-encoded GCP service account JSON; leave empty for Workload Identity"
                 ),
             },
         }

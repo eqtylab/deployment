@@ -7,6 +7,7 @@ from rich.table import Table
 from govctl.core.artifacts import uses_custom_registry
 from govctl.core.models import (
     AuthProvider,
+    CloudProvider,
     DatabaseMode,
     KeyManagementProvider,
     PlatformConfig,
@@ -25,6 +26,15 @@ def show_config_summary(config: PlatformConfig) -> None:
     table.add_row("Cloud Provider", config.cloud_provider.value.upper())
     if config.cloud_region:
         table.add_row("Cloud Region", config.cloud_region)
+    if config.cloud_provider == CloudProvider.AWS:
+        table.add_row(
+            "AWS S3 Access",
+            (
+                "IAM role (IRSA / instance profile)"
+                if config.aws_s3_use_iam_role
+                else "static access keys"
+            ),
+        )
     table.add_row("Domain", config.domain)
     table.add_row("Environment", config.environment)
     table.add_row("Auth Provider", config.auth_provider.value)
@@ -33,6 +43,7 @@ def show_config_summary(config: PlatformConfig) -> None:
 
     table.add_row("Key Management", config.key_management_provider.value)
     if config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        table.add_row("AWS KMS Access", "static access keys")
         if config.aws_kms_region:
             table.add_row("AWS KMS Region", config.aws_kms_region)
         if config.aws_kms_endpoint:
@@ -99,7 +110,10 @@ def show_next_steps(
     review_files = f"[cyan]{values_file}[/cyan]"
     if bootstrap_file:
         review_files += f" and [cyan]{bootstrap_file}[/cyan]"
-    console.print(f"  {step}. Review {review_files} for correctness")
+    console.print(
+        f"  {step}. Fill in values marked REQUIRED, replace YOUR_* placeholders, "
+        f"and review {review_files} for correctness"
+    )
     console.print()
     step += 1
 
@@ -121,11 +135,16 @@ def show_next_steps(
         chart_path = f"./charts/{chart_name}"
 
         console.print(f"  {step}. Run the {config.auth_provider.value} bootstrap:")
+        if config.artifact_source == "cloudsmith":
+            console.print(
+                f"     {chart_name} is not published to Cloudsmith; run it from a "
+                "checkout of https://github.com/eqtylab/deployment"
+            )
         console.print()
         bootstrap_cmd = (
             f"     helm upgrade --install {chart_name} {chart_path} \\\n"
             f"       -f {bootstrap_file} \\\n"
-            f"       -n {config.namespace} --wait"
+            f"       -n {config.namespace} --create-namespace --wait"
         )
         console.print(f"[dim]{bootstrap_cmd}[/dim]")
         console.print()
@@ -139,7 +158,7 @@ def show_next_steps(
             f"     - Set [cyan]global.postgresql.host[/cyan] in {values_file}"
             f'\n     - Create the [cyan]governance[/cyan] and [cyan]"IntegrityServiceDB"[/cyan] databases on the managed instance'
             f"\n     - Keep [cyan]global.secrets.create[/cyan] enabled in {secrets_file} to have Helm create the [cyan]platform-database[/cyan] Secret for you, or disable it and pre-create that Secret manually"
-            f"\n     - (For sslMode verify-ca/verify-full) create a Secret or ConfigMap named [cyan]postgres-ca[/cyan] holding the CA bundle at key [cyan]ca.crt[/cyan]"
+            f"\n     - (For sslMode verify-ca/verify-full) create a Secret named [cyan]postgres-ca[/cyan] holding the CA bundle at key [cyan]ca.crt[/cyan], or use a ConfigMap and set [cyan]global.postgresql.sslRootCert.configMapName[/cyan] in place of [cyan]secretName[/cyan]"
             f"\n     See: charts/guardian-platform/README.md (Cloud-Managed PostgreSQL Configuration)"
         )
         console.print()

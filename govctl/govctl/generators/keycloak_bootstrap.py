@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from govctl.core.models import PlatformConfig
-from govctl.generators.shared import api_scopes
+from govctl.core.models import KEYCLOAK_IN_CLUSTER_URL, PlatformConfig
+from govctl.generators.shared import api_scopes, local_origins
 from govctl.utils.yaml import dump_yaml_with_header
 
 
@@ -26,7 +26,11 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
             },
         },
         "keycloak": {
-            "url": "http://keycloak:8080/keycloak",
+            "url": (
+                config.keycloak_base_url
+                if config.keycloak_url
+                else KEYCLOAK_IN_CLUSTER_URL
+            ),
             "adminUsername": "admin",
             "adminPasswordSecret": {
                 "name": "keycloak-admin",
@@ -57,11 +61,11 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                 "publicClient": True,
                 "redirectUris": [
                     f"https://{domain}/*",
-                    "http://localhost:5173/*",
+                    *local_origins(config, "/*"),
                 ],
                 "webOrigins": [
                     f"https://{domain}",
-                    "http://localhost:5173",
+                    *local_origins(config),
                 ],
                 "defaultScopes": ["openid", "profile", "email", "roles", "sub"],
                 "optionalScopes": ["offline_access"],

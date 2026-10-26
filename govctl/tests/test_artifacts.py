@@ -69,8 +69,11 @@ class ArtifactProfileTests(unittest.TestCase):
                             self.assertIn(
                                 "GitHub PAT with read:packages scope", secrets
                             )
+                            self.assertIn(
+                                "username: ''  # REQUIRED: GitHub username", secrets
+                            )
 
-    def test_cloudsmith_inherits_all_seven_released_image_versions(self):
+    def test_cloudsmith_inherits_released_images_and_global_pull_policy(self):
         def images(value):
             if isinstance(value, dict):
                 if "image" in value:
@@ -79,17 +82,25 @@ class ArtifactProfileTests(unittest.TestCase):
                     yield from images(child)
 
         config = self.config()
-        for source in ("cloudsmith", "github"):
-            configure_artifacts(config, source)
-            overrides = list(images(yaml.safe_load(generate_values(config))))
-            self.assertEqual(len(overrides), 7)
-            for image in overrides:
-                if source == "cloudsmith":
-                    self.assertNotIn("tag", image)
-                    self.assertNotIn("digest", image)
-                    self.assertNotIn("repository", image)
-                else:
-                    self.assertEqual(image["tag"], "latest")
+        configure_artifacts(config, "cloudsmith")
+        values = yaml.safe_load(generate_values(config))
+        self.assertEqual(list(images(values)), [])
+        self.assertEqual(values["gateway-stack"], {"enabled": False})
+
+    def test_github_overrides_all_seven_images_to_latest(self):
+        def images(value):
+            if isinstance(value, dict):
+                if "image" in value:
+                    yield value["image"]
+                for child in value.values():
+                    yield from images(child)
+
+        config = self.config()
+        configure_artifacts(config, "github")
+        overrides = list(images(yaml.safe_load(generate_values(config))))
+        self.assertEqual(len(overrides), 7)
+        for image in overrides:
+            self.assertEqual(image, {"tag": "latest", "pullPolicy": "Always"})
 
     def test_internal_profile_and_direct_callers_keep_ghcr(self):
         config = self.config()

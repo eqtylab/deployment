@@ -22,7 +22,8 @@ from govctl.generators.entra_bootstrap import generate_entra_bootstrap
 from govctl.generators.auth0_bootstrap import generate_auth0_bootstrap
 
 from govctl.utils.output import console
-from govctl.cli.prompts import collect_interactive_config
+from govctl.utils.validate import is_valid_domain, is_valid_environment
+from govctl.cli.prompts import ENVIRONMENT_FORMAT, collect_interactive_config
 from govctl.cli.display import show_config_summary, show_next_steps
 
 BOOTSTRAP_GENERATORS = {
@@ -40,6 +41,32 @@ def write_private(path: Path, content: str) -> None:
         f.write(content)
 
 
+def validate_domain_option(
+    ctx: click.Context, param: click.Parameter, value: str | None
+) -> str | None:
+    """Validate the --domain flag as a DNS name."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not is_valid_domain(value):
+        raise click.BadParameter(
+            f"{value!r} is not a valid domain (e.g. guardian.example.com)"
+        )
+    return value
+
+
+def validate_environment_option(
+    ctx: click.Context, param: click.Parameter, value: str | None
+) -> str | None:
+    """Lowercase the --environment flag and validate it as a DNS label."""
+    if value is None:
+        return None
+    value = value.strip().lower()
+    if not is_valid_environment(value):
+        raise click.BadParameter(f"{value!r} is not valid: {ENVIRONMENT_FORMAT}")
+    return value
+
+
 @click.command("init")
 @click.option(
     "--cloud",
@@ -50,12 +77,14 @@ def write_private(path: Path, content: str) -> None:
 @click.option(
     "--domain",
     "-d",
+    callback=validate_domain_option,
     help="Domain name (e.g., guardian.example.com)",
 )
 @click.option(
     "--environment",
     "-e",
-    help="Environment name (e.g., development, staging, production)",
+    callback=validate_environment_option,
+    help="Environment name, lowercased; letters, digits, and hyphens (e.g., development, staging, production)",
 )
 @click.option(
     "--auth",
@@ -144,13 +173,12 @@ def init_cmd(
             raise click.UsageError(
                 "All options (--cloud, --domain, --environment, --auth) are required in non-interactive mode"
             )
-        env_lower = environment.lower()
         db_mode = (
             DatabaseMode(database.lower())
             if database
             else (
                 DatabaseMode.EXTERNAL
-                if env_lower == "production"
+                if environment == "production"
                 else DatabaseMode.BUNDLED
             )
         )
@@ -158,7 +186,7 @@ def init_cmd(
         config = PlatformConfig(
             cloud_provider=cloud_provider,
             domain=domain,
-            environment=env_lower,
+            environment=environment,
             auth_provider=AuthProvider(auth.lower()),
             database_mode=db_mode,
             key_management_provider=CLOUD_TO_KEY_MANAGEMENT[cloud_provider],

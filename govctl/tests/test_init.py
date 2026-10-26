@@ -12,7 +12,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from govctl.cli.commands.init import init_cmd
-from govctl.cli.display import show_config_summary
+from govctl.cli.display import show_config_summary, show_next_steps
 from govctl.cli.prompts import collect_interactive_config
 from govctl.core.artifacts import configure_artifacts
 from govctl.core.models import AuthProvider, CloudProvider, PlatformConfig
@@ -21,7 +21,15 @@ from govctl.utils.output import console
 KEY_MANAGEMENT = {"aws": "aws_kms", "azure": "azure_key_vault", "gcp": "gcp_kms"}
 
 
-def init(out, *options, cloud="gcp", auth="keycloak", stdin=None):
+def init(
+    out,
+    *options,
+    cloud="gcp",
+    auth="keycloak",
+    environment="staging",
+    domain="guardian.example.com",
+    stdin=None,
+):
     return CliRunner().invoke(
         init_cmd,
         [
@@ -29,9 +37,9 @@ def init(out, *options, cloud="gcp", auth="keycloak", stdin=None):
             "--cloud",
             cloud,
             "--domain",
-            "guardian.example.com",
+            domain,
             "--environment",
-            "staging",
+            environment,
             "--auth",
             auth,
             "--output",
@@ -39,6 +47,38 @@ def init(out, *options, cloud="gcp", auth="keycloak", stdin=None):
         ],
         input=stdin,
     )
+
+
+def fake_prompts(answers):
+    """Answer prompts whose text contains a key, else accept the default.
+
+    A list answers successive prompts. A prompt with neither an answer nor a
+    default fails the test.
+    """
+    asked = []
+
+    def ask(prompt, **kwargs):
+        asked.append((prompt, kwargs))
+        for label, answer in answers.items():
+            if label in prompt:
+                return answer.pop(0) if isinstance(answer, list) else answer
+        if "default" not in kwargs:
+            raise AssertionError(f"no answer or default for {prompt!r}")
+        return kwargs["default"]
+
+    return ask, asked
+
+
+def interactive(answers, cloud="gcp", environment="staging", auth="keycloak"):
+    """Run the interactive prompts with fake answers."""
+    ask, asked = fake_prompts(answers)
+    with mock.patch(
+        "govctl.cli.prompts.Prompt.ask", side_effect=ask
+    ), mock.patch.object(console, "quiet", True):
+        config = collect_interactive_config(
+            cloud, None, environment, auth, "bundled", "cloudsmith"
+        )
+    return config, asked
 
 
 class InitTests(unittest.TestCase):
@@ -71,6 +111,29 @@ class InitTests(unittest.TestCase):
         self.assertEqual(
             bootstrap["auth0"]["api"]["identifier"], "https://guardian.example.com"
         )
+
+    def test_environment_flag_is_lowercased(self):
+        with tempfile.TemporaryDirectory() as out:
+            result = init(out, "-I", environment="Production")
+            self.assertEqual(result.exit_code, 0, result.output)
+            values = yaml.safe_load((Path(out) / "values-production.yaml").read_text())
+        self.assertEqual(values["global"]["environmentType"], "production")
+        self.assertFalse(values["postgresql"]["enabled"])
+
+    def test_invalid_environment_flag_is_rejected_in_both_modes(self):
+        for mode in ("-I", "-i"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as out:
+                result = init(out, mode, environment="My Env/x")
+                self.assertEqual(result.exit_code, 2, result.output)
+                self.assertIn("--environment", result.output)
+                self.assertEqual(list(Path(out).iterdir()), [])
+
+    def test_invalid_domain_flag_is_rejected_in_both_modes(self):
+        for mode in ("-I", "-i"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as out:
+                result = init(out, mode, domain="not a domain")
+                self.assertEqual(result.exit_code, 2, result.output)
+                self.assertIn("--domain", result.output)
 
     def test_secrets_file_is_owner_only(self):
         with tempfile.TemporaryDirectory() as out:
@@ -117,25 +180,130 @@ class InitTests(unittest.TestCase):
 
 class InteractiveTests(unittest.TestCase):
     def test_domain_has_no_default_and_is_required(self):
-        domain_prompts = []
-        answers = iter(["", "not a domain", "guardian.example.com"])
-
-        def ask(prompt, **kwargs):
-            if "Domain" in prompt:
-                domain_prompts.append(kwargs)
-                return next(answers)
-            return kwargs.get("default", "")
-
-        with mock.patch(
-            "govctl.cli.prompts.Prompt.ask", side_effect=ask
-        ), mock.patch.object(console, "quiet", True):
-            config = collect_interactive_config(
-                "gcp", None, "staging", "keycloak", "bundled", "cloudsmith"
-            )
+        config, asked = interactive(
+            {
+                "[bold]Domain": ["", "not a domain", "guardian.example.com"],
+                "GCP Project ID": "guardian-prod",
+            }
+        )
+        domain_prompts = [
+            kwargs for prompt, kwargs in asked if "[bold]Domain" in prompt
+        ]
         self.assertEqual(config.domain, "guardian.example.com")
         self.assertEqual(len(domain_prompts), 3)
         for kwargs in domain_prompts:
             self.assertNotIn("default", kwargs)
+
+    def test_placeholder_inputs_have_no_default(self):
+        for cloud, auth, label in (
+            ("azure", "keycloak", "Azure Key Vault URL"),
+            ("gcp", "keycloak", "GCP Project ID"),
+            ("gcp", "auth0", "Auth0 Domain"),
+        ):
+            with self.subTest(label=label):
+                answers = {
+                    "[bold]Domain": "guardian.example.com",
+                    "Azure Key Vault URL": ["", "https://guardian.vault.azure.net/"],
+                    "GCP Project ID": ["", "guardian-prod"],
+                    "Auth0 Domain": ["", "guardian.us.auth0.com"],
+                }
+                _, asked = interactive(answers, cloud=cloud, auth=auth)
+                prompts = [kwargs for prompt, kwargs in asked if label in prompt]
+                self.assertEqual(len(prompts), 2)
+                for kwargs in prompts:
+                    self.assertNotIn("default", kwargs)
+
+    def test_sovereign_key_vault_url_is_accepted(self):
+        config, _ = interactive(
+            {
+                "[bold]Domain": "guardian.example.com",
+                "Azure Key Vault URL": "https://guardian.vault.usgovcloudapi.net/",
+            },
+            cloud="azure",
+        )
+        self.assertEqual(
+            config.azure_key_vault_url, "https://guardian.vault.usgovcloudapi.net/"
+        )
+
+    def test_environment_prompt_is_validated_and_lowercased(self):
+        ask, asked = fake_prompts(
+            {
+                "[bold]Domain": "guardian.example.com",
+                "[bold]Environment": ["My Env/x", "Production"],
+                "GCP Project ID": "guardian-prod",
+            }
+        )
+        with mock.patch(
+            "govctl.cli.prompts.Prompt.ask", side_effect=ask
+        ), mock.patch.object(console, "quiet", True):
+            config = collect_interactive_config(
+                "gcp", None, None, "keycloak", None, "cloudsmith"
+            )
+        self.assertEqual(config.environment, "production")
+        database = [kwargs for prompt, kwargs in asked if "Database Mode" in prompt]
+        self.assertEqual(database[0]["default"], "external")
+
+    def test_keycloak_url_trailing_slash_is_stripped(self):
+        config, _ = interactive(
+            {
+                "[bold]Domain": "guardian.example.com",
+                "GCP Project ID": "guardian-prod",
+                "Keycloak URL": "https://auth.example.com/keycloak/",
+            }
+        )
+        self.assertEqual(config.keycloak_url, "https://auth.example.com/keycloak")
+
+    def test_registry_host_may_include_a_port(self):
+        config, _ = interactive(
+            {
+                "[bold]Domain": "guardian.example.com",
+                "GCP Project ID": "guardian-prod",
+                "Registry URL": "registry.example.com:5000",
+                "image repository prefix": "registry.example.com:5000/eqtylab",
+            }
+        )
+        self.assertEqual(config.image_registry_url, "registry.example.com:5000")
+        self.assertEqual(
+            config.image_repository_prefix, "registry.example.com:5000/eqtylab"
+        )
+
+    def test_summary_shows_s3_access_mode(self):
+        for use_iam_role, label in (
+            (True, "IAM role (IRSA / instance profile)"),
+            (False, "static access keys"),
+        ):
+            with self.subTest(use_iam_role=use_iam_role):
+                config = PlatformConfig(
+                    cloud_provider=CloudProvider.AWS,
+                    domain="guardian.example.com",
+                    environment="staging",
+                    auth_provider=AuthProvider.KEYCLOAK,
+                    aws_s3_use_iam_role=use_iam_role,
+                )
+                with console.capture() as capture:
+                    show_config_summary(config)
+                self.assertIn("AWS S3 Access", capture.get())
+                self.assertIn(label, capture.get())
+
+    def test_bootstrap_step_creates_the_namespace(self):
+        config = PlatformConfig(
+            cloud_provider=CloudProvider.GCP,
+            domain="guardian.example.com",
+            environment="staging",
+            auth_provider=AuthProvider.KEYCLOAK,
+        )
+        configure_artifacts(config, "cloudsmith")
+        with console.capture() as capture:
+            show_next_steps(
+                config,
+                Path("values.yaml"),
+                Path("secrets.yaml"),
+                Path("bootstrap.yaml"),
+            )
+        output = capture.get()
+        self.assertIn("./charts/keycloak-bootstrap", output)
+        self.assertIn("-n guardian --create-namespace --wait", output)
+        self.assertIn("not published to Cloudsmith", output)
 
     def test_summary_labels_a_custom_registry(self):
         config = PlatformConfig(

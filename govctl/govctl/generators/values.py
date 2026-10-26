@@ -3,7 +3,7 @@
 from typing import Any
 
 from govctl.core.models import AuthProvider, DatabaseMode, PlatformConfig
-from govctl.utils.yaml import dump_yaml_sections, file_header
+from govctl.utils.yaml import dump_yaml_sections, file_header, required
 from govctl.generators.sections.auth_service import generate_auth_service_section
 from govctl.generators.sections.eqty_pdfgen import generate_eqty_pdfgen_section
 from govctl.generators.sections.gateway_stack import generate_gateway_stack_section
@@ -121,7 +121,7 @@ def _generate_global_section(config: PlatformConfig) -> dict[str, Any]:
         # and charts/guardian-platform/README.md (Cloud-Managed PostgreSQL Configuration)
         # for provider-specific notes (AWS RDS, Azure Flexible Server, GCP Cloud SQL).
         section["postgresql"] = {
-            "host": "TODO-set-managed-pg-host.example.com",
+            "host": required("Managed PostgreSQL host"),
             "port": 5432,
             "database": "governance",
             "username": "postgres",

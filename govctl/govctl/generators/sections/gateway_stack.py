@@ -20,14 +20,9 @@ def generate_gateway_stack_section(config: PlatformConfig) -> dict[str, Any]:
     # over this file and see charts/gateway-stack/README.md for the full setup.
     # The generated secrets file already carries the gateway-dsn value the
     # umbrella needs for the guardian_gateway database.
-    section: dict[str, Any] = {
-        "enabled": False,
-        "llmGateway": {
-            "image": runtime_image_values(config),
-        },
-        "controlPlane": {
-            "image": runtime_image_values(config),
-        },
-    }
+    section: dict[str, Any] = {"enabled": False}
+    if runtime_image_values(config):
+        section["llmGateway"] = runtime_image_values(config)
+        section["controlPlane"] = runtime_image_values(config)
 
     return section

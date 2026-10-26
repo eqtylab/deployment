@@ -12,7 +12,7 @@ def generate_guardian_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the guardian section of values.yaml."""
     section: dict[str, Any] = {
         "replicaCount": 1,
-        "image": runtime_image_values(config),
+        **runtime_image_values(config),
         "ingress": ingress_values(
             config,
             [{"path": "/", "pathType": "Prefix"}],

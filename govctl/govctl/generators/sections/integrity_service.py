@@ -12,7 +12,7 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
     """Generate the integrity-service section of values.yaml."""
     section: dict[str, Any] = {
         "replicaCount": 2,
-        "image": runtime_image_values(config),
+        **runtime_image_values(config),
         "ingress": path_prefix_ingress_values(
             config,
             "integrityService",

@@ -30,6 +30,12 @@ class DatabaseMode(str, Enum):
 # Placeholder for an Auth0 tenant domain that was not supplied
 AUTH0_DOMAIN_PLACEHOLDER = "YOUR_AUTH0_DOMAIN.us.auth0.com"
 
+# In-cluster Keycloak URL used by the bootstrap chart by default
+KEYCLOAK_IN_CLUSTER_URL = "http://keycloak:8080/keycloak"
+
+# Environment names that get local development callbacks and origins
+DEVELOPMENT_ENVIRONMENTS = ("development", "dev")
+
 # Mapping of cloud provider to storage provider
 CLOUD_TO_STORAGE = {
     CloudProvider.AWS: "aws_s3",
@@ -126,4 +132,9 @@ class PlatformConfig:
     @property
     def keycloak_base_url(self) -> str:
         """Get the Keycloak URL, defaulting to /keycloak on the platform domain."""
-        return self.keycloak_url or f"https://{self.domain}/keycloak"
+        return (self.keycloak_url or f"https://{self.domain}/keycloak").rstrip("/")
+
+    @property
+    def is_development(self) -> bool:
+        """Check whether the environment is a development environment."""
+        return self.environment in DEVELOPMENT_ENVIRONMENTS

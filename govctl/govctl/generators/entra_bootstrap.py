@@ -3,6 +3,7 @@
 from typing import Any
 
 from govctl.core.models import PlatformConfig
+from govctl.generators.shared import local_origins
 from govctl.utils.yaml import dump_yaml_with_header
 
 
@@ -38,7 +39,7 @@ def generate_entra_bootstrap(config: PlatformConfig) -> str:
                 "displayName": "Guardian Platform Frontend",
                 "redirectUris": [
                     f"https://{domain}",
-                    "http://localhost:5173",
+                    *local_origins(config),
                 ],
             },
             "backend": {

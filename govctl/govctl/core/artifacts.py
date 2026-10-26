@@ -1,16 +1,22 @@
 """Registry presets for customer and internal installations."""
 
+from typing import Any
+
 from govctl.core.models import PlatformConfig
 
 # Registry hosts that have a preset profile
 PRESET_REGISTRY_HOSTS = ("ghcr.io", "docker.cloudsmith.io")
 
 
-def runtime_image_values(config: PlatformConfig) -> dict[str, str]:
-    """Preserve the selected release chart's image tags and digest pins."""
+def runtime_image_values(config: PlatformConfig) -> dict[str, Any]:
+    """Generate a service's image block, or nothing for Cloudsmith.
+
+    Cloudsmith output keeps the release chart's image tags, digest pins, and
+    pull policy (global.imagePullPolicy).
+    """
     if config.artifact_source == "cloudsmith":
-        return {"pullPolicy": "IfNotPresent"}
-    return {"tag": "latest", "pullPolicy": "Always"}
+        return {}
+    return {"image": {"tag": "latest", "pullPolicy": "Always"}}
 
 
 def uses_custom_registry(config: PlatformConfig) -> bool:

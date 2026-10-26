@@ -6,13 +6,14 @@ from govctl.core.artifacts import runtime_image_values
 
 from govctl.core.models import PlatformConfig, AuthProvider, KeyManagementProvider
 from govctl.generators.shared import path_prefix_ingress_values
+from govctl.utils.yaml import required
 
 
 def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the auth-service section of values.yaml."""
     section: dict[str, Any] = {
         "replicaCount": 2,
-        "image": runtime_image_values(config),
+        **runtime_image_values(config),
         "ingress": path_prefix_ingress_values(
             config,
             "authService",
@@ -91,8 +92,9 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
         }
     elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
         section["config"]["keyManagement"]["gcp_kms"] = {
-            "projectId": config.gcp_kms_project_id,
-            "locationId": config.gcp_kms_location_id,
+            "projectId": config.gcp_kms_project_id or required("GCP KMS project ID"),
+            "locationId": config.gcp_kms_location_id
+            or required("GCP KMS location, such as us-east1"),
             "keyRingId": config.gcp_kms_key_ring_id,
         }
 
