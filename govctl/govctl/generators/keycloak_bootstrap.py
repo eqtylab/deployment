@@ -115,6 +115,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                     f"https://{domain}",
                 ],
                 "defaultScopes": ["openid", "profile", "email", "roles"],
+                "optionalScopes": ["offline_access"],
             },
             "worker": {
                 "clientId": "governance-worker",
@@ -123,6 +124,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                 "publicClient": False,
                 "serviceAccountsEnabled": True,
                 "defaultScopes": ["openid", "profile", "email", "roles"],
+                "optionalScopes": ["offline_access"],
             },
         },
         "scopes": api_scopes(),

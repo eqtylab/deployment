@@ -194,43 +194,122 @@ data:
 
       if [ "$RESPONSE" = "204" ]; then
         echo "  Scope '${SCOPE_NAME}' set as realm default"
+      elif [ "$RESPONSE" = "409" ]; then
+        echo "  Scope '${SCOPE_NAME}' is already a realm default"
       else
         echo "  Failed to set realm default scope (Response: $RESPONSE)"
       fi
     }
 
-    # Function to assign a default scope to a specific client
-    assign_default_scope_to_client() {
-      local CLIENT_ID=$1
-      local SCOPE_NAME=$2
+    # Function to print the entries added to and removed from a JSON array
+    log_list_change() {
+      local FIELD=$1
+      local OLD=$2
+      local NEW=$3
 
-      echo "  Assigning scope '${SCOPE_NAME}' to client '${CLIENT_ID}'..."
+      ADDED=$(jq -n -r --argjson old "$OLD" --argjson new "$NEW" '($new - $old) | join(", ")')
+      REMOVED=$(jq -n -r --argjson old "$OLD" --argjson new "$NEW" '($old - $new) | join(", ")')
+      if [ -n "$ADDED" ]; then
+        echo "  ${FIELD}: added ${ADDED}"
+      fi
+      if [ -n "$REMOVED" ]; then
+        echo "  ${FIELD}: removed ${REMOVED}"
+      fi
+      return 0
+    }
 
-      # Get client internal UUID
-      CLIENT_UUID=$(curl -s \
+    # Function to fail when any of the named client scopes is missing from the realm
+    # openid is requested by clients and is not a Keycloak client scope
+    require_client_scopes() {
+      local WANTED=$1
+
+      MISSING=$(curl -s \
         -H "Authorization: Bearer ${TOKEN}" \
-        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients?clientId=${CLIENT_ID}" | jq -r '.[0].id')
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/client-scopes" | jq -r --argjson want "$WANTED" \
+        '[.[].name] as $all | [$want[] | select(. != "openid") | select(. as $n | $all | index($n) | not)] | join(", ")')
+      if [ -n "$MISSING" ]; then
+        echo "  Client scopes not found in the realm: ${MISSING}"
+        return 1
+      fi
+      return 0
+    }
 
+    # Function to make a client's default or optional scopes match the values
+    # openid is requested by clients and is not a Keycloak client scope;
+    # service_account is managed by Keycloak for clients with service accounts
+    sync_client_scopes() {
+      local CLIENT_UUID=$1
+      local KIND=$2
+      local WANTED=$3
+      local SCOPES_URL="${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/${CLIENT_UUID}/${KIND}-client-scopes"
+
+      ALL_SCOPES=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/client-scopes")
+      DESIRED=$(echo "$ALL_SCOPES" | jq -c --argjson want "$WANTED" '[.[].name | select(. as $n | $want | index($n))]')
+      CURRENT=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${SCOPES_URL}" | jq -c '[.[].name | select(. != "service_account")]')
+
+      log_list_change "${KIND} scopes" "$CURRENT" "$DESIRED"
+      for NAME in $(jq -n -r --argjson old "$CURRENT" --argjson new "$DESIRED" '($old - $new)[]'); do
+        SCOPE_ID=$(echo "$ALL_SCOPES" | jq -r --arg name "$NAME" '.[] | select(.name == $name) | .id')
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${SCOPES_URL}/${SCOPE_ID}" \
+          -H "Authorization: Bearer ${TOKEN}")
+        if [ "$RESPONSE" != "204" ]; then
+          echo "  Failed to remove ${KIND} scope ${NAME} (Response: $RESPONSE)"
+        fi
+      done
+      for NAME in $(jq -n -r --argjson old "$CURRENT" --argjson new "$DESIRED" '($new - $old)[]'); do
+        SCOPE_ID=$(echo "$ALL_SCOPES" | jq -r --arg name "$NAME" '.[] | select(.name == $name) | .id')
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${SCOPES_URL}/${SCOPE_ID}" \
+          -H "Authorization: Bearer ${TOKEN}")
+        if [ "$RESPONSE" != "204" ]; then
+          echo "  Failed to add ${KIND} scope ${NAME} (Response: $RESPONSE)"
+        fi
+      done
+      return 0
+    }
+
+    # Function to update an existing client from the values, leaving its secret and enabled state unchanged
+    update_client() {
+      local CLIENT_ID=$1
+      local CLIENT_CONFIG=$2
+
+      EXISTING=$(curl -s \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients?clientId=${CLIENT_ID}" | jq -c '.[0]')
+      CLIENT_UUID=$(echo "$EXISTING" | jq -r '.id')
       if [ -z "$CLIENT_UUID" ] || [ "$CLIENT_UUID" = "null" ]; then
-        echo "  Client ${CLIENT_ID} not found"
+        echo "  Failed to get client ${CLIENT_ID} for update"
         return 1
       fi
 
-      SCOPE_ID=$(get_client_scope_id "$SCOPE_NAME")
-      if [ -z "$SCOPE_ID" ] || [ "$SCOPE_ID" = "null" ]; then
-        echo "  Scope ${SCOPE_NAME} not found"
-        return 1
-      fi
+      DESIRED=$(echo "$CLIENT_CONFIG" | jq -c 'del(.clientId, .secret, .enabled, .defaultClientScopes, .optionalClientScopes)')
+      for FIELD in redirectUris webOrigins; do
+        log_list_change "$FIELD" "$(echo "$EXISTING" | jq -c ".${FIELD} // []")" "$(echo "$DESIRED" | jq -c ".${FIELD}")"
+      done
+      echo "$DESIRED" | jq -r --argjson old "$EXISTING" \
+        'to_entries[] | select(.value | type != "array") | select($old[.key] != .value) | "  \(.key): \($old[.key]) -> \(.value)"'
 
-      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
-        "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/${CLIENT_UUID}/default-client-scopes/${SCOPE_ID}" \
-        -H "Authorization: Bearer ${TOKEN}")
-
-      if [ "$RESPONSE" = "204" ]; then
-        echo "  Scope '${SCOPE_NAME}' assigned to '${CLIENT_ID}'"
+      UPDATED=$(echo "$EXISTING" | jq -c --argjson desired "$DESIRED" '. + $desired')
+      if [ "$(echo "$EXISTING" | jq -S -c .)" = "$(echo "$UPDATED" | jq -S -c .)" ]; then
+        echo "  Client settings already match the values"
       else
-        echo "  Failed to assign scope (Response: $RESPONSE)"
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+          "${KEYCLOAK_URL}/admin/realms/${REALM_NAME}/clients/${CLIENT_UUID}" \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d "${UPDATED}")
+        if [ "$RESPONSE" != "204" ]; then
+          echo "  Failed to update client. Response code: $RESPONSE"
+          return 1
+        fi
+        echo "  Client updated from the values"
       fi
+
+      sync_client_scopes "$CLIENT_UUID" default "$(echo "$CLIENT_CONFIG" | jq -c '.defaultClientScopes')"
+      sync_client_scopes "$CLIENT_UUID" optional "$(echo "$CLIENT_CONFIG" | jq -c '.optionalClientScopes')"
     }
 
     # Function to create client
@@ -243,6 +322,8 @@ data:
       local CLIENT_SECRET=$6
       local REDIRECT_URIS=$7
       local WEB_ORIGINS=$8
+      local DEFAULT_SCOPES=$9
+      local OPTIONAL_SCOPES=${10}
 
       echo "Creating client: ${CLIENT_ID}..."
 
@@ -258,6 +339,12 @@ data:
         WEB_ORIGINS_JSON=$(echo "$WEB_ORIGINS" | jq -R -s -c 'split(",") | map(gsub("^\\s+|\\s+$";""))')
       fi
 
+      # Build scope arrays
+      DEFAULT_SCOPES_JSON=$(printf '%s' "$DEFAULT_SCOPES" | jq -R -s -c 'split(",") | map(select(. != ""))')
+      OPTIONAL_SCOPES_JSON=$(printf '%s' "$OPTIONAL_SCOPES" | jq -R -s -c 'split(",") | map(select(. != ""))')
+      require_client_scopes "$DEFAULT_SCOPES_JSON" || return 1
+      require_client_scopes "$OPTIONAL_SCOPES_JSON" || return 1
+
       CLIENT_CONFIG=$(cat <<EOF
     {
       "clientId": "${CLIENT_ID}",
@@ -272,8 +359,8 @@ data:
       "protocol": "openid-connect",
       "redirectUris": ${REDIRECT_URIS_JSON},
       "webOrigins": ${WEB_ORIGINS_JSON},
-      "defaultClientScopes": ["openid", "profile", "email", "roles"],
-      "optionalClientScopes": ["offline_access"]
+      "defaultClientScopes": ${DEFAULT_SCOPES_JSON},
+      "optionalClientScopes": ${OPTIONAL_SCOPES_JSON}
     }
     EOF
     )
@@ -293,8 +380,9 @@ data:
         echo "  Client created successfully"
         return 0
       elif [ "$RESPONSE" = "409" ]; then
-        echo "  Client already exists"
-        return 0
+        echo "  Client already exists; updating it from the values"
+        update_client "$CLIENT_ID" "$CLIENT_CONFIG"
+        return $?
       else
         echo "  Failed to create client. Response code: $RESPONSE"
         return 1
@@ -428,6 +516,7 @@ data:
       local LAST_NAME=$4
       local PASSWORD=$5
       local TEMP_PASSWORD=$6
+      local EMAIL_VERIFIED=$7
 
       echo "Creating user: ${USERNAME}..."
 
@@ -435,7 +524,7 @@ data:
     {
       "username": "${USERNAME}",
       "email": "${EMAIL}",
-      "emailVerified": true,
+      "emailVerified": ${EMAIL_VERIFIED},
       "enabled": true,
       "firstName": "${FIRST_NAME}",
       "lastName": "${LAST_NAME}",
@@ -492,8 +581,18 @@ data:
       create_client_scope "{{ .name }}" "{{ .description }}"
       {{- end }}
 
-      # Create frontend client
       {{- with .Values.clients.frontend }}
+      # Create the frontend client's custom scopes with mappers
+      {{- range .customScopes }}
+      {{- $scopeName := .name }}
+      create_client_scope "{{ .name }}" "{{ .description }}"
+      {{- range .mappers }}
+      add_protocol_mapper_to_scope "{{ $scopeName }}" "{{ .name }}" "{{ .protocolMapper }}" '{{ .config | toJson }}'
+      {{- end }}
+      set_realm_default_scope "{{ .name }}"
+      {{- end }}
+
+      # Create frontend client
       create_client \
         "{{ .clientId }}" \
         "{{ .name }}" \
@@ -502,18 +601,9 @@ data:
         "false" \
         "" \
         "{{ join "," .redirectUris }}" \
-        "{{ join "," .webOrigins }}"
-
-      # Create custom scopes with mappers and assign to frontend client
-      {{- range .customScopes }}
-      {{- $scopeName := .name }}
-      create_client_scope "{{ .name }}" "{{ .description }}"
-      {{- range .mappers }}
-      add_protocol_mapper_to_scope "{{ $scopeName }}" "{{ .name }}" "{{ .protocolMapper }}" '{{ .config | toJson }}'
-      {{- end }}
-      set_realm_default_scope "{{ .name }}"
-      assign_default_scope_to_client "{{ $.Values.clients.frontend.clientId }}" "{{ .name }}"
-      {{- end }}
+        "{{ join "," .webOrigins }}" \
+        "{{ include "keycloak-bootstrap.defaultScopes" . }}" \
+        "{{ include "keycloak-bootstrap.optionalScopes" . }}"
       {{- end }}
 
       # Create backend client (secret auto-generated by Keycloak)
@@ -526,7 +616,9 @@ data:
         "{{ .serviceAccountsEnabled }}" \
         "" \
         "{{ join "," .redirectUris }}" \
-        "{{ join "," .webOrigins }}"
+        "{{ join "," .webOrigins }}" \
+        "{{ include "keycloak-bootstrap.defaultScopes" . }}" \
+        "{{ include "keycloak-bootstrap.optionalScopes" . }}"
 
       # Assign service account roles for backend client
       {{- if and .serviceAccountsEnabled .serviceAccountRoles }}
@@ -549,7 +641,9 @@ data:
         "{{ .serviceAccountsEnabled }}" \
         "" \
         "" \
-        ""
+        "" \
+        "{{ include "keycloak-bootstrap.defaultScopes" . }}" \
+        "{{ include "keycloak-bootstrap.optionalScopes" . }}"
       {{- end }}
 
       # Create admin user
@@ -561,7 +655,8 @@ data:
         "{{ .Values.users.admin.firstName }}" \
         "{{ .Values.users.admin.lastName }}" \
         "${ADMIN_PASSWORD}" \
-        "{{ .Values.users.admin.temporaryPassword }}"
+        "{{ .Values.users.admin.temporaryPassword }}" \
+        "{{ .Values.users.admin.emailVerified }}"
       {{- end }}
 
       # Create test users
@@ -573,7 +668,8 @@ data:
         "{{ .firstName }}" \
         "{{ .lastName }}" \
         "{{ .password }}" \
-        "false"
+        "false" \
+        "true"
       {{- end }}
       {{- end }}
 

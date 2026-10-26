@@ -247,8 +247,7 @@ clients:
       - "https://guardian.example.com"
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles, sub]`
-    # Not read by any template; the bootstrap script always sets openid, profile,
-    # email and roles, and assigns the sub scope through customScopes
+    # Default client scopes; the customScopes below are also added
     defaultScopes:
       - "openid"
       - "profile"
@@ -257,7 +256,7 @@ clients:
       - "sub"
     # -- Optional Scopes
     # @default -- `[offline_access]`
-    # Not read by any template; the bootstrap script always sets offline_access
+    # Optional client scopes
     optionalScopes:
       - "offline_access"
 
@@ -324,13 +323,17 @@ clients:
       - "http://localhost:8000"
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
-    # Not read by any template; the bootstrap script always sets openid, profile,
-    # email and roles
+    # Default client scopes
     defaultScopes:
       - "openid"
       - "profile"
       - "email"
       - "roles"
+    # -- Optional Scopes
+    # @default -- `[offline_access]`
+    # Optional client scopes
+    optionalScopes:
+      - "offline_access"
     # -- Service Account Roles
     # @default -- See values below
     # Realm-management roles to assign to the service account
@@ -369,13 +372,17 @@ clients:
     serviceAccountsEnabled: true
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
-    # Not read by any template; the bootstrap script always sets openid, profile,
-    # email and roles
+    # Default client scopes
     defaultScopes:
       - "openid"
       - "profile"
       - "email"
       - "roles"
+    # -- Optional Scopes
+    # @default -- `[offline_access]`
+    # Optional client scopes
+    optionalScopes:
+      - "offline_access"
 
 # =============================================================================
 # CUSTOM SCOPES CONFIGURATION
@@ -460,7 +467,7 @@ users:
     lastName: "Admin"
     # -- Email Verified
     # @default -- `true`
-    # Not read by any template; the bootstrap script always marks the email as verified
+    # Mark the admin user's email as verified
     emailVerified: true
     # -- Temporary Password
     # @default -- `false`

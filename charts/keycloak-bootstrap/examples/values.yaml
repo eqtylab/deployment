@@ -119,6 +119,8 @@ clients:
       - "profile"
       - "email"
       - "roles"
+    optionalScopes:
+      - "offline_access"
 
   # Worker client (service account only)
   worker:
@@ -132,6 +134,8 @@ clients:
       - "profile"
       - "email"
       - "roles"
+    optionalScopes:
+      - "offline_access"
 
 # Custom scopes for authorization
 scopes:

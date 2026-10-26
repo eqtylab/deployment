@@ -405,7 +405,10 @@ kubectl logs -n guardian -l app.kubernetes.io/name=auth0-bootstrap
 
 **Application already exists**
 
-- The job is idempotent and will skip existing applications by name
+- The job is idempotent and finds existing applications by name
+- The frontend application's callbacks, allowed logout URLs, web origins, and
+  grant types are updated from the values. Changes made in the Auth0 Dashboard
+  to those fields are replaced, and the job log lists each addition and removal
 - Delete the application manually in the Auth0 Dashboard if you need a fresh start
 - Note: existing applications keep their original client secret — no new secret will be printed
 

@@ -42,3 +42,28 @@ Selector labels
 app.kubernetes.io/name: {{ include "keycloak-bootstrap.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{/*
+Comma-separated default client scopes for a client: its defaultScopes (openid,
+profile, email, and roles when unset) followed by its customScopes names
+*/}}
+{{- define "keycloak-bootstrap.defaultScopes" -}}
+{{- $scopes := list "openid" "profile" "email" "roles" }}
+{{- if hasKey . "defaultScopes" }}
+{{- $scopes = .defaultScopes | default list }}
+{{- end }}
+{{- range .customScopes }}
+{{- $scopes = append $scopes .name }}
+{{- end }}
+{{- $scopes | uniq | join "," }}
+{{- end -}}
+
+{{/*
+Comma-separated optional client scopes for a client (offline_access when unset)
+*/}}
+{{- define "keycloak-bootstrap.optionalScopes" -}}
+{{- if hasKey . "optionalScopes" }}
+{{- .optionalScopes | default list | join "," }}
+{{- else }}offline_access
+{{- end }}
+{{- end -}}

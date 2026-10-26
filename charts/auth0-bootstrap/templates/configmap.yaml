@@ -57,6 +57,73 @@ data:
         | jq -r --arg name "$APP_NAME" '.[] | select(.name == $name) | .client_id'
     }
 
+    # Function to print the entries added to and removed from a JSON array
+    log_list_change() {
+      local FIELD=$1
+      local OLD=$2
+      local NEW=$3
+
+      ADDED=$(jq -n -r --argjson old "$OLD" --argjson new "$NEW" '($new - $old) | join(", ")')
+      REMOVED=$(jq -n -r --argjson old "$OLD" --argjson new "$NEW" '($old - $new) | join(", ")')
+      if [ -n "$ADDED" ]; then
+        echo "  ${FIELD}: added ${ADDED}"
+      fi
+      if [ -n "$REMOVED" ]; then
+        echo "  ${FIELD}: removed ${REMOVED}"
+      fi
+      return 0
+    }
+
+    # Function to update an existing SPA application's URLs and grant types from the values
+    update_spa_app() {
+      local APP_CLIENT_ID=$1
+      local CALLBACKS=$2
+      local LOGOUT_URLS=$3
+      local WEB_ORIGINS=$4
+
+      CURRENT=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
+        "${AUTH0_API_URL}/clients/${APP_CLIENT_ID}?fields=callbacks,allowed_logout_urls,web_origins,grant_types&include_fields=true")
+      if ! echo "$CURRENT" | jq -e 'type == "object" and (has("statusCode") | not)' > /dev/null 2>&1; then
+        echo "  ${RED}Failed to read application ${APP_CLIENT_ID}${NC}"
+        echo "  Response: $CURRENT"
+        return 1
+      fi
+
+      DESIRED=$(jq -n -c \
+        --argjson callbacks "$CALLBACKS" \
+        --argjson logout "$LOGOUT_URLS" \
+        --argjson origins "$WEB_ORIGINS" \
+        '{callbacks: $callbacks, allowed_logout_urls: $logout, web_origins: $origins, grant_types: ["authorization_code", "refresh_token"]}')
+
+      for FIELD in callbacks allowed_logout_urls web_origins grant_types; do
+        log_list_change "$FIELD" "$(echo "$CURRENT" | jq -c ".${FIELD} // []")" "$(echo "$DESIRED" | jq -c ".${FIELD}")"
+      done
+
+      MATCHES=$(jq -n -r --argjson cur "$CURRENT" --argjson want "$DESIRED" \
+        '[$want | to_entries[] | (.value | sort) == (($cur[.key] // []) | sort)] | all')
+      if [ "$MATCHES" = "true" ]; then
+        echo "  Application settings already match the values"
+        return 0
+      fi
+
+      RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "${AUTH0_API_URL}/clients/${APP_CLIENT_ID}" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "${DESIRED}")
+
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      BODY=$(echo "$RESPONSE" | sed '$d')
+
+      if [ "$HTTP_CODE" = "200" ]; then
+        echo "  ${GREEN}Updated application from the values${NC}"
+        return 0
+      else
+        echo "  ${RED}Failed to update application (HTTP ${HTTP_CODE})${NC}"
+        echo "  Response: $BODY"
+        return 1
+      fi
+    }
+
     # Function to create a SPA application
     create_spa_app() {
       local APP_NAME=$1
@@ -68,8 +135,9 @@ data:
 
       EXISTING=$(get_client_by_name "$APP_NAME")
       if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
-        echo "  Application already exists (client_id: ${EXISTING})"
-        return 0
+        echo "  Application already exists (client_id: ${EXISTING}); updating it from the values"
+        update_spa_app "$EXISTING" "$CALLBACKS" "$LOGOUT_URLS" "$WEB_ORIGINS"
+        return $?
       fi
 
       APP_CONFIG=$(cat <<EOF

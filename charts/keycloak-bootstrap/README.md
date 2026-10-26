@@ -177,17 +177,17 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Frontend Client Configuration
 
-| Key                             | Type   | Default                                      | Description                                                                                                                                    |
-| ------------------------------- | ------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| clients.frontend.clientId       | string | `"guardian-platform-frontend"`               | Client ID                                                                                                                                      |
-| clients.frontend.name           | string | `"Guardian Platform Frontend"`               | Display name                                                                                                                                   |
-| clients.frontend.description    | string | See values.yaml                              | Client description                                                                                                                             |
-| clients.frontend.publicClient   | bool   | `true`                                       | Public client (no secret)                                                                                                                      |
-| clients.frontend.redirectUris   | list   | See values.yaml                              | Valid redirect URIs                                                                                                                            |
-| clients.frontend.webOrigins     | list   | See values.yaml                              | Allowed web origins for CORS                                                                                                                   |
-| clients.frontend.defaultScopes  | list   | `["openid","profile","email","roles","sub"]` | Default client scopes. Not read by any template; the script always sets `openid`, `profile`, `email`, `roles`; `sub` comes from `customScopes` |
-| clients.frontend.optionalScopes | list   | `["offline_access"]`                         | Optional client scopes. Not read by any template; the script always sets `offline_access`                                                      |
-| clients.frontend.customScopes   | list   | See values.yaml                              | Custom scopes with protocol mappers to create and assign to this client                                                                        |
+| Key                             | Type   | Default                                      | Description                                                             |
+| ------------------------------- | ------ | -------------------------------------------- | ----------------------------------------------------------------------- |
+| clients.frontend.clientId       | string | `"guardian-platform-frontend"`               | Client ID                                                               |
+| clients.frontend.name           | string | `"Guardian Platform Frontend"`               | Display name                                                            |
+| clients.frontend.description    | string | See values.yaml                              | Client description                                                      |
+| clients.frontend.publicClient   | bool   | `true`                                       | Public client (no secret)                                               |
+| clients.frontend.redirectUris   | list   | See values.yaml                              | Valid redirect URIs                                                     |
+| clients.frontend.webOrigins     | list   | See values.yaml                              | Allowed web origins for CORS                                            |
+| clients.frontend.defaultScopes  | list   | `["openid","profile","email","roles","sub"]` | Default client scopes; the `customScopes` names are also added          |
+| clients.frontend.optionalScopes | list   | `["offline_access"]`                         | Optional client scopes                                                  |
+| clients.frontend.customScopes   | list   | See values.yaml                              | Custom scopes with protocol mappers to create and assign to this client |
 
 Default custom scopes created for frontend client:
 
@@ -196,28 +196,30 @@ Default custom scopes created for frontend client:
 
 ### Backend Client Configuration
 
-| Key                                    | Type   | Default                                | Description                                                                                                   |
-| -------------------------------------- | ------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| clients.backend.clientId               | string | `"guardian-platform-backend"`          | Client ID                                                                                                     |
-| clients.backend.name                   | string | `"Guardian Platform Backend"`          | Display name                                                                                                  |
-| clients.backend.description            | string | See values.yaml                        | Client description                                                                                            |
-| clients.backend.publicClient           | bool   | `false`                                | Confidential client                                                                                           |
-| clients.backend.serviceAccountsEnabled | bool   | `true`                                 | Enable service account                                                                                        |
-| clients.backend.redirectUris           | list   | See values.yaml                        | Valid redirect URIs                                                                                           |
-| clients.backend.webOrigins             | list   | See values.yaml                        | Allowed web origins for CORS                                                                                  |
-| clients.backend.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes. Not read by any template; the script always sets `openid`, `profile`, `email`, `roles` |
-| clients.backend.serviceAccountRoles    | list   | See values.yaml                        | Realm-management roles for the service account                                                                |
+| Key                                    | Type   | Default                                | Description                                    |
+| -------------------------------------- | ------ | -------------------------------------- | ---------------------------------------------- |
+| clients.backend.clientId               | string | `"guardian-platform-backend"`          | Client ID                                      |
+| clients.backend.name                   | string | `"Guardian Platform Backend"`          | Display name                                   |
+| clients.backend.description            | string | See values.yaml                        | Client description                             |
+| clients.backend.publicClient           | bool   | `false`                                | Confidential client                            |
+| clients.backend.serviceAccountsEnabled | bool   | `true`                                 | Enable service account                         |
+| clients.backend.redirectUris           | list   | See values.yaml                        | Valid redirect URIs                            |
+| clients.backend.webOrigins             | list   | See values.yaml                        | Allowed web origins for CORS                   |
+| clients.backend.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes                          |
+| clients.backend.optionalScopes         | list   | `["offline_access"]`                   | Optional client scopes                         |
+| clients.backend.serviceAccountRoles    | list   | See values.yaml                        | Realm-management roles for the service account |
 
 ### Worker Client Configuration
 
-| Key                                   | Type   | Default                                | Description                                                                                                   |
-| ------------------------------------- | ------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| clients.worker.clientId               | string | `"governance-worker"`                  | Client ID                                                                                                     |
-| clients.worker.name                   | string | `"Governance Worker"`                  | Display name                                                                                                  |
-| clients.worker.description            | string | See values.yaml                        | Client description                                                                                            |
-| clients.worker.publicClient           | bool   | `false`                                | Confidential client                                                                                           |
-| clients.worker.serviceAccountsEnabled | bool   | `true`                                 | Enable service account                                                                                        |
-| clients.worker.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes. Not read by any template; the script always sets `openid`, `profile`, `email`, `roles` |
+| Key                                   | Type   | Default                                | Description            |
+| ------------------------------------- | ------ | -------------------------------------- | ---------------------- |
+| clients.worker.clientId               | string | `"governance-worker"`                  | Client ID              |
+| clients.worker.name                   | string | `"Governance Worker"`                  | Display name           |
+| clients.worker.description            | string | See values.yaml                        | Client description     |
+| clients.worker.publicClient           | bool   | `false`                                | Confidential client    |
+| clients.worker.serviceAccountsEnabled | bool   | `true`                                 | Enable service account |
+| clients.worker.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes  |
+| clients.worker.optionalScopes         | list   | `["offline_access"]`                   | Optional client scopes |
 
 ### Custom Scopes
 
@@ -252,17 +254,17 @@ Attributes that already exist in the realm user profile are left unchanged.
 
 The admin user is the initial account for logging into Guardian. This is a realm user in Keycloak, not the Keycloak server admin.
 
-| Key                           | Type   | Default                    | Description                                                                                    |
-| ----------------------------- | ------ | -------------------------- | ---------------------------------------------------------------------------------------------- |
-| users.admin.enabled           | bool   | `true`                     | Enable creation of Guardian admin user                                                         |
-| users.admin.username          | string | `"platform-admin"`         | Admin username                                                                                 |
-| users.admin.email             | string | `"admin@governance.local"` | Admin email address                                                                            |
-| users.admin.firstName         | string | `"Platform"`               | Admin first name                                                                               |
-| users.admin.lastName          | string | `"Admin"`                  | Admin last name                                                                                |
-| users.admin.emailVerified     | bool   | `true`                     | Mark email as verified. Not read by any template; the script always sets `emailVerified: true` |
-| users.admin.temporaryPassword | bool   | `false`                    | Require password change on login                                                               |
-| users.admin.secretName        | string | `"platform-admin"`         | Secret containing Guardian admin password                                                      |
-| users.admin.secretKey         | string | `"password"`               | Secret key for the password                                                                    |
+| Key                           | Type   | Default                    | Description                               |
+| ----------------------------- | ------ | -------------------------- | ----------------------------------------- |
+| users.admin.enabled           | bool   | `true`                     | Enable creation of Guardian admin user    |
+| users.admin.username          | string | `"platform-admin"`         | Admin username                            |
+| users.admin.email             | string | `"admin@governance.local"` | Admin email address                       |
+| users.admin.firstName         | string | `"Platform"`               | Admin first name                          |
+| users.admin.lastName          | string | `"Admin"`                  | Admin last name                           |
+| users.admin.emailVerified     | bool   | `true`                     | Mark the admin user's email as verified   |
+| users.admin.temporaryPassword | bool   | `false`                    | Require password change on login          |
+| users.admin.secretName        | string | `"platform-admin"`         | Secret containing Guardian admin password |
+| users.admin.secretKey         | string | `"password"`               | Secret key for the password               |
 
 ### Test Users Configuration
 
@@ -375,7 +377,14 @@ kubectl logs -n guardian -l app.kubernetes.io/name=keycloak-bootstrap
 
 **Realm already exists**
 
-- The job is idempotent and will skip existing resources
+- The job is idempotent: it keeps an existing realm, scopes, and users
+- Existing clients are updated from the values: name, description, flow and
+  service account settings, redirect URIs, web origins, and default and
+  optional scopes. Changes made in the Keycloak console to those fields are
+  replaced, and the job log lists each addition and removal. Client secrets
+  and the enabled state are not changed
+- The job fails before creating or updating a client whose default or
+  optional scopes name a scope missing from the realm
 - Delete the realm manually if you need a fresh start
 
 **Timeout waiting for Keycloak**
