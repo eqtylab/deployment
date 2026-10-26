@@ -232,9 +232,6 @@ integrity-service:
     # integrityAppBlobStoreGcsBucket: "your-integrity-store-bucket"
     # integrityAppBlobStoreGcsFolder: "your-integrity-store-folder"
 
-  persistence:
-    enabled: true
-
   resources:
     requests:
       cpu: 250m

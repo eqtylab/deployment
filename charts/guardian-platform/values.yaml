@@ -3097,7 +3097,8 @@ integrity-service:
   persistence:
     # -- Enable Persistence
     # @default -- `false`
-    # Enable persistent volume for integrity data
+    # Mount an existing PVC for integrity data; requires persistence.integrity.existingClaim
+    # Required when config.integrityAppBlobStoreType is local_fs
     enabled: false
 
     # -- Integrity Data Volume
@@ -3106,12 +3107,9 @@ integrity-service:
       # -- Mount Path
       # @default -- `/data/integrity`
       mountPath: /data/integrity
-      # -- Host Path
-      # @default -- `/var/lib/integrity`
-      # Only used when persistence.enabled is true
-      hostPath: /var/lib/integrity
-      # -- Use an existing PVC instead of a node-local hostPath
+      # -- Existing Claim
       # @default -- `""`
+      # Name of an existing PVC; required when persistence.enabled is true
       existingClaim: ""
 
   # =============================================================================
@@ -3168,8 +3166,10 @@ integrity-service:
     # **REQUIRED**: Blob storage backend type
     # Options: aws_s3, azure_blob, gcs, local_fs
     integrityAppBlobStoreType: ""
-    # -- Local filesystem path (requires a persistent mount for retained data)
+    # -- Local Filesystem Path
     # @default -- `""`
+    # Only used when integrityAppBlobStoreType is "local_fs"; set to persistence.integrity.mountPath
+    # Requires persistence.enabled with persistence.integrity.existingClaim
     integrityAppBlobStoreLocalPath: ""
 
     # -- AWS S3 Region

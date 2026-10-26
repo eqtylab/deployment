@@ -295,17 +295,17 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Persistence
 
-| Key                                 | Type   | Default                | Description                                                                           |
-| ----------------------------------- | ------ | ---------------------- | ------------------------------------------------------------------------------------- |
-| persistence.enabled                 | bool   | `false`                | Enable persistent volume for integrity data                                           |
-| persistence.integrity.mountPath     | string | `"/data/integrity"`    | Container mount path for integrity data                                               |
-| persistence.integrity.hostPath      | string | `"/var/lib/integrity"` | Host path for data storage (only used when persistence.enabled is true)               |
-| persistence.integrity.existingClaim | string | `""`                   | Existing PVC mounted instead of hostPath (only used when persistence.enabled is true) |
+| Key                                 | Type   | Default             | Description                                                                    |
+| ----------------------------------- | ------ | ------------------- | ------------------------------------------------------------------------------ |
+| persistence.enabled                 | bool   | `false`             | Mount an existing PVC for integrity data (**must be set** when using local_fs) |
+| persistence.integrity.mountPath     | string | `"/data/integrity"` | Container mount path for integrity data                                        |
+| persistence.integrity.existingClaim | string | `""`                | Name of an existing PVC (**must be set** when persistence.enabled is true)     |
 
-For a single-replica local persistent store, select `config.integrityAppBlobStoreType: local_fs`,
-set `config.integrityAppBlobStoreLocalPath` to `persistence.integrity.mountPath`, and supply
-`persistence.integrity.existingClaim`. The claim must exist before installation. This avoids
-node-local `hostPath`; RWO storage is not a shared multi-replica backend.
+Persistence is only needed for `config.integrityAppBlobStoreType: local_fs`; the cloud blob
+stores do not write to the pod's disk. For a single-replica local store, set
+`config.integrityAppBlobStoreLocalPath` to `persistence.integrity.mountPath`, enable
+persistence, and supply `persistence.integrity.existingClaim`. The claim must exist before
+installation, and RWO storage is not a shared multi-replica backend.
 
 ### Database Configuration
 
@@ -361,7 +361,7 @@ All config values support global fallbacks when deployed via umbrella chart.
 | Key                                            | Type   | Default | Description                                                                                                                                              |
 | ---------------------------------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | config.integrityAppBlobStoreType               | string | `""`    | Storage provider (**must be set**; `aws_s3`, `azure_blob`, `gcs`, or `local_fs`)                                                                         |
-| config.integrityAppBlobStoreLocalPath          | string | `""`    | Local filesystem path (**must be set** when using local_fs; needs a persistent mount)                                                                    |
+| config.integrityAppBlobStoreLocalPath          | string | `""`    | Local filesystem path (**must be set** when using local_fs; requires persistence with an existing claim)                                                 |
 | config.integrityAppBlobStoreAwsRegion          | string | `""`    | AWS region (**must be set** when using S3)                                                                                                               |
 | config.integrityAppBlobStoreAwsBucket          | string | `""`    | AWS S3 bucket name (**must be set** when using S3)                                                                                                       |
 | config.integrityAppBlobStoreAwsFolder          | string | `""`    | AWS S3 folder/prefix (**must be set** when using S3)                                                                                                     |

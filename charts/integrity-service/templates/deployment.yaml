@@ -294,16 +294,13 @@ spec:
               - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
                 path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
         {{- end }}
+        {{- if and (eq $storageProvider "local_fs") (not .Values.persistence.enabled) }}
+        {{- fail "persistence.enabled and persistence.integrity.existingClaim are required when config.integrityAppBlobStoreType is local_fs" }}
+        {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: "{{template "integrity-service.name" . }}"
-          {{- if .Values.persistence.integrity.existingClaim }}
           persistentVolumeClaim:
-            claimName: {{ .Values.persistence.integrity.existingClaim | quote }}
-          {{- else }}
-          hostPath:
-            path: {{ .Values.persistence.integrity.hostPath | quote }}
-            type: DirectoryOrCreate
-          {{- end }}
+            claimName: {{ required "persistence.integrity.existingClaim is required when persistence.enabled is true" .Values.persistence.integrity.existingClaim | quote }}
         {{- end }}
         {{- if eq $storageProvider "gcs" }}
         - name: gcs-sa-volume

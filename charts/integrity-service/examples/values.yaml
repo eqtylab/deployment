@@ -35,9 +35,6 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-persistence:
-  enabled: true
-
 config:
   # Storage Configuration - AWS S3 (uncomment to use instead)
   # integrityAppBlobStoreType: "aws_s3"

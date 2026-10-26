@@ -155,7 +155,7 @@ Configures all platform services based on your selections. Values the charts req
 - **gateway-stack** — LLM Gateway and Control Plane (`enabled: false` by default, plus image overrides for GitHub output; hostnames, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **guardian** — Guardian: frontend auth config, feature flags, ingress
-- **integrity-service** — blob storage config, persistence, ingress
+- **integrity-service** — blob storage config, ingress
 - **postgresql** — `enabled: true` plus persistence size and resource requests and limits when database mode is `bundled`; just `enabled: false` when `external`
 
 To enable the gateway, layer [`values-gateway.yaml`](../charts/guardian-platform/examples/values-gateway.yaml) over the generated file and see [`charts/gateway-stack/README.md`](../charts/gateway-stack/README.md) for hostnames, TLS, and plugin setup.

@@ -20,9 +20,6 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
         ),
     }
 
-    # Persistence
-    section["persistence"] = {"enabled": True}
-
     # Storage configuration - integrity-service supports aws_s3, azure_blob, and gcs
     section["config"] = {}
 
