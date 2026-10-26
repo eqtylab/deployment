@@ -134,6 +134,33 @@ class ValuesTests(unittest.TestCase):
         values = yaml.safe_load(generate_values(config()))
         self.assertNotIn("logLevel", values["governance-service"]["config"])
 
+    def test_aws_kms_iam_role(self):
+        for use_iam_role in (False, True):
+            with self.subTest(use_iam_role=use_iam_role):
+                c = config(
+                    CloudProvider.AWS,
+                    aws_kms_region="us-east-1",
+                    aws_kms_use_iam_role=use_iam_role,
+                )
+                auth_service = yaml.safe_load(generate_values(c))["auth-service"]
+                secrets = yaml.safe_load(generate_secrets(c))["global"]["secrets"]
+                aws_kms = auth_service["config"]["keyManagement"]["aws_kms"]
+                if use_iam_role:
+                    self.assertIs(aws_kms["useIamRole"], True)
+                    self.assertEqual(
+                        auth_service["serviceAccount"]["annotations"],
+                        {"eks.amazonaws.com/role-arn": "YOUR_IAM_ROLE_ARN"},
+                    )
+                    self.assertNotIn("aws_kms", secrets["keyManagement"])
+                else:
+                    self.assertNotIn("useIamRole", aws_kms)
+                    self.assertNotIn("serviceAccount", auth_service)
+                    self.assertEqual(
+                        secrets["keyManagement"]["aws_kms"]["secretName"],
+                        "platform-aws-kms",
+                    )
+                self.assertEqual(secrets["keyManagement"]["provider"], "aws_kms")
+
     def test_auth0_verifies_the_issuer(self):
         values = yaml.safe_load(generate_values(config(auth=AuthProvider.AUTH0)))
         self.assertFalse(

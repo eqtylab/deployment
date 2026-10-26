@@ -43,7 +43,14 @@ def show_config_summary(config: PlatformConfig) -> None:
 
     table.add_row("Key Management", config.key_management_provider.value)
     if config.key_management_provider == KeyManagementProvider.AWS_KMS:
-        table.add_row("AWS KMS Access", "static access keys")
+        table.add_row(
+            "AWS KMS Access",
+            (
+                "IAM role (IRSA / instance profile)"
+                if config.aws_kms_use_iam_role
+                else "static access keys"
+            ),
+        )
         if config.aws_kms_region:
             table.add_row("AWS KMS Region", config.aws_kms_region)
         if config.aws_kms_endpoint:

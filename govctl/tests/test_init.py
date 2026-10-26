@@ -1,6 +1,7 @@
 """govctl init picks per-cloud defaults and protects existing generated files."""
 
 from pathlib import Path
+import re
 import stat
 import sys
 import tempfile
@@ -15,7 +16,12 @@ from govctl.cli.commands.init import init_cmd
 from govctl.cli.display import show_config_summary, show_next_steps
 from govctl.cli.prompts import collect_interactive_config
 from govctl.core.artifacts import configure_artifacts
-from govctl.core.models import AuthProvider, CloudProvider, PlatformConfig
+from govctl.core.models import (
+    AuthProvider,
+    CloudProvider,
+    KeyManagementProvider,
+    PlatformConfig,
+)
 from govctl.utils.output import console
 
 KEY_MANAGEMENT = {"aws": "aws_kms", "azure": "azure_key_vault", "gcp": "gcp_kms"}
@@ -266,6 +272,53 @@ class InteractiveTests(unittest.TestCase):
         self.assertEqual(
             config.image_repository_prefix, "registry.example.com:5000/eqtylab"
         )
+
+    def test_aws_kms_iam_role_defaults_to_the_s3_choice(self):
+        for s3, kms, expected in (
+            ("no", None, False),
+            ("yes", None, True),
+            ("yes", "no", False),
+            ("no", "yes", True),
+        ):
+            with self.subTest(s3=s3, kms=kms):
+                answers = {
+                    "[bold]Domain": "guardian.example.com",
+                    "AWS S3 access via IAM role": s3,
+                }
+                if kms:
+                    answers["AWS KMS access via IAM role"] = kms
+                config, _ = interactive(answers, cloud="aws")
+                self.assertEqual(config.aws_kms_use_iam_role, expected)
+
+    def test_aws_kms_iam_role_is_asked_only_on_aws(self):
+        _, asked = interactive(
+            {
+                "[bold]Domain": "guardian.example.com",
+                "Key Management Provider": "aws_kms",
+            },
+            cloud="gcp",
+        )
+        self.assertFalse(any("AWS KMS access" in prompt for prompt, _ in asked))
+
+    def test_summary_shows_aws_kms_access_mode(self):
+        for use_iam_role, label in (
+            (True, "IAM role (IRSA / instance profile)"),
+            (False, "static access keys"),
+        ):
+            with self.subTest(use_iam_role=use_iam_role):
+                config = PlatformConfig(
+                    cloud_provider=CloudProvider.AWS,
+                    domain="guardian.example.com",
+                    environment="staging",
+                    auth_provider=AuthProvider.KEYCLOAK,
+                    key_management_provider=KeyManagementProvider.AWS_KMS,
+                    aws_kms_use_iam_role=use_iam_role,
+                )
+                with console.capture() as capture:
+                    show_config_summary(config)
+                self.assertRegex(
+                    capture.get(), rf"AWS KMS Access +│ {re.escape(label)}"
+                )
 
     def test_summary_shows_s3_access_mode(self):
         for use_iam_role, label in (

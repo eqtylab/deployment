@@ -87,6 +87,15 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             aws_kms_config["endpoint"] = config.aws_kms_endpoint
         if config.aws_kms_alias_prefix:
             aws_kms_config["aliasPrefix"] = config.aws_kms_alias_prefix
+        if config.aws_kms_use_iam_role:
+            aws_kms_config["useIamRole"] = True
+            # IRSA requires a dedicated service account annotated with the IAM role ARN
+            section["serviceAccount"] = {
+                "create": True,
+                "annotations": {
+                    "eks.amazonaws.com/role-arn": "YOUR_IAM_ROLE_ARN",
+                },
+            }
         if aws_kms_config:
             section["config"]["keyManagement"]["aws_kms"] = aws_kms_config
     elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:

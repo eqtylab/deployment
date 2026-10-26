@@ -139,8 +139,7 @@ def collect_interactive_config(
                 "  [dim]For IRSA, a service account with an eks.amazonaws.com/role-arn "
                 "annotation will be scaffolded (replace YOUR_IAM_ROLE_ARN); drop the "
                 "annotation if you use an instance profile. No platform-aws-s3 secret "
-                "will be generated. The IAM role covers S3 only: AWS KMS still needs "
-                "static access keys in the platform-aws-kms secret.[/dim]"
+                "will be generated. AWS KMS access is asked separately.[/dim]"
             )
 
     # --- Key Management (required for DID keys) ---
@@ -175,6 +174,23 @@ def collect_interactive_config(
             default="alias/eqtylab/did",
         )
         config.aws_kms_alias_prefix = aws_kms_alias_prefix
+        if config.cloud_provider == CloudProvider.AWS:
+            # KMS access mode: static keys or IAM role, defaulting to the S3 choice
+            kms_iam_choice = Prompt.ask(
+                "  AWS KMS access via IAM role (IRSA / instance profile) instead of static access keys?",
+                choices=["yes", "no"],
+                default="yes" if config.aws_s3_use_iam_role else "no",
+            )
+            config.aws_kms_use_iam_role = kms_iam_choice == "yes"
+            if config.aws_kms_use_iam_role:
+                console.print(
+                    "  [dim]For IRSA, an Auth Service service account with an "
+                    "eks.amazonaws.com/role-arn annotation will be scaffolded (replace "
+                    "YOUR_IAM_ROLE_ARN); drop the annotation if you use an instance "
+                    "profile. No platform-aws-kms secret will be generated. For a role "
+                    "with a path, also set auth-service.config.keyManagement.aws_kms."
+                    "keyPolicyPrincipalArn.[/dim]"
+                )
     elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
         while True:
             keyvault_url = Prompt.ask("  Azure Key Vault URL").strip()

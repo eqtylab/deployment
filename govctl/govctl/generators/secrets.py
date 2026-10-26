@@ -221,7 +221,10 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
         "provider": config.key_management_provider.value,
     }
 
-    if config.key_management_provider == KeyManagementProvider.AWS_KMS:
+    if (
+        config.key_management_provider == KeyManagementProvider.AWS_KMS
+        and not config.aws_kms_use_iam_role
+    ):
         secrets["keyManagement"]["aws_kms"] = {
             "secretName": "platform-aws-kms",
             "values": {

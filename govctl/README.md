@@ -38,7 +38,7 @@ Before running `govctl init`, you'll need the following in place:
 ### Storage
 
 - **Object storage** — for governance artifacts and integrity data
-  - AWS: S3 bucket (access via static keys, or an IAM role / IRSA — `govctl` will ask which). The IAM role covers S3 only: AWS KMS still needs static access keys in the `platform-aws-kms` secret
+  - AWS: S3 bucket (access via static keys, or an IAM role / IRSA — `govctl` will ask which). With AWS KMS, `govctl` asks the same for KMS, defaulting to the S3 answer
   - Azure: Blob Storage account and container
   - GCP: GCS bucket
 - **Key management** — for DID signing keys (one of: AWS KMS, Azure Key Vault, or GCP KMS)
@@ -101,7 +101,7 @@ The interactive wizard walks you through:
 1. **Domain** — your deployment domain (required; there is no default)
 2. **Environment** — a name such as `development` (the default), `staging`, or `production`, lowercased: up to 63 letters, digits, and hyphens, starting and ending with a letter or digit. `development` and `dev` also allow `http://localhost:5173` in the bootstrap files' callbacks and origins
 3. **Database mode** — bundled Bitnami PostgreSQL (default unless the environment is `production`) or external managed PostgreSQL (default for `production`)
-4. **Cloud provider** — AWS, Azure, or GCP. AWS also asks for the region and whether S3 uses an IAM role (IRSA) or static keys
+4. **Cloud provider** — AWS, Azure, or GCP. AWS also asks for the region and whether S3 uses an IAM role (IRSA) or static keys; with AWS KMS on AWS, step 5 asks the same for KMS
 5. **Key management** — AWS KMS, Azure Key Vault, or GCP KMS for DID keys (defaults to the cloud provider's service), with its settings. The Key Vault URL and GCP project ID have no default
 6. **Auth provider** — Auth0, Microsoft Entra ID, or Keycloak, with its settings. The Auth0 domain has no default
 7. **Image registry** — container registry host (with an optional port), image prefix for a custom registry, and credentials
@@ -191,7 +191,7 @@ Only includes secrets relevant to your configuration:
 - **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three); Entra and Keycloak include a generated token signing key
 - **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials (S3 credentials are omitted when using IAM role / IRSA access)
 - **Image registry** — pull secret for container images (the GitHub username is marked `REQUIRED`)
-- **Key management** — AWS KMS _or_ Azure Key Vault _or_ GCP KMS credentials for DID keys. AWS KMS always needs static access keys, even when S3 uses an IAM role. The GCP KMS service account JSON is marked `OPTIONAL`: leave it empty for Workload Identity
+- **Key management** — AWS KMS _or_ Azure Key Vault _or_ GCP KMS credentials for DID keys. AWS KMS credentials are omitted when KMS uses an IAM role (IRSA), which also scaffolds an annotated Auth Service service account. The GCP KMS service account JSON is marked `OPTIONAL`: leave it empty for Workload Identity
 
 ## Next Steps
 

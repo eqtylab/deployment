@@ -71,6 +71,10 @@ class PlatformConfig:
     # instance profile) instead of static access keys, and skip the platform-aws-s3 secret
     aws_s3_use_iam_role: bool = False
 
+    # AWS KMS access mode: when True, use the IAM role credential chain (IRSA /
+    # instance profile) instead of static access keys, and skip the platform-aws-kms secret
+    aws_kms_use_iam_role: bool = False
+
     # Optional overrides
     release_name: str = "guardian-platform"
     namespace: str = "guardian"
