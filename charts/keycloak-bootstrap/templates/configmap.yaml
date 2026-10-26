@@ -126,6 +126,7 @@ data:
         echo "  Scope already exists: ${SCOPE_NAME}"
       else
         echo "  Failed to create scope: ${SCOPE_NAME} (Response: $RESPONSE)"
+        return 1
       fi
     }
 
@@ -173,6 +174,7 @@ data:
         echo "  Mapper '${MAPPER_NAME}' already exists"
       else
         echo "  Failed to add mapper '${MAPPER_NAME}' (Response: $RESPONSE)"
+        return 1
       fi
     }
 
@@ -198,6 +200,7 @@ data:
         echo "  Scope '${SCOPE_NAME}' is already a realm default"
       else
         echo "  Failed to set realm default scope (Response: $RESPONSE)"
+        return 1
       fi
     }
 
@@ -252,12 +255,14 @@ data:
         "${SCOPES_URL}" | jq -c '[.[].name | select(. != "service_account")]')
 
       log_list_change "${KIND} scopes" "$CURRENT" "$DESIRED"
+      FAILED=0
       for NAME in $(jq -n -r --argjson old "$CURRENT" --argjson new "$DESIRED" '($old - $new)[]'); do
         SCOPE_ID=$(echo "$ALL_SCOPES" | jq -r --arg name "$NAME" '.[] | select(.name == $name) | .id')
         RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${SCOPES_URL}/${SCOPE_ID}" \
           -H "Authorization: Bearer ${TOKEN}")
         if [ "$RESPONSE" != "204" ]; then
           echo "  Failed to remove ${KIND} scope ${NAME} (Response: $RESPONSE)"
+          FAILED=1
         fi
       done
       for NAME in $(jq -n -r --argjson old "$CURRENT" --argjson new "$DESIRED" '($new - $old)[]'); do
@@ -266,9 +271,10 @@ data:
           -H "Authorization: Bearer ${TOKEN}")
         if [ "$RESPONSE" != "204" ]; then
           echo "  Failed to add ${KIND} scope ${NAME} (Response: $RESPONSE)"
+          FAILED=1
         fi
       done
-      return 0
+      return $FAILED
     }
 
     # Function to update an existing client from the values, leaving its secret and enabled state unchanged

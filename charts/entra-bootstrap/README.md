@@ -328,7 +328,8 @@ kubectl logs -n guardian -l app.kubernetes.io/name=entra-bootstrap
 **Client secret not shown in logs**
 
 - Client secrets are only shown once during creation
-- If the app already existed, no new secret is created
+- If the app already existed with a secret, no new secret is created; an existing app with no secret gets one
+- If secret creation fails after three attempts, the job fails; rerun it to retry
 - Use `az ad app credential reset` to generate a new secret manually
 
 **Token validation errors after bootstrap**

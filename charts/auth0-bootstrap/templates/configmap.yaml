@@ -249,7 +249,8 @@ data:
         if [ "$HTTP_CODE" = "200" ]; then
           echo "  ${GREEN}Permissions updated${NC}"
         else
-          echo "  ${YELLOW}Failed to update permissions (HTTP ${HTTP_CODE})${NC}"
+          echo "  ${RED}Failed to update permissions (HTTP ${HTTP_CODE})${NC}"
+          return 1
         fi
         return 0
       fi
@@ -315,7 +316,8 @@ data:
         if [ "$HTTP_CODE" = "200" ]; then
           echo "  ${GREEN}Grant updated${NC}"
         else
-          echo "  ${YELLOW}Failed to update grant (HTTP ${HTTP_CODE})${NC}"
+          echo "  ${RED}Failed to update grant (HTTP ${HTTP_CODE})${NC}"
+          return 1
         fi
         return 0
       fi
@@ -471,10 +473,20 @@ data:
 
       echo "Binding action ${ACTION_ID} to trigger '${TRIGGER_ID}'..." >&2
 
-      local CURRENT
-      CURRENT=$(curl -s \
+      # Stop if the current bindings can't be read; the PATCH below replaces them all
+      local CURRENT_RESPONSE
+      CURRENT_RESPONSE=$(curl -s -w "\n%{http_code}" \
         -H "Authorization: Bearer ${TOKEN}" \
         "${AUTH0_API_URL}/actions/triggers/${TRIGGER_ID}/bindings")
+      local CURRENT_HTTP
+      CURRENT_HTTP=$(echo "$CURRENT_RESPONSE" | tail -1)
+      local CURRENT
+      CURRENT=$(echo "$CURRENT_RESPONSE" | sed '$d')
+      if [ "$CURRENT_HTTP" != "200" ]; then
+        echo "  ${RED}Failed to read bindings for trigger '${TRIGGER_ID}' (HTTP ${CURRENT_HTTP})${NC}" >&2
+        echo "  Response: $CURRENT" >&2
+        return 1
+      fi
 
       # Reshape existing bindings to the {ref, display_name} form PATCH expects
       local EXISTING_BINDINGS

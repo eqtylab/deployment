@@ -110,27 +110,43 @@ data:
       echo "  Ensuring service principal exists..."
       az ad sp create --id "${CURRENT_APP_ID}" --output none 2>/dev/null || true
 
-      # Only create a client secret for newly created apps to avoid
-      # invalidating existing secrets on re-runs
-      if [ "$IS_NEW" = true ]; then
+      # Only create a client secret for new apps and existing apps without one,
+      # to avoid invalidating existing secrets on re-runs
+      local NEEDS_SECRET=$IS_NEW
+      if [ "$IS_NEW" != true ]; then
+        local SECRET_COUNT
+        if ! SECRET_COUNT=$(az ad app credential list --id "${CURRENT_APP_ID}" --query "length(@)" -o tsv); then
+          echo -e "${RED}  Failed to list client secrets for ${DISPLAY_NAME}${NC}"
+          return 1
+        fi
+        if [ "$SECRET_COUNT" = "0" ]; then
+          echo "  App has no client secret"
+          NEEDS_SECRET=true
+        fi
+      fi
+
+      if [ "$NEEDS_SECRET" = true ]; then
         echo "  Creating client secret..."
         local SECRET=""
         for i in 1 2 3; do
           SECRET=$(az ad app credential reset \
             --id "${CURRENT_APP_ID}" \
             --display-name "guardian-platform" \
+            --append \
             --years 2 \
             --query "password" -o tsv 2>/dev/null) && break
           echo "  Retrying credential creation (attempt $i/3)..."
           sleep 5
         done
 
-        eval "${VAR_NAME}_SECRET=${SECRET}"
-
-        if [ -n "$SECRET" ]; then
-          echo -e "${YELLOW}  CLIENT SECRET for ${DISPLAY_NAME}: ${SECRET}${NC}"
-          echo -e "${YELLOW}  Save this secret - it will not be shown again!${NC}"
+        if [ -z "$SECRET" ]; then
+          echo -e "${RED}  Failed to create a client secret for ${DISPLAY_NAME}; rerun the bootstrap to retry${NC}"
+          return 1
         fi
+
+        eval "${VAR_NAME}_SECRET=${SECRET}"
+        echo -e "${YELLOW}  CLIENT SECRET for ${DISPLAY_NAME}: ${SECRET}${NC}"
+        echo -e "${YELLOW}  Save this secret - it will not be shown again!${NC}"
       else
         echo -e "${YELLOW}  App already exists — skipping secret creation to preserve existing credentials.${NC}"
         echo -e "${YELLOW}  To rotate, use: az ad app credential reset --id ${CURRENT_APP_ID}${NC}"
