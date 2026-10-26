@@ -11,25 +11,25 @@ The bootstrap job will:
 4. Configure frontend: SPA redirect URIs, frontend → backend API permission
 5. Grant admin consent for Graph API permissions
 
-IMPORTANT: Client secrets are only displayed once during initial creation.
-You MUST save them from the job logs immediately after the first run.
-They cannot be retrieved later — only rotated with `az ad app credential reset`.
+New client secrets are saved to the {{ include "entra-bootstrap.credentialsSecretName" . }} Secret, not to the job logs.
+Entra shows a client secret only once, so keep that Secret until you have copied them:
+  kubectl get secret {{ include "entra-bootstrap.credentialsSecretName" . }} -n {{ .Release.Namespace }} -o json | jq '.data | map_values(@base64d)'
 
 To check the job status:
   kubectl get jobs -l "app.kubernetes.io/name={{ include "entra-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
 
-To view the job logs (contains client secrets on first run):
+To view the job logs:
   kubectl logs -l "app.kubernetes.io/name={{ include "entra-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
 
-After the job completes, populate the platform-entra secret with:
-  - client-id:           Backend app client ID
-  - client-secret:       Backend app client secret (from logs)
+After the job completes, populate the platform-entra secret from those keys:
+  - client-id:           backend-client-id
+  - client-secret:       backend-client-secret
   - tenant-id:           {{ .Values.entra.tenantId }}
-  - graph-client-id:     Backend app client ID (same as client-id)
-  - graph-client-secret: Backend app client secret (same as client-secret)
+  - graph-client-id:     backend-client-id
+  - graph-client-secret: backend-client-secret
 
 And set these Helm values for guardian:
-  - config.entraClientId:  Frontend app client ID (from logs)
+  - config.entraClientId:  frontend-client-id
   - config.entraTenantId:  {{ .Values.entra.tenantId }}
   - config.entraScopes:    openid profile email offline_access api://<backend-client-id>/access_as_user
 

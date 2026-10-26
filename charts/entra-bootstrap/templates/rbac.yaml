@@ -1,0 +1,40 @@
+{{- if .Values.bootstrap.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "entra-bootstrap.fullname" . }}
+  labels:
+    {{- include "entra-bootstrap.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "entra-bootstrap.fullname" . }}
+  labels:
+    {{- include "entra-bootstrap.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+rules:
+  # Helm creates the credentials Secret; the job only reads and patches it
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: [{{ include "entra-bootstrap.credentialsSecretName" . | quote }}]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "entra-bootstrap.fullname" . }}
+  labels:
+    {{- include "entra-bootstrap.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "entra-bootstrap.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "entra-bootstrap.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

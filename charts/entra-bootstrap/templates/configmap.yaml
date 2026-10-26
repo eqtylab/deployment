@@ -42,12 +42,48 @@ data:
       echo -e "${GREEN}Successfully authenticated${NC}"
     }
 
-    # Check if an app registration exists by display name
-    # Sets APP_ID as a side effect if found
+    # Function to merge keys (a JSON object) into the credentials Secret, which Helm creates
+    store_credentials() {
+      local DATA=$1
+      local SA_DIR=${SERVICE_ACCOUNT_DIR:-/var/run/secrets/kubernetes.io/serviceaccount}
+      local RESPONSE
+      RESPONSE=$(curl -sS -w "\n%{http_code}" --cacert "${SA_DIR}/ca.crt" -X PATCH \
+        "${KUBERNETES_API:-https://kubernetes.default.svc}/api/v1/namespaces/$(cat "${SA_DIR}/namespace")/secrets/${CREDENTIALS_SECRET}" \
+        -H "Authorization: Bearer $(cat "${SA_DIR}/token")" \
+        -H "Content-Type: application/merge-patch+json" \
+        -d "$(jq -n -c --argjson data "$DATA" '{stringData: $data}')")
+      local HTTP_CODE
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      if [ "$HTTP_CODE" != "200" ]; then
+        echo "  Failed to save credentials to Secret ${CREDENTIALS_SECRET} (HTTP ${HTTP_CODE})"
+        echo "  Response: $(echo "$RESPONSE" | sed '$d' | jq -c 'del(.data)' 2>/dev/null)"
+        if [ "$HTTP_CODE" = "404" ]; then
+          echo "  Run helm upgrade on this release to recreate the Secret"
+        fi
+        return 1
+      fi
+      echo "  Saved $(echo "$DATA" | jq -r 'keys | join(", ")') to Secret ${CREDENTIALS_SECRET}"
+    }
+
+    # Check if an app registration exists with exactly this display name
+    # Sets APP_ID as a side effect if found; exits on a failed lookup or duplicate names
     check_app_exists() {
       local DISPLAY_NAME=$1
-      APP_ID=$(az ad app list --display-name "${DISPLAY_NAME}" --query "[0].appId" -o tsv 2>/dev/null)
-      if [ -n "$APP_ID" ] && [ "$APP_ID" != "None" ]; then
+      local APP_IDS
+      # --display-name is a prefix match, so filter on the exact name; OData escapes ' as ''
+      local ESCAPED_NAME
+      ESCAPED_NAME=$(printf '%s' "$DISPLAY_NAME" | sed "s/'/''/g")
+      if ! APP_IDS=$(az ad app list --filter "displayName eq '${ESCAPED_NAME}'" --query "[].appId" -o tsv); then
+        echo -e "${RED}  Failed to look up app registration '${DISPLAY_NAME}'${NC}"
+        exit 1
+      fi
+      if [ "$(echo "$APP_IDS" | grep -c .)" -gt 1 ]; then
+        echo -e "${RED}  Found more than one app registration named '${DISPLAY_NAME}':${NC}"
+        echo "$APP_IDS" | sed 's/^/    /'
+        exit 1
+      fi
+      APP_ID="$APP_IDS"
+      if [ -n "$APP_ID" ]; then
         echo "  App registration '${DISPLAY_NAME}' already exists (appId: ${APP_ID})"
         return 0
       fi
@@ -74,10 +110,12 @@ data:
     # =========================================================================
 
     # Create a confidential app registration
-    # Sets ${VAR_NAME}_APP_ID and ${VAR_NAME}_SECRET as side effects
+    # Sets ${VAR_NAME}_APP_ID as a side effect and saves a new client secret to the credentials Secret
     create_confidential_app() {
       local DISPLAY_NAME=$1
       local VAR_NAME=$2
+      local KEY
+      KEY=$(echo "$VAR_NAME" | tr '[:upper:]' '[:lower:]')
       local CURRENT_APP_ID=""
       local IS_NEW=false
 
@@ -144,10 +182,13 @@ data:
           return 1
         fi
 
-        eval "${VAR_NAME}_SECRET=${SECRET}"
-        echo -e "${YELLOW}  CLIENT SECRET for ${DISPLAY_NAME}: ${SECRET}${NC}"
-        echo -e "${YELLOW}  Save this secret - it will not be shown again!${NC}"
+        if ! store_credentials "$(jq -n -c --arg key "$KEY" --arg id "$CURRENT_APP_ID" --arg secret "$SECRET" \
+          '{($key + "-client-id"): $id, ($key + "-client-secret"): $secret}')"; then
+          echo -e "${RED}  The client secret was not saved; create another with: az ad app credential reset --id ${CURRENT_APP_ID} --append${NC}"
+          return 1
+        fi
       else
+        store_credentials "$(jq -n -c --arg key "${KEY}-client-id" --arg id "$CURRENT_APP_ID" '{($key): $id}')"
         echo -e "${YELLOW}  App already exists — skipping secret creation to preserve existing credentials.${NC}"
         echo -e "${YELLOW}  To rotate, use: az ad app credential reset --id ${CURRENT_APP_ID}${NC}"
       fi
@@ -416,6 +457,10 @@ data:
         exit 1
       fi
 
+      # Check the credentials Secret is writable before creating secrets shown only once
+      echo "Checking the ${CREDENTIALS_SECRET} Secret..."
+      store_credentials "$(jq -n -c --arg tenant "$TENANT_ID" '{"tenant-id": $tenant}')"
+
       # --- 1. Create backend app (confidential client) ---
       create_confidential_app \
         "{{ .Values.apps.backend.displayName }}" \
@@ -437,6 +482,7 @@ data:
       # --- 7. Set token version to v2 on frontend ---
       if [ -n "${FRONTEND_APP_ID}" ]; then
         set_token_version_v2 "${FRONTEND_APP_ID}" "{{ .Values.apps.frontend.displayName }}"
+        store_credentials "$(jq -n -c --arg id "$FRONTEND_APP_ID" '{"frontend-client-id": $id}')"
       fi
 
       # --- 8. Create worker app (confidential client, no special config) ---
@@ -451,34 +497,29 @@ data:
       echo "Tenant ID:      ${TENANT_ID}"
       echo ""
       echo "Backend App:    ${BACKEND_APP_ID}"
-      echo "  Secret:       ${BACKEND_SECRET:-<existing — not rotated>}"
       echo "  API URI:      api://${BACKEND_APP_ID}"
       echo "  Scope:        api://${BACKEND_APP_ID}/access_as_user"
       echo ""
       echo "Frontend App:   ${FRONTEND_APP_ID}"
       echo ""
       echo "Worker App:     ${WORKER_APP_ID}"
-      echo "  Secret:       ${WORKER_SECRET:-<existing — not rotated>}"
       echo ""
       echo "============================================"
-      echo "platform-entra secret:"
+      echo "Credentials"
       echo "============================================"
-      echo "  client-id:           ${BACKEND_APP_ID}"
-      echo "  client-secret:       ${BACKEND_SECRET:-<use existing>}"
-      echo "  tenant-id:           ${TENANT_ID}"
-      echo "  graph-client-id:     ${BACKEND_APP_ID}"
-      echo "  graph-client-secret: ${BACKEND_SECRET:-<use existing>}"
+      echo "New client secrets are saved to the ${CREDENTIALS_SECRET} Secret, never to these logs."
+      echo "Existing apps keep their secrets. Read the Secret with:"
+      echo "  kubectl get secret ${CREDENTIALS_SECRET} -o json | jq '.data | map_values(@base64d)'"
       echo ""
-      echo "platform-governance-worker secret:"
-      echo "  client-id:           ${WORKER_APP_ID}"
-      echo "  client-secret:       ${WORKER_SECRET:-<use existing>}"
+      echo "platform-entra secret: client-id and graph-client-id = backend-client-id,"
+      echo "  client-secret and graph-client-secret = backend-client-secret, tenant-id = ${TENANT_ID}"
+      echo "platform-governance-worker secret: client-id = worker-client-id, client-secret = worker-client-secret"
       echo ""
       echo "guardian Helm values:"
       echo "  config.entraClientId:  ${FRONTEND_APP_ID}"
       echo "  config.entraTenantId:  ${TENANT_ID}"
       echo "  config.entraScopes:    openid profile email offline_access api://${BACKEND_APP_ID}/access_as_user"
       echo ""
-      echo -e "${YELLOW}Save these values — client secrets cannot be retrieved after this.${NC}"
       echo -e "${GREEN}Entra ID bootstrap completed successfully!${NC}"
     }
 

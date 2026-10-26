@@ -96,7 +96,7 @@ kubectl create secret generic entra-bootstrap-sp \
 | `Application.ReadWrite.All`              | `1bfefb4e-e0b5-418b-a88f-73c46d2cc8e9` | Application | Create and configure app registrations        |
 | `DelegatedPermissionGrant.ReadWrite.All` | `8e8e4742-1d2d-4f22-b4fa-e31d2a2e3798` | Application | Grant admin consent for delegated permissions |
 
-> **Note:** After the bootstrap job completes, populate the `platform-entra` secret with the created app registration client IDs and secrets from the job logs.
+> **Note:** The job saves app IDs, the tenant ID, and new client secrets to the `<release>-credentials` Secret (`credentialsSecret.name`), not to its logs. Helm creates the Secret empty, and the job's ServiceAccount can only read and patch that Secret. Entra shows a client secret only once, so read it with `kubectl get secret <release>-credentials -o json | jq '.data | map_values(@base64d)'` and populate the `platform-entra` secret from it. The Secret has `helm.sh/resource-policy: keep`, so it survives `helm uninstall`; delete it yourself when you no longer need it.
 
 ### Uninstalling
 
@@ -104,7 +104,7 @@ kubectl create secret generic entra-bootstrap-sp \
 helm uninstall entra-bootstrap --namespace guardian
 ```
 
-This removes all Kubernetes components associated with the chart and deletes the release.
+This removes all Kubernetes components associated with the chart and deletes the release, except the `<release>-credentials` Secret, which is kept (`helm.sh/resource-policy: keep`).
 
 > **Warning:** This will not remove the created Entra ID app registrations. To fully reset, manually delete the app registrations in the Azure portal.
 
@@ -112,11 +112,12 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Global Parameters
 
-| Key                     | Type   | Default | Description                               |
-| ----------------------- | ------ | ------- | ----------------------------------------- |
-| nameOverride            | string | `""`    | Override the chart name                   |
-| fullnameOverride        | string | `""`    | Override the full name of the release     |
-| global.imagePullSecrets | list   | `[]`    | Image pull secrets for private registries |
+| Key                     | Type   | Default                        | Description                                                                                   |
+| ----------------------- | ------ | ------------------------------ | --------------------------------------------------------------------------------------------- |
+| nameOverride            | string | `""`                           | Override the chart name                                                                       |
+| fullnameOverride        | string | `""`                           | Override the full name of the release                                                         |
+| global.imagePullSecrets | list   | `[]`                           | Image pull secrets for private registries                                                     |
+| credentialsSecret.name  | string | `""` (`<release>-credentials`) | Secret the job saves app IDs and new client secrets to instead of its logs; kept on uninstall |
 
 ### Bootstrap Job Configuration
 
@@ -181,7 +182,7 @@ The frontend app is configured as a **Single-page application (SPA)** with:
 
 The backend app is configured as a **confidential client** with:
 
-- Client secret (auto-generated, shown in job logs)
+- Client secret (auto-generated, saved to the credentials Secret as `backend-client-secret`)
 - `accessTokenAcceptedVersion: 2`
 - Application ID URI: `api://<appId>`
 - `access_as_user` delegated OAuth2 scope
@@ -196,7 +197,7 @@ The backend app is configured as a **confidential client** with:
 
 The worker app is configured as a **confidential client** with:
 
-- Client secret (auto-generated, shown in job logs)
+- Client secret (auto-generated, saved to the credentials Secret as `worker-client-secret`)
 - No additional API permissions or scopes
 
 ## Bootstrap Execution Order
@@ -265,7 +266,7 @@ The `platform-entra` secret should contain these keys after bootstrap:
 | `graph-client-id`     | Backend app client ID (for Graph API calls)          |
 | `graph-client-secret` | Backend app client secret (for Graph API calls)      |
 
-> **Note:** The frontend app ID is configured as a chart value (not stored in secrets), and the `guardian` chart also takes the tenant ID as a value. The worker app's client ID and secret go in a separate `platform-governance-worker` secret; the job logs print both. See each service's chart documentation for details.
+> **Note:** The frontend app ID is configured as a chart value (not stored in secrets), and the `guardian` chart also takes the tenant ID as a value. The worker app's client ID and secret go in a separate `platform-governance-worker` secret; the credentials Secret holds both as `worker-client-id` and `worker-client-secret`. See each service's chart documentation for details.
 
 ## Troubleshooting
 
@@ -325,9 +326,9 @@ kubectl logs -n guardian -l app.kubernetes.io/name=entra-bootstrap
 - Increase `bootstrap.activeDeadlineSeconds`
 - Check network connectivity from the cluster to `login.microsoftonline.com` and `graph.microsoft.com`
 
-**Client secret not shown in logs**
+**Client secret not in the credentials Secret**
 
-- Client secrets are only shown once during creation
+- New client secrets are saved to the credentials Secret, never to the job logs
 - If the app already existed with a secret, no new secret is created; an existing app with no secret gets one
 - If secret creation fails after three attempts, the job fails; rerun it to retry
 - Use `az ad app credential reset` to generate a new secret manually

@@ -150,7 +150,7 @@ Existing `values-{env}.yaml`, `secrets-{env}.yaml`, or `bootstrap-{env}.yaml` fi
 Configures all platform services based on your selections. Values the charts require that `govctl` cannot fill are left empty and marked `# REQUIRED: <label>`; replace the remaining `YOUR_*` placeholders too.
 
 - **global** — environment name, domain. Also `global.postgresql.{host, port, database, username, sslMode, sslRootCert}` when database mode is `external`, with `host` marked `REQUIRED`
-- **auth-service** — IDP provider config, key management, ingress, and token exchange for Keycloak
+- **auth-service** — IDP provider config, key management, ingress, and token exchange for Keycloak and Entra
 - **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: true` by default; no ingress)
 - **gateway-stack** — LLM Gateway and Control Plane (`enabled: false` by default, plus image overrides for GitHub output; hostnames, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
@@ -188,7 +188,7 @@ Only includes secrets relevant to your configuration:
 
 - **Database** — PostgreSQL credentials, plus a `gatewayDsn` connection string for the `guardian_gateway` database (only consumed when `gateway-stack` is enabled; it repeats the generated password, so change both together). With the bundled database, its host is `guardian-platform-postgresql`, which assumes the Helm release name `guardian-platform`; change the host if you install under another release name
 - **Auth Service** — API secret, JWT secret
-- **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three)
+- **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three); Entra and Keycloak include a generated token signing key
 - **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials (S3 credentials are omitted when using IAM role / IRSA access)
 - **Image registry** — pull secret for container images (the GitHub username is marked `REQUIRED`)
 - **Key management** — AWS KMS _or_ Azure Key Vault _or_ GCP KMS credentials for DID keys. AWS KMS always needs static access keys, even when S3 uses an IAM role. The GCP KMS service account JSON is marked `OPTIONAL`: leave it empty for Workload Identity

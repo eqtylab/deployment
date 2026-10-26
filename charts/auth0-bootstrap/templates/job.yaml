@@ -21,7 +21,9 @@ spec:
         app.kubernetes.io/component: bootstrap
     spec:
       restartPolicy: OnFailure
-      automountServiceAccountToken: false
+      # The token is used only to write the credentials Secret
+      serviceAccountName: {{ include "auth0-bootstrap.fullname" . }}
+      automountServiceAccountToken: true
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -43,6 +45,8 @@ spec:
           args: ["/scripts/bootstrap.sh"]
           {{- end }}
           env:
+            - name: CREDENTIALS_SECRET
+              value: {{ include "auth0-bootstrap.credentialsSecretName" . | quote }}
             - name: AUTH0_DOMAIN
               value: "{{ .Values.auth0.domain }}"
             - name: AUTH0_MGMT_CLIENT_ID

@@ -52,6 +52,10 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "tenantId": tenant_id,
             "defaultRoles": "user",
         }
+        section["config"]["tokenExchange"] = {
+            "enabled": True,
+            "keyId": f"auth-service-{config.environment}-001",
+        }
     elif config.auth_provider == AuthProvider.KEYCLOAK:
         keycloak_url = config.keycloak_base_url
         section["config"]["idp"][

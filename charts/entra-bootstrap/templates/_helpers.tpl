@@ -42,3 +42,10 @@ Selector labels
 app.kubernetes.io/name: {{ include "entra-bootstrap.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{/*
+Name of the Secret the bootstrap job writes new client credentials to
+*/}}
+{{- define "entra-bootstrap.credentialsSecretName" -}}
+{{- .Values.credentialsSecret.name | default (printf "%s-credentials" .Release.Name) -}}
+{{- end -}}

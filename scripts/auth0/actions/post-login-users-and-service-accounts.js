@@ -75,6 +75,7 @@ exports.onExecutePostLogin = async (event, api) => {
       const platformRoles = [
         "platform:service_account",
         "governance:declarations:create",
+        "integrity:statements:create",
       ];
       api.accessToken.setCustomClaim(`${namespace}roles`, platformRoles);
 

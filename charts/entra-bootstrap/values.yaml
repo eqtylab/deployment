@@ -95,6 +95,15 @@ bootstrap:
     runAsUser: 1000
     fsGroup: 1000
 
+# -- Credentials Secret
+# @default -- See values below
+# Kubernetes Secret the job writes new client IDs and secrets to instead of the job
+# logs; Helm creates it empty and keeps it on uninstall
+credentialsSecret:
+  # -- Name
+  # @default -- `""` (`<release>-credentials`)
+  name: ""
+
 # =============================================================================
 # MICROSOFT ENTRA ID CONFIGURATION
 # =============================================================================

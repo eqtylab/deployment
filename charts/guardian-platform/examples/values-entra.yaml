@@ -58,6 +58,12 @@ auth-service:
       entra:
         tenantId: "your-tenant-id"
         defaultRoles: "user"
+    # Token Exchange Configuration (for Entra; signing key read from the platform-entra Secret)
+    tokenExchange:
+      enabled: true
+      keyId: "auth-service-prod-001"
+      # Max 86400. Applied on token refresh; the login token is capped by Entra's token lifetime
+      accessTokenExpirySeconds: 3600
     # Key Management Configuration (for DID keys)
     keyManagement:
       # Key Management - AWS KMS (uncomment to use instead)
@@ -297,6 +303,7 @@ entra:
 #   --from-literal=tenant-id=YOUR_ENTRA_TENANT_ID \
 #   --from-literal=graph-client-id=YOUR_GRAPH_CLIENT_ID \
 #   --from-literal=graph-client-secret=YOUR_GRAPH_CLIENT_SECRET \
+#   --from-literal=token-exchange-private-key="$(openssl genrsa 2048)" \
 #   --namespace guardian
 #
 # # Auth Service Credentials

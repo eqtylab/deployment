@@ -42,3 +42,10 @@ Selector labels
 app.kubernetes.io/name: {{ include "auth0-bootstrap.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{/*
+Name of the Secret the bootstrap job writes new client credentials to
+*/}}
+{{- define "auth0-bootstrap.credentialsSecretName" -}}
+{{- .Values.credentialsSecret.name | default (printf "%s-credentials" .Release.Name) -}}
+{{- end -}}

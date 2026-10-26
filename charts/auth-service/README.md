@@ -12,7 +12,7 @@ Key capabilities:
 - **RBAC Authorization**: Fine-grained permission management with caching
 - **Service Accounts**: Machine-to-machine authentication for platform workers
 - **DID Key Management**: Integration with AWS KMS, Azure Key Vault, or GCP KMS for credential signing
-- **Token Exchange**: Keycloak token exchange support for federated authentication
+- **Token Exchange**: Keycloak and Entra token exchange support for federated authentication
 
 ## Configuration Model
 
@@ -124,6 +124,9 @@ auth-service:
       entra:
         tenantId: "your-tenant-id"
         defaultRoles: "user"
+    tokenExchange:
+      enabled: true
+      keyId: "auth-service-prod-001"
     # Key Management Configuration (for DID keys)
     keyManagement:
       provider: "azure_key_vault"
@@ -596,15 +599,16 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 Token exchange is supported with the Keycloak and Entra providers and is
 disabled by default; enabling it with Auth0 fails the render. Unless
-`privateKey` is set, the private key is read from the Keycloak Secret's
-`token-exchange-private-key` key. Entra with `global.secrets.create: true`
-requires `privateKey`, because no Keycloak Secret is created.
+`privateKey` is set, the private key is read from the Keycloak or Entra
+Secret's `token-exchange-private-key` key. Enable it with Entra too: the
+service always issues tokens there, and without a shared key each pod
+generates its own.
 
 | Key                                           | Type   | Default                   | Description                                                                                                                                                                  |
 | --------------------------------------------- | ------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | config.tokenExchange.enabled                  | bool   | `false`                   | Enable token exchange (Keycloak or Entra)                                                                                                                                    |
 | config.tokenExchange.keyId                    | string | `"auth-service-prod-001"` | Key identifier for signing key                                                                                                                                               |
-| config.tokenExchange.privateKey               | string | `""`                      | Token exchange private key (auto-configured from global.secrets.auth.keycloak; **required** with Entra and `global.secrets.create: true`)                                    |
+| config.tokenExchange.privateKey               | string | `""`                      | Token exchange private key (auto-configured from the `global.secrets.auth.keycloak` or `global.secrets.auth.entra` Secret)                                                   |
 | config.tokenExchange.accessTokenExpirySeconds | int    | `3600`                    | Access token lifetime in seconds, clamped to `86400` (24h) by the service. Applied on token refresh; the first token after login is capped by the IdP token's remaining life |
 
 ### Advanced: Network Policy Configuration
@@ -697,6 +701,7 @@ kubectl create secret generic platform-auth0 \
 3. **Grant Graph API permissions**: `User.Read.All`, `User.ReadWrite.All`, or scopes required by your deployment
 4. **Note your Tenant ID** from Azure Active Directory overview
 5. **Create a confidential App Registration** for the governance worker, if the worker service account is enabled
+6. **Generate a token signing key** with `openssl genrsa 2048` and store it as the Entra Secret's `token-exchange-private-key`, so every replica signs tokens with the same key
 
 ### Example Configuration
 
@@ -708,6 +713,10 @@ config:
     entra:
       tenantId: "your-tenant-id"
       defaultRoles: "user"
+
+  tokenExchange:
+    enabled: true
+    keyId: "auth-service-prod-001"
 
   serviceAccounts:
     governanceWorker:

@@ -166,6 +166,7 @@ global:
           tenantId: "tenant-id"
           graphClientId: "graph-client-id"
           graphClientSecret: "graph-client-secret"
+          tokenExchangePrivateKey: "token-exchange-private-key"
         # -- Secret Values
         # @default -- See values below
         # Only used if create=true and provider=entra
@@ -185,6 +186,9 @@ global:
           # -- Graph API Client Secret (Client secret for Microsoft Graph access)
           # @default -- `""` (REQUIRED if create=true, retrieve from Azure portal)
           graphClientSecret: ""
+          # -- Token Exchange Private Key
+          # @default -- `""` (REQUIRED if create=true and auth-service tokenExchange is enabled, generate with: openssl genrsa 2048)
+          tokenExchangePrivateKey: ""
 
       # -- Keycloak Configuration
       # @default -- See values below
@@ -1308,10 +1312,9 @@ auth-service:
       # Key identifier for signing key
       keyId: "auth-service-prod-001"
       # -- Private Key
-      # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+      # @default -- `""` (auto-configured from global.secrets.auth.keycloak or global.secrets.auth.entra)
       # Only used when tokenExchange is enabled; when empty, read from the Keycloak
-      # Secret's token-exchange-private-key key
-      # **REQUIRED for Entra** with global.secrets.create=true, which creates no Keycloak Secret
+      # or Entra Secret's token-exchange-private-key key
       privateKey: ""
       # -- Access Token Expiry
       # @default -- `3600`

@@ -938,10 +938,9 @@ config:
     # Key identifier for signing key
     keyId: "auth-service-prod-001"
     # -- Private Key
-    # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
+    # @default -- `""` (auto-configured from global.secrets.auth.keycloak or global.secrets.auth.entra)
     # Only used when tokenExchange is enabled; when empty, read from the Keycloak
-    # Secret's token-exchange-private-key key
-    # **REQUIRED for Entra** with global.secrets.create=true, which creates no Keycloak Secret
+    # or Entra Secret's token-exchange-private-key key
     privateKey: ""
     # -- Access Token Expiry
     # @default -- `3600`

@@ -89,6 +89,9 @@ run_bootstrap() {
 
   print_info "Bootstrap job $job_name completed"
 
+  # Secret the job saved client credentials to
+  CREDENTIALS_SECRET=$(kubectl get job "$job_name" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="CREDENTIALS_SECRET")].value}')
+
   # Show logs
   echo ""
   print_warn "Bootstrap logs:"
@@ -125,7 +128,9 @@ show_summary() {
   echo "- Worker:   ${worker_app} (confidential, service account only)"
   echo ""
   echo "Next Steps:"
-  echo "  1. Check the bootstrap job logs above for app IDs and client secrets"
+  echo "  1. Read the app IDs and client secrets from the ${CREDENTIALS_SECRET} Secret"
+  echo "     (new client secrets are saved there, not to the logs):"
+  echo "     kubectl get secret ${CREDENTIALS_SECRET} -n $NAMESPACE -o json | jq '.data | map_values(@base64d)'"
   echo "  2. Create the platform-entra secret with the backend app credentials:"
   echo "     kubectl create secret generic platform-entra \\"
   echo "       --from-literal=client-id=<backend-app-id> \\"

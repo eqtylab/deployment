@@ -77,6 +77,7 @@ check_prerequisites() {
     echo "  - read:client_grants, create:client_grants, update:client_grants"
     echo "  - read:users, create:users, update:users"
     echo "  - read:actions, create:actions, update:actions, delete:actions (Actions)"
+    echo "  - update:client_keys (client-credentials-exchange Action)"
     exit 1
   fi
   print_info "All required secrets exist"
@@ -161,7 +162,10 @@ run_bootstrap() {
 
   print_info "Bootstrap job $job_name completed"
 
-  # Show logs (client secrets are printed once here — preserve full output)
+  # Secret the job saved client credentials to
+  CREDENTIALS_SECRET=$(kubectl get job "$job_name" -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="CREDENTIALS_SECRET")].value}')
+
+  # Show logs
   echo ""
   print_warn "Bootstrap logs:"
   kubectl logs job/"$job_name" -n "$NAMESPACE"
@@ -207,8 +211,9 @@ show_summary() {
     echo ""
   fi
   echo "Next Steps:"
-  echo "  1. Capture the backend and worker client IDs and secrets from the logs above"
-  echo "     (Auth0 only prints client secrets once — store them now)"
+  echo "  1. Read the backend and worker client IDs and secrets from the ${CREDENTIALS_SECRET} Secret"
+  echo "     (new client secrets are saved there, not to the logs):"
+  echo "     kubectl get secret ${CREDENTIALS_SECRET} -n $NAMESPACE -o json | jq '.data | map_values(@base64d)'"
   echo "  2. Create the platform-auth0 secret with backend + management credentials:"
   echo "     kubectl create secret generic platform-auth0 \\"
   echo "       --from-literal=client-id=<backend-client-id> \\"

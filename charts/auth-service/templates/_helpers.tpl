@@ -113,8 +113,8 @@ settings at render time.
 {{- if not (has $idpProvider (list "entra" "keycloak")) -}}
 {{- fail (printf "config.tokenExchange.enabled requires idp provider keycloak or entra, got %q" ($idpProvider | default "auth0")) -}}
 {{- end -}}
-{{- if and (eq $idpProvider "entra") (((.Values.global).secrets).create) (not .Values.config.tokenExchange.privateKey) -}}
-{{- fail "config.tokenExchange.privateKey is required when tokenExchange is enabled, idp provider is entra and global.secrets.create is true" -}}
+{{- if and (eq $idpProvider "entra") (((.Values.global).secrets).create) (not .Values.config.tokenExchange.privateKey) (not (((((.Values.global).secrets).auth).entra).values).tokenExchangePrivateKey) -}}
+{{- fail "global.secrets.auth.entra.values.tokenExchangePrivateKey (or config.tokenExchange.privateKey) is required when tokenExchange is enabled, idp provider is entra and global.secrets.create is true" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

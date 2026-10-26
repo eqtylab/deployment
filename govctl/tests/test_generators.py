@@ -117,6 +117,19 @@ class ValuesTests(unittest.TestCase):
         self.assertNotIn("tenantId", values["entra"])
         self.assertNotIn("entraTenantId", values["governance-service"]["config"])
 
+    def test_entra_signs_tokens_with_a_shared_key(self):
+        c = config(auth=AuthProvider.ENTRA)
+        values = yaml.safe_load(generate_values(c))
+        self.assertEqual(
+            values["auth-service"]["config"]["tokenExchange"],
+            {"enabled": True, "keyId": "auth-service-staging-001"},
+        )
+        secrets = yaml.safe_load(generate_secrets(c))
+        key = secrets["global"]["secrets"]["auth"]["entra"]["values"][
+            "tokenExchangePrivateKey"
+        ]
+        self.assertIn("PRIVATE KEY", key)
+
     def test_governance_log_level_uses_the_chart_default(self):
         values = yaml.safe_load(generate_values(config()))
         self.assertNotIn("logLevel", values["governance-service"]["config"])

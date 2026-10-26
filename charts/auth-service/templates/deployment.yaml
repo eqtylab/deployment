@@ -475,6 +475,11 @@ spec:
             - name: AUTH_SERVICE_PRIVATE_KEY
               {{- if .Values.config.tokenExchange.privateKey }}
               value: {{ .Values.config.tokenExchange.privateKey | quote }}
+              {{- else if eq $idpProvider "entra" }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | required "secrets.auth.entra.name (or global.secrets.auth.entra.secretName) is required when tokenExchange is enabled and config.tokenExchange.privateKey is empty" | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).entra).keys).tokenExchangePrivateKey | default "token-exchange-private-key" | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:

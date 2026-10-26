@@ -9,6 +9,22 @@
  * @param {CredentialsExchangeAPI} api - Interface whose methods can be used to change the behavior of the credentials exchange.
  */
 
+// Management API client, reused across executions while the Action stays warm
+let management = null;
+
+const getManagementClient = (secrets) => {
+  if (!management) {
+    const ManagementClient = require("auth0").ManagementClient;
+    management = new ManagementClient({
+      domain: secrets.domain,
+      clientId: secrets.clientId,
+      clientSecret: secrets.clientSecret,
+      scope: "read:users read:users_app_metadata",
+    });
+  }
+  return management;
+};
+
 exports.onExecuteCredentialsExchange = async (event, api) => {
   console.log(
     "Client Credentials Exchange - Client:",
@@ -31,18 +47,11 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
 
   console.log("Starting enrichment for service account:", serviceAccountUserId);
 
-  // Management API client is needed to look up the underlying service-account user
-  const ManagementClient = require("auth0").ManagementClient;
-  const management = new ManagementClient({
-    domain: event.secrets.domain,
-    clientId: event.secrets.clientId,
-    clientSecret: event.secrets.clientSecret,
-    scope: "read:users read:users_app_metadata",
-  });
-
   try {
     // Fetch the service-account user record so we can read its metadata
-    const user = await management.getUser({ id: serviceAccountUserId });
+    const user = await getManagementClient(event.secrets).getUser({
+      id: serviceAccountUserId,
+    });
 
     if (!user) {
       console.error("Service account user not found:", serviceAccountUserId);
@@ -94,7 +103,10 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
         "integrity:statements:create",
       ]);
     } else {
-      const organizationId = appMetadata.organization_id;
+      // organization_id is stored as a string in app_metadata, auth-service expects integers
+      const organizationId = appMetadata.organization_id
+        ? parseInt(appMetadata.organization_id, 10)
+        : null;
       if (organizationId) {
         api.accessToken.setCustomClaim(
           namespace + "organization_id",

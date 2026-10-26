@@ -49,6 +49,44 @@ data:
       return 0
     }
 
+    # Function to merge keys (a JSON object) into the credentials Secret, which Helm creates
+    store_credentials() {
+      local DATA=$1
+      local SA_DIR=${SERVICE_ACCOUNT_DIR:-/var/run/secrets/kubernetes.io/serviceaccount}
+      local RESPONSE
+      RESPONSE=$(curl -sS -w "\n%{http_code}" --cacert "${SA_DIR}/ca.crt" -X PATCH \
+        "${KUBERNETES_API:-https://kubernetes.default.svc}/api/v1/namespaces/$(cat "${SA_DIR}/namespace")/secrets/${CREDENTIALS_SECRET}" \
+        -H "Authorization: Bearer $(cat "${SA_DIR}/token")" \
+        -H "Content-Type: application/merge-patch+json" \
+        -d "$(jq -n -c --argjson data "$DATA" '{stringData: $data}')")
+      local HTTP_CODE
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      if [ "$HTTP_CODE" != "200" ]; then
+        echo "  Failed to save credentials to Secret ${CREDENTIALS_SECRET} (HTTP ${HTTP_CODE})"
+        echo "  Response: $(echo "$RESPONSE" | sed '$d' | jq -c 'del(.data)' 2>/dev/null)"
+        if [ "$HTTP_CODE" = "404" ]; then
+          echo "  Run helm upgrade on this release to recreate the Secret"
+        fi
+        return 1
+      fi
+      echo "  Saved $(echo "$DATA" | jq -r 'keys | join(", ")') to Secret ${CREDENTIALS_SECRET}"
+    }
+
+    # Function to read one key from the credentials Secret (echoes the value, or nothing)
+    read_credential() {
+      local KEY=$1
+      local SA_DIR=${SERVICE_ACCOUNT_DIR:-/var/run/secrets/kubernetes.io/serviceaccount}
+      local RESPONSE
+      RESPONSE=$(curl -sS -w "\n%{http_code}" --cacert "${SA_DIR}/ca.crt" \
+        "${KUBERNETES_API:-https://kubernetes.default.svc}/api/v1/namespaces/$(cat "${SA_DIR}/namespace")/secrets/${CREDENTIALS_SECRET}" \
+        -H "Authorization: Bearer $(cat "${SA_DIR}/token")")
+      if [ "$(echo "$RESPONSE" | tail -1)" != "200" ]; then
+        echo "  ${RED}Failed to read Secret ${CREDENTIALS_SECRET} (HTTP $(echo "$RESPONSE" | tail -1))${NC}" >&2
+        return 1
+      fi
+      echo "$RESPONSE" | sed '$d' | jq -r --arg key "$KEY" '.data[$key] // empty | @base64d'
+    }
+
     # Function to read every page of a Management API list endpoint (echoes one JSON array)
     list_all() {
       local RESOURCE=$1
@@ -161,6 +199,7 @@ data:
       if [ -n "$EXISTING" ]; then
         echo "  Application already exists (client_id: ${EXISTING}); updating it from the values"
         update_spa_app "$EXISTING" "$CALLBACKS" "$LOGOUT_URLS" "$WEB_ORIGINS"
+        store_credentials "$(jq -n -c --arg id "$EXISTING" '{"frontend-client-id": $id}')"
         return $?
       fi
 
@@ -183,7 +222,8 @@ data:
       if [ "$HTTP_CODE" = "201" ]; then
         CLIENT_ID=$(echo "$BODY" | jq -r '.client_id')
         echo "  ${GREEN}Created SPA application (client_id: ${CLIENT_ID})${NC}"
-        return 0
+        store_credentials "$(jq -n -c --arg id "$CLIENT_ID" '{"frontend-client-id": $id}')"
+        return $?
       else
         echo "  ${RED}Failed to create SPA application (HTTP ${HTTP_CODE})${NC}"
         echo "  Response: $BODY"
@@ -192,15 +232,18 @@ data:
     }
 
     # Function to create an M2M application
+    # KEY prefixes the client-id and client-secret keys in the credentials Secret
     create_m2m_app() {
       local APP_NAME=$1
+      local KEY=$2
 
       echo "Creating M2M application: ${APP_NAME}..."
 
       EXISTING=$(get_client_by_name "$APP_NAME") || return 1
       if [ -n "$EXISTING" ]; then
         echo "  Application already exists (client_id: ${EXISTING})"
-        return 0
+        store_credentials "$(jq -n -c --arg key "${KEY}-client-id" --arg id "$EXISTING" '{($key): $id}')"
+        return $?
       fi
 
       APP_CONFIG=$(jq -n --arg name "$APP_NAME" \
@@ -219,8 +262,11 @@ data:
         CLIENT_ID=$(echo "$BODY" | jq -r '.client_id')
         CLIENT_SECRET=$(echo "$BODY" | jq -r '.client_secret')
         echo "  ${GREEN}Created M2M application (client_id: ${CLIENT_ID})${NC}"
-        echo "  ${YELLOW}Client Secret: ${CLIENT_SECRET}${NC}"
-        echo "  Save this secret — you will need it for Kubernetes secrets."
+        if ! store_credentials "$(jq -n -c --arg key "$KEY" --arg id "$CLIENT_ID" --arg secret "$CLIENT_SECRET" \
+          '{($key + "-client-id"): $id, ($key + "-client-secret"): $secret}')"; then
+          echo "  ${RED}The client secret was not saved; rotate it in the Auth0 Dashboard (Applications > ${APP_NAME} > Settings)${NC}"
+          return 1
+        fi
         return 0
       else
         echo "  ${RED}Failed to create M2M application (HTTP ${HTTP_CODE})${NC}"
@@ -360,6 +406,66 @@ data:
       local SCOPES=$2
 
       grant_client_api_access "$CLIENT_NAME" "${AUTH0_AUDIENCE}" "$SCOPES"
+    }
+
+    # Function to set ACTIONS_APP_CLIENT_ID and ACTIONS_APP_CLIENT_SECRET for the Actions M2M
+    # application: reuse the secret saved in the credentials Secret while it still gets a
+    # token, otherwise create the application or rotate its secret and save the new one
+    prepare_actions_app() {
+      local APP_NAME=$1
+
+      echo "Preparing Actions application: ${APP_NAME}..."
+
+      EXISTING=$(get_client_by_name "$APP_NAME") || return 1
+      if [ -n "$EXISTING" ]; then
+        local SAVED_ID
+        SAVED_ID=$(read_credential actions-client-id) || return 1
+        local SAVED_SECRET
+        SAVED_SECRET=$(read_credential actions-client-secret) || return 1
+        if [ "$SAVED_ID" = "$EXISTING" ] && [ -n "$SAVED_SECRET" ] && \
+          curl -s -o /dev/null -w "%{http_code}" -X POST "https://${AUTH0_DOMAIN}/oauth/token" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg id "$EXISTING" --arg secret "$SAVED_SECRET" --arg audience "$AUTH0_AUDIENCE" \
+              '{client_id: $id, client_secret: $secret, audience: $audience, grant_type: "client_credentials"}')" \
+            | grep -q '^200$'; then
+          ACTIONS_APP_CLIENT_ID=$EXISTING
+          ACTIONS_APP_CLIENT_SECRET=$SAVED_SECRET
+          echo "  Reusing the saved secret (client_id: ${EXISTING})"
+          return 0
+        fi
+        echo "  No working saved secret; rotating it"
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/clients/${EXISTING}/rotate-secret" \
+          -H "Authorization: Bearer ${TOKEN}")
+        EXPECTED=200
+      else
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/clients" \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d "$(jq -n --arg name "$APP_NAME" \
+            '{name: $name, app_type: "non_interactive", token_endpoint_auth_method: "client_secret_post",
+              oidc_conformant: true, grant_types: ["client_credentials"]}')")
+        EXPECTED=201
+      fi
+
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      BODY=$(echo "$RESPONSE" | sed '$d')
+      if [ "$HTTP_CODE" != "$EXPECTED" ]; then
+        echo "  ${RED}Failed to prepare Actions application (HTTP ${HTTP_CODE})${NC}"
+        echo "  Response: $(echo "$BODY" | jq -c 'del(.client_secret)' 2>/dev/null)"
+        return 1
+      fi
+      ACTIONS_APP_CLIENT_ID=$(echo "$BODY" | jq -r '.client_id')
+      ACTIONS_APP_CLIENT_SECRET=$(echo "$BODY" | jq -r '.client_secret')
+      if [ -n "$EXISTING" ]; then
+        echo "  ${GREEN}Rotated the Actions application secret (client_id: ${ACTIONS_APP_CLIENT_ID})${NC}"
+      else
+        echo "  ${GREEN}Created Actions application (client_id: ${ACTIONS_APP_CLIENT_ID})${NC}"
+      fi
+      if ! store_credentials "$(jq -n -c --arg id "$ACTIONS_APP_CLIENT_ID" --arg secret "$ACTIONS_APP_CLIENT_SECRET" \
+        '{"actions-client-id": $id, "actions-client-secret": $secret}')"; then
+        echo "  ${RED}The new Actions application secret was not saved; the next run rotates it again${NC}"
+        return 1
+      fi
     }
 
     # Function to look up an action by name (echoes action ID or empty)
@@ -634,6 +740,10 @@ data:
         exit 1
       fi
 
+      # Check the credentials Secret is writable before creating credentials shown only once
+      echo "Checking the ${CREDENTIALS_SECRET} Secret..."
+      store_credentials "$(jq -n -c --arg domain "$AUTH0_DOMAIN" '{"auth0-domain": $domain}')"
+
       # Build permissions JSON array
       PERMISSIONS=$(jq -c '[.[] | {value: .name, description: .description}]' <<'EOF'
     {{ .Values.scopes | toJson }}
@@ -657,12 +767,12 @@ data:
 
       # Create backend M2M application
       {{- with .Values.applications.backend }}
-      create_m2m_app "{{ .name }}"
+      create_m2m_app "{{ .name }}" backend
       {{- end }}
 
       # Create worker M2M application
       {{- with .Values.applications.worker }}
-      create_m2m_app "{{ .name }}"
+      create_m2m_app "{{ .name }}" worker
       {{- end }}
 
       # Grant backend M2M app access to the governance API
@@ -756,10 +866,13 @@ data:
       {{- if .Values.actions.clientCredentialsExchange.enabled }}
       {{- with .Values.actions.clientCredentialsExchange }}
       echo ""
+      # The action reads service-account users with its own least-privileged application
+      prepare_actions_app "{{ .managementApp.name }}"
+      grant_mgmt_api_access "{{ .managementApp.name }}" '{{ .managementApp.managementApiScopes | toJson }}'
       CCE_SECRETS=$(jq -n \
         --arg domain        "{{ $.Values.auth0.domain }}" \
-        --arg client_id     "${AUTH0_MGMT_CLIENT_ID}" \
-        --arg client_secret "${AUTH0_MGMT_CLIENT_SECRET}" \
+        --arg client_id     "${ACTIONS_APP_CLIENT_ID}" \
+        --arg client_secret "${ACTIONS_APP_CLIENT_SECRET}" \
         '[
            {name: "domain",       value: $domain},
            {name: "clientId",     value: $client_id},
@@ -785,8 +898,9 @@ data:
       echo "${GREEN}Auth0 bootstrap completed successfully!${NC}"
       echo ""
       echo "Next steps:"
-      echo "  1. Retrieve the client IDs and secrets from the output above"
-      echo "  2. Create Kubernetes secrets with: kubectl create secret generic platform-auth0 ..."
+      echo "  1. Read the client IDs and secrets from the ${CREDENTIALS_SECRET} Secret:"
+      echo "     kubectl get secret ${CREDENTIALS_SECRET} -o json | jq '.data | map_values(@base64d)'"
+      echo "  2. Create the platform-auth0 and platform-governance-worker Secrets from them"
       echo "  3. Deploy the guardian-platform chart"
     }
 

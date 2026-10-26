@@ -21,7 +21,9 @@ spec:
         app.kubernetes.io/component: bootstrap
     spec:
       restartPolicy: OnFailure
-      automountServiceAccountToken: false
+      # The token is used only to write the credentials Secret
+      serviceAccountName: {{ include "entra-bootstrap.fullname" . }}
+      automountServiceAccountToken: true
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -43,6 +45,8 @@ spec:
           args: ["/scripts/bootstrap.sh"]
           {{- end }}
           env:
+            - name: CREDENTIALS_SECRET
+              value: {{ include "entra-bootstrap.credentialsSecretName" . | quote }}
             - name: HOME
               value: "/tmp"
             - name: AZURE_CONFIG_DIR

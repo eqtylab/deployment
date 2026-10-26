@@ -981,6 +981,9 @@ auth-service:
       entra:
         tenantId: "your-tenant-id"
         defaultRoles: "user"
+    tokenExchange:
+      enabled: true # Signing key read from the Entra secret's token-exchange-private-key
+      keyId: "auth-service-prod-001"
 
 governance-service:
   config:
@@ -996,8 +999,11 @@ kubectl create secret generic platform-entra \
   --from-literal=tenant-id=YOUR_ENTRA_TENANT_ID \
   --from-literal=graph-client-id=YOUR_GRAPH_CLIENT_ID \
   --from-literal=graph-client-secret=YOUR_GRAPH_CLIENT_SECRET \
+  --from-literal=token-exchange-private-key="$(openssl genrsa 2048)" \
   --namespace guardian
 ```
+
+Every Auth Service replica must sign tokens with the same key. Without `token-exchange-private-key` and `tokenExchange.enabled`, each pod generates its own key, so tokens issued by one pod fail on another and a restart invalidates them.
 
 #### Post-Install Database Seed
 

@@ -98,6 +98,15 @@ bootstrap:
     runAsUser: 1000
     fsGroup: 1000
 
+# -- Credentials Secret
+# @default -- See values below
+# Kubernetes Secret the job writes new client IDs and secrets to instead of the job
+# logs; Helm creates it empty and keeps it on uninstall
+credentialsSecret:
+  # -- Name
+  # @default -- `""` (`<release>-credentials`)
+  name: ""
+
 # =============================================================================
 # AUTH0 CONFIGURATION
 # =============================================================================
@@ -348,6 +357,20 @@ actions:
     dependencies:
       - name: "auth0"
         version: "3.x"
+    # -- Management App
+    # @default -- See values below
+    # M2M application whose credentials the action uses to read service-account users;
+    # its secret is kept in the credentials Secret and rotated only when missing or invalid
+    managementApp:
+      # -- Name
+      # @default -- `Guardian Platform Actions`
+      name: "Guardian Platform Actions"
+      # -- Management API Scopes
+      # @default -- `["read:users", "read:users_app_metadata"]`
+      # Scopes granted on the Auth0 Management API
+      managementApiScopes:
+        - "read:users"
+        - "read:users_app_metadata"
 
 # =============================================================================
 # CUSTOM SCOPES / PERMISSIONS CONFIGURATION

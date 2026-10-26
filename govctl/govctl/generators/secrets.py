@@ -162,6 +162,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "tenantId": config.entra_tenant_id or required("Entra Tenant ID"),
                 "graphClientId": required("Microsoft Graph API Client ID"),
                 "graphClientSecret": required("Microsoft Graph API Client Secret"),
+                "tokenExchangePrivateKey": _generate_rsa_private_key(),
             },
         }
     elif config.auth_provider == AuthProvider.KEYCLOAK:

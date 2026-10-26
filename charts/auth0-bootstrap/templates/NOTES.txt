@@ -20,7 +20,8 @@ The bootstrap job will:
 - Create, deploy, and bind the post-login Action: {{ .Values.actions.postLogin.name }}
 {{- end }}
 {{- if .Values.actions.clientCredentialsExchange.enabled }}
-- Create, deploy, and bind the credentials-exchange Action: {{ .Values.actions.clientCredentialsExchange.name }}
+- Create, deploy, and bind the credentials-exchange Action: {{ .Values.actions.clientCredentialsExchange.name }},
+  using the {{ .Values.actions.clientCredentialsExchange.managementApp.name }} application
 {{- end }}
 
 The Actions read their JS source from the ConfigMap {{ .Values.actions.sourceConfigMap.name }},
@@ -34,8 +35,10 @@ To check the job status:
 To view the job logs:
   kubectl logs -l "app.kubernetes.io/name={{ include "auth0-bootstrap.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
 
-IMPORTANT: After the job completes, retrieve the M2M client secrets from the job logs
-and create the required Kubernetes secrets before deploying the guardian-platform chart.
+New M2M client IDs and secrets are saved to the {{ include "auth0-bootstrap.credentialsSecretName" . }} Secret,
+not to the job logs. After the job completes, read them and create the required
+Kubernetes secrets before deploying the guardian-platform chart:
+  kubectl get secret {{ include "auth0-bootstrap.credentialsSecretName" . }} -n {{ .Release.Namespace }} -o json | jq '.data | map_values(@base64d)'
 
 {{- else }}
 Auth0 Bootstrap is disabled. To enable it, set bootstrap.enabled=true
