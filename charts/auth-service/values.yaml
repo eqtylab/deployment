@@ -840,6 +840,10 @@ config:
       # @default -- `""`
       # With global.secrets.create=false, mapped from the Secret's session-token key when present
       sessionToken: ""
+      # -- Use AWS IAM role for KMS access instead of static credentials
+      # @default -- `false`
+      # Omits the credential env vars so the AWS SDK uses its default chain (IRSA, instance profile)
+      useIamRole: false
       # -- AWS KMS Deletion Window Days
       # @default -- `7`
       deletionWindowDays: 7

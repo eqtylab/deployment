@@ -168,17 +168,23 @@ spec:
 
           # Azure Blob Storage Configuration
           {{- $azureSecretName := .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | default "" }}
+          {{- if not (or .Values.config.azureUseManagedIdentity .Values.config.azureStorageAccountKey .Values.config.azureStorageConnectionString) }}
+          {{- $_ := required "secrets.storage.azure_blob.name (or global.secrets.storage.azure_blob.secretName) is required when config.azureUseManagedIdentity is false and neither config.azureStorageAccountKey nor config.azureStorageConnectionString is set" $azureSecretName }}
+          {{- end }}
           - name: AZURE_STORAGE_ACCOUNT_NAME
             value: {{ .Values.config.azureStorageAccountName | quote }}
+          {{- if or .Values.config.azureStorageAccountKey $azureSecretName }}
           - name: AZURE_STORAGE_ACCOUNT_KEY
             {{- if .Values.config.azureStorageAccountKey }}
             value: {{ .Values.config.azureStorageAccountKey | quote }}
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ required "secrets.storage.azure_blob.name (or global.secrets.storage.azure_blob.secretName) is required when config.azureStorageAccountKey is empty" $azureSecretName | quote }}
+                name: {{ $azureSecretName | quote }}
                 key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | default "account-key" | quote }}
+                optional: true
             {{- end }}
+          {{- end }}
           {{- if or .Values.config.azureStorageConnectionString $azureSecretName }}
           - name: AZURE_STORAGE_CONNECTION_STRING
             {{- if .Values.config.azureStorageConnectionString }}
@@ -188,6 +194,7 @@ spec:
               secretKeyRef:
                 name: {{ $azureSecretName | quote }}
                 key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).connectionString | default "connection-string" | quote }}
+                optional: true
             {{- end }}
           {{- end }}
           - name: AZURE_STORAGE_CONTAINER_NAME

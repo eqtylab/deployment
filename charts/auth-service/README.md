@@ -212,6 +212,7 @@ Beyond what is auto-configured, these values **must** be explicitly set:
 
 - `config.keyManagement.aws_kms.region` - AWS region (e.g., `us-east-1`)
 - Access Key ID and Secret Access Key are auto-configured from the `global.secrets.keyManagement.aws_kms` secret
+- Or set `config.keyManagement.aws_kms.useIamRole: true` to use the IAM role credential chain (IRSA or instance profile) without static keys; for IRSA, annotate `serviceAccount` with `eks.amazonaws.com/role-arn`
 
 **Key Management (Azure Key Vault):**
 
@@ -548,6 +549,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.keyManagement.aws_kms.accessKeyId                 | string | `""`           | AWS access key ID (secret - auto-configured from global.secrets.keyManagement.aws_kms)                                                                                                               |
 | config.keyManagement.aws_kms.secretAccessKey             | string | `""`           | AWS secret access key (secret - auto-configured from global.secrets.keyManagement.aws_kms)                                                                                                           |
 | config.keyManagement.aws_kms.sessionToken                | string | `""`           | AWS session token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms; with `global.secrets.create: false`, mapped from the Secret's session-token key when present)       |
+| config.keyManagement.aws_kms.useIamRole                  | bool   | `false`        | Use the IAM role credential chain (IRSA/instance profile) instead of static keys; omits the credential env vars and the AWS KMS Secret reference                                                     |
 | config.keyManagement.aws_kms.deletionWindowDays          | int    | `7`            | AWS KMS deletion window in days                                                                                                                                                                      |
 | config.keyManagement.aws_kms.keyPolicyPrincipalArn       | string | `""`           | IAM user or role ARN granted use of new DID keys (optional, derived from the running credentials; set for a role with a path, or when STS is unreachable)                                            |
 | config.keyManagement.azure_key_vault.vaultUrl            | string | `""`           | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault: values.vaultUrl with `global.secrets.create: true`, otherwise the Secret's vault-url key)                    |
@@ -625,6 +627,9 @@ requires `privateKey`, because no Keycloak Secret is created.
 | migration.resources.limits.memory   | string | `256Mi` | Migration job memory limit                                                                                                                                                                       |
 | migration.resources.requests.cpu    | string | `100m`  | Migration job CPU request                                                                                                                                                                        |
 | migration.resources.requests.memory | string | `128Mi` | Migration job memory request                                                                                                                                                                     |
+
+At pre-upgrade, the Job reads Secrets as they are before the upgrade; update a
+rotated Secret before running the upgrade.
 
 ### Advanced: Extra Configuration
 

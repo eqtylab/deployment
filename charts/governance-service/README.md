@@ -467,13 +467,13 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 **Azure Blob Storage (only used when storageProvider is "azure_blob"):**
 
-| Key                                 | Type   | Default | Description                                                                              |
-| ----------------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
-| config.azureStorageAccountName      | string | `""`    | Azure storage account name (**must be set** when using Azure Blob)                       |
-| config.azureStorageAccountKey       | string | `""`    | Azure storage account key (auto-configured from global.secrets.storage.azure_blob)       |
-| config.azureStorageConnectionString | string | `""`    | Azure storage connection string (auto-configured from global.secrets.storage.azure_blob) |
-| config.azureStorageContainerName    | string | `""`    | Azure container name (**REQUIRED**)                                                      |
-| config.azureUseManagedIdentity      | bool   | `false` | Use Azure managed identity for authentication                                            |
+| Key                                 | Type   | Default | Description                                                                                                                                                    |
+| ----------------------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| config.azureStorageAccountName      | string | `""`    | Azure storage account name (**must be set** when using Azure Blob)                                                                                             |
+| config.azureStorageAccountKey       | string | `""`    | Azure storage account key (auto-configured from global.secrets.storage.azure_blob; the Secret key is optional)                                                 |
+| config.azureStorageConnectionString | string | `""`    | Azure storage connection string, used instead of the account key when set (auto-configured from global.secrets.storage.azure_blob; the Secret key is optional) |
+| config.azureStorageContainerName    | string | `""`    | Azure container name (**REQUIRED**)                                                                                                                            |
+| config.azureUseManagedIdentity      | bool   | `false` | Use Azure managed identity for authentication                                                                                                                  |
 
 **Google Cloud Storage (only used when storageProvider is "gcs"):**
 

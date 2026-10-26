@@ -546,7 +546,7 @@ config:
 
   # -- Azure Storage Connection String
   # @default -- `""` (auto-configured from global.secrets.storage.azure_blob)
-  # Only used when storageProvider is "azure_blob"
+  # Only used when storageProvider is "azure_blob"; used instead of the account key when set
   azureStorageConnectionString: ""
 
   # -- Azure Storage Container Name

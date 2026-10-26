@@ -334,6 +334,7 @@ spec:
             {{- $awsSecretsCreate := (((.Values.global).secrets).create) }}
             {{- $awsKmsValues := (and $awsSecretsCreate ((((((.Values.global).secrets).keyManagement).aws_kms).values))) | default dict }}
             {{- $awsSessionTokenFromSecret := and (not $awsSecretsCreate) $awsKmsSecretName }}
+            {{- if not .Values.config.keyManagement.aws_kms.useIamRole }}
             - name: AWS_ACCESS_KEY_ID
               {{- if .Values.config.keyManagement.aws_kms.accessKeyId }}
               value: {{ .Values.config.keyManagement.aws_kms.accessKeyId | quote }}
@@ -365,6 +366,7 @@ spec:
                   optional: true
                   {{- end }}
               {{- end }}
+            {{- end }}
             {{- end }}
             {{- end }}
             {{- if eq $keyMgmtProvider "gcp_kms" }}

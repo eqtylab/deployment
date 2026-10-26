@@ -202,7 +202,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "secretName": "platform-azure-blob",
             "values": {
                 "accountKey": required("Azure Storage Account Key"),
-                "connectionString": required("Azure Storage Connection String"),
+                "connectionString": optional("Azure Storage Connection String"),
             },
         }
     elif config.cloud_provider == CloudProvider.GCP:
