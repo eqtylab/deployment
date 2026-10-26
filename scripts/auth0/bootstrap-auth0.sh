@@ -57,11 +57,12 @@ check_prerequisites() {
     printf '%s\n' "${missing_secrets[@]}"
     echo ""
     echo "Create the Management API M2M secret with credentials from the Auth0 Dashboard."
-    echo "Add $MANAGEMENT_API_SECRET_KEY too when actions.postLogin.enabled is true (default):"
+    echo "Add $MANAGEMENT_API_SECRET_KEY too when actions.postLogin.enabled is true (default), set to the"
+    echo "Auth Service API secret (global.secrets.authService.values.apiSecret in the platform secrets file):"
     echo "  kubectl create secret generic $MANAGEMENT_SECRET \\"
     echo "    --from-literal=$(values_get '.auth0.managementSecret.clientIdKey' client-id)=<mgmt-m2m-client-id> \\"
     echo "    --from-literal=$(values_get '.auth0.managementSecret.clientSecretKey' client-secret)=<mgmt-m2m-client-secret> \\"
-    echo "    --from-literal=$MANAGEMENT_API_SECRET_KEY=\"\$(openssl rand -base64 32)\" \\"
+    echo "    --from-literal=$MANAGEMENT_API_SECRET_KEY=<auth-service-api-secret> \\"
     echo "    -n $NAMESPACE"
     echo ""
     if [ "$PLATFORM_ADMIN_ENABLED" != "false" ]; then
@@ -82,15 +83,21 @@ check_prerequisites() {
   fi
   print_info "All required secrets exist"
 
-  # auth-service-api-secret is optional in the chart, so warn instead of failing
-  if [ "$SKIP_ACTIONS" != "true" ]; then
-    if ! kubectl get secret "$MANAGEMENT_SECRET" -n "$NAMESPACE" -o jsonpath="{.data.$MANAGEMENT_API_SECRET_KEY}" 2>/dev/null | grep -q .; then
-      print_warn "Key '$MANAGEMENT_API_SECRET_KEY' not found in the $MANAGEMENT_SECRET secret."
-      echo "  The post-login action will deploy without AUTH_SERVICE_API_SECRET,"
-      echo "  which will cause claims-enrichment calls to fail with HTTP 401."
-      echo "  Patch the secret with:"
+  # The post-login Action calls Auth Service at its configured URL with the Auth Service API secret
+  if [ "$SKIP_ACTIONS" != "true" ] && [ "$ACTIONS_ENABLED" != "false" ] && [ "$POST_LOGIN_ENABLED" != "false" ]; then
+    if [ -z "$POST_LOGIN_AUTH_SERVICE_URL" ]; then
+      print_error "actions.postLogin.authService.url (or urlDev) is not set in $VALUES_FILE"
+      echo "  Set it to the Auth Service URL the post-login Action calls, usually https://<domain>/authService"
+      echo "  urlStaging and urlProduction alone are not used: the frontend application has no environment metadata"
+      exit 1
+    fi
+    if ! kubectl get secret "$MANAGEMENT_SECRET" -n "$NAMESPACE" -o jsonpath="{.data.${MANAGEMENT_API_SECRET_KEY//./\\.}}" 2>/dev/null | grep -q .; then
+      print_error "Key '$MANAGEMENT_API_SECRET_KEY' not found in the $MANAGEMENT_SECRET secret."
+      echo "  The post-login Action authenticates to Auth Service with it. Set it to the Auth Service"
+      echo "  API secret (global.secrets.authService.values.apiSecret in the platform secrets file):"
       echo "    kubectl patch secret $MANAGEMENT_SECRET -n $NAMESPACE \\"
-      echo "      -p '{\"stringData\":{\"$MANAGEMENT_API_SECRET_KEY\":\"<shared-bearer-token>\"}}'"
+      echo "      -p '{\"stringData\":{\"$MANAGEMENT_API_SECRET_KEY\":\"<auth-service-api-secret>\"}}'"
+      exit 1
     fi
   fi
 }
@@ -314,6 +321,9 @@ MANAGEMENT_SECRET=$(values_get '.auth0.managementSecret.name' auth0-management)
 MANAGEMENT_API_SECRET_KEY=$(values_get '.auth0.managementSecret.authServiceApiSecretKey' auth-service-api-secret)
 PLATFORM_ADMIN_ENABLED=$(values_get '.users.admin.enabled | select(. != null) | tostring' true)
 PLATFORM_ADMIN_SECRET=$(values_get '.users.admin.secretName' platform-admin)
+ACTIONS_ENABLED=$(values_get '.actions.enabled | select(. != null) | tostring' true)
+POST_LOGIN_ENABLED=$(values_get '.actions.postLogin.enabled | select(. != null) | tostring' true)
+POST_LOGIN_AUTH_SERVICE_URL=$(values_get '[.actions.postLogin.authService | (.url, .urlDev) | select(. != null and . != "")] | .[0]' "")
 
 echo -e "\
 Namespace:    $NAMESPACE

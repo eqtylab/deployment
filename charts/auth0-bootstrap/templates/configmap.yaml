@@ -1,4 +1,8 @@
 {{- if .Values.bootstrap.enabled }}
+{{- $postLogin := .Values.actions.postLogin }}
+{{- if and .Values.auth0.domain .Values.actions.enabled $postLogin.enabled (not (or $postLogin.authService.url $postLogin.authService.urlDev)) }}
+{{- fail "actions.postLogin.authService.url (or urlDev) is required when actions.postLogin.enabled is true: the post-login Action calls Auth Service at it (e.g., https://<domain>/authService), and the frontend application has no environment metadata, so urlStaging and urlProduction alone are not used" }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -734,6 +738,13 @@ data:
 
     # Main bootstrap process
     main() {
+      {{- if and .Values.actions.enabled .Values.actions.postLogin.enabled }}
+      if [ -z "${AUTH0_AUTH_SERVICE_API_SECRET:-}" ]; then
+        echo "${RED}The {{ .Values.auth0.managementSecret.name }} Secret has no {{ .Values.auth0.managementSecret.authServiceApiSecretKey }} key; set it to the Auth Service API secret (global.secrets.authService.values.apiSecret) so the post-login Action can call Auth Service${NC}" >&2
+        exit 1
+      fi
+      {{- end }}
+
       # Get Management API token
       if ! get_mgmt_token; then
         echo "Failed to authenticate with Auth0 Management API"

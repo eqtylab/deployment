@@ -92,6 +92,13 @@ def generate_auth0_bootstrap(config: PlatformConfig) -> str:
                 ],
             },
         },
+        "actions": {
+            "postLogin": {
+                "authService": {
+                    "url": f"https://{domain}/authService",
+                },
+            },
+        },
         "scopes": api_scopes(),
         "users": {
             "admin": {

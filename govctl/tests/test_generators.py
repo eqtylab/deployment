@@ -221,6 +221,10 @@ class BootstrapTests(unittest.TestCase):
             bootstrap["users"]["admin"]["email"], "admin@guardian.example.com"
         )
         self.assertEqual(len(bootstrap["scopes"]), 8)
+        self.assertEqual(
+            bootstrap["actions"]["postLogin"]["authService"]["url"],
+            "https://guardian.example.com/authService",
+        )
 
     def test_entra_bootstrap(self):
         placeholder = yaml.safe_load(generate_entra_bootstrap(config()))

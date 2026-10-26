@@ -113,9 +113,7 @@ actions:
   postLogin:
     enabled: true
     authService:
-      urlDev: "https://auth.dev.CHANGE_ME"
-      urlStaging: "https://auth.stag.CHANGE_ME"
-      urlProduction: "https://auth.CHANGE_ME"
+      url: "https://CHANGE_ME/authService"
   clientCredentialsExchange:
     enabled: true
 

@@ -135,6 +135,7 @@ auth0:
     clientSecretKey: "client-secret"
     # -- Auth Service API Secret Key
     # @default -- `auth-service-api-secret`
+    # **REQUIRED for the post-login Action**: Key holding the Auth Service API secret
     authServiceApiSecretKey: "auth-service-api-secret"
 
   # -- API Configuration
@@ -320,6 +321,8 @@ actions:
       urlProduction: ""
       # -- Fallback URL
       # @default -- `""`
+      # **REQUIRED for the post-login Action** unless urlDev is set: Auth Service URL
+      # (e.g., "https://guardian.your-domain.com/authService")
       url: ""
 
   # ---------------------------------------------------------------------------

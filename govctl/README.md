@@ -178,7 +178,7 @@ Frontend callbacks and origins include `http://localhost:5173` only when the env
 
 The bootstrap file sets:
 
-- **Auth0** — frontend SPA, backend M2M, worker M2M applications; Guardian Platform API (resource server) with scopes; client grants; platform-admin user
+- **Auth0** — frontend SPA, backend M2M, worker M2M applications; Guardian Platform API (resource server) with scopes; client grants; platform-admin user; the Auth Service URL (`https://<domain>/authService`) the post-login Action calls
 - **Keycloak** — platform realm with security settings and token lifespans; frontend (public), backend (confidential), and worker OAuth clients; authorization scopes; platform-admin user
 - **Entra** — frontend (SPA), backend, and worker app registrations with Graph API permissions and the `access_as_user` scope
 

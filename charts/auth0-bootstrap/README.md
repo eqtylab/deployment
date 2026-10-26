@@ -80,12 +80,12 @@ Before installing, create a Machine-to-Machine application in the Auth0 Dashboar
 ```bash
 # Management API M2M credentials used by the bootstrap job.
 # Add auth-service-api-secret when actions.postLogin.enabled is true (default) —
-# it's the bearer token presented by the post-login action when calling the
-# auth-service claims-enrichment endpoint.
+# the post-login action sends it to the Auth Service claims-enrichment endpoint,
+# so it must equal the Auth Service API secret (global.secrets.authService.values.apiSecret).
 kubectl create secret generic auth0-management \
   --from-literal=client-id=YOUR_MGMT_CLIENT_ID \
   --from-literal=client-secret=YOUR_MGMT_CLIENT_SECRET \
-  --from-literal=auth-service-api-secret="$(openssl rand -base64 32)" \
+  --from-literal=auth-service-api-secret=YOUR_AUTH_SERVICE_API_SECRET \
   --namespace guardian
 
 # Initial platform admin password (only required when users.admin.enabled is true)
@@ -159,13 +159,13 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Auth0 Tenant & Management API
 
-| Key                                            | Type   | Default                     | Description                                                                                         |
-| ---------------------------------------------- | ------ | --------------------------- | --------------------------------------------------------------------------------------------------- |
-| auth0.domain                                   | string | `""`                        | **Required.** Auth0 tenant domain (e.g., `tenant.us.auth0.com`)                                     |
-| auth0.managementSecret.name                    | string | `"auth0-management"`        | Secret containing bootstrap M2M credentials (and the auth-service api secret when actions are used) |
-| auth0.managementSecret.clientIdKey             | string | `"client-id"`               | Key in secret for the M2M client ID                                                                 |
-| auth0.managementSecret.clientSecretKey         | string | `"client-secret"`           | Key in secret for the M2M client secret                                                             |
-| auth0.managementSecret.authServiceApiSecretKey | string | `"auth-service-api-secret"` | Key in secret for the bearer token forwarded to the post-login action (optional)                    |
+| Key                                            | Type   | Default                     | Description                                                                                             |
+| ---------------------------------------------- | ------ | --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| auth0.domain                                   | string | `""`                        | **Required.** Auth0 tenant domain (e.g., `tenant.us.auth0.com`)                                         |
+| auth0.managementSecret.name                    | string | `"auth0-management"`        | Secret containing bootstrap M2M credentials (and the auth-service api secret when actions are used)     |
+| auth0.managementSecret.clientIdKey             | string | `"client-id"`               | Key in secret for the M2M client ID                                                                     |
+| auth0.managementSecret.clientSecretKey         | string | `"client-secret"`           | Key in secret for the M2M client secret                                                                 |
+| auth0.managementSecret.authServiceApiSecretKey | string | `"auth-service-api-secret"` | Key in secret for the Auth Service API secret the post-login action sends; required while it is enabled |
 
 ### Guardian Platform API (Resource Server)
 
@@ -256,22 +256,22 @@ The chart deploys two Auth0 Actions during bootstrap, configured under `actions`
 | actions.clientCredentialsExchange.managementApp.name                | string | `"Guardian Platform Actions"`                | M2M application the action uses to read service-account users                                   |
 | actions.clientCredentialsExchange.managementApp.managementApiScopes | list   | `["read:users", "read:users_app_metadata"]`  | Scopes granted to that application on the Auth0 Management API                                  |
 
-Empty URL fields under `actions.postLogin.authService` are omitted from the action's secrets at deploy time, so dev-only tenants can leave the staging/prod URLs blank.
+Set `actions.postLogin.authService.url` (or `urlDev`) while the post-login action is enabled, usually `https://<domain>/authService`; rendering fails without it once `auth0.domain` is set. The frontend application has no environment metadata, so the action falls back to `urlDev`, then `url`. Empty URL fields are omitted from the action's secrets at deploy time, so dev-only tenants can leave the staging/prod URLs blank.
 
 #### Where action secrets come from
 
 There is **no separate `auth0-actions` Kubernetes secret** — sensitive values live alongside the management M2M credentials in `auth0-management`, and non-sensitive configuration is supplied in `values.yaml`:
 
-| Action secret (`event.secrets.X`) | Used by                     | Source                                                              |
-| --------------------------------- | --------------------------- | ------------------------------------------------------------------- |
-| `AUTH_SERVICE_URL_DEV`            | post-login                  | `actions.postLogin.authService.urlDev` (Helm value)                 |
-| `AUTH_SERVICE_URL_STAGING`        | post-login                  | `actions.postLogin.authService.urlStaging` (Helm value)             |
-| `AUTH_SERVICE_URL_PRODUCTION`     | post-login                  | `actions.postLogin.authService.urlProduction` (Helm value)          |
-| `AUTH_SERVICE_URL`                | post-login                  | `actions.postLogin.authService.url` (Helm value)                    |
-| `AUTH_SERVICE_API_SECRET`         | post-login                  | `auth0-management` secret, key `auth-service-api-secret` (optional) |
-| `domain`                          | client-credentials-exchange | `auth0.domain` (Helm value)                                         |
-| `clientId`                        | client-credentials-exchange | The `managementApp` application's client ID                         |
-| `clientSecret`                    | client-credentials-exchange | The `managementApp` application's secret                            |
+| Action secret (`event.secrets.X`) | Used by                     | Source                                                     |
+| --------------------------------- | --------------------------- | ---------------------------------------------------------- |
+| `AUTH_SERVICE_URL_DEV`            | post-login                  | `actions.postLogin.authService.urlDev` (Helm value)        |
+| `AUTH_SERVICE_URL_STAGING`        | post-login                  | `actions.postLogin.authService.urlStaging` (Helm value)    |
+| `AUTH_SERVICE_URL_PRODUCTION`     | post-login                  | `actions.postLogin.authService.urlProduction` (Helm value) |
+| `AUTH_SERVICE_URL`                | post-login                  | `actions.postLogin.authService.url` (Helm value)           |
+| `AUTH_SERVICE_API_SECRET`         | post-login                  | `auth0-management` secret, key `auth-service-api-secret`   |
+| `domain`                          | client-credentials-exchange | `auth0.domain` (Helm value)                                |
+| `clientId`                        | client-credentials-exchange | The `managementApp` application's client ID                |
+| `clientSecret`                    | client-credentials-exchange | The `managementApp` application's secret                   |
 
 #### Action source files
 
@@ -458,13 +458,13 @@ kubectl logs -n guardian -l app.kubernetes.io/name=auth0-bootstrap
 - When deploying the chart by hand (no helper script), create the ConfigMap manually with `kubectl create configmap auth0-actions-source --from-file=scripts/auth0/actions/`
 - Pass `--skip-actions` to bypass actions entirely, or set `actions.enabled=false` in values
 
-**Post-login action runs but `event.secrets.AUTH_SERVICE_API_SECRET` is undefined**
+**Bootstrap fails because `actions.postLogin.authService.url` is empty or `auth-service-api-secret` is missing**
 
-- The `auth-service-api-secret` key was missing from the `auth0-management` secret when the bootstrap job ran
-- The bootstrap helper prints a yellow warning when this key is absent — add it and re-run:
-  `kubectl patch secret auth0-management -n <ns> -p '{"stringData":{"auth-service-api-secret":"<shared-bearer-token>"}}'`
-- Other `AUTH_SERVICE_URL_*` secrets come from Helm values (`actions.postLogin.authService.*`); empty fields are intentionally omitted
-- Note: Auth0 action secrets are only written at create/update time; rotating the api secret requires re-running the bootstrap job
+- The post-login action calls Auth Service, so rendering fails without a URL, and the job and `bootstrap-auth0.sh` stop before changing Auth0 without the API secret
+- Set `actions.postLogin.authService.url` (usually `https://<domain>/authService`) or `urlDev`; `urlStaging` and `urlProduction` alone are not used
+- Add the key with the Auth Service API secret (`global.secrets.authService.values.apiSecret`) and re-run:
+  `kubectl patch secret auth0-management -n <ns> -p '{"stringData":{"auth-service-api-secret":"<auth-service-api-secret>"}}'`
+- Auth0 action secrets are only written at create/update time; re-run the bootstrap job after rotating the Auth Service API secret
 
 ## Support
 
