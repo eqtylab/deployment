@@ -36,7 +36,7 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
     if config.auth_provider == AuthProvider.AUTH0:
         auth0_domain = config.auth0_tenant_domain
         section["config"]["idp"]["issuer"] = f"https://{auth0_domain}/"
-        section["config"]["idp"]["skipIssuerVerification"] = True
+        section["config"]["idp"]["skipIssuerVerification"] = False
         section["config"]["idp"]["auth0"] = {
             "domain": auth0_domain,
             "managementAudience": f"https://{auth0_domain}/api/v2/",

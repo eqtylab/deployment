@@ -35,7 +35,7 @@ config:
   idp:
     provider: "auth0"
     issuer: "https://your-tenant.us.auth0.com/"
-    skipIssuerVerification: true
+    skipIssuerVerification: false
     auth0:
       domain: "your-tenant.us.auth0.com"
       managementAudience: "https://your-tenant.us.auth0.com/api/v2/"

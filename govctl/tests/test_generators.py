@@ -121,9 +121,9 @@ class ValuesTests(unittest.TestCase):
         values = yaml.safe_load(generate_values(config()))
         self.assertNotIn("logLevel", values["governance-service"]["config"])
 
-    def test_auth0_keeps_skip_issuer_verification(self):
+    def test_auth0_verifies_the_issuer(self):
         values = yaml.safe_load(generate_values(config(auth=AuthProvider.AUTH0)))
-        self.assertTrue(
+        self.assertFalse(
             values["auth-service"]["config"]["idp"]["skipIssuerVerification"]
         )
 
