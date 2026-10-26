@@ -258,9 +258,11 @@ networkPolicy:
   enabled: false
   # -- Ingress policy rules
   # @default -- `[]`
+  # **REQUIRED** when enabled is true; an empty list fails the render
   ingress: []
   # -- Egress policy rules
   # @default -- `[]`
+  # **REQUIRED** when enabled is true; an empty list fails the render
   egress: []
 
 # -- Extra Environment Variables

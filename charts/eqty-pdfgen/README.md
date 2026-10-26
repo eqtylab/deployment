@@ -211,11 +211,11 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Advanced: Network Policy Configuration
 
-| Key                   | Type | Default | Description          |
-| --------------------- | ---- | ------- | -------------------- |
-| networkPolicy.enabled | bool | `false` | Enable NetworkPolicy |
-| networkPolicy.ingress | list | `[]`    | Ingress rules        |
-| networkPolicy.egress  | list | `[]`    | Egress rules         |
+| Key                   | Type | Default | Description                                                       |
+| --------------------- | ---- | ------- | ----------------------------------------------------------------- |
+| networkPolicy.enabled | bool | `false` | Enable NetworkPolicy                                              |
+| networkPolicy.ingress | list | `[]`    | Ingress rules (**required** when `networkPolicy.enabled` is true) |
+| networkPolicy.egress  | list | `[]`    | Egress rules (**required** when `networkPolicy.enabled` is true)  |
 
 ### Advanced: Extra Configuration
 

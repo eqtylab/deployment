@@ -1,4 +1,7 @@
 {{- if .Values.enabled }}
+{{- if and .Values.config.features.agentCertification (not .Values.config.features.gateway) }}
+{{- fail "guardian: config.features.agentCertification requires config.features.gateway=true" }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

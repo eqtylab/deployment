@@ -235,28 +235,28 @@ Generated defaults:
 
 ### Global Parameters (Umbrella Chart)
 
-When deployed via the umbrella chart, these global values are automatically used:
+When deployed via the umbrella chart, these global values are automatically used. The chart's own `global.secrets` defaults match the umbrella's Secret names; a Secret reference whose local and global names are both empty fails the render.
 
-| Key                                          | Type   | Description                                                              |
-| -------------------------------------------- | ------ | ------------------------------------------------------------------------ |
-| global.domain                                | string | Base domain for all services                                             |
-| global.environmentType                       | string | Environment type (development/staging/production)                        |
-| global.imagePullPolicy                       | string | Default image pull policy for every container                            |
-| global.imagePullSecrets                      | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty |
-| global.postgresql.host                       | string | PostgreSQL host                                                          |
-| global.postgresql.port                       | int    | PostgreSQL port                                                          |
-| global.postgresql.database                   | string | PostgreSQL database name                                                 |
-| global.postgresql.username                   | string | PostgreSQL username                                                      |
-| global.secrets.database.secretName           | string | Name of database credentials secret                                      |
-| global.secrets.auth.provider                 | string | Auth provider (auth0, entra, or keycloak)                                |
-| global.secrets.auth.auth0.secretName         | string | Auth0 credentials secret name                                            |
-| global.secrets.auth.entra.secretName         | string | Entra ID credentials secret name                                         |
-| global.secrets.auth.keycloak.secretName      | string | Keycloak credentials secret name                                         |
-| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                                              |
-| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                                       |
-| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                                           |
-| global.secrets.authService.secretName        | string | Auth Service API key secret name                                         |
-| global.secrets.imageRegistry.secretName      | string | Image registry credentials secret name                                   |
+| Key                                          | Type   | Description                                                                   |
+| -------------------------------------------- | ------ | ----------------------------------------------------------------------------- |
+| global.domain                                | string | Base domain for all services                                                  |
+| global.environmentType                       | string | Environment type (development/staging/production)                             |
+| global.imagePullPolicy                       | string | Default image pull policy for every container                                 |
+| global.imagePullSecrets                      | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty      |
+| global.postgresql.host                       | string | PostgreSQL host                                                               |
+| global.postgresql.port                       | int    | PostgreSQL port                                                               |
+| global.postgresql.database                   | string | PostgreSQL database name                                                      |
+| global.postgresql.username                   | string | PostgreSQL username                                                           |
+| global.secrets.database.secretName           | string | Name of database credentials secret (standalone default `platform-database`)  |
+| global.secrets.auth.provider                 | string | Auth provider (auth0, entra, or keycloak)                                     |
+| global.secrets.auth.auth0.secretName         | string | Auth0 credentials secret name (standalone default `platform-auth0`)           |
+| global.secrets.auth.entra.secretName         | string | Entra ID credentials secret name (standalone default `platform-entra`)        |
+| global.secrets.auth.keycloak.secretName      | string | Keycloak credentials secret name (standalone default `platform-keycloak`)     |
+| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name (standalone default `platform-gcs`)               |
+| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name (standalone default `platform-azure-blob`) |
+| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name (standalone default `platform-aws-s3`)         |
+| global.secrets.authService.secretName        | string | Auth Service API key secret name (standalone default `platform-auth-service`) |
+| global.secrets.imageRegistry.secretName      | string | Image registry credentials secret name                                        |
 
 ### Chart-Specific Parameters
 

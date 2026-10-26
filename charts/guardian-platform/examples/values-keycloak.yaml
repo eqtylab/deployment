@@ -100,8 +100,6 @@ governance-service:
     tag: ""
     pullPolicy: Always
 
-  args: ["-debug-config"]
-
   securityContext:
     capabilities:
       drop:

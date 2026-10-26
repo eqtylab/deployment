@@ -25,6 +25,65 @@ global:
     # -- Complete image reference for the BusyBox wait container (empty keeps `busybox:1.36`)
     # @default -- `""`
     busybox: ""
+  # -- Secrets Configuration
+  # @default -- See values below
+  # Platform Secret names used when this chart's own Secret name is empty; the
+  # umbrella chart replaces them with its global.secrets values
+  secrets:
+    # -- Authentication Configuration
+    # @default -- See values below
+    auth:
+      # -- Auth0 Configuration
+      # @default -- See values below
+      auth0:
+        # -- Secret Name
+        # @default -- `platform-auth0`
+        secretName: "platform-auth0"
+      # -- Microsoft Entra ID Configuration
+      # @default -- See values below
+      entra:
+        # -- Secret Name
+        # @default -- `platform-entra`
+        secretName: "platform-entra"
+      # -- Keycloak Configuration
+      # @default -- See values below
+      keycloak:
+        # -- Secret Name
+        # @default -- `platform-keycloak`
+        secretName: "platform-keycloak"
+    # -- Auth Service Credentials
+    # @default -- See values below
+    authService:
+      # -- Secret Name
+      # @default -- `platform-auth-service`
+      secretName: "platform-auth-service"
+    # -- Database Credentials
+    # @default -- See values below
+    database:
+      # -- Secret Name
+      # @default -- `platform-database`
+      secretName: "platform-database"
+    # -- Governance Worker Credentials
+    # @default -- See values below
+    governanceWorker:
+      # -- Secret Name
+      # @default -- `platform-governance-worker`
+      secretName: "platform-governance-worker"
+    # -- Key Management Configuration (for credential signing)
+    # @default -- See values below
+    keyManagement:
+      # -- AWS KMS
+      # @default -- See values below
+      aws_kms:
+        # -- Secret Name
+        # @default -- `platform-aws-kms`
+        secretName: "platform-aws-kms"
+      # -- Azure Key Vault
+      # @default -- See values below
+      azure_key_vault:
+        # -- Secret Name
+        # @default -- `platform-azure-key-vault`
+        secretName: "platform-azure-key-vault"
 
 # -- Replica Count
 # @default -- `2`
@@ -231,6 +290,24 @@ affinity:
 # Init containers to add to the pod
 initContainers: []
 
+# -- Dependency Wait Configuration
+# @default -- See values below
+# Endpoints the wait-deps init container checks before Auth starts
+waitDeps:
+  # -- Governance Service Wait
+  # @default -- See values below
+  governanceService:
+    # -- Enabled
+    # @default -- `true`
+    # Wait for the Governance Service; set false when it is not deployed
+    enabled: true
+    # -- Host
+    # @default -- `""` (auto-generated: "{Release.Name}-governance-service")
+    host: ""
+    # -- Port
+    # @default -- `10001`
+    port: 10001
+
 # -- Startup Probe
 # @default -- See values below
 startupProbe:
@@ -434,7 +511,7 @@ config:
     # @default -- `""` (auto-configured from global.environmentType, defaults to "production")
     environment: ""
     # -- Auth Service URL
-    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}/api/v1/auth")
+    # @default -- `""` (auto-generated: "http://{fullname}:{service.port}/api/v1/auth")
     # Internal URL used by auth-service to reference itself (e.g., for JWKS endpoint)
     authServiceUrl: ""
     # -- Swagger Enabled
@@ -761,6 +838,7 @@ config:
       secretAccessKey: ""
       # -- AWS Session Token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)
       # @default -- `""`
+      # With global.secrets.create=false, mapped from the Secret's session-token key when present
       sessionToken: ""
       # -- AWS KMS Deletion Window Days
       # @default -- `7`
@@ -774,10 +852,12 @@ config:
     # Only used when provider is "azure_key_vault"
     azure_key_vault:
       # -- Vault URL
-      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault)
+      # With global.secrets.create=true read from values.vaultUrl; otherwise from the Secret's vault-url key
       vaultUrl: ""
       # -- Tenant ID
-      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
+      # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault)
+      # With global.secrets.create=true read from values.tenantId; otherwise from the Secret's tenant-id key
       tenantId: ""
       # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
       # @default -- `""`
@@ -792,11 +872,11 @@ config:
     gcp_kms:
       # -- GCP Project ID
       # @default -- `""`
-      # **REQUIRED for GCP KMS**: Google Cloud project ID
+      # **REQUIRED for GCP KMS**: Google Cloud project ID; rendering fails without it
       projectId: ""
       # -- GCP KMS Location ID
       # @default -- `""`
-      # **REQUIRED for GCP KMS**: KMS location (e.g., "us-east1", "global")
+      # **REQUIRED for GCP KMS**: KMS location (e.g., "us-east1", "global"); rendering fails without it
       locationId: ""
       # -- GCP KMS Key Ring ID
       # @default -- `eqtylab-did`
@@ -849,7 +929,7 @@ config:
 
   # -- Token Exchange Configuration
   # @default -- See values below
-  # For Keycloak integration
+  # Supported with the keycloak and entra providers
   tokenExchange:
     # -- Enabled
     # @default -- `false`
@@ -861,7 +941,9 @@ config:
     keyId: "auth-service-prod-001"
     # -- Private Key
     # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
-    # Only used when tokenExchange is enabled
+    # Only used when tokenExchange is enabled; when empty, read from the Keycloak
+    # Secret's token-exchange-private-key key
+    # **REQUIRED for Entra** with global.secrets.create=true, which creates no Keycloak Secret
     privateKey: ""
     # -- Access Token Expiry
     # @default -- `3600`
@@ -887,10 +969,20 @@ networkPolicy:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: ingress-nginx
+              kubernetes.io/metadata.name: ingress-nginx
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: governance-service
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: integrity-service
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: eqty-pdfgen
+        # Control Plane (gateway adapter) and LLM Gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-stack
       ports:
         - protocol: TCP
           port: 8080
@@ -902,7 +994,7 @@ networkPolicy:
     - to:
         - namespaceSelector:
             matchLabels:
-              name: kube-system
+              kubernetes.io/metadata.name: kube-system
       ports:
         - protocol: TCP
           port: 53
@@ -917,6 +1009,15 @@ networkPolicy:
       ports:
         - protocol: TCP
           port: 5432
+
+    # Allow Governance Service
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: governance-service
+      ports:
+        - protocol: TCP
+          port: 10001
 
     # Allow external HTTPS (for IDP communication)
     - to: []
@@ -933,7 +1034,8 @@ networkPolicy:
 migration:
   # -- Enabled
   # @default -- `false`
-  # Enable migration as a Helm hook job
+  # Enable migration as a Helm hook job (post-install and pre-upgrade) with this
+  # release's ConfigMap values and the database, IdP client ID, and API secrets
   enabled: false
   # -- Backoff Limit
   # @default -- `3`

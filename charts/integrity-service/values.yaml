@@ -25,6 +25,38 @@ global:
     # -- Complete image reference for the BusyBox wait container (empty keeps `busybox:1.36`)
     # @default -- `""`
     busybox: ""
+  # -- Secrets Configuration
+  # @default -- See values below
+  # Platform Secret names used when this chart's own Secret name is empty; the
+  # umbrella chart replaces them with its global.secrets values
+  secrets:
+    # -- Database Credentials
+    # @default -- See values below
+    database:
+      # -- Secret Name
+      # @default -- `platform-database`
+      secretName: "platform-database"
+    # -- Storage Configuration
+    # @default -- See values below
+    storage:
+      # -- AWS S3
+      # @default -- See values below
+      aws_s3:
+        # -- Secret Name
+        # @default -- `platform-aws-s3`
+        secretName: "platform-aws-s3"
+      # -- Azure Blob Storage
+      # @default -- See values below
+      azure_blob:
+        # -- Secret Name
+        # @default -- `platform-azure-blob`
+        secretName: "platform-azure-blob"
+      # -- Google Cloud Storage
+      # @default -- See values below
+      gcs:
+        # -- Secret Name
+        # @default -- `platform-gcs`
+        secretName: "platform-gcs"
 
 # -- Replica Count
 # @default -- `2`
@@ -401,10 +433,10 @@ config:
   integrityAppLoggingLogLevelDefault: "warn"
 
   # -- Service Log Level
-  # @default -- `trace`
+  # @default -- `info`
   # Integrity Service specific log level
   # Options: trace, debug, info, warn, error
-  integrityAppLoggingLogLevelIntegrityService: "trace"
+  integrityAppLoggingLogLevelIntegrityService: "info"
 
   # ---------------------------------------------------------------------------
   # Authentication Configuration

@@ -59,12 +59,12 @@ helm upgrade --install guardian charts/gateway-stack \
 
 All example files are sanitized and safe to copy:
 
-| File                          | Demonstrates                                                                                                           |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `examples/values-gke.yaml`    | GKE with Workload Identity, GCS plugin artifact storage, and cert-manager DNS-01 via Cloud DNS                         |
-| `examples/values-dev.yaml`    | Development install with cert-manager HTTP-01 behind a dedicated HAProxy ingress class and inline database credentials |
-| `examples/values-stag.yaml`   | Staging install with Google OIDC bearer verification and PostgreSQL credentials from a pre-created Secret              |
-| `examples/values-onprem.yaml` | Air-gapped install with an external database, S3-compatible plugin artifact storage, and pre-issued TLS certificates   |
+| File                          | Demonstrates                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `examples/values-gke.yaml`    | GKE with Workload Identity, GCS plugin artifact storage, and cert-manager DNS-01 via Cloud DNS                                                         |
+| `examples/values-dev.yaml`    | Development install with cert-manager HTTP-01 behind a dedicated HAProxy ingress class and inline database credentials                                 |
+| `examples/values-stag.yaml`   | Staging install with Google OIDC bearer verification and PostgreSQL credentials from a pre-created Secret                                              |
+| `examples/values-onprem.yaml` | Air-gapped install with an external database, S3-compatible plugin artifact storage, pre-issued TLS certificates, and Auth Service bearer verification |
 
 ### Required Configuration
 
@@ -180,23 +180,23 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### LLM Gateway Plugin Runtime
 
-| Key                                                     | Type   | Default                                | Description                                                                             |
-| ------------------------------------------------------- | ------ | -------------------------------------- | --------------------------------------------------------------------------------------- |
-| llmGateway.plugins.enabled                              | bool   | `false`                                | Enable the plugin runtime                                                               |
-| llmGateway.plugins.pollInterval                         | string | `"15s"`                                | Plugin poll interval                                                                    |
-| llmGateway.plugins.authorizerShadowEnabled              | bool   | `false`                                | Evaluate authorizer plugins without enforcing decisions                                 |
-| llmGateway.plugins.endQueueDir                          | string | `"/var/lib/guardian/plugin-end-queue"` | Async `request.end` queue directory                                                     |
-| llmGateway.plugins.endQueueMaxBytes                     | int    | `134217728`                            | End queue size cap (128 MiB)                                                            |
-| llmGateway.plugins.artifactCacheDir                     | string | `"/var/lib/guardian/plugin-artifacts"` | Plugin artifact cache directory                                                         |
-| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                             |
-| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket or Azure container; the mount path for `file`                   |
-| llmGateway.plugins.artifactStorage.prefix               | string | `""`                                   | Artifact storage key prefix                                                             |
-| llmGateway.plugins.trustedSignerKeys                    | object | `{}`                                   | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`)  |
-| llmGateway.plugins.secrets.resolutionOrder              | list   | `[]`                                   | Secret resolver order; prefer `["store"]` for shared deployments                        |
-| llmGateway.plugins.secrets.encryptionKey.existingSecret | string | `""`                                   | Secret holding the plugin secret encryption key                                         |
-| llmGateway.plugins.secretEnvs                           | object | `{}`                                   | Inline plugin secret env vars (local/dev fallback)                                      |
-| llmGateway.plugins.secretEnvsSecret.name                | string | `""`                                   | Secret providing plugin secret env vars (local/dev fallback)                            |
-| llmGateway.projectContext.mode                          | string | `"disabled"`                           | Project context mode (`disabled`, `observe`, or `enforce`); requires the plugin runtime |
+| Key                                                     | Type   | Default                                | Description                                                                                                 |
+| ------------------------------------------------------- | ------ | -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| llmGateway.plugins.enabled                              | bool   | `false`                                | Enable the plugin runtime                                                                                   |
+| llmGateway.plugins.pollInterval                         | string | `"15s"`                                | Plugin poll interval                                                                                        |
+| llmGateway.plugins.authorizerShadowEnabled              | bool   | `false`                                | Evaluate authorizer plugins without enforcing decisions                                                     |
+| llmGateway.plugins.endQueueDir                          | string | `"/var/lib/guardian/plugin-end-queue"` | Async `request.end` queue directory                                                                         |
+| llmGateway.plugins.endQueueMaxBytes                     | int    | `134217728`                            | End queue size cap (128 MiB)                                                                                |
+| llmGateway.plugins.artifactCacheDir                     | string | `"/var/lib/guardian/plugin-artifacts"` | Plugin artifact cache directory                                                                             |
+| llmGateway.plugins.artifactStorage.provider             | string | `""`                                   | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                                                 |
+| llmGateway.plugins.artifactStorage.bucket               | string | `""`                                   | Artifact storage bucket or Azure container; the mount path for `file`                                       |
+| llmGateway.plugins.artifactStorage.prefix               | string | `""`                                   | Artifact storage key prefix                                                                                 |
+| llmGateway.plugins.trustedSignerKeys                    | object | `{}`                                   | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`)                      |
+| llmGateway.plugins.secrets.resolutionOrder              | list   | `[]`                                   | Secret resolver order; prefer `["store"]` for shared deployments                                            |
+| llmGateway.plugins.secrets.encryptionKey.existingSecret | string | `""`                                   | Secret holding the plugin secret encryption key                                                             |
+| llmGateway.plugins.secretEnvs                           | object | `{}`                                   | Inline plugin secret env vars (local/dev fallback; only rendered when `llmGateway.plugins.enabled` is true) |
+| llmGateway.plugins.secretEnvsSecret.name                | string | `""`                                   | Secret providing plugin secret env vars (local/dev fallback)                                                |
+| llmGateway.projectContext.mode                          | string | `"disabled"`                           | Project context mode (`disabled`, `observe`, or `enforce`); requires the plugin runtime                     |
 
 ### Control Plane
 
@@ -263,22 +263,22 @@ the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
 
 ### Control Plane Plugin Management
 
-| Key                                                       | Type   | Default                                    | Description                                                                            |
-| --------------------------------------------------------- | ------ | ------------------------------------------ | -------------------------------------------------------------------------------------- |
-| controlPlane.plugins.publisherSigner.keyID                | string | `""`                                       | Publisher signer key ID                                                                |
-| controlPlane.plugins.publisherSigner.existingSecret       | string | `""`                                       | Secret holding the publisher signer seed                                               |
-| controlPlane.plugins.publisherSigner.secretKey            | string | `"seed"`                                   | Key within the signer Secret                                                           |
-| controlPlane.plugins.publisherSigner.mountPath            | string | `"/run/secrets/guardian-plugin-publisher"` | Signer seed mount path                                                                 |
-| controlPlane.plugins.artifactStorage.provider             | string | `""`                                       | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                            |
-| controlPlane.plugins.artifactStorage.bucket               | string | `""`                                       | Artifact storage bucket or Azure container; the mount path for `file`                  |
-| controlPlane.plugins.artifactStorage.prefix               | string | `""`                                       | Artifact storage key prefix                                                            |
-| controlPlane.plugins.artifactStorage.maxUploadBytes       | int    | `536870912`                                | Maximum upload size (512 MiB)                                                          |
-| controlPlane.plugins.artifactStorage.gcs.kmsKeyName       | string | `""`                                       | GCS KMS key name                                                                       |
-| controlPlane.plugins.trustedSignerKeys                    | object | `{}`                                       | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`) |
-| controlPlane.plugins.secrets.encryptionKey.existingSecret | string | `""`                                       | Secret holding the plugin secret encryption key                                        |
-| controlPlane.virusTotal.enabled                           | bool   | `false`                                    | Enable VirusTotal scanning of the blobs callers look up through `/v1/vt-scans`         |
-| controlPlane.virusTotal.existingSecret                    | string | `""`                                       | Secret holding the VirusTotal API key                                                  |
-| controlPlane.virusTotal.secretKey                         | string | `"api-key"`                                | Key within the VirusTotal Secret                                                       |
+| Key                                                       | Type   | Default                                    | Description                                                                                                                                                         |
+| --------------------------------------------------------- | ------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| controlPlane.plugins.publisherSigner.keyID                | string | `""`                                       | Publisher signer key ID                                                                                                                                             |
+| controlPlane.plugins.publisherSigner.existingSecret       | string | `""`                                       | Secret holding the publisher signer seed                                                                                                                            |
+| controlPlane.plugins.publisherSigner.secretKey            | string | `"seed"`                                   | Key within the signer Secret                                                                                                                                        |
+| controlPlane.plugins.publisherSigner.mountPath            | string | `"/run/secrets/guardian-plugin-publisher"` | Signer seed mount path                                                                                                                                              |
+| controlPlane.plugins.artifactStorage.provider             | string | `""`                                       | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                                                                                                         |
+| controlPlane.plugins.artifactStorage.bucket               | string | `""`                                       | Artifact storage bucket or Azure container; the mount path for `file`                                                                                               |
+| controlPlane.plugins.artifactStorage.prefix               | string | `""`                                       | Artifact storage key prefix                                                                                                                                         |
+| controlPlane.plugins.artifactStorage.maxUploadBytes       | int    | `536870912`                                | Maximum upload size (512 MiB)                                                                                                                                       |
+| controlPlane.plugins.artifactStorage.gcs.kmsKeyName       | string | `""`                                       | GCS KMS key name                                                                                                                                                    |
+| controlPlane.plugins.trustedSignerKeys                    | object | `{}`                                       | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`)                                                                              |
+| controlPlane.plugins.secrets.encryptionKey.existingSecret | string | `""`                                       | Secret holding the plugin secret encryption key                                                                                                                     |
+| controlPlane.virusTotal.enabled                           | bool   | `false`                                    | Enable VirusTotal scanning of the blobs callers look up through `/v1/vt-scans`                                                                                      |
+| controlPlane.virusTotal.existingSecret                    | string | `""`                                       | Secret holding the VirusTotal API key (**required** when `controlPlane.virusTotal.enabled` is true, unless `controlPlane.extraEnv` sets `CONTROL_PLANE_VT_API_KEY`) |
+| controlPlane.virusTotal.secretKey                         | string | `"api-key"`                                | Key within the VirusTotal Secret                                                                                                                                    |
 
 ### Plugin Artifact Storage Backends
 
@@ -400,6 +400,8 @@ These keys exist identically under `llmGateway` and `controlPlane`. Replace `<wo
 | llmGateway.probes.liveness.periodSeconds          | int  | `10`    | Liveness probe period                                            |
 | llmGateway.probes.readiness.initialDelaySeconds   | int  | `3`     | Readiness probe initial delay                                    |
 | llmGateway.probes.readiness.periodSeconds         | int  | `10`    | Readiness probe period                                           |
+| controlPlane.probes.startup.failureThreshold      | int  | `180`   | Startup probe failure threshold                                  |
+| controlPlane.probes.startup.periodSeconds         | int  | `5`     | Startup probe period                                             |
 | controlPlane.probes.liveness.initialDelaySeconds  | int  | `5`     | Liveness probe initial delay                                     |
 | controlPlane.probes.liveness.periodSeconds        | int  | `10`    | Liveness probe period                                            |
 | controlPlane.probes.readiness.initialDelaySeconds | int  | `3`     | Readiness probe initial delay                                    |

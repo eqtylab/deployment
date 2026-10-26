@@ -902,7 +902,7 @@ auth-service:
       # @default -- `""` (auto-configured from global.environmentType, defaults to "production")
       environment: ""
       # -- Auth Service URL
-      # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:{port}/api/v1/auth")
+      # @default -- `""` (auto-generated: "http://{fullname}:{service.port}/api/v1/auth")
       # Internal URL used by auth-service to reference itself (e.g., for JWKS endpoint)
       authServiceUrl: ""
       # -- Swagger Enabled
@@ -1204,6 +1204,7 @@ auth-service:
         secretAccessKey: ""
         # -- AWS Session Token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)
         # @default -- `""`
+        # With global.secrets.create=false, mapped from the Secret's session-token key when present
         sessionToken: ""
         # -- AWS KMS Deletion Window Days
         # @default -- `7`
@@ -1217,10 +1218,12 @@ auth-service:
       # Only used when provider is "azure_key_vault"
       azure_key_vault:
         # -- Vault URL
-        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault)
+        # With global.secrets.create=true read from values.vaultUrl; otherwise from the Secret's vault-url key
         vaultUrl: ""
         # -- Tenant ID
-        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)
+        # @default -- `""` (auto-configured from global.secrets.keyManagement.azure_key_vault)
+        # With global.secrets.create=true read from values.tenantId; otherwise from the Secret's tenant-id key
         tenantId: ""
         # -- Client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)
         # @default -- `""`
@@ -1235,11 +1238,11 @@ auth-service:
       gcp_kms:
         # -- GCP Project ID
         # @default -- `""`
-        # **REQUIRED for GCP KMS**: Google Cloud project ID (not read from global values)
+        # **REQUIRED for GCP KMS**: Google Cloud project ID (not read from global values); rendering fails without it
         projectId: ""
         # -- GCP KMS Location ID
         # @default -- `""`
-        # **REQUIRED for GCP KMS**: KMS location, e.g. "us-east1" (not read from global values)
+        # **REQUIRED for GCP KMS**: KMS location, e.g. "us-east1" (not read from global values); rendering fails without it
         locationId: ""
         # -- GCP KMS Key Ring ID
         # @default -- `eqtylab-did`
@@ -1290,7 +1293,7 @@ auth-service:
 
     # -- Token Exchange Configuration
     # @default -- See values below
-    # For Keycloak integration
+    # Supported with the keycloak and entra providers
     tokenExchange:
       # -- Enabled
       # @default -- `false`
@@ -1302,13 +1305,33 @@ auth-service:
       keyId: "auth-service-prod-001"
       # -- Private Key
       # @default -- `""` (auto-configured from global.secrets.auth.keycloak)
-      # Only used when tokenExchange is enabled
+      # Only used when tokenExchange is enabled; when empty, read from the Keycloak
+      # Secret's token-exchange-private-key key
+      # **REQUIRED for Entra** with global.secrets.create=true, which creates no Keycloak Secret
       privateKey: ""
       # -- Access Token Expiry
       # @default -- `3600`
       # Lifetime of issued access tokens in seconds, max 86400; the first token
       # after login is capped by the IdP token's remaining life
       accessTokenExpirySeconds: 3600
+
+  # -- Dependency Wait Configuration
+  # @default -- See values below
+  # Endpoints the wait-deps init container checks before Auth starts
+  waitDeps:
+    # -- Governance Service Wait
+    # @default -- See values below
+    governanceService:
+      # -- Enabled
+      # @default -- `true`
+      # Wait for the Governance Service; set false when governance-service.enabled is false
+      enabled: true
+      # -- Host
+      # @default -- `""` (auto-generated: "{Release.Name}-governance-service")
+      host: ""
+      # -- Port
+      # @default -- `10001`
+      port: 10001
 
   # =============================================================================
   # NETWORK POLICY CONFIGURATION
@@ -1328,10 +1351,20 @@ auth-service:
       - from:
           - namespaceSelector:
               matchLabels:
-                name: ingress-nginx
+                kubernetes.io/metadata.name: ingress-nginx
           - podSelector:
               matchLabels:
                 app.kubernetes.io/name: governance-service
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: integrity-service
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: eqty-pdfgen
+          # Control Plane (gateway adapter) and LLM Gateway
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: gateway-stack
         ports:
           - protocol: TCP
             port: 8080
@@ -1343,7 +1376,7 @@ auth-service:
       - to:
           - namespaceSelector:
               matchLabels:
-                name: kube-system
+                kubernetes.io/metadata.name: kube-system
         ports:
           - protocol: TCP
             port: 53
@@ -1358,6 +1391,15 @@ auth-service:
         ports:
           - protocol: TCP
             port: 5432
+
+      # Allow Governance Service
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: governance-service
+        ports:
+          - protocol: TCP
+            port: 10001
 
       # Allow external HTTPS (for IDP communication)
       - to: []
@@ -1374,7 +1416,8 @@ auth-service:
   migration:
     # -- Enabled
     # @default -- `false`
-    # Enable migration as a Helm hook job
+    # Enable migration as a Helm hook job (post-install and pre-upgrade) with this
+    # release's ConfigMap values and the database, IdP client ID, and API secrets
     enabled: false
     # -- Backoff Limit
     # @default -- `3`
@@ -1709,6 +1752,9 @@ gateway-stack:
   database:
     # -- Existing Database Secret
     # @default -- `platform-database`
+    # With global.secrets.create=true and a renamed global.secrets.database.secretName,
+    # rendering fails while this is still platform-database; set it to the new name,
+    # or to a Secret of your own that holds the DSN
     existingSecret: "platform-database"
     # -- Database Secret Keys
     # @default -- See values below
@@ -3199,10 +3245,10 @@ integrity-service:
     integrityAppLoggingLogLevelDefault: "warn"
 
     # -- Service Log Level
-    # @default -- `trace`
+    # @default -- `info`
     # Integrity Service specific log level
     # Options: trace, debug, info, warn, error
-    integrityAppLoggingLogLevelIntegrityService: "trace"
+    integrityAppLoggingLogLevelIntegrityService: "info"
 
     # ---------------------------------------------------------------------------
     # Authentication Configuration
@@ -3307,7 +3353,8 @@ postgresql:
 
         # -- Existing Secret
         # @default -- `platform-database`
-        # References global.secrets.database.secretName
+        # References global.secrets.database.secretName; with global.secrets.create=true
+        # and a renamed secretName, rendering fails until this matches it
         existingSecret: "platform-database"
 
         # -- Secret Keys
@@ -3413,15 +3460,38 @@ postgresql:
 openbaoKindProfile: false
 
 # ------------------------------------------------------------------------------
-# IdP Post-Install Hook Image
+# IdP Post-Install Hooks
 # ------------------------------------------------------------------------------
 # -- IdP Setup Image
 # @default -- `""` (keeps `postgres:17-alpine`)
 # Complete image reference for the auth0/entra/keycloak post-install setup Jobs
 # Must provide psql and pg_isready. With createPlatformAdmin it also needs curl and jq;
-# if they are missing they are installed with apk at runtime, which needs internet access
+# if they are missing they are installed with apk under /tmp at runtime, which needs internet access
 # global.imageRegistryOverride and global.imageRepositoryPrefixOverride do not apply to this value
 idpSetupImage: ""
+
+# -- IdP Setup Pod Security Context
+# @default -- See values below
+# Pod securityContext for the auth0/entra/keycloak post-install setup Jobs
+# UID and GID 70 are the postgres user of the default postgres:17-alpine image
+idpSetupPodSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 70
+  runAsGroup: 70
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- IdP Setup Container Security Context
+# @default -- See values below
+# Container securityContext for the setup containers and their wait-for-schema init containers
+# /tmp is a writable emptyDir
+idpSetupSecurityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
 
 # -- Name Override
 # @default -- `""` (uses the chart name)

@@ -466,6 +466,7 @@ llmGateway:
     # -- Inline Plugin Secret Environment Variables
     # @default -- `{}`
     # Local/dev fallback only; values land in Helm release history
+    # Only used when plugins.enabled is true
     secretEnvs: {}
     # -- Plugin Secret Environment Secret
     # @default -- See values below
@@ -740,6 +741,7 @@ controlPlane:
     # -- Existing VirusTotal Secret
     # @default -- `""`
     # Name of a Secret containing the VirusTotal API key
+    # **REQUIRED** when enabled is true, unless controlPlane.extraEnv sets CONTROL_PLANE_VT_API_KEY
     existingSecret: ""
     # -- VirusTotal Secret Key
     # @default -- `api-key`
@@ -939,6 +941,16 @@ controlPlane:
   # -- Health Probe Configuration
   # @default -- See values below
   probes:
+    # -- Startup Probe
+    # @default -- See values below
+    # Holds off liveness checks until the Control Plane first reports healthy
+    startup:
+      # -- Failure Threshold
+      # @default -- `180`
+      failureThreshold: 180
+      # -- Period Seconds
+      # @default -- `5`
+      periodSeconds: 5
     # -- Liveness Probe
     # @default -- See values below
     liveness:

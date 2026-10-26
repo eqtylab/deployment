@@ -344,12 +344,12 @@ Authentication is automatically configured from global values in umbrella deploy
 
 ### Feature Flags
 
-| Key                                | Type | Default | Description                                                                             |
-| ---------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------- |
-| config.features.governance         | bool | `true`  | Enable governance features                                                              |
-| config.features.lineage            | bool | `true`  | Enable lineage features                                                                 |
-| config.features.gateway            | bool | `false` | Enable Gateway features (requires `config.gatewayApiUrl`)                               |
-| config.features.agentCertification | bool | `false` | Enable Governance Programs and agent certification (requires `config.features.gateway`) |
+| Key                                | Type | Default | Description                                                                                                          |
+| ---------------------------------- | ---- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| config.features.governance         | bool | `true`  | Enable governance features                                                                                           |
+| config.features.lineage            | bool | `true`  | Enable lineage features                                                                                              |
+| config.features.gateway            | bool | `false` | Enable Gateway features (requires `config.gatewayApiUrl`)                                                            |
+| config.features.agentCertification | bool | `false` | Enable Governance Programs and agent certification (requires `config.features.gateway`; the render fails without it) |
 
 ## Configuration Inheritance
 

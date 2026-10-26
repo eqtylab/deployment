@@ -27,6 +27,7 @@ spec:
         app.kubernetes.io/component: entra-org-setup
     spec:
       restartPolicy: OnFailure
+      {{- include "guardian-platform.idpSetup.podSecurityContext" . | nindent 6 }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -124,7 +125,8 @@ spec:
                   name: {{ $entraSecret.secretName | default "platform-entra" | quote }}
                   key: {{ $entraSecretKeys.graphClientSecret | default "graph-client-secret" | quote }}
             {{- end }}
-          {{- include "guardian-platform.idpSetup.pgCaVolumeMounts" . | nindent 10 }}
+          {{- include "guardian-platform.idpSetup.securityContext" . | nindent 10 }}
+          {{- include "guardian-platform.idpSetup.volumeMounts" . | nindent 10 }}
           resources:
             requests:
               cpu: 100m
@@ -135,5 +137,5 @@ spec:
       # This job should run after the application starts and runs migrations
       initContainers:
         {{- include "guardian-platform.idpSetup.waitForSchema" . | nindent 8 }}
-      {{- include "guardian-platform.idpSetup.pgCaVolumes" . | nindent 6 }}
+      {{- include "guardian-platform.idpSetup.volumes" . | nindent 6 }}
 {{- end }}

@@ -250,30 +250,32 @@ Generated defaults:
 
 ### Global Parameters (Umbrella Chart)
 
-When deployed via the umbrella chart, these global values are automatically used:
+When deployed via the umbrella chart, these global values are automatically used.
+The chart's own `global.secrets` defaults match the umbrella's Secret names; a
+Secret reference whose local and global names are both empty fails the render.
 
-| Key                                                     | Type   | Description                                                              |
-| ------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
-| global.domain                                           | string | Base domain for all services                                             |
-| global.environmentType                                  | string | Environment type (development/staging/production)                        |
-| global.imagePullPolicy                                  | string | Default image pull policy for every container                            |
-| global.imagePullSecrets                                 | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty |
-| global.postgresql.host                                  | string | PostgreSQL host                                                          |
-| global.postgresql.port                                  | int    | PostgreSQL port                                                          |
-| global.postgresql.database                              | string | PostgreSQL database name                                                 |
-| global.postgresql.username                              | string | PostgreSQL username                                                      |
-| global.secrets.database.secretName                      | string | Name of database credentials secret                                      |
-| global.secrets.auth.provider                            | string | Auth provider (auth0, entra, or keycloak)                                |
-| global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name                                            |
-| global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name                                         |
-| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name                                         |
-| global.secrets.authService.secretName                   | string | Auth Service security secrets name                                       |
-| global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, gcp_kms, or openbao)  |
-| global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name                                          |
-| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name                                  |
-| global.secrets.keyManagement.gcp_kms.secretName         | string | GCP KMS credentials secret name                                          |
-| global.secrets.governanceWorker.secretName              | string | Worker credentials secret name                                           |
-| global.secrets.imageRegistry.secretName                 | string | Registry pull secret name                                                |
+| Key                                                     | Type   | Description                                                                             |
+| ------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------- |
+| global.domain                                           | string | Base domain for all services                                                            |
+| global.environmentType                                  | string | Environment type (development/staging/production)                                       |
+| global.imagePullPolicy                                  | string | Default image pull policy for every container                                           |
+| global.imagePullSecrets                                 | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty                |
+| global.postgresql.host                                  | string | PostgreSQL host                                                                         |
+| global.postgresql.port                                  | int    | PostgreSQL port                                                                         |
+| global.postgresql.database                              | string | PostgreSQL database name                                                                |
+| global.postgresql.username                              | string | PostgreSQL username                                                                     |
+| global.secrets.database.secretName                      | string | Name of database credentials secret (standalone default `platform-database`)            |
+| global.secrets.auth.provider                            | string | Auth provider (auth0, entra, or keycloak)                                               |
+| global.secrets.auth.auth0.secretName                    | string | Auth0 credentials secret name (standalone default `platform-auth0`)                     |
+| global.secrets.auth.entra.secretName                    | string | Entra ID credentials secret name (standalone default `platform-entra`)                  |
+| global.secrets.auth.keycloak.secretName                 | string | Keycloak credentials secret name (standalone default `platform-keycloak`)               |
+| global.secrets.authService.secretName                   | string | Auth Service security secrets name (standalone default `platform-auth-service`)         |
+| global.secrets.keyManagement.provider                   | string | Key management provider (aws_kms, azure_key_vault, gcp_kms, or openbao)                 |
+| global.secrets.keyManagement.aws_kms.secretName         | string | AWS KMS credentials secret name (standalone default `platform-aws-kms`)                 |
+| global.secrets.keyManagement.azure_key_vault.secretName | string | Azure Key Vault credentials secret name (standalone default `platform-azure-key-vault`) |
+| global.secrets.keyManagement.gcp_kms.secretName         | string | GCP KMS credentials secret name                                                         |
+| global.secrets.governanceWorker.secretName              | string | Worker credentials secret name (standalone default `platform-governance-worker`)        |
+| global.secrets.imageRegistry.secretName                 | string | Registry pull secret name                                                               |
 
 ### Chart-Specific Parameters
 
@@ -361,6 +363,17 @@ When deployed via the umbrella chart, these global values are automatically used
 | affinity       | object | Pod anti-affinity | Affinity rules (default spreads across nodes)            |
 | initContainers | list   | `[]`              | Init containers to add to the pod                        |
 
+### Dependency Wait
+
+The `wait-deps` init container waits for PostgreSQL and, unless disabled, the
+Governance Service.
+
+| Key                                | Type   | Default | Description                                                                   |
+| ---------------------------------- | ------ | ------- | ----------------------------------------------------------------------------- |
+| waitDeps.governanceService.enabled | bool   | `true`  | Wait for the Governance Service; set false when it is not deployed            |
+| waitDeps.governanceService.host    | string | `""`    | Governance Service host (auto-generated: `{Release.Name}-governance-service`) |
+| waitDeps.governanceService.port    | int    | `10001` | Governance Service port                                                       |
+
 ### Health Checks
 
 | Key                                | Type   | Default           | Description                   |
@@ -446,15 +459,15 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Server Settings
 
-| Key                           | Type   | Default          | Description                                                                                   |
-| ----------------------------- | ------ | ---------------- | --------------------------------------------------------------------------------------------- |
-| config.server.port            | int    | `8080`           | Server port                                                                                   |
-| config.server.host            | string | `"0.0.0.0"`      | Server host                                                                                   |
-| config.server.authServiceUrl  | string | `""`             | Internal URL for self-reference (auto-generated: `http://{Release.Name}-auth-service:{port}`) |
-| config.server.environment     | string | `""`             | Environment (auto-configured from global.environmentType)                                     |
-| config.server.swaggerEnabled  | bool   | `true`           | Enable Swagger documentation                                                                  |
-| config.server.swaggerHost     | string | `""`             | Swagger host (auto-configured from global.domain)                                             |
-| config.server.swaggerBasePath | string | `"/authService"` | Swagger base path (only used when swaggerEnabled is true)                                     |
+| Key                           | Type   | Default          | Description                                                                                      |
+| ----------------------------- | ------ | ---------------- | ------------------------------------------------------------------------------------------------ |
+| config.server.port            | int    | `8080`           | Server port                                                                                      |
+| config.server.host            | string | `"0.0.0.0"`      | Server host                                                                                      |
+| config.server.authServiceUrl  | string | `""`             | Internal URL for self-reference (auto-generated: `http://{fullname}:{service.port}/api/v1/auth`) |
+| config.server.environment     | string | `""`             | Environment (auto-configured from global.environmentType)                                        |
+| config.server.swaggerEnabled  | bool   | `true`           | Enable Swagger documentation                                                                     |
+| config.server.swaggerHost     | string | `""`             | Swagger host (auto-configured from global.domain)                                                |
+| config.server.swaggerBasePath | string | `"/authService"` | Swagger base path (only used when swaggerEnabled is true)                                        |
 
 #### Auth Service Secrets
 
@@ -480,11 +493,11 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 #### Identity Provider Configuration
 
-| Key                               | Type   | Default | Description                                                  |
-| --------------------------------- | ------ | ------- | ------------------------------------------------------------ |
-| config.idp.provider               | string | `""`    | IDP type (auto-configured from global.secrets.auth.provider) |
-| config.idp.issuer                 | string | `""`    | OIDC issuer URL                                              |
-| config.idp.skipIssuerVerification | bool   | `false` | Skip issuer verification (dev only)                          |
+| Key                               | Type   | Default | Description                                                                                                                              |
+| --------------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| config.idp.provider               | string | `""`    | IDP type: auth0, entra, or keycloak; other values fail the render (auto-configured from global.secrets.auth.provider, defaults to auth0) |
+| config.idp.issuer                 | string | `""`    | OIDC issuer URL                                                                                                                          |
+| config.idp.skipIssuerVerification | bool   | `false` | Skip issuer verification (dev only)                                                                                                      |
 
 **Auth0 Configuration (only used when provider is "auth0"):**
 
@@ -527,22 +540,22 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 | Key                                                      | Type   | Default        | Description                                                                                                                                                                                          |
 | -------------------------------------------------------- | ------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| config.keyManagement.provider                            | string | `""`           | Provider (`"aws_kms"`, `"azure_key_vault"`, `"gcp_kms"`, or `"openbao"`) (auto-configured from global.secrets.keyManagement.provider)                                                                |
+| config.keyManagement.provider                            | string | `""`           | Provider (`"aws_kms"`, `"azure_key_vault"`, `"gcp_kms"`, or `"openbao"`; other values fail the render) (auto-configured from global.secrets.keyManagement.provider)                                  |
 | config.keyManagement.cacheTTLMinutes                     | int    | `15`           | DID key cache TTL in minutes                                                                                                                                                                         |
 | config.keyManagement.aws_kms.region                      | string | `""`           | AWS KMS region                                                                                                                                                                                       |
 | config.keyManagement.aws_kms.endpoint                    | string | `""`           | AWS KMS endpoint (optional, for custom endpoints like LocalStack)                                                                                                                                    |
 | config.keyManagement.aws_kms.aliasPrefix                 | string | `""`           | AWS KMS alias prefix (defaults to `alias/eqtylab/did`)                                                                                                                                               |
 | config.keyManagement.aws_kms.accessKeyId                 | string | `""`           | AWS access key ID (secret - auto-configured from global.secrets.keyManagement.aws_kms)                                                                                                               |
 | config.keyManagement.aws_kms.secretAccessKey             | string | `""`           | AWS secret access key (secret - auto-configured from global.secrets.keyManagement.aws_kms)                                                                                                           |
-| config.keyManagement.aws_kms.sessionToken                | string | `""`           | AWS session token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms)                                                                                                     |
+| config.keyManagement.aws_kms.sessionToken                | string | `""`           | AWS session token (secret, optional - auto-configured from global.secrets.keyManagement.aws_kms; with `global.secrets.create: false`, mapped from the Secret's session-token key when present)       |
 | config.keyManagement.aws_kms.deletionWindowDays          | int    | `7`            | AWS KMS deletion window in days                                                                                                                                                                      |
 | config.keyManagement.aws_kms.keyPolicyPrincipalArn       | string | `""`           | IAM user or role ARN granted use of new DID keys (optional, derived from the running credentials; set for a role with a path, or when STS is unreachable)                                            |
-| config.keyManagement.azure_key_vault.vaultUrl            | string | `""`           | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault.values.vaultUrl)                                                                                              |
-| config.keyManagement.azure_key_vault.tenantId            | string | `""`           | Azure tenant ID (auto-configured from global.secrets.keyManagement.azure_key_vault.values.tenantId)                                                                                                  |
+| config.keyManagement.azure_key_vault.vaultUrl            | string | `""`           | Azure Key Vault URL (auto-configured from global.secrets.keyManagement.azure_key_vault: values.vaultUrl with `global.secrets.create: true`, otherwise the Secret's vault-url key)                    |
+| config.keyManagement.azure_key_vault.tenantId            | string | `""`           | Azure tenant ID (auto-configured from global.secrets.keyManagement.azure_key_vault: values.tenantId with `global.secrets.create: true`, otherwise the Secret's tenant-id key)                        |
 | config.keyManagement.azure_key_vault.clientId            | string | `""`           | Azure client ID (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                                                                                                         |
 | config.keyManagement.azure_key_vault.clientSecret        | string | `""`           | Azure client secret (secret - auto-configured from global.secrets.keyManagement.azure_key_vault)                                                                                                     |
-| config.keyManagement.gcp_kms.projectId                   | string | `""`           | GCP project ID                                                                                                                                                                                       |
-| config.keyManagement.gcp_kms.locationId                  | string | `""`           | GCP location (e.g., `us-east1`)                                                                                                                                                                      |
+| config.keyManagement.gcp_kms.projectId                   | string | `""`           | GCP project ID (**required** with gcp_kms; the render fails without it)                                                                                                                              |
+| config.keyManagement.gcp_kms.locationId                  | string | `""`           | GCP location (e.g., `us-east1`; **required** with gcp_kms; the render fails without it)                                                                                                              |
 | config.keyManagement.gcp_kms.keyRingId                   | string | `""`           | GCP KMS key ring ID (defaults to `eqtylab-did`)                                                                                                                                                      |
 | config.keyManagement.gcp_kms.scheduledDestroyDays        | int    | `24`           | GCP KMS scheduled destroy days                                                                                                                                                                       |
 | config.keyManagement.gcp_kms.serviceAccountJson          | string | `""`           | GCP service account JSON (optional with Workload Identity)                                                                                                                                           |
@@ -577,37 +590,41 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.serviceAccounts.governanceWorker.clientSecret  | string | `""`    | Worker client secret (auto-configured from global.secrets.governanceWorker)  |
 | config.serviceAccounts.governanceWorker.encryptionKey | string | `""`    | Encryption key (auto-configured from global.secrets.governanceWorker)        |
 
-#### Token Exchange Configuration (Optional, Keycloak Only)
+#### Token Exchange Configuration (Optional, Keycloak and Entra)
 
-Token exchange is only relevant for Keycloak deployments using federated authentication. It is disabled by default.
+Token exchange is supported with the Keycloak and Entra providers and is
+disabled by default; enabling it with Auth0 fails the render. Unless
+`privateKey` is set, the private key is read from the Keycloak Secret's
+`token-exchange-private-key` key. Entra with `global.secrets.create: true`
+requires `privateKey`, because no Keycloak Secret is created.
 
 | Key                                           | Type   | Default                   | Description                                                                                                                                                                  |
 | --------------------------------------------- | ------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| config.tokenExchange.enabled                  | bool   | `false`                   | Enable token exchange (Keycloak only)                                                                                                                                        |
+| config.tokenExchange.enabled                  | bool   | `false`                   | Enable token exchange (Keycloak or Entra)                                                                                                                                    |
 | config.tokenExchange.keyId                    | string | `"auth-service-prod-001"` | Key identifier for signing key                                                                                                                                               |
-| config.tokenExchange.privateKey               | string | `""`                      | Token exchange private key (auto-configured from global.secrets.auth.keycloak)                                                                                               |
+| config.tokenExchange.privateKey               | string | `""`                      | Token exchange private key (auto-configured from global.secrets.auth.keycloak; **required** with Entra and `global.secrets.create: true`)                                    |
 | config.tokenExchange.accessTokenExpirySeconds | int    | `3600`                    | Access token lifetime in seconds, clamped to `86400` (24h) by the service. Applied on token refresh; the first token after login is capped by the IdP token's remaining life |
 
 ### Advanced: Network Policy Configuration
 
-| Key                   | Type | Default         | Description          |
-| --------------------- | ---- | --------------- | -------------------- |
-| networkPolicy.enabled | bool | `false`         | Enable NetworkPolicy |
-| networkPolicy.ingress | list | See values.yaml | Ingress rules        |
-| networkPolicy.egress  | list | See values.yaml | Egress rules         |
+| Key                   | Type | Default         | Description                                                                                                                         |
+| --------------------- | ---- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| networkPolicy.enabled | bool | `false`         | Enable NetworkPolicy                                                                                                                |
+| networkPolicy.ingress | list | See values.yaml | Ingress on 8080 from the ingress-nginx namespace and the Governance Service, Integrity Service, eqty-pdfgen, and gateway-stack pods |
+| networkPolicy.egress  | list | See values.yaml | Egress to DNS in kube-system, PostgreSQL on 5432, the Governance Service on 10001, and HTTPS on 443                                 |
 
 ### Advanced: Migration Job Configuration
 
-| Key                                 | Type   | Default | Description                   |
-| ----------------------------------- | ------ | ------- | ----------------------------- |
-| migration.enabled                   | bool   | `false` | Enable migration as Helm hook |
-| migration.backoffLimit              | int    | `3`     | Job backoff limit             |
-| migration.activeDeadlineSeconds     | int    | `300`   | Job active deadline           |
-| migration.ttlSecondsAfterFinished   | int    | `300`   | TTL for completed jobs        |
-| migration.resources.limits.cpu      | string | `200m`  | Migration job CPU limit       |
-| migration.resources.limits.memory   | string | `256Mi` | Migration job memory limit    |
-| migration.resources.requests.cpu    | string | `100m`  | Migration job CPU request     |
-| migration.resources.requests.memory | string | `128Mi` | Migration job memory request  |
+| Key                                 | Type   | Default | Description                                                                                                                                                                                      |
+| ----------------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| migration.enabled                   | bool   | `false` | Enable migration as a post-install and pre-upgrade Helm hook; the Job gets this release's ConfigMap values, the database, IdP client ID, and API secrets, and the Deployment's security contexts |
+| migration.backoffLimit              | int    | `3`     | Job backoff limit                                                                                                                                                                                |
+| migration.activeDeadlineSeconds     | int    | `300`   | Job active deadline                                                                                                                                                                              |
+| migration.ttlSecondsAfterFinished   | int    | `300`   | TTL for completed jobs                                                                                                                                                                           |
+| migration.resources.limits.cpu      | string | `200m`  | Migration job CPU limit                                                                                                                                                                          |
+| migration.resources.limits.memory   | string | `256Mi` | Migration job memory limit                                                                                                                                                                       |
+| migration.resources.requests.cpu    | string | `100m`  | Migration job CPU request                                                                                                                                                                        |
+| migration.resources.requests.memory | string | `128Mi` | Migration job memory request                                                                                                                                                                     |
 
 ### Advanced: Extra Configuration
 

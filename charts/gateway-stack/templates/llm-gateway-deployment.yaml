@@ -173,9 +173,11 @@ spec:
                   key: {{ $credentialSigner.secretKey | default "seed" }}
             {{- end }}
 
+            {{- if .Values.llmGateway.plugins.enabled }}
             {{- range $key := keys .Values.llmGateway.plugins.secretEnvs | sortAlpha }}
             - name: {{ $key }}
               value: {{ index $.Values.llmGateway.plugins.secretEnvs $key | quote }}
+            {{- end }}
             {{- end }}
 
             {{- $pluginSecretKey := .Values.llmGateway.plugins.secrets.encryptionKey }}

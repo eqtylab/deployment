@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "auth-service.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook": post-install,pre-upgrade
     "helm.sh/hook-weight": "-5"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
@@ -20,9 +20,9 @@ spec:
         app.kubernetes.io/component: migration
     spec:
       restartPolicy: Never
-      {{- if and .Values.global ((.Values.global.secrets).imageRegistry).secretName }}
+      {{- if (((.Values.global).secrets).imageRegistry).secretName }}
       imagePullSecrets:
-        - name: {{ .Values.global.secrets.imageRegistry.secretName }}
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
       {{- else if (.Values.global).imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
@@ -30,41 +30,81 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: migrate
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           image: {{ include "auth-service.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy | default ((.Values.global).imagePullPolicy | default "IfNotPresent") }}
           command: ["/migrate"]
+          {{- if or .Values.extraEnvVarsSecret .Values.extraEnvVarsConfigMap }}
+          envFrom:
+            {{- if .Values.extraEnvVarsSecret }}
+            - secretRef:
+                name: {{ .Values.extraEnvVarsSecret }}
+            {{- end }}
+            {{- if .Values.extraEnvVarsConfigMap }}
+            - configMapRef:
+                name: {{ .Values.extraEnvVarsConfigMap }}
+            {{- end }}
+          {{- end }}
           env:
-            # ==========================================================================
-            # Database Configuration
-            # ==========================================================================
-            - name: DB_HOST
-              value: {{ .Values.externalDatabase.host | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
-            - name: DB_PORT
-              value: {{ .Values.externalDatabase.port | default ((.Values.global).postgresql).port | default "5432" | quote }}
-            - name: DB_NAME
-              value: {{ .Values.externalDatabase.name | default ((.Values.global).postgresql).database | default "governance" | quote }}
-            - name: DB_USER
-              value: {{ .Values.externalDatabase.user | default ((.Values.global).postgresql).username | default "postgres" | quote }}
+            {{- $config := include (print $.Template.BasePath "/configmap.yaml") . | fromYaml }}
+            {{- range $name, $value := $config.data }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
             - name: DB_PASSWORD
               {{- if .Values.externalDatabase.password }}
               value: {{ .Values.externalDatabase.password | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default ((.Values.global.secrets).database).secretName | quote }}
-                  key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((.Values.global.secrets).database).keys.password | default "password" | quote }}
+                  name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | required "externalDatabase.passwordSecretKeyRef.name (or global.secrets.database.secretName) is required when externalDatabase.password is empty" | quote }}
+                  key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
               {{- end }}
-            - name: DB_SSLMODE
-              value: {{ .Values.externalDatabase.sslMode | default ((.Values.global).postgresql).sslMode | default "disable" | quote }}
             {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
             {{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
             - name: PGSSLROOTCERT
               value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
             {{- end }}
-            - name: MIGRATIONS_PATH
-              value: {{ .Values.migrations.path | quote }}
+            {{- $idpProvider := include "auth-service.idpProvider" . }}
+            {{- if eq $idpProvider "entra" }}
+            - name: IDP_CLIENT_ID
+              {{- if .Values.config.idp.entra.clientId }}
+              value: {{ .Values.config.idp.entra.clientId | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | required "secrets.auth.entra.name (or global.secrets.auth.entra.secretName) is required when an Entra credential is not set inline" | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).entra).keys).clientId | default "client-id" | quote }}
+              {{- end }}
+            {{- else if ne $idpProvider "keycloak" }}
+            - name: IDP_CLIENT_ID
+              {{- if .Values.config.idp.auth0.clientId }}
+              value: {{ .Values.config.idp.auth0.clientId | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | required "secrets.auth.auth0.name (or global.secrets.auth.auth0.secretName) is required when an Auth0 credential is not set inline" | quote }}
+                  key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientId | default "client-id" | quote }}
+              {{- end }}
+            {{- end }}
+            - name: API_SECRET
+              {{- if .Values.config.apiSecret }}
+              value: {{ .Values.config.apiSecret | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.authService.name | default (((.Values.global).secrets).authService).secretName | required "secrets.authService.name (or global.secrets.authService.secretName) is required when config.apiSecret or config.jwtSecret is empty" | quote }}
+                  key: {{ ((((.Values.global).secrets).authService).keys).apiSecret | default "api-secret" | quote }}
+              {{- end }}
           {{- with .Values.migration.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

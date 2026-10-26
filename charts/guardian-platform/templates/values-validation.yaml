@@ -1,6 +1,17 @@
 {{- if hasKey .Values "governance-studio" }}
 {{- fail "Guardian's values moved from governance-studio: to guardian:. Rename the key. On an existing install, keep its release and namespace, and set nameOverride: governance-platform and guardian.nameOverride: governance-studio to keep its resource names" }}
 {{- end }}
+{{- $databaseSecret := ((((.Values.global).secrets).database).secretName) | default "" }}
+{{- if and ((.Values.global).secrets).create $databaseSecret (ne $databaseSecret "platform-database") }}
+{{- $gateway := index .Values "gateway-stack" | default dict }}
+{{- if and $gateway.enabled (eq (($gateway.database).existingSecret | default "") "platform-database") }}
+{{- fail (printf "global.secrets.database.secretName is %q but gateway-stack.database.existingSecret is still platform-database, so the chart would not write the gateway DSN key; set gateway-stack.database.existingSecret to %q, or to a Secret of your own that holds the DSN" $databaseSecret $databaseSecret) }}
+{{- end }}
+{{- $postgresAuth := ((((.Values.postgresql).global).postgresql).auth) | default dict }}
+{{- if and (.Values.postgresql).enabled (ne ($postgresAuth.existingSecret | default "") $databaseSecret) }}
+{{- fail (printf "global.secrets.database.secretName is %q but postgresql.global.postgresql.auth.existingSecret is %q; set it to %q so the bundled PostgreSQL reads the Secret the chart creates" $databaseSecret ($postgresAuth.existingSecret | default "") $databaseSecret) }}
+{{- end }}
+{{- end }}
 {{- $fullname := include "guardian-platform.fullname" . }}
 {{- $hooks := dict "keycloak" .Values.keycloak.createOrganization "auth0" .Values.auth0.createOrganization "entra" .Values.entra.createOrganization }}
 {{- range $idp, $enabled := $hooks }}

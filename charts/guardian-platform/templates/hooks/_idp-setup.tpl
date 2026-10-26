@@ -39,12 +39,34 @@ libpq environment for the platform database.
 {{- end }}
 
 {{/*
-volumeMounts for the database CA certificate, when one is configured.
+Pod securityContext for the hook Jobs.
 */}}
-{{- define "guardian-platform.idpSetup.pgCaVolumeMounts" -}}
-{{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
-{{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
+{{- define "guardian-platform.idpSetup.podSecurityContext" -}}
+{{- with .Values.idpSetupPodSecurityContext -}}
+securityContext:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
+Container securityContext for the hook containers and their init containers.
+*/}}
+{{- define "guardian-platform.idpSetup.securityContext" -}}
+{{- with .Values.idpSetupSecurityContext -}}
+securityContext:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
+volumeMounts for the writable /tmp and, when one is configured, the database CA certificate.
+*/}}
+{{- define "guardian-platform.idpSetup.volumeMounts" -}}
+{{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict -}}
 volumeMounts:
+  - name: tmp
+    mountPath: /tmp
+{{- if or $pgSslRootCert.secretName $pgSslRootCert.configMapName }}
   - name: postgres-ca
     mountPath: /etc/ssl/postgres
     readOnly: true
@@ -52,12 +74,14 @@ volumeMounts:
 {{- end }}
 
 {{/*
-Pod volumes for the database CA certificate, when one is configured.
+Pod volumes for the writable /tmp and, when one is configured, the database CA certificate.
 */}}
-{{- define "guardian-platform.idpSetup.pgCaVolumes" -}}
-{{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
-{{- if $pgSslRootCert.secretName }}
+{{- define "guardian-platform.idpSetup.volumes" -}}
+{{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict -}}
 volumes:
+  - name: tmp
+    emptyDir: {}
+{{- if $pgSslRootCert.secretName }}
   - name: postgres-ca
     secret:
       secretName: {{ $pgSslRootCert.secretName | quote }}
@@ -65,7 +89,6 @@ volumes:
         - key: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
           path: {{ $pgSslRootCert.key | default "ca.crt" | quote }}
 {{- else if $pgSslRootCert.configMapName }}
-volumes:
   - name: postgres-ca
     configMap:
       name: {{ $pgSslRootCert.configMapName | quote }}
@@ -76,7 +99,8 @@ volumes:
 {{- end }}
 
 {{/*
-Init container that waits for the auth and governance migrations to create the tables the hook writes.
+Init container that waits for the auth and governance migrations to create the tables the hook writes,
+and fails when they are still missing after the last attempt.
 */}}
 {{- define "guardian-platform.idpSetup.waitForSchema" -}}
 - name: wait-for-schema
@@ -119,11 +143,12 @@ Init container that waits for the auth and governance migrations to create the t
         ATTEMPT=$((ATTEMPT + 1))
       done
 
-      echo "Warning: Some tables may not exist, but proceeding..."
-      exit 0
+      echo "ERROR: Required tables still missing after $MAX_ATTEMPTS attempts; check the auth-service and governance-service migrations"
+      exit 1
   env:
     {{- include "guardian-platform.idpSetup.pgEnv" . | nindent 4 }}
-  {{- include "guardian-platform.idpSetup.pgCaVolumeMounts" . | nindent 2 }}
+  {{- include "guardian-platform.idpSetup.securityContext" . | nindent 2 }}
+  {{- include "guardian-platform.idpSetup.volumeMounts" . | nindent 2 }}
 {{- end }}
 
 {{/*
@@ -149,11 +174,21 @@ lit() {
   printf "'%s'" "$(printf '%s' "$1" | sed "s/'/''/g")"
 }
 
-# Install curl and jq unless the image already provides them
+# Install curl and jq unless the image already provides them; as non-root they go under /tmp/http-tools
 ensure_http_tools() {
-  if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
-    apk add --no-cache curl jq >/dev/null
+  if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    return 0
   fi
+  if [ "$(id -u)" = "0" ]; then
+    apk add --no-cache curl jq >/dev/null
+    return 0
+  fi
+  HTTP_TOOLS=/tmp/http-tools
+  mkdir -p "$HTTP_TOOLS/etc/apk"
+  cp -R /etc/apk/keys /etc/apk/repositories "$HTTP_TOOLS/etc/apk/"
+  apk add --usermode --root "$HTTP_TOOLS" --initdb --no-cache --no-scripts curl jq >/dev/null
+  curl() { LD_LIBRARY_PATH="$HTTP_TOOLS/usr/lib:$HTTP_TOOLS/lib" "$HTTP_TOOLS/usr/bin/curl" "$@"; }
+  jq() { LD_LIBRARY_PATH="$HTTP_TOOLS/usr/lib:$HTTP_TOOLS/lib" "$HTTP_TOOLS/usr/bin/jq" "$@"; }
 }
 
 wait_for_db() {

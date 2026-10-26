@@ -82,6 +82,44 @@ Resolve the key management provider (chart value first, then the umbrella global
 {{- end -}}
 
 {{/*
+Resolve the identity provider (chart value first, then the umbrella global).
+*/}}
+{{- define "auth-service.idpProvider" -}}
+{{- .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" -}}
+{{- end -}}
+
+{{/*
+Validate the identity provider, key management provider and token exchange
+settings at render time.
+*/}}
+{{- define "auth-service.validate" -}}
+{{- $idpProvider := include "auth-service.idpProvider" . -}}
+{{- if not (has $idpProvider (list "" "auth0" "entra" "keycloak")) -}}
+{{- fail (printf "config.idp.provider (or global.secrets.auth.provider) must be auth0, entra or keycloak, got %q" $idpProvider) -}}
+{{- end -}}
+{{- $keyMgmtProvider := include "auth-service.keyManagementProvider" . -}}
+{{- if not (has $keyMgmtProvider (list "" "aws_kms" "azure_key_vault" "gcp_kms" "openbao")) -}}
+{{- fail (printf "config.keyManagement.provider (or global.secrets.keyManagement.provider) must be aws_kms, azure_key_vault, gcp_kms or openbao, got %q" $keyMgmtProvider) -}}
+{{- end -}}
+{{- if eq $keyMgmtProvider "gcp_kms" -}}
+{{- if not .Values.config.keyManagement.gcp_kms.projectId -}}
+{{- fail "config.keyManagement.gcp_kms.projectId is required when key management provider is gcp_kms" -}}
+{{- end -}}
+{{- if not .Values.config.keyManagement.gcp_kms.locationId -}}
+{{- fail "config.keyManagement.gcp_kms.locationId is required when key management provider is gcp_kms" -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.config.tokenExchange.enabled -}}
+{{- if not (has $idpProvider (list "entra" "keycloak")) -}}
+{{- fail (printf "config.tokenExchange.enabled requires idp provider keycloak or entra, got %q" ($idpProvider | default "auth0")) -}}
+{{- end -}}
+{{- if and (eq $idpProvider "entra") (((.Values.global).secrets).create) (not .Values.config.tokenExchange.privateKey) -}}
+{{- fail "config.tokenExchange.privateKey is required when tokenExchange is enabled, idp provider is entra and global.secrets.create is true" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resolve the OpenBao token Secret name (token_file auth only).
 */}}
 {{- define "auth-service.openbaoTokenSecretName" -}}

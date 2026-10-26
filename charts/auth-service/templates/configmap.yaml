@@ -1,4 +1,5 @@
 {{- if .Values.enabled }}
+{{- include "auth-service.validate" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -13,7 +14,7 @@ data:
   HOST: "{{ .Values.config.server.host }}"
   ENVIRONMENT: "{{ .Values.config.server.environment | default ((.Values.global).environmentType) | default "production" }}"
   SERVICE_VERSION: {{ .Chart.Version | quote }}
-  AUTH_SERVICE_URL: {{ .Values.config.server.authServiceUrl | default (printf "http://%s-auth-service:%s/api/v1/auth" .Release.Name (toString .Values.config.server.port)) | quote }}
+  AUTH_SERVICE_URL: {{ .Values.config.server.authServiceUrl | default (printf "http://%s:%s/api/v1/auth" (include "auth-service.fullname" .) (toString .Values.service.port)) | quote }}
   SWAGGER_ENABLED: "{{ .Values.config.server.swaggerEnabled }}"
   {{- if .Values.config.server.swaggerEnabled }}
   SWAGGER_HOST: "{{ .Values.config.server.swaggerHost | default ((.Values.global).domain) | default "" }}"
@@ -47,7 +48,7 @@ data:
   # ==========================================================================
   # Identity Provider Configuration
   # ==========================================================================
-  {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
+  {{- $idpProvider := include "auth-service.idpProvider" . }}
   IDP_PROVIDER: "{{ $idpProvider }}"
   {{- if .Values.config.idp.issuer }}
   IDP_ISSUER: "{{ .Values.config.idp.issuer }}"
@@ -136,11 +137,12 @@ data:
   {{- if eq $keyMgmtProvider "azure_key_vault" }}
 
   # Azure Key Vault Configuration
-  {{- $vaultUrl := .Values.config.keyManagement.azure_key_vault.vaultUrl | default ((((.Values.global).secrets).keyManagement).azure_key_vault).values.vaultUrl | default "" }}
+  {{- $azureValues := (and (((.Values.global).secrets).create) ((((((.Values.global).secrets).keyManagement).azure_key_vault).values))) | default dict }}
+  {{- $vaultUrl := .Values.config.keyManagement.azure_key_vault.vaultUrl | default $azureValues.vaultUrl | default "" }}
   {{- if $vaultUrl }}
   AZURE_KEY_VAULT_URL: "{{ $vaultUrl }}"
   {{- end }}
-  {{- $tenantId := .Values.config.keyManagement.azure_key_vault.tenantId | default ((((.Values.global).secrets).keyManagement).azure_key_vault).values.tenantId | default "" }}
+  {{- $tenantId := .Values.config.keyManagement.azure_key_vault.tenantId | default $azureValues.tenantId | default "" }}
   {{- if $tenantId }}
   AZURE_TENANT_ID: "{{ $tenantId }}"
   {{- end }}

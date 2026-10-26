@@ -65,6 +65,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - sh
             - -ec
@@ -129,7 +131,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
+                  name: {{ required "externalDatabase.passwordSecretKeyRef.name (or global.secrets.database.secretName) is required when externalDatabase.password is empty" (.Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName) | quote }}
                   key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
               {{- end }}
             - name: INTEGRITY_APP__db__ssl_mode
@@ -167,6 +169,9 @@ spec:
               value: {{ .Values.config.integrityAppBlobStoreAwsFolder | quote }}
             {{- if not .Values.config.integrityAppBlobStoreAwsUseIamRole }}
             {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName }}
+            {{- if not (and .Values.config.integrityAppBlobStoreAwsAccessKeyId .Values.config.integrityAppBlobStoreAwsSecretAccessKey) }}
+            {{- $_ := required "secrets.storage.aws_s3.name (or global.secrets.storage.aws_s3.secretName) is required when config.integrityAppBlobStoreAwsUseIamRole is false and the static keys are not set" $s3SecretName }}
+            {{- end }}
             - name: AWS_ACCESS_KEY_ID
               {{- if .Values.config.integrityAppBlobStoreAwsAccessKeyId }}
               value: {{ .Values.config.integrityAppBlobStoreAwsAccessKeyId | quote }}
@@ -201,7 +206,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName | quote }}
+                  name: {{ required "secrets.storage.azure_blob.name (or global.secrets.storage.azure_blob.secretName) is required when config.integrityAppBlobStoreKey is empty" (.Values.secrets.storage.azure_blob.name | default ((((.Values.global).secrets).storage).azure_blob).secretName) | quote }}
                   key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | default "account-key" | quote }}
               {{- end }}
             {{- end }}
@@ -303,7 +308,7 @@ spec:
         {{- if eq $storageProvider "gcs" }}
         - name: gcs-sa-volume
           secret:
-            secretName: {{ .Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName | default "" | quote }}
+            secretName: {{ required "secrets.storage.gcs.name (or global.secrets.storage.gcs.secretName) is required when config.integrityAppBlobStoreType is gcs" (.Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName) | quote }}
             items:
               - key: {{ (((((.Values.global).secrets).storage).gcs).keys).serviceAccountJson | default "service-account-json" | quote }}
                 path: "service-account.json"

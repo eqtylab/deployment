@@ -175,23 +175,23 @@ Generated defaults:
 
 ### Global Parameters (Umbrella Chart)
 
-When deployed via the umbrella chart, these global values are automatically used:
+When deployed via the umbrella chart, these global values are automatically used. The chart's own `global.secrets` defaults match the umbrella's Secret names; a Secret reference whose local and global names are both empty fails the render.
 
-| Key                                          | Type   | Description                                                              |
-| -------------------------------------------- | ------ | ------------------------------------------------------------------------ |
-| global.domain                                | string | Base domain for all services                                             |
-| global.environmentType                       | string | Environment type (development/staging/production)                        |
-| global.imagePullPolicy                       | string | Default image pull policy for every container                            |
-| global.imagePullSecrets                      | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty |
-| global.postgresql.host                       | string | PostgreSQL host (defaults to {Release.Name}-postgresql)                  |
-| global.postgresql.port                       | int    | PostgreSQL port (defaults to 5432)                                       |
-| global.postgresql.database                   | string | PostgreSQL database name                                                 |
-| global.postgresql.username                   | string | PostgreSQL username                                                      |
-| global.secrets.database.secretName           | string | Name of database credentials secret                                      |
-| global.secrets.imageRegistry.secretName      | string | Name of image pull secret                                                |
-| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name                                       |
-| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name                                           |
-| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name                                              |
+| Key                                          | Type   | Description                                                                   |
+| -------------------------------------------- | ------ | ----------------------------------------------------------------------------- |
+| global.domain                                | string | Base domain for all services                                                  |
+| global.environmentType                       | string | Environment type (development/staging/production)                             |
+| global.imagePullPolicy                       | string | Default image pull policy for every container                                 |
+| global.imagePullSecrets                      | list   | Image pull secrets when global.secrets.imageRegistry.secretName is empty      |
+| global.postgresql.host                       | string | PostgreSQL host (defaults to {Release.Name}-postgresql)                       |
+| global.postgresql.port                       | int    | PostgreSQL port (defaults to 5432)                                            |
+| global.postgresql.database                   | string | PostgreSQL database name                                                      |
+| global.postgresql.username                   | string | PostgreSQL username                                                           |
+| global.secrets.database.secretName           | string | Name of database credentials secret (standalone default `platform-database`)  |
+| global.secrets.imageRegistry.secretName      | string | Name of image pull secret                                                     |
+| global.secrets.storage.azure_blob.secretName | string | Azure Blob credentials secret name (standalone default `platform-azure-blob`) |
+| global.secrets.storage.aws_s3.secretName     | string | AWS S3 credentials secret name (standalone default `platform-aws-s3`)         |
+| global.secrets.storage.gcs.secretName        | string | GCS credentials secret name (standalone default `platform-gcs`)               |
 
 ### Chart-Specific Parameters
 
@@ -376,10 +376,10 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Logging Configuration
 
-| Key                                                | Type   | Default   | Description                                               |
-| -------------------------------------------------- | ------ | --------- | --------------------------------------------------------- |
-| config.integrityAppLoggingLogLevelDefault          | string | `"warn"`  | Default log level (trace/debug/info/warn/error)           |
-| config.integrityAppLoggingLogLevelIntegrityService | string | `"trace"` | Integrity Service log level (trace/debug/info/warn/error) |
+| Key                                                | Type   | Default  | Description                                               |
+| -------------------------------------------------- | ------ | -------- | --------------------------------------------------------- |
+| config.integrityAppLoggingLogLevelDefault          | string | `"warn"` | Default log level (trace/debug/info/warn/error)           |
+| config.integrityAppLoggingLogLevelIntegrityService | string | `"info"` | Integrity Service log level (trace/debug/info/warn/error) |
 
 #### Authentication Configuration
 

@@ -64,6 +64,14 @@ spec:
           imagePullPolicy: {{ (.Values.global).imagePullPolicy | default "IfNotPresent" }}
           securityContext:
             readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - sh
             - -ec
@@ -76,6 +84,7 @@ spec:
                 sleep 2
               done
               echo "Postgres is ready!"
+              {{- if .Values.waitDeps.governanceService.enabled }}
 
               echo "Checking for Governance Service at $GOV_SERVICE_HOST:$GOV_SERVICE_PORT..."
               until nc -z -w 2 "$GOV_SERVICE_HOST" "$GOV_SERVICE_PORT"; do
@@ -83,15 +92,20 @@ spec:
                 sleep 2
               done
               echo "Governance Service is ready!"
+              {{- end }}
           env:
             - name: DB_HOST
               value: {{ .Values.externalDatabase.host | default ((.Values.global).postgresql).host | default (printf "%s-postgresql" .Release.Name) | quote }}
             - name: DB_PORT
               value: {{ .Values.externalDatabase.port | default ((.Values.global).postgresql).port | default "5432" | quote }}
+            {{- with .Values.waitDeps.governanceService }}
+            {{- if .enabled }}
             - name: GOV_SERVICE_HOST
-              value: {{ printf "%s-governance-service" .Release.Name | quote }}
+              value: {{ .host | default (printf "%s-governance-service" $.Release.Name) | quote }}
             - name: GOV_SERVICE_PORT
-              value: "10001"
+              value: {{ .port | default 10001 | toString | quote }}
+            {{- end }}
+            {{- end }}
         {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -128,7 +142,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
+                  name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | required "externalDatabase.passwordSecretKeyRef.name (or global.secrets.database.secretName) is required when externalDatabase.password is empty" | quote }}
                   key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
               {{- end }}
             {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
@@ -136,23 +150,21 @@ spec:
             - name: PGSSLROOTCERT
               value: {{ printf "/etc/ssl/postgres/%s" ($pgSslRootCert.key | default "ca.crt") | quote }}
             {{- end }}
-
             # ========================================================================
             # Identity Provider Configuration
             # ========================================================================
-            {{- $idpProvider := .Values.config.idp.provider | default (((.Values.global).secrets).auth).provider | default "" }}
-
+            {{- $idpProvider := include "auth-service.idpProvider" . }}
             {{- if eq $idpProvider "keycloak" }}
-
             # Keycloak Configuration
             {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
+            {{- $keycloakSecretRequired := "secrets.auth.keycloak.name (or global.secrets.auth.keycloak.secretName) is required when a Keycloak service account credential is not set inline" }}
             - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_ID
               {{- if .Values.config.idp.keycloak.serviceAccountClientId }}
               value: {{ .Values.config.idp.keycloak.serviceAccountClientId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $keycloakSecretName | quote }}
+                  name: {{ required $keycloakSecretRequired $keycloakSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).keycloak).keys).serviceAccountClientId | default "service-account-client-id" | quote }}
               {{- end }}
             - name: IDP_KEYCLOAK_SERVICE_ACCOUNT_CLIENT_SECRET
@@ -161,21 +173,20 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $keycloakSecretName | quote }}
+                  name: {{ required $keycloakSecretRequired $keycloakSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).keycloak).keys).serviceAccountClientSecret | default "service-account-client-secret" | quote }}
               {{- end }}
-
             {{- else if eq $idpProvider "entra" }}
-
             # Microsoft Entra ID Configuration
             {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
+            {{- $entraSecretRequired := "secrets.auth.entra.name (or global.secrets.auth.entra.secretName) is required when an Entra credential is not set inline" }}
             - name: IDP_CLIENT_ID
               {{- if .Values.config.idp.entra.clientId }}
               value: {{ .Values.config.idp.entra.clientId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $entraSecretName | quote }}
+                  name: {{ required $entraSecretRequired $entraSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).entra).keys).clientId | default "client-id" | quote }}
               {{- end }}
             - name: IDP_CLIENT_SECRET
@@ -184,7 +195,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $entraSecretName | quote }}
+                  name: {{ required $entraSecretRequired $entraSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).entra).keys).clientSecret | default "client-secret" | quote }}
               {{- end }}
             {{- if or .Values.config.idp.entra.graphClientId $entraSecretName }}
@@ -194,7 +205,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $entraSecretName | quote }}
+                  name: {{ required $entraSecretRequired $entraSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).entra).keys).graphClientId | default "graph-client-id" | quote }}
               {{- end }}
             - name: IDP_ENTRA_GRAPH_CLIENT_SECRET
@@ -203,22 +214,21 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $entraSecretName | quote }}
+                  name: {{ required $entraSecretRequired $entraSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).entra).keys).graphClientSecret | default "graph-client-secret" | quote }}
               {{- end }}
             {{- end }}
-
             {{- else }}
-
             # Auth0 Configuration
             {{- $authSecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}
+            {{- $authSecretRequired := "secrets.auth.auth0.name (or global.secrets.auth.auth0.secretName) is required when an Auth0 credential is not set inline" }}
             - name: IDP_CLIENT_ID
               {{- if .Values.config.idp.auth0.clientId }}
               value: {{ .Values.config.idp.auth0.clientId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $authSecretName | quote }}
+                  name: {{ required $authSecretRequired $authSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientId | default "client-id" | quote }}
               {{- end }}
             - name: IDP_CLIENT_SECRET
@@ -227,7 +237,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $authSecretName | quote }}
+                  name: {{ required $authSecretRequired $authSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).auth0).keys).clientSecret | default "client-secret" | quote }}
               {{- end }}
             - name: IDP_AUTH0_MANAGEMENT_CLIENT_ID
@@ -236,7 +246,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $authSecretName | quote }}
+                  name: {{ required $authSecretRequired $authSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).auth0).keys).mgmtClientId | default "mgmt-client-id" | quote }}
               {{- end }}
             - name: IDP_AUTH0_MANAGEMENT_CLIENT_SECRET
@@ -245,22 +255,22 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $authSecretName | quote }}
+                  name: {{ required $authSecretRequired $authSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).auth).auth0).keys).mgmtClientSecret | default "mgmt-client-secret" | quote }}
               {{- end }}
             {{- end }}
-
             # ========================================================================
             # Auth Service Configuration
             # ========================================================================
             {{- $authServiceSecretName := .Values.secrets.authService.name | default (((.Values.global).secrets).authService).secretName | default "" }}
+            {{- $authServiceSecretRequired := "secrets.authService.name (or global.secrets.authService.secretName) is required when config.apiSecret or config.jwtSecret is empty" }}
             - name: API_SECRET
               {{- if .Values.config.apiSecret }}
               value: {{ .Values.config.apiSecret | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $authServiceSecretName | quote }}
+                  name: {{ required $authServiceSecretRequired $authServiceSecretName | quote }}
                   key: {{ ((((.Values.global).secrets).authService).keys).apiSecret | default "api-secret" | quote }}
               {{- end }}
             - name: JWT_SECRET
@@ -269,26 +279,24 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $authServiceSecretName | quote }}
+                  name: {{ required $authServiceSecretRequired $authServiceSecretName | quote }}
                   key: {{ ((((.Values.global).secrets).authService).keys).jwtSecret | default "jwt-secret" | quote }}
               {{- end }}
-
             # ========================================================================
             # Key Management Configuration
             # ========================================================================
             {{- $keyMgmtProvider := include "auth-service.keyManagementProvider" . }}
-
             {{- if eq $keyMgmtProvider "azure_key_vault" }}
-
             # Azure Key Vault Configuration
             {{- $azureKeyVaultSecretName := .Values.secrets.keyManagement.azure_key_vault.name | default ((((.Values.global).secrets).keyManagement).azure_key_vault).secretName | default "" }}
+            {{- $azureKeyVaultSecretRequired := "secrets.keyManagement.azure_key_vault.name (or global.secrets.keyManagement.azure_key_vault.secretName) is required when an Azure Key Vault credential is not set inline" }}
             - name: AZURE_CLIENT_ID
               {{- if .Values.config.keyManagement.azure_key_vault.clientId }}
               value: {{ .Values.config.keyManagement.azure_key_vault.clientId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $azureKeyVaultSecretName | quote }}
+                  name: {{ required $azureKeyVaultSecretRequired $azureKeyVaultSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).keyManagement).azure_key_vault).keys).clientId | default "client-id" | quote }}
               {{- end }}
             - name: AZURE_CLIENT_SECRET
@@ -297,22 +305,42 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $azureKeyVaultSecretName | quote }}
+                  name: {{ required $azureKeyVaultSecretRequired $azureKeyVaultSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).keyManagement).azure_key_vault).keys).clientSecret | default "client-secret" | quote }}
               {{- end }}
+            {{- if and (not (((.Values.global).secrets).create)) $azureKeyVaultSecretName }}
+            {{- if not .Values.config.keyManagement.azure_key_vault.vaultUrl }}
+            - name: AZURE_KEY_VAULT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $azureKeyVaultSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).azure_key_vault).keys).vaultUrl | default "vault-url" | quote }}
+                  optional: true
             {{- end }}
-
+            {{- if not .Values.config.keyManagement.azure_key_vault.tenantId }}
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $azureKeyVaultSecretName | quote }}
+                  key: {{ (((((.Values.global).secrets).keyManagement).azure_key_vault).keys).tenantId | default "tenant-id" | quote }}
+                  optional: true
+            {{- end }}
+            {{- end }}
+            {{- end }}
             {{- if eq $keyMgmtProvider "aws_kms" }}
-
             # AWS KMS Configuration
             {{- $awsKmsSecretName := .Values.secrets.keyManagement.aws_kms.name | default ((((.Values.global).secrets).keyManagement).aws_kms).secretName | default "" }}
+            {{- $awsKmsSecretRequired := "secrets.keyManagement.aws_kms.name (or global.secrets.keyManagement.aws_kms.secretName) is required when an AWS KMS credential is not set inline" }}
+            {{- $awsSecretsCreate := (((.Values.global).secrets).create) }}
+            {{- $awsKmsValues := (and $awsSecretsCreate ((((((.Values.global).secrets).keyManagement).aws_kms).values))) | default dict }}
+            {{- $awsSessionTokenFromSecret := and (not $awsSecretsCreate) $awsKmsSecretName }}
             - name: AWS_ACCESS_KEY_ID
               {{- if .Values.config.keyManagement.aws_kms.accessKeyId }}
               value: {{ .Values.config.keyManagement.aws_kms.accessKeyId | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $awsKmsSecretName | quote }}
+                  name: {{ required $awsKmsSecretRequired $awsKmsSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).keyManagement).aws_kms).keys).accessKeyId | default "access-key-id" | quote }}
               {{- end }}
             - name: AWS_SECRET_ACCESS_KEY
@@ -321,24 +349,25 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $awsKmsSecretName | quote }}
+                  name: {{ required $awsKmsSecretRequired $awsKmsSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).keyManagement).aws_kms).keys).secretAccessKey | default "secret-access-key" | quote }}
               {{- end }}
-            {{- if or .Values.config.keyManagement.aws_kms.sessionToken ((((((.Values.global).secrets).keyManagement).aws_kms).values).sessionToken) }}
+            {{- if or .Values.config.keyManagement.aws_kms.sessionToken $awsKmsValues.sessionToken $awsSessionTokenFromSecret }}
             - name: AWS_SESSION_TOKEN
               {{- if .Values.config.keyManagement.aws_kms.sessionToken }}
               value: {{ .Values.config.keyManagement.aws_kms.sessionToken | quote }}
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $awsKmsSecretName | quote }}
+                  name: {{ required $awsKmsSecretRequired $awsKmsSecretName | quote }}
                   key: {{ (((((.Values.global).secrets).keyManagement).aws_kms).keys).sessionToken | default "session-token" | quote }}
+                  {{- if not $awsKmsValues.sessionToken }}
+                  optional: true
+                  {{- end }}
               {{- end }}
             {{- end }}
             {{- end }}
-
             {{- if eq $keyMgmtProvider "gcp_kms" }}
-
             # GCP KMS Configuration
             {{- $gcpKmsSecretName := .Values.secrets.keyManagement.gcp_kms.name | default ((((.Values.global).secrets).keyManagement).gcp_kms).secretName | default "" }}
             {{- if or .Values.config.keyManagement.gcp_kms.serviceAccountJson $gcpKmsSecretName }}
@@ -355,19 +384,16 @@ spec:
               {{- end }}
             {{- end }}
             {{- end }}
-
             {{- if eq $keyMgmtProvider "openbao" }}
-
             # OpenBao Transit: no credential environment variables; the CA bundle and
             # the projected token or token Secret are mounted as files (see volumes)
             {{- end }}
-
             {{- if .Values.config.serviceAccounts.governanceWorker.enabled }}
-
             # ========================================================================
             # Governance Worker Configuration
             # ========================================================================
             {{- $workerSecretName := .Values.secrets.governanceWorker.name | default (((.Values.global).secrets).governanceWorker).secretName | default "" }}
+            {{- $workerSecretRequired := "secrets.governanceWorker.name (or global.secrets.governanceWorker.secretName) is required when a governance worker credential is not set inline" }}
             {{- $workerClientIdKey := ((((.Values.global).secrets).governanceWorker).keys).clientId | default "client-id" }}
             {{- $workerClientSecretKey := ((((.Values.global).secrets).governanceWorker).keys).clientSecret | default "client-secret" }}
             - name: SERVICE_ACCOUNT_ENCRYPTION_KEY
@@ -376,7 +402,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $workerSecretName | quote }}
+                  name: {{ required $workerSecretRequired $workerSecretName | quote }}
                   key: {{ ((((.Values.global).secrets).governanceWorker).keys).encryptionKey | default "encryption-key" | quote }}
               {{- end }}
             {{- if or (eq $idpProvider "auth0") (not $idpProvider) }}
@@ -386,7 +412,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $workerSecretName | quote }}
+                  name: {{ required $workerSecretRequired $workerSecretName | quote }}
                   key: {{ $workerClientIdKey | quote }}
               {{- end }}
             - name: AUTH0_GOVERNANCE_WORKER_CLIENT_SECRET
@@ -395,7 +421,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $workerSecretName | quote }}
+                  name: {{ required $workerSecretRequired $workerSecretName | quote }}
                   key: {{ $workerClientSecretKey | quote }}
               {{- end }}
             {{- end }}
@@ -406,7 +432,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $workerSecretName | quote }}
+                  name: {{ required $workerSecretRequired $workerSecretName | quote }}
                   key: {{ $workerClientIdKey | quote }}
               {{- end }}
             - name: KEYCLOAK_GOVERNANCE_WORKER_CLIENT_SECRET
@@ -415,7 +441,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $workerSecretName | quote }}
+                  name: {{ required $workerSecretRequired $workerSecretName | quote }}
                   key: {{ $workerClientSecretKey | quote }}
               {{- end }}
             {{- end }}
@@ -426,7 +452,7 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $workerSecretName | quote }}
+                  name: {{ required $workerSecretRequired $workerSecretName | quote }}
                   key: {{ $workerClientIdKey | quote }}
               {{- end }}
             - name: ENTRA_GOVERNANCE_WORKER_CLIENT_SECRET
@@ -435,14 +461,12 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $workerSecretName | quote }}
+                  name: {{ required $workerSecretRequired $workerSecretName | quote }}
                   key: {{ $workerClientSecretKey | quote }}
               {{- end }}
             {{- end }}
             {{- end }}
-
             {{- if .Values.config.tokenExchange.enabled }}
-
             # ========================================================================
             # Token Exchange Configuration
             # ========================================================================
@@ -452,18 +476,17 @@ spec:
               {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | quote }}
+                  name: {{ .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | required "secrets.auth.keycloak.name (or global.secrets.auth.keycloak.secretName) is required when tokenExchange is enabled and config.tokenExchange.privateKey is empty" | quote }}
                   key: {{ (((((.Values.global).secrets).auth).keycloak).keys).tokenExchangePrivateKey | default "token-exchange-private-key" | quote }}
               {{- end }}
             {{- end }}
-
             {{- with .Values.extraEnvVars }}
-
             # ========================================================================
             # Extra Environment Variables
             # ========================================================================
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- $pgSslRootCert := (((.Values.global).postgresql).sslRootCert) | default dict }}
 
           {{- with .Values.startupProbe }}
           startupProbe:

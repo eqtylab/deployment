@@ -24,6 +24,65 @@ global:
     # -- Complete image reference for the BusyBox wait container (empty keeps `busybox:1.36`)
     # @default -- `""`
     busybox: ""
+  # -- Secrets Configuration
+  # @default -- See values below
+  # Platform Secret names used when this chart's own Secret name is empty; the
+  # umbrella chart replaces them with its global.secrets values
+  secrets:
+    # -- Authentication Configuration
+    # @default -- See values below
+    auth:
+      # -- Auth0 Configuration
+      # @default -- See values below
+      auth0:
+        # -- Secret Name
+        # @default -- `platform-auth0`
+        secretName: "platform-auth0"
+      # -- Microsoft Entra ID Configuration
+      # @default -- See values below
+      entra:
+        # -- Secret Name
+        # @default -- `platform-entra`
+        secretName: "platform-entra"
+      # -- Keycloak Configuration
+      # @default -- See values below
+      keycloak:
+        # -- Secret Name
+        # @default -- `platform-keycloak`
+        secretName: "platform-keycloak"
+    # -- Auth Service Credentials
+    # @default -- See values below
+    authService:
+      # -- Secret Name
+      # @default -- `platform-auth-service`
+      secretName: "platform-auth-service"
+    # -- Database Credentials
+    # @default -- See values below
+    database:
+      # -- Secret Name
+      # @default -- `platform-database`
+      secretName: "platform-database"
+    # -- Storage Configuration
+    # @default -- See values below
+    storage:
+      # -- AWS S3
+      # @default -- See values below
+      aws_s3:
+        # -- Secret Name
+        # @default -- `platform-aws-s3`
+        secretName: "platform-aws-s3"
+      # -- Azure Blob Storage
+      # @default -- See values below
+      azure_blob:
+        # -- Secret Name
+        # @default -- `platform-azure-blob`
+        secretName: "platform-azure-blob"
+      # -- Google Cloud Storage
+      # @default -- See values below
+      gcs:
+        # -- Secret Name
+        # @default -- `platform-gcs`
+        secretName: "platform-gcs"
 
 # -- Replica Count
 # @default -- `2`

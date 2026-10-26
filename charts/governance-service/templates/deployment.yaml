@@ -70,6 +70,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - sh
             - -ec
@@ -98,8 +100,14 @@ spec:
           {{- end }}
           image: {{ include "governance-service.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy | default ((.Values.global).imagePullPolicy | default "IfNotPresent") }}
-          command: {{ .Values.command }}
-          args: {{ .Values.args }}
+          {{- with .Values.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "governance-service.fullname" . }}
@@ -127,7 +135,7 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName | quote }}
+                name: {{ required "externalDatabase.passwordSecretKeyRef.name (or global.secrets.database.secretName) is required when externalDatabase.password is empty" (.Values.externalDatabase.passwordSecretKeyRef.name | default (((.Values.global).secrets).database).secretName) | quote }}
                 key: {{ .Values.externalDatabase.passwordSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).password | default "password" | quote }}
             {{- end }}
           - name: DB_SSLMODE
@@ -168,7 +176,7 @@ spec:
             {{- else }}
             valueFrom:
               secretKeyRef:
-                name: {{ $azureSecretName | quote }}
+                name: {{ required "secrets.storage.azure_blob.name (or global.secrets.storage.azure_blob.secretName) is required when config.azureStorageAccountKey is empty" $azureSecretName | quote }}
                 key: {{ (((((.Values.global).secrets).storage).azure_blob).keys).accountKey | default "account-key" | quote }}
             {{- end }}
           {{- if or .Values.config.azureStorageConnectionString $azureSecretName }}
@@ -197,6 +205,9 @@ spec:
             value: {{ .Values.config.awsS3BucketName | quote }}
           {{- if not .Values.config.awsS3UseIamRole }}
           {{- $s3SecretName := .Values.secrets.storage.aws_s3.name | default ((((.Values.global).secrets).storage).aws_s3).secretName | default "" }}
+          {{- if not (and .Values.config.awsS3AccessKeyId .Values.config.awsS3SecretAccessKey) }}
+          {{- $_ := required "secrets.storage.aws_s3.name (or global.secrets.storage.aws_s3.secretName) is required when config.awsS3UseIamRole is false and the static keys are not set" $s3SecretName }}
+          {{- end }}
           - name: AWS_ACCESS_KEY_ID
             {{- if .Values.config.awsS3AccessKeyId }}
             value: {{ .Values.config.awsS3AccessKeyId | quote }}
@@ -227,6 +238,9 @@ spec:
 
           # Auth0 Configuration
           {{- $auth0SecretName := .Values.secrets.auth.auth0.name | default ((((.Values.global).secrets).auth).auth0).secretName | default "" }}
+          {{- if not (and .Values.config.auth0ClientId .Values.config.auth0ClientSecret) }}
+          {{- $_ := required "secrets.auth.auth0.name (or global.secrets.auth.auth0.secretName) is required when config.auth0ClientId or config.auth0ClientSecret is empty" $auth0SecretName }}
+          {{- end }}
           {{- if .Values.config.auth0Domain }}
           - name: AUTH0_DOMAIN
             value: {{ .Values.config.auth0Domain | quote }}
@@ -259,6 +273,9 @@ spec:
 
           # Keycloak Configuration
           {{- $keycloakSecretName := .Values.secrets.auth.keycloak.name | default ((((.Values.global).secrets).auth).keycloak).secretName | default "" }}
+          {{- if not (and .Values.config.keycloakClientId .Values.config.keycloakClientSecret) }}
+          {{- $_ := required "secrets.auth.keycloak.name (or global.secrets.auth.keycloak.secretName) is required when config.keycloakClientId or config.keycloakClientSecret is empty" $keycloakSecretName }}
+          {{- end }}
           - name: KEYCLOAK_URL
             value: {{ .Values.config.keycloakUrl | default "" | quote }}
           - name: KEYCLOAK_REALM
@@ -287,6 +304,9 @@ spec:
 
           # Microsoft Entra ID Configuration
           {{- $entraSecretName := .Values.secrets.auth.entra.name | default ((((.Values.global).secrets).auth).entra).secretName | default "" }}
+          {{- if not (and .Values.config.entraTenantId .Values.config.entraClientId .Values.config.entraClientSecret) }}
+          {{- $_ := required "secrets.auth.entra.name (or global.secrets.auth.entra.secretName) is required when config.entraTenantId, config.entraClientId or config.entraClientSecret is empty" $entraSecretName }}
+          {{- end }}
           - name: ENTRA_TENANT_ID
             {{- if .Values.config.entraTenantId }}
             value: {{ .Values.config.entraTenantId | quote }}
@@ -345,7 +365,7 @@ spec:
                 name: {{ .Values.config.serviceAccount.existingSecret | quote }}
                 key: {{ .Values.config.serviceAccount.existingSecretKeys.apiKey | quote }}
                 {{- else }}
-                name: {{ .Values.secrets.authService.name | default (((.Values.global).secrets).authService).secretName | default "" | quote }}
+                name: {{ required "secrets.authService.name (or global.secrets.authService.secretName) is required when config.serviceAccount.enabled is true and neither config.serviceAccount.authServiceApiKey nor config.serviceAccount.existingSecret is set" (.Values.secrets.authService.name | default (((.Values.global).secrets).authService).secretName) | quote }}
                 key: {{ ((((.Values.global).secrets).authService).keys).apiSecret | default "api-secret" | quote }}
                 {{- end }}
             {{- end }}
@@ -432,7 +452,7 @@ spec:
         {{- if eq $storageProvider "gcs" }}
         - name: gcs-sa-volume
           secret:
-            secretName: {{ .Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName | default "" | quote }}
+            secretName: {{ required "secrets.storage.gcs.name (or global.secrets.storage.gcs.secretName) is required when config.storageProvider is gcs" (.Values.secrets.storage.gcs.name | default ((((.Values.global).secrets).storage).gcs).secretName) | quote }}
             items:
               - key: {{ (((((.Values.global).secrets).storage).gcs).keys).serviceAccountJson | default "service-account-json" | quote }}
                 path: "service-account.json"

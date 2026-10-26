@@ -123,7 +123,7 @@ governance-service:
       memory: "128Mi"
     limits:
       memory: "512Mi"
-  # Never use the provider example's -debug-config in a credentialed fixture.
+  # Never set -debug-config in a credentialed fixture.
   args: []
   ingress:
     enabled: false

@@ -35,9 +35,10 @@ Keycloak Configuration:
 {{- end }}
 
 {{- $keyMgmtProvider := .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" }}
+{{- $azureValues := (and (((.Values.global).secrets).create) ((((((.Values.global).secrets).keyManagement).azure_key_vault).values))) | default dict }}
 {{- if eq $keyMgmtProvider "azure_key_vault" }}
 Azure Key Vault:
-  Vault URL: {{ .Values.config.keyManagement.azure_key_vault.vaultUrl | default (((((.Values.global).secrets).keyManagement).azure_key_vault).values).vaultUrl | default "not set" }}
+  Vault URL: {{ .Values.config.keyManagement.azure_key_vault.vaultUrl | default $azureValues.vaultUrl | default (ternary "from the Key Vault Secret" "not set" (not (((.Values.global).secrets).create))) }}
 {{- else if eq $keyMgmtProvider "aws_kms" }}
 AWS KMS:
   Region: {{ .Values.config.keyManagement.aws_kms.region | default "not set" }}
@@ -86,7 +87,7 @@ Please set: auth-service.config.keyManagement.provider to "aws_kms", "azure_key_
 {{- end }}
 
 {{- if eq $keyMgmtProvider "azure_key_vault" }}
-{{- if not (or .Values.config.keyManagement.azure_key_vault.vaultUrl (((((.Values.global).secrets).keyManagement).azure_key_vault).values).vaultUrl) }}
+{{- if and (((.Values.global).secrets).create) (not (or .Values.config.keyManagement.azure_key_vault.vaultUrl $azureValues.vaultUrl)) }}
 
 WARNING: Azure Key Vault URL is not configured!
 Please set: auth-service.config.keyManagement.azure_key_vault.vaultUrl
@@ -98,19 +99,6 @@ Please set: auth-service.config.keyManagement.azure_key_vault.vaultUrl
 
 WARNING: AWS KMS Region is not configured!
 Please set: auth-service.config.keyManagement.aws_kms.region
-{{- end }}
-{{- end }}
-
-{{- if eq $keyMgmtProvider "gcp_kms" }}
-{{- if not .Values.config.keyManagement.gcp_kms.projectId }}
-
-WARNING: GCP KMS Project ID is not configured!
-Please set: auth-service.config.keyManagement.gcp_kms.projectId
-{{- end }}
-{{- if not .Values.config.keyManagement.gcp_kms.locationId }}
-
-WARNING: GCP KMS Location ID is not configured!
-Please set: auth-service.config.keyManagement.gcp_kms.locationId
 {{- end }}
 {{- end }}
 {{- end }}

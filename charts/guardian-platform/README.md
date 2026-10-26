@@ -34,9 +34,14 @@ with `examples/values-gateway.yaml`; its control-plane adapter then resolves the
 umbrella Auth, Governance, and Integrity services automatically, and the overlay
 points Governance Service at the Control Plane for agent assessments. The gateway
 reuses `platform-database` and expects a `gateway-dsn` key for the
-`guardian_gateway` database. The Control Plane also needs a registration token
-secret, in `gateway-stack.controlPlane.auth.registrationTokenSecret` or a Secret
-named by `gateway-stack.controlPlane.auth.existingSecret`.
+`guardian_gateway` database. With `global.secrets.create: true`, renaming
+`global.secrets.database.secretName` also requires setting
+`gateway-stack.database.existingSecret` (to the new name or to your own DSN
+Secret) and `postgresql.global.postgresql.auth.existingSecret` to match; the
+chart refuses to render until you do. The Control Plane also needs a
+registration token secret, in
+`gateway-stack.controlPlane.auth.registrationTokenSecret` or a Secret named by
+`gateway-stack.controlPlane.auth.existingSecret`.
 
 ## Configuration Model
 
@@ -439,6 +444,7 @@ Authentication and authorization service settings. See [auth-service/README.md](
 | auth-service.config.keyManagement.openbao.networkPolicy.port        | int    | `8200`     | OpenBao egress TCP port; applies to networkPolicy.to.                                                                            |
 | auth-service.ingress.enabled                                        | bool   | `false`    | Enable ingress                                                                                                                   |
 | auth-service.autoscaling.enabled                                    | bool   | `false`    | Enable horizontal pod autoscaling                                                                                                |
+| auth-service.waitDeps.governanceService.enabled                     | bool   | `true`     | Wait for the Governance Service before Auth starts; set false when governance-service.enabled is false                           |
 
 ### PDFGen Configuration
 
@@ -504,17 +510,17 @@ Credential and lineage service settings. See [integrity-service/README.md](../in
 
 Bitnami PostgreSQL chart configuration:
 
-| Key                                                           | Type   | Default                              | Description                                       |
-| ------------------------------------------------------------- | ------ | ------------------------------------ | ------------------------------------------------- |
-| postgresql.enabled                                            | bool   | `true`                               | Enable PostgreSQL database                        |
-| postgresql.global.postgresql.auth.database                    | string | `"governance"`                       | Database name                                     |
-| postgresql.global.postgresql.auth.username                    | string | `"postgres"`                         | Database username                                 |
-| postgresql.global.postgresql.auth.postgresPassword            | string | `"placeholder-overridden-by-secret"` | Placeholder for validation (overridden by secret) |
-| postgresql.global.postgresql.auth.existingSecret              | string | `"platform-database"`                | Secret name for credentials                       |
-| postgresql.global.postgresql.auth.secretKeys.adminPasswordKey | string | `"password"`                         | Key for admin password in secret                  |
-| postgresql.global.postgresql.auth.secretKeys.userPasswordKey  | string | `"password"`                         | Key for user password in secret                   |
-| postgresql.primary.persistence.enabled                        | bool   | `true`                               | Enable persistent storage                         |
-| postgresql.primary.persistence.size                           | string | `"10Gi"`                             | Storage size                                      |
+| Key                                                           | Type   | Default                              | Description                                                                                                     |
+| ------------------------------------------------------------- | ------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| postgresql.enabled                                            | bool   | `true`                               | Enable PostgreSQL database                                                                                      |
+| postgresql.global.postgresql.auth.database                    | string | `"governance"`                       | Database name                                                                                                   |
+| postgresql.global.postgresql.auth.username                    | string | `"postgres"`                         | Database username                                                                                               |
+| postgresql.global.postgresql.auth.postgresPassword            | string | `"placeholder-overridden-by-secret"` | Placeholder for validation (overridden by secret)                                                               |
+| postgresql.global.postgresql.auth.existingSecret              | string | `"platform-database"`                | Secret name for credentials; must match `global.secrets.database.secretName` with `global.secrets.create: true` |
+| postgresql.global.postgresql.auth.secretKeys.adminPasswordKey | string | `"password"`                         | Key for admin password in secret                                                                                |
+| postgresql.global.postgresql.auth.secretKeys.userPasswordKey  | string | `"password"`                         | Key for user password in secret                                                                                 |
+| postgresql.primary.persistence.enabled                        | bool   | `true`                               | Enable persistent storage                                                                                       |
+| postgresql.primary.persistence.size                           | string | `"10Gi"`                             | Storage size                                                                                                    |
 
 > **Note:** The `postgresPassword` is a placeholder that satisfies Bitnami chart validation during upgrades. The actual password is read from `existingSecret` at runtime. The secret is created via `global.secrets.database` when `global.secrets.create: true`.
 
@@ -566,11 +572,13 @@ Optional post-install/post-upgrade hook that seeds the governance database with 
 
 Shared by the Auth0, Entra ID and Keycloak post-install hooks:
 
-| Key           | Type   | Default | Description                                                                                                  |
-| ------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------ |
-| idpSetupImage | string | `""`    | Complete image reference for the IdP setup Jobs and their init containers (empty keeps `postgres:17-alpine`) |
+| Key                        | Type   | Default           | Description                                                                                                                                            |
+| -------------------------- | ------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| idpSetupImage              | string | `""`              | Complete image reference for the IdP setup Jobs and their init containers (empty keeps `postgres:17-alpine`)                                           |
+| idpSetupPodSecurityContext | object | See `values.yaml` | Pod securityContext for the IdP setup Jobs: non-root UID/GID 70 (the `postgres` user of `postgres:17-alpine`) and the `RuntimeDefault` seccomp profile |
+| idpSetupSecurityContext    | object | See `values.yaml` | Container securityContext for the setup and `wait-for-schema` containers: no privilege escalation, read-only root filesystem, all capabilities dropped |
 
-The image must provide `psql` and `pg_isready`. With `createPlatformAdmin` the hooks also need `curl` and `jq`, and install them with `apk` at runtime when the image lacks them, so air-gapped clusters need an image that includes both. `global.imageRegistryOverride` and `global.imageRepositoryPrefixOverride` do not apply to this value; give the full reference, including your registry.
+The image must provide `psql` and `pg_isready`. With `createPlatformAdmin` the hooks also need `curl` and `jq`, and install them with `apk` at runtime when the image lacks them, so air-gapped clusters need an image that includes both. As a non-root user the hooks install them under `/tmp`, an `emptyDir`; as root they use `apk add`. `global.imageRegistryOverride` and `global.imageRepositoryPrefixOverride` do not apply to this value; give the full reference, including your registry. An image whose tools need another user takes matching `idpSetupPodSecurityContext` values.
 
 ### Name Overrides
 

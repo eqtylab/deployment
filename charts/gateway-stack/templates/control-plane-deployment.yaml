@@ -5,6 +5,17 @@
 {{- if and .Values.controlPlane.auth.bearer.enabled (not .Values.controlPlane.auth.enabled) }}
 {{- fail "controlPlane.auth.enabled must be true when controlPlane.auth.bearer.enabled=true" }}
 {{- end }}
+{{- if and .Values.controlPlane.virusTotal.enabled (not .Values.controlPlane.virusTotal.existingSecret) }}
+{{- $vtExtraEnv := false }}
+{{- range .Values.controlPlane.extraEnv }}
+{{- if eq (.name | toString) "CONTROL_PLANE_VT_API_KEY" }}
+{{- $vtExtraEnv = true }}
+{{- end }}
+{{- end }}
+{{- if not $vtExtraEnv }}
+{{- fail "controlPlane.virusTotal.existingSecret is required when controlPlane.virusTotal.enabled=true (or set CONTROL_PLANE_VT_API_KEY in controlPlane.extraEnv)" }}
+{{- end }}
+{{- end }}
 {{- $artifactStorage := dict "storage" .Values.controlPlane.plugins.artifactStorage "path" "controlPlane.plugins.artifactStorage" "envPrefix" "CONTROL_PLANE" "readOnly" false }}
 {{- include "gateway-stack.artifactStorage.validate" $artifactStorage }}
 apiVersion: apps/v1
@@ -251,6 +262,12 @@ spec:
             - name: http
               containerPort: {{ .Values.controlPlane.service.port }}
               protocol: TCP
+          startupProbe:
+            httpGet:
+              path: {{ printf "%s/health" (trimSuffix "/" (default "" .Values.controlPlane.apiBasePath)) | replace "//" "/" | quote }}
+              port: http
+            failureThreshold: {{ .Values.controlPlane.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.controlPlane.probes.startup.periodSeconds }}
           livenessProbe:
             httpGet:
               path: {{ printf "%s/health" (trimSuffix "/" (default "" .Values.controlPlane.apiBasePath)) | replace "//" "/" | quote }}

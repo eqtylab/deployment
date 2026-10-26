@@ -1,4 +1,10 @@
 {{- if and .Values.enabled .Values.networkPolicy.enabled }}
+{{- if not .Values.networkPolicy.ingress }}
+{{- fail "networkPolicy.ingress must list at least one rule when networkPolicy.enabled=true (an empty list blocks Governance Service from reaching PDFgen)" }}
+{{- end }}
+{{- if not .Values.networkPolicy.egress }}
+{{- fail "networkPolicy.egress must list at least one rule when networkPolicy.enabled=true (an empty list blocks DNS and the signing endpoint)" }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
