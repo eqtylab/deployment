@@ -12,6 +12,12 @@
 {{- fail (printf "global.secrets.database.secretName is %q but postgresql.global.postgresql.auth.existingSecret is %q; set it to %q so the bundled PostgreSQL reads the Secret the chart creates" $databaseSecret ($postgresAuth.existingSecret | default "") $databaseSecret) }}
 {{- end }}
 {{- end }}
+{{- $gateway := index .Values "gateway-stack" | default dict }}
+{{- $gatewayDsnKey := (((((.Values.global).secrets).database).keys).gatewayDsn) | default "" }}
+{{- $gatewaySecretDsnKey := ((($gateway.database).secretKeys).dsn) | default "" }}
+{{- if and ((.Values.global).secrets).create $gateway.enabled (eq (($gateway.database).existingSecret | default "") $databaseSecret) (ne $gatewaySecretDsnKey $gatewayDsnKey) }}
+{{- fail (printf "global.secrets.database.keys.gatewayDsn is %q but gateway-stack.database.secretKeys.dsn is %q; set it to %q so gateway-stack reads the key the chart writes" $gatewayDsnKey $gatewaySecretDsnKey $gatewayDsnKey) }}
+{{- end }}
 {{- $fullname := include "guardian-platform.fullname" . }}
 {{- $hooks := dict "keycloak" .Values.keycloak.createOrganization "auth0" .Values.auth0.createOrganization "entra" .Values.entra.createOrganization }}
 {{- range $idp, $enabled := $hooks }}

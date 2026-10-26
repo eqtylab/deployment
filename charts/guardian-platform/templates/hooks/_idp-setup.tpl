@@ -11,6 +11,21 @@ at runtime unless the image already provides them.
 {{- end }}
 
 {{/*
+imagePullSecrets for the hook Jobs, in the service charts' order: global.secrets.imageRegistry.secretName,
+then global.imagePullSecrets.
+*/}}
+{{- define "guardian-platform.idpSetup.imagePullSecrets" -}}
+{{- $registrySecret := ((((.Values.global).secrets).imageRegistry).secretName) | default "" }}
+{{- if $registrySecret -}}
+imagePullSecrets:
+  - name: {{ $registrySecret }}
+{{- else if (.Values.global).imagePullSecrets -}}
+imagePullSecrets:
+  {{- toYaml .Values.global.imagePullSecrets | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
 libpq environment for the platform database.
 */}}
 {{- define "guardian-platform.idpSetup.pgEnv" -}}
