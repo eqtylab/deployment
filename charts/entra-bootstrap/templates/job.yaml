@@ -40,8 +40,6 @@ spec:
               value: "/tmp/.azure"
             - name: TENANT_ID
               value: "{{ .Values.entra.tenantId }}"
-            - name: DOMAIN
-              value: "{{ .Values.entra.domain }}"
             - name: SP_CLIENT_ID
               valueFrom:
                 secretKeyRef:

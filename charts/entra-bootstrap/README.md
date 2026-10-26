@@ -34,7 +34,6 @@ Minimum configuration required:
 ```yaml
 entra:
   tenantId: "YOUR_ENTRA_TENANT_ID"
-  domain: "guardian.example.com"
 
 apps:
   frontend:
@@ -150,13 +149,12 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Entra ID Configuration
 
-| Key                                          | Type   | Default                | Description                                                                                        |
-| -------------------------------------------- | ------ | ---------------------- | -------------------------------------------------------------------------------------------------- |
-| entra.tenantId                               | string | `""`                   | **Required.** Microsoft Entra tenant ID (directory ID)                                             |
-| entra.domain                                 | string | `""`                   | Platform domain, printed in the job logs only; set redirect URIs with `apps.frontend.redirectUris` |
-| entra.servicePrincipalSecret.name            | string | `"entra-bootstrap-sp"` | Secret containing bootstrap SP credentials                                                         |
-| entra.servicePrincipalSecret.clientIdKey     | string | `"client-id"`          | Key in secret for the SP client ID                                                                 |
-| entra.servicePrincipalSecret.clientSecretKey | string | `"client-secret"`      | Key in secret for the SP client secret                                                             |
+| Key                                          | Type   | Default                | Description                                            |
+| -------------------------------------------- | ------ | ---------------------- | ------------------------------------------------------ |
+| entra.tenantId                               | string | `""`                   | **Required.** Microsoft Entra tenant ID (directory ID) |
+| entra.servicePrincipalSecret.name            | string | `"entra-bootstrap-sp"` | Secret containing bootstrap SP credentials             |
+| entra.servicePrincipalSecret.clientIdKey     | string | `"client-id"`          | Key in secret for the SP client ID                     |
+| entra.servicePrincipalSecret.clientSecretKey | string | `"client-secret"`      | Key in secret for the SP client secret                 |
 
 ### Frontend App Configuration
 

@@ -19,11 +19,9 @@ data:
 
     # Configuration from environment
     TENANT_ID="${TENANT_ID}"
-    DOMAIN="${DOMAIN}"
 
     echo "Starting Entra ID bootstrap process..."
     echo "Tenant ID: ${TENANT_ID}"
-    echo "Domain: ${DOMAIN}"
 
     # =========================================================================
     # Helper functions

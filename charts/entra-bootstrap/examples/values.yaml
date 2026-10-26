@@ -37,9 +37,6 @@ entra:
   # REQUIRED: Your Entra tenant ID (directory ID)
   tenantId: "YOUR_ENTRA_TENANT_ID"
 
-  # REQUIRED: Domain for redirect URIs
-  domain: "guardian.example.com"
-
   # Secret containing bootstrap service principal credentials
   # This is separate from `platform-entra` (which stores the created app credentials)
   # The service principal must have:

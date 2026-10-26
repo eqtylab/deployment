@@ -217,7 +217,11 @@ class BootstrapTests(unittest.TestCase):
             generate_entra_bootstrap(config(entra_tenant_id=tenant))
         )
         self.assertEqual(bootstrap["entra"]["tenantId"], tenant)
-        self.assertEqual(bootstrap["entra"]["domain"], "guardian.example.com")
+        self.assertNotIn("domain", bootstrap["entra"])
+        self.assertIn(
+            "https://guardian.example.com",
+            bootstrap["apps"]["frontend"]["redirectUris"],
+        )
 
 
 if __name__ == "__main__":

@@ -27,7 +27,6 @@ def generate_entra_bootstrap(config: PlatformConfig) -> str:
         },
         "entra": {
             "tenantId": tenant_id,
-            "domain": domain,
             "servicePrincipalSecret": {
                 "name": "entra-bootstrap-sp",
                 "clientIdKey": "client-id",

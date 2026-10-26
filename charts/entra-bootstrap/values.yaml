@@ -97,12 +97,6 @@ entra:
   # **REQUIRED**: Microsoft Entra tenant ID (directory ID)
   tenantId: ""
 
-  # -- Domain
-  # @default -- `""`
-  # Platform domain, printed in the job logs only; it is not used to build
-  # redirect URIs (set apps.frontend.redirectUris instead)
-  domain: ""
-
   # -- Service Principal Secret
   # @default -- See values below
   # Secret containing bootstrap service principal credentials for Graph API access
