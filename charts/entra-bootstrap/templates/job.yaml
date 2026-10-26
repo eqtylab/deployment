@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/component: bootstrap
     spec:
       restartPolicy: OnFailure
+      automountServiceAccountToken: false
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -31,8 +32,16 @@ spec:
         - name: bootstrap
           image: "{{ .Values.bootstrap.image.repository }}:{{ .Values.bootstrap.image.tag }}"
           imagePullPolicy: {{ .Values.bootstrap.image.pullPolicy }}
+          {{- if .Values.bootstrap.command }}
+          command: {{ .Values.bootstrap.command | toJson }}
+          {{- else }}
           command: ["/bin/bash"]
+          {{- end }}
+          {{- if .Values.bootstrap.args }}
+          args: {{ .Values.bootstrap.args | toJson }}
+          {{- else }}
           args: ["/scripts/bootstrap.sh"]
+          {{- end }}
           env:
             - name: HOME
               value: "/tmp"

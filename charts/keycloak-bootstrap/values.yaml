@@ -53,6 +53,11 @@ bootstrap:
     # @default -- `latest`
     tag: "latest"
 
+  # -- Command
+  # @default -- `[]`
+  # Container command; empty uses ["/bin/sh"]
+  command: []
+
   # -- Args
   # @default -- `["/scripts/bootstrap.sh"]`
   # Arguments for the bootstrap command (the container command defaults to /bin/sh)
@@ -109,6 +114,19 @@ bootstrap:
     # @default -- `5`
     # Seconds to sleep between attempts
     sleepSeconds: 5
+    # -- Image Configuration
+    # @default -- See values below
+    # Image for the wait init container (must include wget)
+    image:
+      # -- Repository
+      # @default -- `busybox`
+      repository: busybox
+      # -- Pull Policy
+      # @default -- `IfNotPresent`
+      pullPolicy: IfNotPresent
+      # -- Tag
+      # @default -- `1.36`
+      tag: "1.36"
 
 # =============================================================================
 # KEYCLOAK CONFIGURATION
@@ -233,6 +251,10 @@ clients:
     # @default -- `true`
     # Public client (no client secret required)
     publicClient: true
+    # -- Direct Access Grants Enabled
+    # @default -- `false`
+    # Allow the password grant for this client
+    directAccessGrantsEnabled: false
     # -- Redirect URIs
     # @default -- See values below
     # Valid redirect URIs
@@ -278,7 +300,6 @@ clients:
           - name: "platform-audience-mapper"
             protocolMapper: "oidc-audience-mapper"
             config:
-              included.client.audience: "guardian-platform-frontend"
               id.token.claim: "false"
               access.token.claim: "true"
               introspection.token.claim: "true"
@@ -309,6 +330,10 @@ clients:
     # @default -- `true`
     # Enable service account for client credentials flow
     serviceAccountsEnabled: true
+    # -- Direct Access Grants Enabled
+    # @default -- `false`
+    # Allow the password grant for this client
+    directAccessGrantsEnabled: false
     # -- Redirect URIs
     # @default -- See values below
     # Valid redirect URIs
@@ -370,6 +395,10 @@ clients:
     # @default -- `true`
     # Enable service account for client credentials flow
     serviceAccountsEnabled: true
+    # -- Direct Access Grants Enabled
+    # @default -- `false`
+    # Allow the password grant for this client
+    directAccessGrantsEnabled: false
     # -- Default Scopes
     # @default -- `[openid, profile, email, roles]`
     # Default client scopes

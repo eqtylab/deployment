@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/component: bootstrap
     spec:
       restartPolicy: OnFailure
+      automountServiceAccountToken: false
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

@@ -210,7 +210,7 @@ Releases installed before 1.3 are named `governance-platform`, in the `governanc
 4. If you re-run a bootstrap chart or a post-install script, pin the names it finds existing objects by. With the 1.3 defaults it creates new ones:
    - `auth0-bootstrap`: `auth0.api.name` (`Governance Platform API`), and `applications.frontend.name` and `applications.backend.name` (`Governance Platform Frontend`, `Governance Platform Backend`)
    - `entra-bootstrap`: `apps.frontend.displayName` and `apps.backend.displayName` (`Governance Platform Frontend`, `Governance Platform Backend`)
-   - `keycloak-bootstrap`: `keycloak.realm.name` (`governance`), `clients.frontend.clientId` and `clients.backend.clientId` (`governance-platform-frontend`, `governance-platform-backend`), and the frontend audience mapper's `included.client.audience` (`governance-platform-frontend`)
+   - `keycloak-bootstrap`: `keycloak.realm.name` (`governance`), `clients.frontend.clientId` and `clients.backend.clientId` (`governance-platform-frontend`, `governance-platform-backend`)
    - `scripts/{auth0,entra,keycloak}/post-install-*-setup.sh`: pass `-o governance` (Auth0, Entra) or `-r governance` (Keycloak), and set `PLATFORM_RELEASE=governance-platform`
 
 Then upgrade the existing release in its namespace:

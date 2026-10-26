@@ -68,6 +68,7 @@ clients:
     name: "Guardian Platform Frontend"
     description: "Frontend application for Guardian Platform"
     publicClient: true
+    directAccessGrantsEnabled: false
     redirectUris:
       - "https://CHANGE_ME_DOMAIN_HERE/*"
       - "http://localhost:5173/*"
@@ -98,7 +99,6 @@ clients:
           - name: "platform-audience-mapper"
             protocolMapper: "oidc-audience-mapper"
             config:
-              included.client.audience: "guardian-platform-frontend"
               id.token.claim: "false"
               access.token.claim: "true"
               introspection.token.claim: "true"
@@ -110,6 +110,7 @@ clients:
     description: "Backend service for Guardian Platform"
     publicClient: false
     serviceAccountsEnabled: true
+    directAccessGrantsEnabled: false
     redirectUris:
       - "https://CHANGE_ME_DOMAIN_HERE/authService/*"
     webOrigins:
@@ -129,6 +130,7 @@ clients:
     description: "Worker service for Guardian Platform"
     publicClient: false
     serviceAccountsEnabled: true
+    directAccessGrantsEnabled: false
     defaultScopes:
       - "openid"
       - "profile"

@@ -56,6 +56,11 @@ bootstrap:
     # @default -- `latest`
     tag: "latest"
 
+  # -- Command
+  # @default -- `[]`
+  # Container command; empty uses ["/bin/sh"]
+  command: []
+
   # -- Args
   # @default -- `["/scripts/bootstrap.sh"]`
   # Arguments for the bootstrap command (the container command defaults to /bin/sh)
@@ -102,8 +107,7 @@ bootstrap:
 auth0:
   # -- Domain
   # @default -- `""`
-  # Auth0 tenant domain (e.g., "your-tenant.us.auth0.com")
-  # REQUIRED: Must be set before running bootstrap
+  # **REQUIRED**: Auth0 tenant domain (e.g., "your-tenant.us.auth0.com")
   domain: ""
 
   # -- Management API Secret
@@ -133,8 +137,7 @@ auth0:
     name: "Guardian Platform API"
     # -- Identifier
     # @default -- `""`
-    # API identifier / audience (e.g., "https://guardian.your-domain.com")
-    # REQUIRED: Must be set before running bootstrap
+    # **REQUIRED**: API identifier / audience (e.g., "https://guardian.your-domain.com")
     identifier: ""
     # -- Token Lifetime
     # @default -- `86400`

@@ -53,6 +53,16 @@ bootstrap:
     # @default -- `latest`
     tag: "latest"
 
+  # -- Command
+  # @default -- `[]`
+  # Container command; empty uses ["/bin/bash"]
+  command: []
+
+  # -- Args
+  # @default -- `["/scripts/bootstrap.sh"]`
+  # Arguments for the bootstrap command (the container command defaults to /bin/bash)
+  args: ["/scripts/bootstrap.sh"]
+
   # -- Backoff Limit
   # @default -- `3`
   # Job backoff limit

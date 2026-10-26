@@ -59,6 +59,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                 "name": "Guardian Platform Frontend",
                 "description": "Frontend application for Guardian Platform",
                 "publicClient": True,
+                "directAccessGrantsEnabled": False,
                 "redirectUris": [
                     f"https://{domain}/*",
                     *local_origins(config, "/*"),
@@ -92,7 +93,6 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                                 "name": "platform-audience-mapper",
                                 "protocolMapper": "oidc-audience-mapper",
                                 "config": {
-                                    "included.client.audience": "guardian-platform-frontend",
                                     "id.token.claim": "false",
                                     "access.token.claim": "true",
                                     "introspection.token.claim": "true",
@@ -108,6 +108,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                 "description": "Backend service for Guardian Platform",
                 "publicClient": False,
                 "serviceAccountsEnabled": True,
+                "directAccessGrantsEnabled": False,
                 "redirectUris": [
                     f"https://{domain}/authService/*",
                 ],
@@ -123,6 +124,7 @@ def generate_keycloak_bootstrap(config: PlatformConfig) -> str:
                 "description": "Worker service for Guardian Platform",
                 "publicClient": False,
                 "serviceAccountsEnabled": True,
+                "directAccessGrantsEnabled": False,
                 "defaultScopes": ["openid", "profile", "email", "roles"],
                 "optionalScopes": ["offline_access"],
             },

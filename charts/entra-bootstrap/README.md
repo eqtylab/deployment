@@ -120,15 +120,17 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Bootstrap Job Configuration
 
-| Key                               | Type   | Default                         | Description                    |
-| --------------------------------- | ------ | ------------------------------- | ------------------------------ |
-| bootstrap.enabled                 | bool   | `true`                          | Enable the bootstrap job       |
-| bootstrap.image.repository        | string | `"mcr.microsoft.com/azure-cli"` | Container image repository     |
-| bootstrap.image.pullPolicy        | string | `"IfNotPresent"`                | Image pull policy              |
-| bootstrap.image.tag               | string | `"latest"`                      | Image tag                      |
-| bootstrap.backoffLimit            | int    | `3`                             | Job backoff limit              |
-| bootstrap.activeDeadlineSeconds   | int    | `600`                           | Job active deadline in seconds |
-| bootstrap.ttlSecondsAfterFinished | int    | `300`                           | TTL for completed jobs         |
+| Key                               | Type   | Default                         | Description                                                                      |
+| --------------------------------- | ------ | ------------------------------- | -------------------------------------------------------------------------------- |
+| bootstrap.enabled                 | bool   | `true`                          | Enable the bootstrap job                                                         |
+| bootstrap.image.repository        | string | `"mcr.microsoft.com/azure-cli"` | Container image repository                                                       |
+| bootstrap.image.pullPolicy        | string | `"IfNotPresent"`                | Image pull policy                                                                |
+| bootstrap.image.tag               | string | `"latest"`                      | Image tag                                                                        |
+| bootstrap.command                 | list   | `[]`                            | Container command; empty uses `["/bin/bash"]`                                    |
+| bootstrap.args                    | list   | `["/scripts/bootstrap.sh"]`     | Arguments for bootstrap command; empty falls back to `["/scripts/bootstrap.sh"]` |
+| bootstrap.backoffLimit            | int    | `3`                             | Job backoff limit                                                                |
+| bootstrap.activeDeadlineSeconds   | int    | `600`                           | Job active deadline in seconds                                                   |
+| bootstrap.ttlSecondsAfterFinished | int    | `300`                           | TTL for completed jobs                                                           |
 
 ### Bootstrap Resources
 

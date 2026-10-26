@@ -131,7 +131,7 @@ This removes all Kubernetes components associated with the chart and deletes the
 | bootstrap.image.repository        | string | `"dwdraju/alpine-curl-jq"`  | Container image (must include curl + jq)                                              |
 | bootstrap.image.pullPolicy        | string | `"IfNotPresent"`            | Image pull policy                                                                     |
 | bootstrap.image.tag               | string | `"latest"`                  | Image tag                                                                             |
-| bootstrap.command                 | list   | unset (`["/bin/sh"]`)       | Container command; not declared in values.yaml, set it to override the shell          |
+| bootstrap.command                 | list   | `[]`                        | Container command; empty uses `["/bin/sh"]`                                           |
 | bootstrap.args                    | list   | `["/scripts/bootstrap.sh"]` | Args passed to the container command; empty falls back to `["/scripts/bootstrap.sh"]` |
 | bootstrap.backoffLimit            | int    | `3`                         | Job backoff limit                                                                     |
 | bootstrap.activeDeadlineSeconds   | int    | `600`                       | Job active deadline in seconds                                                        |

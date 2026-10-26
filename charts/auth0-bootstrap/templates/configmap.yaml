@@ -295,7 +295,7 @@ data:
 
       CLIENT_ID=$(get_client_by_name "$CLIENT_NAME")
       if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" = "null" ]; then
-        echo "  ${YELLOW}Client ${CLIENT_NAME} not found, skipping grant${NC}"
+        echo "  ${RED}Client ${CLIENT_NAME} not found${NC}"
         return 1
       fi
 

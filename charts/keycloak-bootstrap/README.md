@@ -111,7 +111,7 @@ This removes all Kubernetes components associated with the chart and deletes the
 | bootstrap.image.repository        | string | `"dwdraju/alpine-curl-jq"`  | Container image repository                                                       |
 | bootstrap.image.pullPolicy        | string | `"IfNotPresent"`            | Image pull policy                                                                |
 | bootstrap.image.tag               | string | `"latest"`                  | Image tag                                                                        |
-| bootstrap.command                 | list   | unset (`["/bin/sh"]`)       | Container command; not declared in values.yaml, set it to override the shell     |
+| bootstrap.command                 | list   | `[]`                        | Container command; empty uses `["/bin/sh"]`                                      |
 | bootstrap.args                    | list   | `["/scripts/bootstrap.sh"]` | Arguments for bootstrap command; empty falls back to `["/scripts/bootstrap.sh"]` |
 | bootstrap.backoffLimit            | int    | `3`                         | Job backoff limit                                                                |
 | bootstrap.activeDeadlineSeconds   | int    | `600`                       | Job active deadline in seconds                                                   |
@@ -136,11 +136,14 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Bootstrap Wait Configuration
 
-| Key                         | Type | Default | Description                                                                |
-| --------------------------- | ---- | ------- | -------------------------------------------------------------------------- |
-| bootstrap.wait.enabled      | bool | `false` | Add an init container that polls `keycloak.healthUrl` before bootstrapping |
-| bootstrap.wait.maxAttempts  | int  | `60`    | Maximum number of retry attempts                                           |
-| bootstrap.wait.sleepSeconds | int  | `5`     | Seconds to sleep between attempts                                          |
+| Key                             | Type   | Default          | Description                                                                |
+| ------------------------------- | ------ | ---------------- | -------------------------------------------------------------------------- |
+| bootstrap.wait.enabled          | bool   | `false`          | Add an init container that polls `keycloak.healthUrl` before bootstrapping |
+| bootstrap.wait.maxAttempts      | int    | `60`             | Maximum number of retry attempts                                           |
+| bootstrap.wait.sleepSeconds     | int    | `5`              | Seconds to sleep between attempts                                          |
+| bootstrap.wait.image.repository | string | `"busybox"`      | Wait init container image (must include wget)                              |
+| bootstrap.wait.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy                                                          |
+| bootstrap.wait.image.tag        | string | `"1.36"`         | Image tag                                                                  |
 
 ### Keycloak Configuration
 
@@ -177,49 +180,52 @@ This removes all Kubernetes components associated with the chart and deletes the
 
 ### Frontend Client Configuration
 
-| Key                             | Type   | Default                                      | Description                                                             |
-| ------------------------------- | ------ | -------------------------------------------- | ----------------------------------------------------------------------- |
-| clients.frontend.clientId       | string | `"guardian-platform-frontend"`               | Client ID                                                               |
-| clients.frontend.name           | string | `"Guardian Platform Frontend"`               | Display name                                                            |
-| clients.frontend.description    | string | See values.yaml                              | Client description                                                      |
-| clients.frontend.publicClient   | bool   | `true`                                       | Public client (no secret)                                               |
-| clients.frontend.redirectUris   | list   | See values.yaml                              | Valid redirect URIs                                                     |
-| clients.frontend.webOrigins     | list   | See values.yaml                              | Allowed web origins for CORS                                            |
-| clients.frontend.defaultScopes  | list   | `["openid","profile","email","roles","sub"]` | Default client scopes; the `customScopes` names are also added          |
-| clients.frontend.optionalScopes | list   | `["offline_access"]`                         | Optional client scopes                                                  |
-| clients.frontend.customScopes   | list   | See values.yaml                              | Custom scopes with protocol mappers to create and assign to this client |
+| Key                                        | Type   | Default                                      | Description                                                             |
+| ------------------------------------------ | ------ | -------------------------------------------- | ----------------------------------------------------------------------- |
+| clients.frontend.clientId                  | string | `"guardian-platform-frontend"`               | Client ID                                                               |
+| clients.frontend.name                      | string | `"Guardian Platform Frontend"`               | Display name                                                            |
+| clients.frontend.description               | string | See values.yaml                              | Client description                                                      |
+| clients.frontend.publicClient              | bool   | `true`                                       | Public client (no secret)                                               |
+| clients.frontend.directAccessGrantsEnabled | bool   | `false`                                      | Allow the password grant for this client                                |
+| clients.frontend.redirectUris              | list   | See values.yaml                              | Valid redirect URIs                                                     |
+| clients.frontend.webOrigins                | list   | See values.yaml                              | Allowed web origins for CORS                                            |
+| clients.frontend.defaultScopes             | list   | `["openid","profile","email","roles","sub"]` | Default client scopes; the `customScopes` names are also added          |
+| clients.frontend.optionalScopes            | list   | `["offline_access"]`                         | Optional client scopes                                                  |
+| clients.frontend.customScopes              | list   | See values.yaml                              | Custom scopes with protocol mappers to create and assign to this client |
 
 Default custom scopes created for frontend client:
 
 - `sub` - Includes subject identifier in access token
-- `platform-audience` - Adds `guardian-platform-frontend` to the token `aud` claim (required for token exchange)
+- `platform-audience` - Adds `clients.frontend.clientId` to the token `aud` claim (required for token exchange); an `oidc-audience-mapper` without `included.client.audience` uses the frontend client ID
 
 ### Backend Client Configuration
 
-| Key                                    | Type   | Default                                | Description                                    |
-| -------------------------------------- | ------ | -------------------------------------- | ---------------------------------------------- |
-| clients.backend.clientId               | string | `"guardian-platform-backend"`          | Client ID                                      |
-| clients.backend.name                   | string | `"Guardian Platform Backend"`          | Display name                                   |
-| clients.backend.description            | string | See values.yaml                        | Client description                             |
-| clients.backend.publicClient           | bool   | `false`                                | Confidential client                            |
-| clients.backend.serviceAccountsEnabled | bool   | `true`                                 | Enable service account                         |
-| clients.backend.redirectUris           | list   | See values.yaml                        | Valid redirect URIs                            |
-| clients.backend.webOrigins             | list   | See values.yaml                        | Allowed web origins for CORS                   |
-| clients.backend.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes                          |
-| clients.backend.optionalScopes         | list   | `["offline_access"]`                   | Optional client scopes                         |
-| clients.backend.serviceAccountRoles    | list   | See values.yaml                        | Realm-management roles for the service account |
+| Key                                       | Type   | Default                                | Description                                    |
+| ----------------------------------------- | ------ | -------------------------------------- | ---------------------------------------------- |
+| clients.backend.clientId                  | string | `"guardian-platform-backend"`          | Client ID                                      |
+| clients.backend.name                      | string | `"Guardian Platform Backend"`          | Display name                                   |
+| clients.backend.description               | string | See values.yaml                        | Client description                             |
+| clients.backend.publicClient              | bool   | `false`                                | Confidential client                            |
+| clients.backend.serviceAccountsEnabled    | bool   | `true`                                 | Enable service account                         |
+| clients.backend.directAccessGrantsEnabled | bool   | `false`                                | Allow the password grant for this client       |
+| clients.backend.redirectUris              | list   | See values.yaml                        | Valid redirect URIs                            |
+| clients.backend.webOrigins                | list   | See values.yaml                        | Allowed web origins for CORS                   |
+| clients.backend.defaultScopes             | list   | `["openid","profile","email","roles"]` | Default client scopes                          |
+| clients.backend.optionalScopes            | list   | `["offline_access"]`                   | Optional client scopes                         |
+| clients.backend.serviceAccountRoles       | list   | See values.yaml                        | Realm-management roles for the service account |
 
 ### Worker Client Configuration
 
-| Key                                   | Type   | Default                                | Description            |
-| ------------------------------------- | ------ | -------------------------------------- | ---------------------- |
-| clients.worker.clientId               | string | `"governance-worker"`                  | Client ID              |
-| clients.worker.name                   | string | `"Governance Worker"`                  | Display name           |
-| clients.worker.description            | string | See values.yaml                        | Client description     |
-| clients.worker.publicClient           | bool   | `false`                                | Confidential client    |
-| clients.worker.serviceAccountsEnabled | bool   | `true`                                 | Enable service account |
-| clients.worker.defaultScopes          | list   | `["openid","profile","email","roles"]` | Default client scopes  |
-| clients.worker.optionalScopes         | list   | `["offline_access"]`                   | Optional client scopes |
+| Key                                      | Type   | Default                                | Description                              |
+| ---------------------------------------- | ------ | -------------------------------------- | ---------------------------------------- |
+| clients.worker.clientId                  | string | `"governance-worker"`                  | Client ID                                |
+| clients.worker.name                      | string | `"Governance Worker"`                  | Display name                             |
+| clients.worker.description               | string | See values.yaml                        | Client description                       |
+| clients.worker.publicClient              | bool   | `false`                                | Confidential client                      |
+| clients.worker.serviceAccountsEnabled    | bool   | `true`                                 | Enable service account                   |
+| clients.worker.directAccessGrantsEnabled | bool   | `false`                                | Allow the password grant for this client |
+| clients.worker.defaultScopes             | list   | `["openid","profile","email","roles"]` | Default client scopes                    |
+| clients.worker.optionalScopes            | list   | `["offline_access"]`                   | Optional client scopes                   |
 
 ### Custom Scopes
 

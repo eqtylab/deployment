@@ -12,6 +12,9 @@ bootstrap:
     tag: "latest"
     pullPolicy: IfNotPresent
 
+  # Bootstrap script mounted from the chart ConfigMap (run with /bin/bash)
+  args: ["/scripts/bootstrap.sh"]
+
   # Job settings
   backoffLimit: 3
   ttlSecondsAfterFinished: 300

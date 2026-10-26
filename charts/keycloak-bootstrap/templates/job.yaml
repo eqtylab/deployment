@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/component: bootstrap
     spec:
       restartPolicy: OnFailure
+      automountServiceAccountToken: false
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -30,7 +31,8 @@ spec:
       {{- if .Values.bootstrap.wait.enabled }}
       initContainers:
         - name: wait-for-keycloak
-          image: busybox:1.36
+          image: "{{ .Values.bootstrap.wait.image.repository }}:{{ .Values.bootstrap.wait.image.tag }}"
+          imagePullPolicy: {{ .Values.bootstrap.wait.image.pullPolicy }}
           command: ['sh', '-c']
           args:
             - |

@@ -4,7 +4,7 @@
 # PREREQUISITE: Before running this chart, you must:
 # 1. Create an Auth0 tenant (if you don't have one)
 # 2. Create a Machine-to-Machine application in the Auth0 Dashboard
-#    with access to the Auth0 Management API (all scopes)
+#    with access to the Auth0 Management API (scopes listed in the README)
 # 3. Create a Kubernetes secret with the M2M credentials, the auth-service
 #    shared bearer token used by the post-login action (only required when
 #    actions.postLogin.enabled is true):
