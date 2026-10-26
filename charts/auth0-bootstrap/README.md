@@ -318,6 +318,8 @@ The bootstrap script executes in a specific order due to dependencies:
 11. **Create / update / deploy the post-login Action** and bind it to the `post-login` trigger (if `actions.postLogin.enabled` is `true`)
 12. **Create / update / deploy the client-credentials-exchange Action** and bind it to the `credentials-exchange` trigger (if `actions.clientCredentialsExchange.enabled` is `true`)
 
+Lookups read every page of applications, APIs, and grants, and fail the job if Auth0 returns an error. Each Action is deployed once Auth0 finishes building it (up to 60 seconds); a failed build or deploy fails the job.
+
 ## Integration with Applications
 
 After successful bootstrap, populate the `platform-auth0` secret with the created application credentials and update each service's chart values. The `guardian-platform` chart consumes these:

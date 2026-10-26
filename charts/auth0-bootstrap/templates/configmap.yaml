@@ -29,14 +29,14 @@ data:
     # Function to get Management API token
     get_mgmt_token() {
       echo "Getting Management API token..."
+      TOKEN_REQUEST=$(jq -n \
+        --arg client_id "$AUTH0_MGMT_CLIENT_ID" \
+        --arg client_secret "$AUTH0_MGMT_CLIENT_SECRET" \
+        --arg audience "$AUTH0_AUDIENCE" \
+        '{client_id: $client_id, client_secret: $client_secret, audience: $audience, grant_type: "client_credentials"}')
       TOKEN_RESPONSE=$(curl -s -X POST "https://${AUTH0_DOMAIN}/oauth/token" \
         -H "Content-Type: application/json" \
-        -d "{
-          \"client_id\": \"${AUTH0_MGMT_CLIENT_ID}\",
-          \"client_secret\": \"${AUTH0_MGMT_CLIENT_SECRET}\",
-          \"audience\": \"${AUTH0_AUDIENCE}\",
-          \"grant_type\": \"client_credentials\"
-        }")
+        -d "$TOKEN_REQUEST")
 
       TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
 
@@ -49,12 +49,36 @@ data:
       return 0
     }
 
+    # Function to read every page of a Management API list endpoint (echoes one JSON array)
+    list_all() {
+      local RESOURCE=$1
+      local ALL='[]'
+      local PAGE=0
+      while :; do
+        RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer ${TOKEN}" \
+          "${AUTH0_API_URL}/${RESOURCE}&per_page=100&page=${PAGE}")
+        HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "  ${RED}Failed to list ${RESOURCE%%\?*} (HTTP ${HTTP_CODE})${NC}" >&2
+          echo "  Response: $BODY" >&2
+          return 1
+        fi
+        ALL=$(jq -n -c --argjson all "$ALL" --argjson page "$BODY" '$all + $page')
+        if [ "$(echo "$BODY" | jq 'length')" -lt 100 ]; then
+          break
+        fi
+        PAGE=$((PAGE + 1))
+      done
+      echo "$ALL"
+    }
+
     # Function to check if an application exists by name
     get_client_by_name() {
       local APP_NAME=$1
-      curl -s -H "Authorization: Bearer ${TOKEN}" \
-        "${AUTH0_API_URL}/clients?fields=client_id,name&include_fields=true" \
-        | jq -r --arg name "$APP_NAME" '.[] | select(.name == $name) | .client_id'
+      local CLIENTS
+      CLIENTS=$(list_all "clients?fields=client_id,name&include_fields=true") || return 1
+      echo "$CLIENTS" | jq -r --arg name "$APP_NAME" '[.[] | select(.name == $name) | .client_id][0] // empty'
     }
 
     # Function to print the entries added to and removed from a JSON array
@@ -133,26 +157,20 @@ data:
 
       echo "Creating SPA application: ${APP_NAME}..."
 
-      EXISTING=$(get_client_by_name "$APP_NAME")
-      if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+      EXISTING=$(get_client_by_name "$APP_NAME") || return 1
+      if [ -n "$EXISTING" ]; then
         echo "  Application already exists (client_id: ${EXISTING}); updating it from the values"
         update_spa_app "$EXISTING" "$CALLBACKS" "$LOGOUT_URLS" "$WEB_ORIGINS"
         return $?
       fi
 
-      APP_CONFIG=$(cat <<EOF
-    {
-      "name": "${APP_NAME}",
-      "app_type": "spa",
-      "callbacks": ${CALLBACKS},
-      "allowed_logout_urls": ${LOGOUT_URLS},
-      "web_origins": ${WEB_ORIGINS},
-      "token_endpoint_auth_method": "none",
-      "oidc_conformant": true,
-      "grant_types": ["authorization_code", "refresh_token"]
-    }
-    EOF
-    )
+      APP_CONFIG=$(jq -n \
+        --arg name "$APP_NAME" \
+        --argjson callbacks "$CALLBACKS" \
+        --argjson logout "$LOGOUT_URLS" \
+        --argjson origins "$WEB_ORIGINS" \
+        '{name: $name, app_type: "spa", callbacks: $callbacks, allowed_logout_urls: $logout, web_origins: $origins,
+          token_endpoint_auth_method: "none", oidc_conformant: true, grant_types: ["authorization_code", "refresh_token"]}')
 
       RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/clients" \
         -H "Authorization: Bearer ${TOKEN}" \
@@ -179,22 +197,15 @@ data:
 
       echo "Creating M2M application: ${APP_NAME}..."
 
-      EXISTING=$(get_client_by_name "$APP_NAME")
-      if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+      EXISTING=$(get_client_by_name "$APP_NAME") || return 1
+      if [ -n "$EXISTING" ]; then
         echo "  Application already exists (client_id: ${EXISTING})"
         return 0
       fi
 
-      APP_CONFIG=$(cat <<EOF
-    {
-      "name": "${APP_NAME}",
-      "app_type": "non_interactive",
-      "token_endpoint_auth_method": "client_secret_post",
-      "oidc_conformant": true,
-      "grant_types": ["client_credentials"]
-    }
-    EOF
-    )
+      APP_CONFIG=$(jq -n --arg name "$APP_NAME" \
+        '{name: $name, app_type: "non_interactive", token_endpoint_auth_method: "client_secret_post",
+          oidc_conformant: true, grant_types: ["client_credentials"]}')
 
       RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/clients" \
         -H "Authorization: Bearer ${TOKEN}" \
@@ -221,9 +232,9 @@ data:
     # Function to check if an API exists by identifier
     get_api_by_identifier() {
       local IDENTIFIER=$1
-      curl -s -H "Authorization: Bearer ${TOKEN}" \
-        "${AUTH0_API_URL}/resource-servers" \
-        | jq -r --arg id "$IDENTIFIER" '.[] | select(.identifier == $id) | .id'
+      local APIS
+      APIS=$(list_all "resource-servers?include_totals=false") || return 1
+      echo "$APIS" | jq -r --arg id "$IDENTIFIER" '[.[] | select(.identifier == $id) | .id][0] // empty'
     }
 
     # Function to create an API (resource server) with permissions
@@ -234,8 +245,8 @@ data:
 
       echo "Creating API: ${API_NAME} (${API_IDENTIFIER})..."
 
-      EXISTING=$(get_api_by_identifier "$API_IDENTIFIER")
-      if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+      EXISTING=$(get_api_by_identifier "$API_IDENTIFIER") || return 1
+      if [ -n "$EXISTING" ]; then
         echo "  API already exists (id: ${EXISTING})"
 
         # Update permissions on existing API
@@ -243,7 +254,7 @@ data:
         RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "${AUTH0_API_URL}/resource-servers/${EXISTING}" \
           -H "Authorization: Bearer ${TOKEN}" \
           -H "Content-Type: application/json" \
-          -d "{\"scopes\": ${PERMISSIONS}}")
+          -d "$(jq -n -c --argjson scopes "$PERMISSIONS" '{scopes: $scopes}')")
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -1)
         if [ "$HTTP_CODE" = "200" ]; then
@@ -255,17 +266,14 @@ data:
         return 0
       fi
 
-      API_CONFIG=$(cat <<EOF
-    {
-      "name": "${API_NAME}",
-      "identifier": "${API_IDENTIFIER}",
-      "signing_alg": "RS256",
-      "token_lifetime": {{ .Values.auth0.api.tokenLifetime }},
-      "allow_offline_access": {{ .Values.auth0.api.allowOfflineAccess }},
-      "scopes": ${PERMISSIONS}
-    }
-    EOF
-    )
+      API_CONFIG=$(jq -n \
+        --arg name "$API_NAME" \
+        --arg identifier "$API_IDENTIFIER" \
+        --argjson lifetime {{ .Values.auth0.api.tokenLifetime | int }} \
+        --argjson offline {{ .Values.auth0.api.allowOfflineAccess | toJson }} \
+        --argjson scopes "$PERMISSIONS" \
+        '{name: $name, identifier: $identifier, signing_alg: "RS256", token_lifetime: $lifetime,
+          allow_offline_access: $offline, scopes: $scopes}')
 
       RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/resource-servers" \
         -H "Authorization: Bearer ${TOKEN}" \
@@ -294,23 +302,23 @@ data:
 
       echo "Granting '${CLIENT_NAME}' access to API '${API_IDENTIFIER}'..."
 
-      CLIENT_ID=$(get_client_by_name "$CLIENT_NAME")
-      if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" = "null" ]; then
+      CLIENT_ID=$(get_client_by_name "$CLIENT_NAME") || return 1
+      if [ -z "$CLIENT_ID" ]; then
         echo "  ${RED}Client ${CLIENT_NAME} not found${NC}"
         return 1
       fi
 
       # Check if grant already exists
-      EXISTING_GRANT=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
-        "${AUTH0_API_URL}/client-grants?client_id=${CLIENT_ID}&audience=${API_IDENTIFIER}" \
-        | jq -r '.[0].id // empty')
+      local GRANTS
+      GRANTS=$(list_all "client-grants?client_id=${CLIENT_ID}&audience=$(printf '%s' "$API_IDENTIFIER" | jq -Rr @uri)") || return 1
+      EXISTING_GRANT=$(echo "$GRANTS" | jq -r '.[0].id // empty')
 
       if [ -n "$EXISTING_GRANT" ]; then
         echo "  Grant already exists, updating scopes..."
         RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "${AUTH0_API_URL}/client-grants/${EXISTING_GRANT}" \
           -H "Authorization: Bearer ${TOKEN}" \
           -H "Content-Type: application/json" \
-          -d "{\"scope\": ${SCOPES}}")
+          -d "$(jq -n -c --argjson scope "$SCOPES" '{scope: $scope}')")
 
         HTTP_CODE=$(echo "$RESPONSE" | tail -1)
         if [ "$HTTP_CODE" = "200" ]; then
@@ -322,14 +330,11 @@ data:
         return 0
       fi
 
-      GRANT_CONFIG=$(cat <<EOF
-    {
-      "client_id": "${CLIENT_ID}",
-      "audience": "${API_IDENTIFIER}",
-      "scope": ${SCOPES}
-    }
-    EOF
-    )
+      GRANT_CONFIG=$(jq -n \
+        --arg client_id "$CLIENT_ID" \
+        --arg audience "$API_IDENTIFIER" \
+        --argjson scope "$SCOPES" \
+        '{client_id: $client_id, audience: $audience, scope: $scope}')
 
       RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/client-grants" \
         -H "Authorization: Bearer ${TOKEN}" \
@@ -360,12 +365,43 @@ data:
     # Function to look up an action by name (echoes action ID or empty)
     get_action_by_name() {
       local ACTION_NAME=$1
-      curl -s -G \
+      local RESPONSE
+      RESPONSE=$(curl -s -G -w "\n%{http_code}" \
         --data-urlencode "actionName=${ACTION_NAME}" \
         -H "Authorization: Bearer ${TOKEN}" \
-        "${AUTH0_API_URL}/actions/actions" \
-        | jq -r --arg name "$ACTION_NAME" \
-            '.actions[]? | select(.name == $name) | .id' | head -n 1
+        "${AUTH0_API_URL}/actions/actions")
+      local BODY
+      BODY=$(echo "$RESPONSE" | sed '$d')
+      if [ "$(echo "$RESPONSE" | tail -1)" != "200" ]; then
+        echo "  ${RED}Failed to look up action ${ACTION_NAME} (HTTP $(echo "$RESPONSE" | tail -1))${NC}" >&2
+        echo "  Response: $BODY" >&2
+        return 1
+      fi
+      echo "$BODY" | jq -r --arg name "$ACTION_NAME" '[.actions[]? | select(.name == $name) | .id][0] // empty'
+    }
+
+    # Function to wait until an action's latest version is built (Auth0 builds asynchronously)
+    wait_for_action_build() {
+      local ACTION_ID=$1
+      local STATUS=""
+      local ATTEMPT=0
+      while [ "$ATTEMPT" -lt 30 ]; do
+        STATUS=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
+          "${AUTH0_API_URL}/actions/actions/${ACTION_ID}" | jq -r '.status // empty')
+        case "$STATUS" in
+          built)
+            return 0
+            ;;
+          failed)
+            echo "  ${RED}Action build failed${NC}" >&2
+            return 1
+            ;;
+        esac
+        ATTEMPT=$((ATTEMPT + 1))
+        sleep 2
+      done
+      echo "  ${RED}Action not built after 60s (status: ${STATUS:-unknown})${NC}" >&2
+      return 1
     }
 
     # Function to create or update an action and deploy it (echoes action ID)
@@ -403,10 +439,10 @@ data:
         '{name: $name, code: $code, runtime: $runtime, dependencies: $deps, secrets: $secrets, supported_triggers: $triggers}')
 
       local EXISTING
-      EXISTING=$(get_action_by_name "$ACTION_NAME")
+      EXISTING=$(get_action_by_name "$ACTION_NAME") || return 1
 
       local ACTION_ID=""
-      if [ -n "$EXISTING" ] && [ "$EXISTING" != "null" ]; then
+      if [ -n "$EXISTING" ]; then
         echo "Updating action '${ACTION_NAME}' (id: ${EXISTING})..." >&2
         local RESPONSE
         RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
@@ -449,6 +485,8 @@ data:
       fi
 
       # Deploy the action so its latest code becomes the active version
+      echo "Waiting for action ${ACTION_ID} to build..." >&2
+      wait_for_action_build "$ACTION_ID" || return 1
       echo "Deploying action ${ACTION_ID}..." >&2
       local DEPLOY_RESPONSE
       DEPLOY_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
@@ -459,7 +497,9 @@ data:
       if [ "$DEPLOY_HTTP" = "200" ]; then
         echo "  ${GREEN}Action deployed${NC}" >&2
       else
-        echo "  ${YELLOW}Deploy returned HTTP ${DEPLOY_HTTP} (action may not be ready yet)${NC}" >&2
+        echo "  ${RED}Failed to deploy action (HTTP ${DEPLOY_HTTP})${NC}" >&2
+        echo "  Response: $(echo "$DEPLOY_RESPONSE" | sed '$d')" >&2
+        return 1
       fi
 
       echo "$ACTION_ID"
@@ -555,18 +595,14 @@ data:
         return 0
       fi
 
-      USER_CONFIG=$(cat <<EOF
-    {
-      "email": "${EMAIL}",
-      "password": "${PASSWORD}",
-      "given_name": "${FIRST_NAME}",
-      "family_name": "${LAST_NAME}",
-      "name": "${FIRST_NAME} ${LAST_NAME}",
-      "connection": "${CONNECTION}",
-      "email_verified": true
-    }
-    EOF
-    )
+      USER_CONFIG=$(jq -n \
+        --arg email "$EMAIL" \
+        --arg password "$PASSWORD" \
+        --arg first "$FIRST_NAME" \
+        --arg last "$LAST_NAME" \
+        --arg connection "$CONNECTION" \
+        '{email: $email, password: $password, given_name: $first, family_name: $last,
+          name: "\($first) \($last)", connection: $connection, email_verified: true}')
 
       RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/users" \
         -H "Authorization: Bearer ${TOKEN}" \
@@ -599,14 +635,10 @@ data:
       fi
 
       # Build permissions JSON array
-      PERMISSIONS='[
-      {{- $first := true }}
-      {{- range .Values.scopes }}
-      {{- if not $first }},{{ end }}
-        {"value": "{{ .name }}", "description": "{{ .description }}"}
-      {{- $first = false }}
-      {{- end }}
-      ]'
+      PERMISSIONS=$(jq -c '[.[] | {value: .name, description: .description}]' <<'EOF'
+    {{ .Values.scopes | toJson }}
+    EOF
+    )
 
       # Create API with permissions
       create_api \
