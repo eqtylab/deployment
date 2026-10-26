@@ -129,11 +129,13 @@ This removes all monitoring resources (ConfigMaps, PrometheusRules, and Probes) 
 
 ## Values
 
-### Target Release Configuration
+### Global Parameters
 
-| Key           | Type   | Default               | Description                                                      |
-| ------------- | ------ | --------------------- | ---------------------------------------------------------------- |
-| targetRelease | string | `"guardian-platform"` | Helm release name of the Guardian Platform deployment to monitor |
+| Key              | Type   | Default               | Description                                                      |
+| ---------------- | ------ | --------------------- | ---------------------------------------------------------------- |
+| nameOverride     | string | `""`                  | Override the chart name                                          |
+| fullnameOverride | string | `""`                  | Override the full name of the release                            |
+| targetRelease    | string | `"guardian-platform"` | Helm release name of the Guardian Platform deployment to monitor |
 
 ### Dashboard Configuration
 
@@ -240,21 +242,24 @@ customized via values. See
 
 ### Probe Configuration
 
-Probes are created only when the Probe CRD exists and a Service whose name
-starts with `prometheus-blackbox-exporter` is present in the cluster. Every
-Probe gets the `release: kube-prometheus-stack` label.
+Probes are created only when the Probe CRD exists and the Service named by
+`probes.proberUrl` (`<service>.<namespace>.svc.cluster.local:<port>`) is present
+in the cluster. If blackbox-exporter is not `prometheus-blackbox-exporter` in the
+`monitoring` namespace, set `probes.proberUrl` to its Service host and port. A
+`probes.proberUrl` that is not a Service DNS name only requires the Probe CRD.
+Every Probe gets the `release: kube-prometheus-stack` label.
 
-| Key                                       | Type   | Default         | Description                                                                                             |
-| ----------------------------------------- | ------ | --------------- | ------------------------------------------------------------------------------------------------------- |
-| probes.enabled                            | bool   | `true`          | Enable blackbox exporter Probe resources                                                                |
-| probes.labels                             | map    | `{}`            | Additional labels for Probe resources                                                                   |
-| probes.annotations                        | map    | `{}`            | Additional annotations for Probe resources                                                              |
-| probes.interval                           | string | `"30s"`         | How often to probe each endpoint                                                                        |
-| probes.scrapeTimeout                      | string | `"10s"`         | Timeout for each probe attempt                                                                          |
-| probes.module                             | string | `"https_2xx"`   | Blackbox exporter module (`http_2xx`, `https_2xx`, `http_post_2xx`)                                     |
-| probes.ingressDiscovery.enabled           | bool   | `true`          | Create a Probe for each host and path on ingresses labeled `app.kubernetes.io/instance=<targetRelease>` |
-| probes.ingressDiscovery.namespaceSelector | map    | `{ any: true }` | Not read by any template; ingress discovery always looks up all namespaces                              |
-| probes.staticProbes                       | list   | `[]`            | Additional static endpoints (`name`, `url`, optional `module`)                                          |
+| Key                             | Type   | Default                                                            | Description                                                                                             |
+| ------------------------------- | ------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| probes.enabled                  | bool   | `true`                                                             | Enable blackbox exporter Probe resources                                                                |
+| probes.labels                   | map    | `{}`                                                               | Additional labels for Probe resources                                                                   |
+| probes.annotations              | map    | `{}`                                                               | Additional annotations for Probe resources                                                              |
+| probes.interval                 | string | `"30s"`                                                            | How often to probe each endpoint                                                                        |
+| probes.scrapeTimeout            | string | `"10s"`                                                            | Timeout for each probe attempt                                                                          |
+| probes.module                   | string | `"https_2xx"`                                                      | Blackbox exporter module (`http_2xx`, `https_2xx`, `http_post_2xx`)                                     |
+| probes.proberUrl                | string | `"prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115"` | Host and port of the blackbox exporter Service that runs the probes                                     |
+| probes.ingressDiscovery.enabled | bool   | `true`                                                             | Create a Probe for each host and path on ingresses labeled `app.kubernetes.io/instance=<targetRelease>` |
+| probes.staticProbes             | list   | `[]`                                                               | Additional static endpoints (`name`, `url`, optional `module`)                                          |
 
 ## Verifying Deployment
 

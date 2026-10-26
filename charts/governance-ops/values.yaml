@@ -8,6 +8,16 @@
 # comprehensive monitoring capabilities
 # =============================================================================
 
+# -- Name Override
+# @default -- `""`
+# Override the chart name used for resource naming
+nameOverride: ""
+
+# -- Full Name Override
+# @default -- `""`
+# Override the full name of the release
+fullnameOverride: ""
+
 # -- Target Release Name
 # @default -- `guardian-platform`
 # The Helm release name of the Guardian Platform deployment to monitor
@@ -309,6 +319,12 @@ probes:
   # Options: http_2xx, https_2xx, http_post_2xx
   module: https_2xx
 
+  # -- Prober URL
+  # @default -- `prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115`
+  # Host and port of the blackbox exporter Service that runs the probes
+  # Probes and the endpoint down alert are created only when this Service exists
+  proberUrl: prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+
   # -- Ingress Discovery
   # @default -- See values below
   # Automatically discover and probe ingress resources from targetRelease
@@ -318,11 +334,6 @@ probes:
     # When enabled, looks up ingresses in all namespaces at render time and creates
     # one Probe per host and path on ingresses labeled with the targetRelease instance
     enabled: true
-    # -- Namespace Selector
-    # @default -- `{ any: true }`
-    # Not read by any template; ingress discovery always looks up all namespaces
-    namespaceSelector:
-      any: true
     # Ingress label selector - matches ingresses from the targetRelease
     # Automatically set to: app.kubernetes.io/instance={{ .Values.targetRelease }}
 

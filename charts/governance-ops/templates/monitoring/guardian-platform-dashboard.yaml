@@ -21,6 +21,6 @@ metadata:
   {{- end }}
 data:
   guardian-platform.json: |-
-{{ .Files.Get "dashboards/guardian-platform.json" | replace "\"guardian-platform\"" (include "governance-ops.targetRelease" . | quote) | replace "\"uid\": \"platform-overview\"" (printf "\"uid\": %s" ($uid | quote)) | indent 4 }}
+{{ .Files.Get "dashboards/guardian-platform.json" | replace "\"guardian-platform\"" (include "governance-ops.targetRelease" . | quote) | replace "\"uid\": \"platform-overview\"" (printf "\"uid\": %s" ($uid | quote)) | replace "probe/monitoring/governance-ops-" (printf "probe/%s/%s-" .Release.Namespace (include "governance-ops.fullname" .)) | indent 4 }}
 {{- end }}
 {{- end }}

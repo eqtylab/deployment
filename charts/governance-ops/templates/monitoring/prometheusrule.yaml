@@ -211,7 +211,7 @@ spec:
         {{- if and .Values.alerts.rules.endpointDown.enabled (include "governance-ops.blackboxAvailable" $) }}
         - alert: GuardianPlatformEndpointDown
           expr: |
-            probe_success{job=~"probe/monitoring/governance-ops-.*"} == 0
+            probe_success{job=~"probe/{{ $.Release.Namespace }}/{{ include "governance-ops.fullname" $ }}-.*"} == 0
           for: {{ .Values.alerts.rules.endpointDown.for }}
           labels:
             severity: {{ .Values.alerts.rules.endpointDown.severity }}

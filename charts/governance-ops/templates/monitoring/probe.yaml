@@ -97,7 +97,7 @@ spec:
         target: {{ $scheme }}://{{ $rule.host }}{{ $probePath }}
 
   prober:
-    url: prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+    url: {{ required "probes.proberUrl is required when probes are enabled" $.Values.probes.proberUrl | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -140,7 +140,7 @@ spec:
         target: {{ $probe.url }}
 
   prober:
-    url: prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+    url: {{ required "probes.proberUrl is required when probes are enabled" $.Values.probes.proberUrl | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
