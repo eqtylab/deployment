@@ -2,8 +2,8 @@ apiVersion: v2
 name: auth0-bootstrap
 description: A Helm chart for deploying the Auth0 Bootstrap - automated application and API configuration for the Guardian Platform
 type: application
-version: 1.3.1
-appVersion: "1.3.0"
+version: 1.3.2
+appVersion: "1.3.2"
 home: https://github.com/eqtylab/guardian-infrastructure
 sources:
   - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/auth0-bootstrap

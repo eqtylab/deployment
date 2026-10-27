@@ -414,7 +414,8 @@ data:
 
     # Function to set ACTIONS_APP_CLIENT_ID and ACTIONS_APP_CLIENT_SECRET for the Actions M2M
     # application: reuse the secret saved in the credentials Secret while it still gets a
-    # token, otherwise create the application or rotate its secret and save the new one
+    # token, otherwise create the application or rotate its secret and save the new one;
+    # fail without rotating when Auth0 is unreachable, times out, is rate limited, or errors
     prepare_actions_app() {
       local APP_NAME=$1
 
@@ -426,17 +427,25 @@ data:
         SAVED_ID=$(read_credential actions-client-id) || return 1
         local SAVED_SECRET
         SAVED_SECRET=$(read_credential actions-client-secret) || return 1
-        if [ "$SAVED_ID" = "$EXISTING" ] && [ -n "$SAVED_SECRET" ] && \
-          curl -s -o /dev/null -w "%{http_code}" -X POST "https://${AUTH0_DOMAIN}/oauth/token" \
+        local CODE=""
+        if [ "$SAVED_ID" = "$EXISTING" ] && [ -n "$SAVED_SECRET" ]; then
+          CODE=$(curl -s --max-time 10 --retry 2 -o /dev/null -w "%{http_code}" -X POST "https://${AUTH0_DOMAIN}/oauth/token" \
             -H "Content-Type: application/json" \
             -d "$(jq -n --arg id "$EXISTING" --arg secret "$SAVED_SECRET" --arg audience "$AUTH0_AUDIENCE" \
-              '{client_id: $id, client_secret: $secret, audience: $audience, grant_type: "client_credentials"}')" \
-            | grep -q '^200$'; then
-          ACTIONS_APP_CLIENT_ID=$EXISTING
-          ACTIONS_APP_CLIENT_SECRET=$SAVED_SECRET
-          echo "  Reusing the saved secret (client_id: ${EXISTING})"
-          return 0
+              '{client_id: $id, client_secret: $secret, audience: $audience, grant_type: "client_credentials"}')") || true
         fi
+        case $CODE in
+          200)
+            ACTIONS_APP_CLIENT_ID=$EXISTING
+            ACTIONS_APP_CLIENT_SECRET=$SAVED_SECRET
+            echo "  Reusing the saved secret (client_id: ${EXISTING})"
+            return 0
+            ;;
+          408|429|5??|000)
+            echo "  ${RED}Could not check the saved secret (HTTP ${CODE}); leaving it in place${NC}"
+            return 1
+            ;;
+        esac
         echo "  No working saved secret; rotating it"
         RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${AUTH0_API_URL}/clients/${EXISTING}/rotate-secret" \
           -H "Authorization: Bearer ${TOKEN}")
