@@ -117,14 +117,14 @@ kubectl create secret tls platform-tls \
 
 ### Quick Start
 
-The recommended way to generate configuration is with [`govctl`](../../govctl/README.md), the Guardian Platform CLI:
+The recommended way to generate configuration is with [`guardctl`](../../guardctl/README.md), the Guardian Platform CLI:
 
 ```bash
-# Install govctl (from the govctl/ directory)
+# Install guardctl (from the guardctl/ directory)
 uv pip install -e .
 
 # Generate values and secrets files
-govctl init
+guardctl init
 
 # Fill in any remaining secrets
 # Review generated files for correctness
@@ -136,11 +136,11 @@ helm upgrade --install guardian-platform ./charts/guardian-platform \
   -n guardian --create-namespace
 ```
 
-See the [govctl README](../../govctl/README.md) for full usage and options.
+See the [guardctl README](../../guardctl/README.md) for full usage and options.
 
 ### Required Configuration
 
-Whether using `govctl` or manual configuration, these values **must** be set:
+Whether using `guardctl` or manual configuration, these values **must** be set:
 
 - **`global.domain`** - Base domain for all services
 - **`global.secrets.auth.provider`** - Auth provider (`auth0`, `entra`, or `keycloak`)
@@ -237,7 +237,7 @@ The platform supports two approaches for managing secrets:
 
 ### Option 1: Secrets Values File (Recommended)
 
-Use `govctl init` to generate a secrets file, or create one manually. Secrets are passed to Helm as a separate values file.
+Use `guardctl init` to generate a secrets file, or create one manually. Secrets are passed to Helm as a separate values file.
 
 ```bash
 helm upgrade --install guardian-platform ./charts/guardian-platform \
@@ -847,7 +847,7 @@ with P-256/SHA-256 in any `global.environmentType`. See
 `examples/values-openbao.yaml` and the auth-service chart
 README for the endpoint, mount, role and CA values.
 
-OpenBao profiles currently use manually maintained Helm values; govctl does not generate them. See [govctl scope](../../govctl/README.md#openbao-workflow).
+OpenBao profiles currently use manually maintained Helm values; guardctl does not generate them. See [guardctl scope](../../guardctl/README.md#openbao-workflow).
 
 A complete disposable local-kind diagnostic profile is
 `examples/values-openbao-kind.yaml`, documented with

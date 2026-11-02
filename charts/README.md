@@ -104,11 +104,11 @@ kubectl create namespace guardian
 
 **5. Generate bootstrap, values, and secrets files**
 
-Use [govctl](../govctl/) to generate all three interactively, or copy examples and customize manually:
+Use [guardctl](../guardctl/) to generate all three interactively, or copy examples and customize manually:
 
 ```bash
-# Option A: govctl (recommended)
-govctl init
+# Option A: guardctl (recommended)
+guardctl init
 
 # Option B: Copy examples
 # Values:
@@ -249,7 +249,7 @@ The deployment guides are on the docs site. [Deployment Process](https://guardia
 1. [Prerequisites](https://guardian.docs.eqtylab.io/deployment/prerequisites/)
 2. [Domain and TLS](https://guardian.docs.eqtylab.io/deployment/domain-and-tls/)
 3. [Object storage](https://guardian.docs.eqtylab.io/deployment/object-storage/) and [key management](https://guardian.docs.eqtylab.io/deployment/key-management/)
-4. [govctl](https://guardian.docs.eqtylab.io/deployment/govctl/) or [Chart Values](https://guardian.docs.eqtylab.io/deployment/chart-values/)
+4. [guardctl](https://guardian.docs.eqtylab.io/deployment/guardctl/) or [Chart Values](https://guardian.docs.eqtylab.io/deployment/chart-values/)
 5. The identity provider: [Auth0](https://guardian.docs.eqtylab.io/deployment/auth0/), [Microsoft Entra ID](https://guardian.docs.eqtylab.io/deployment/microsoft-entra-id/), or [Keycloak](https://guardian.docs.eqtylab.io/deployment/keycloak/)
 6. [Helm Deployment](https://guardian.docs.eqtylab.io/deployment/helm-deployment/)
 

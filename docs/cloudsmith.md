@@ -21,7 +21,7 @@ archive and checksum. Verify the archive's SHA-256 before extracting it. The
 archive contains chart packages, examples, and `values-cloudsmith.yaml`.
 
 Until your version has a verified delivery, continue using the existing GHCR
-chart, image credentials, and `govctl init --artifact-source github`.
+chart, image credentials, and `guardctl init --artifact-source github`.
 
 ## Authenticate Helm and Kubernetes
 
@@ -54,11 +54,11 @@ rm -f "$pull_config/config.json"
 rmdir "$pull_config"
 ```
 
-Alternatively, `govctl init` generates Cloudsmith registry settings by default for verified
+Alternatively, `guardctl init` generates Cloudsmith registry settings by default for verified
 releases. It inherits the selected release chart’s image tags and digests instead
 of setting `latest`.
 Fill the entitlement-token placeholder through your existing secret-management
-system if using Helm-managed secrets. Use `govctl init --artifact-source github`
+system if using Helm-managed secrets. Use `guardctl init --artifact-source github`
 for internal installations. Custom registry hosts also require the full image
 repository prefix; the interactive generator asks for both.
 

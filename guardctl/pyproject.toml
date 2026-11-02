@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "guardctl"
+version = "0.1.0"
+description = "CLI tool for generating Guardian Platform Helm values"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "EQTY Lab" }
+]
+dependencies = [
+    "click>=8.1.0",
+    "cryptography>=41.0.0",
+    "pyyaml>=6.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+guardctl = "guardctl.cli.main:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["guardctl"]

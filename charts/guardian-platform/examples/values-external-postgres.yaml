@@ -36,7 +36,7 @@
 #          --namespace guardian
 #   This overlay sets `global.secrets.create: false`, so `platform-database`
 #   must exist before install. To have the chart create it instead (for
-#   example, with govctl-generated `secrets.yaml`), pass a later values file
+#   example, with guardctl-generated `secrets.yaml`), pass a later values file
 #   that sets `global.secrets.create: true`; then only the optional CA
 #   Secret/ConfigMap must exist ahead of time
 # -----------------------------------------------------------------------------

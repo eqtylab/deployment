@@ -1,0 +1,114 @@
+"""Auth Service section generator."""
+
+from typing import Any
+
+from guardctl.core.artifacts import runtime_image_values
+
+from guardctl.core.models import PlatformConfig, AuthProvider, KeyManagementProvider
+from guardctl.generators.shared import path_prefix_ingress_values
+from guardctl.utils.yaml import required
+
+
+def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
+    """Generate the auth-service section of values.yaml."""
+    section: dict[str, Any] = {
+        "replicaCount": 2,
+        **runtime_image_values(config),
+        "ingress": path_prefix_ingress_values(
+            config,
+            "authService",
+            {
+                "nginx.ingress.kubernetes.io/proxy-body-size": "64m",
+                "nginx.ingress.kubernetes.io/proxy-buffer-size": "16k",
+                "nginx.ingress.kubernetes.io/client-header-buffer-size": "16k",
+                "nginx.ingress.kubernetes.io/large-client-header-buffers": "4 16k",
+            },
+        ),
+    }
+
+    # Add auth provider config
+    section["config"] = {
+        "idp": {
+            "provider": config.auth_provider.value,
+        },
+    }
+
+    if config.auth_provider == AuthProvider.AUTH0:
+        auth0_domain = config.auth0_tenant_domain
+        section["config"]["idp"]["issuer"] = f"https://{auth0_domain}/"
+        section["config"]["idp"]["skipIssuerVerification"] = False
+        section["config"]["idp"]["auth0"] = {
+            "domain": auth0_domain,
+            "managementAudience": f"https://{auth0_domain}/api/v2/",
+            "apiIdentifier": config.auth0_api_identifier,
+        }
+    elif config.auth_provider == AuthProvider.ENTRA:
+        tenant_id = config.entra_tenant_id or "YOUR_ENTRA_TENANT_ID"
+        section["config"]["idp"][
+            "issuer"
+        ] = f"https://login.microsoftonline.com/{tenant_id}/v2.0"
+        section["config"]["idp"]["skipIssuerVerification"] = False
+        section["config"]["idp"]["entra"] = {
+            "tenantId": tenant_id,
+            "defaultRoles": "user",
+        }
+        section["config"]["tokenExchange"] = {
+            "enabled": True,
+            "keyId": f"auth-service-{config.environment}-001",
+        }
+    elif config.auth_provider == AuthProvider.KEYCLOAK:
+        keycloak_url = config.keycloak_base_url
+        section["config"]["idp"][
+            "issuer"
+        ] = f"{keycloak_url}/realms/{config.keycloak_realm}"
+        section["config"]["idp"]["skipIssuerVerification"] = False
+        section["config"]["idp"]["keycloak"] = {
+            "realm": config.keycloak_realm,
+            "adminUrl": keycloak_url,
+            "clientId": "guardian-platform-frontend",
+            "enableUserManagement": True,
+            "enableGroupSync": False,
+        }
+        section["config"]["tokenExchange"] = {
+            "enabled": True,
+            "keyId": f"auth-service-{config.environment}-001",
+        }
+
+    # Key management config (required for DID keys)
+    section["config"]["keyManagement"] = {
+        "provider": config.key_management_provider.value,
+    }
+
+    if config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        aws_kms_config: dict[str, Any] = {}
+        if config.aws_kms_region:
+            aws_kms_config["region"] = config.aws_kms_region
+        if config.aws_kms_endpoint:
+            aws_kms_config["endpoint"] = config.aws_kms_endpoint
+        if config.aws_kms_alias_prefix:
+            aws_kms_config["aliasPrefix"] = config.aws_kms_alias_prefix
+        if config.aws_kms_use_iam_role:
+            aws_kms_config["useIamRole"] = True
+            # IRSA requires a dedicated service account annotated with the IAM role ARN
+            section["serviceAccount"] = {
+                "create": True,
+                "annotations": {
+                    "eks.amazonaws.com/role-arn": "YOUR_IAM_ROLE_ARN",
+                },
+            }
+        if aws_kms_config:
+            section["config"]["keyManagement"]["aws_kms"] = aws_kms_config
+    elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        section["config"]["keyManagement"]["azure_key_vault"] = {
+            "vaultUrl": config.azure_key_vault_url,
+            "tenantId": config.azure_tenant_id,
+        }
+    elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
+        section["config"]["keyManagement"]["gcp_kms"] = {
+            "projectId": config.gcp_kms_project_id or required("GCP KMS project ID"),
+            "locationId": config.gcp_kms_location_id
+            or required("GCP KMS location, such as us-east1"),
+            "keyRingId": config.gcp_kms_key_ring_id,
+        }
+
+    return section

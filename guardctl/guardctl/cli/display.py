@@ -1,0 +1,202 @@
+"""Display utilities for CLI output."""
+
+from pathlib import Path
+
+from rich.table import Table
+
+from guardctl.core.artifacts import uses_custom_registry
+from guardctl.core.models import (
+    AuthProvider,
+    CloudProvider,
+    DatabaseMode,
+    KeyManagementProvider,
+    PlatformConfig,
+)
+from guardctl.utils.output import console
+
+
+def show_config_summary(config: PlatformConfig) -> None:
+    """Display a summary of the configuration."""
+    console.print()
+
+    table = Table(title="Configuration Summary", border_style="blue")
+    table.add_column("Setting", style="cyan")
+    table.add_column("Value", style="green")
+
+    table.add_row("Cloud Provider", config.cloud_provider.value.upper())
+    if config.cloud_region:
+        table.add_row("Cloud Region", config.cloud_region)
+    if config.cloud_provider == CloudProvider.AWS:
+        table.add_row(
+            "AWS S3 Access",
+            (
+                "IAM role (IRSA / instance profile)"
+                if config.aws_s3_use_iam_role
+                else "static access keys"
+            ),
+        )
+    table.add_row("Domain", config.domain)
+    table.add_row("Environment", config.environment)
+    table.add_row("Auth Provider", config.auth_provider.value)
+    table.add_row("Storage Provider", config.storage_provider)
+    table.add_row("Database Mode", config.database_mode.value)
+
+    table.add_row("Key Management", config.key_management_provider.value)
+    if config.key_management_provider == KeyManagementProvider.AWS_KMS:
+        table.add_row(
+            "AWS KMS Access",
+            (
+                "IAM role (IRSA / instance profile)"
+                if config.aws_kms_use_iam_role
+                else "static access keys"
+            ),
+        )
+        if config.aws_kms_region:
+            table.add_row("AWS KMS Region", config.aws_kms_region)
+        if config.aws_kms_endpoint:
+            table.add_row("AWS KMS Endpoint", config.aws_kms_endpoint)
+        if config.aws_kms_alias_prefix:
+            table.add_row("AWS KMS Alias Prefix", config.aws_kms_alias_prefix)
+    elif config.key_management_provider == KeyManagementProvider.AZURE_KEY_VAULT:
+        if config.azure_key_vault_url:
+            table.add_row("Key Vault URL", config.azure_key_vault_url)
+        if config.azure_tenant_id:
+            table.add_row("Key Vault Tenant ID", config.azure_tenant_id)
+    elif config.key_management_provider == KeyManagementProvider.GCP_KMS:
+        if config.gcp_kms_project_id:
+            table.add_row("GCP KMS Project ID", config.gcp_kms_project_id)
+        if config.gcp_kms_location_id:
+            table.add_row("GCP KMS Location", config.gcp_kms_location_id)
+        if config.gcp_kms_key_ring_id:
+            table.add_row("GCP KMS Key Ring", config.gcp_kms_key_ring_id)
+
+    if config.auth_provider == AuthProvider.AUTH0:
+        table.add_row("Auth0 Domain", config.auth0_domain)
+    elif config.auth_provider == AuthProvider.ENTRA:
+        table.add_row("Entra Tenant ID", config.entra_tenant_id)
+    elif config.auth_provider == AuthProvider.KEYCLOAK:
+        table.add_row("Keycloak URL", config.keycloak_url)
+        table.add_row("Keycloak Realm", config.keycloak_realm)
+
+    # Image registry
+    if uses_custom_registry(config):
+        table.add_row(
+            "Artifact Source", f"custom registry ({config.artifact_source} image tags)"
+        )
+    else:
+        table.add_row("Artifact Source", config.artifact_source)
+    if config.image_repository_prefix:
+        table.add_row("Image Prefix", config.image_repository_prefix)
+    if config.image_registry_url:
+        table.add_row("Image Registry", config.image_registry_url)
+    if config.image_registry_username:
+        table.add_row("Registry Username", config.image_registry_username)
+    if config.image_registry_email:
+        table.add_row("Registry Email", config.image_registry_email)
+
+    console.print(table)
+
+
+def show_next_steps(
+    config: PlatformConfig,
+    values_file: Path,
+    secrets_file: Path,
+    bootstrap_file: Path | None = None,
+) -> None:
+    """Display next steps after file generation."""
+    step = 1
+
+    console.print("[bold]Next steps:[/bold]")
+    console.print()
+    console.print(
+        f"  {step}. Fill in any remaining secrets in [cyan]{secrets_file}[/cyan]"
+    )
+    console.print()
+    step += 1
+
+    review_files = f"[cyan]{values_file}[/cyan]"
+    if bootstrap_file:
+        review_files += f" and [cyan]{bootstrap_file}[/cyan]"
+    console.print(
+        f"  {step}. Fill in values marked REQUIRED, replace YOUR_* placeholders, "
+        f"and review {review_files} for correctness"
+    )
+    console.print()
+    step += 1
+
+    idp_pages = {
+        AuthProvider.AUTH0: "auth0",
+        AuthProvider.ENTRA: "microsoft-entra-id",
+        AuthProvider.KEYCLOAK: "keycloak",
+    }
+    console.print(
+        f"  {step}. Follow the deployment guide for your auth provider before deploying"
+        "\n     See: https://guardian.docs.eqtylab.io/deployment/"
+        f"{idp_pages[config.auth_provider]}/"
+    )
+    console.print()
+    step += 1
+
+    if bootstrap_file:
+        chart_name = f"{config.auth_provider.value}-bootstrap"
+        chart_path = f"./charts/{chart_name}"
+
+        console.print(f"  {step}. Run the {config.auth_provider.value} bootstrap:")
+        if config.artifact_source == "cloudsmith":
+            console.print(
+                f"     {chart_name} is not published to Cloudsmith; run it from a "
+                "checkout of https://github.com/eqtylab/deployment"
+            )
+        console.print()
+        bootstrap_cmd = (
+            f"     helm upgrade --install {chart_name} {chart_path} \\\n"
+            f"       -f {bootstrap_file} \\\n"
+            f"       -n {config.namespace} --create-namespace --wait"
+        )
+        console.print(f"[dim]{bootstrap_cmd}[/dim]")
+        console.print()
+        step += 1
+
+    if config.database_mode == DatabaseMode.EXTERNAL:
+        console.print(
+            f"  {step}. External PostgreSQL setup — required before deploying:"
+        )
+        console.print(
+            f"     - Set [cyan]global.postgresql.host[/cyan] in {values_file}"
+            f'\n     - Create the [cyan]governance[/cyan] and [cyan]"IntegrityServiceDB"[/cyan] databases on the managed instance'
+            f"\n     - Keep [cyan]global.secrets.create[/cyan] enabled in {secrets_file} to have Helm create the [cyan]platform-database[/cyan] Secret for you, or disable it and pre-create that Secret manually"
+            f"\n     - (For sslMode verify-ca/verify-full) create a Secret named [cyan]postgres-ca[/cyan] holding the CA bundle at key [cyan]ca.crt[/cyan], or use a ConfigMap and set [cyan]global.postgresql.sslRootCert.configMapName[/cyan] in place of [cyan]secretName[/cyan]"
+            f"\n     See: charts/guardian-platform/README.md (Cloud-Managed PostgreSQL Configuration)"
+        )
+        console.print()
+        step += 1
+
+    console.print(f"  {step}. Deploy the platform:")
+    console.print()
+    chart = "./charts/guardian-platform"
+    version_flag = ""
+    if config.artifact_source == "cloudsmith":
+        console.print(
+            "     Use a stable version listed in cloudsmith-delivery.json. "
+            "With Helm 3.20+, load your prod entitlement into "
+            "CLOUDSMITH_ENTITLEMENT_TOKEN through your secret manager, then:"
+        )
+        console.print(
+            "[dim]     printf '%s' \"$CLOUDSMITH_ENTITLEMENT_TOKEN\" | "
+            "helm repo add cloudsmith-prod "
+            "https://dl.cloudsmith.io/basic/eqtylab/prod/helm/charts/ "
+            "--username token --password-stdin[/dim]"
+        )
+        console.print("[dim]     helm repo update cloudsmith-prod[/dim]")
+        chart = "cloudsmith-prod/guardian-platform"
+        version_flag = "       --version <released-version> \\\n"
+    helm_cmd = (
+        f"     helm upgrade --install {config.release_name} \\\n"
+        f"       {chart} \\\n"
+        f"{version_flag}"
+        f"       -f {values_file} \\\n"
+        f"       -f {secrets_file} \\\n"
+        f"       -n {config.namespace} --create-namespace"
+    )
+    console.print(f"[dim]{helm_cmd}[/dim]")
+    console.print()
