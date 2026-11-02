@@ -11,7 +11,7 @@ on:
       - "scripts/openbao/**"
       - "scripts/helpers/output.sh"
       - "scripts/release/**"
-      - "govctl/**"
+      - "guardctl/**"
       - ".github/workflows/mirror-cloudsmith-release.yaml"
       - "docs/openbao-delivery.md"
       - ".github/workflows/release-platform-package.yaml"
@@ -26,7 +26,7 @@ on:
       - "scripts/openbao/**"
       - "scripts/helpers/output.sh"
       - "scripts/release/**"
-      - "govctl/**"
+      - "guardctl/**"
       - ".github/workflows/mirror-cloudsmith-release.yaml"
       - "docs/openbao-delivery.md"
       - ".github/workflows/release-platform-package.yaml"
@@ -85,7 +85,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install custody validation dependencies
-        run: python -m pip install PyYAML==6.0.3 jsonschema==4.26.0 -e ./govctl
+        run: python -m pip install PyYAML==6.0.3 jsonschema==4.26.0 -e ./guardctl
 
       - name: Install yq
         run: |
@@ -114,7 +114,7 @@ jobs:
         run: |
           python -B scripts/openbao/test-custody-chart.py
           python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
-          python -B -m unittest discover -s govctl/tests -v
+          python -B -m unittest discover -s guardctl/tests -v
           python -B scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml
 
       - name: Lint charts
