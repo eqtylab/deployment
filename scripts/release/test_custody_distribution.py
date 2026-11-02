@@ -28,7 +28,8 @@ from custody_distribution import (
 )
 
 SCHEMA = json.loads((ROOT / "schemas/release-manifest.schema.json").read_text())
-SELECTED = {"name": "openbao-custody", "version": "0.1.0", "oci": OCI}
+CUSTODY_VERSION = read_yaml(ROOT / "charts/openbao-custody/Chart.yaml")["version"]
+SELECTED = {"name": "openbao-custody", "version": CUSTODY_VERSION, "oci": OCI}
 
 
 def manifest_paths():
@@ -75,7 +76,7 @@ class ManifestTests(unittest.TestCase):
         manifest = latest_manifest()
         manifest["charts"]["openbaoCustody"] = SELECTED.copy()
         jsonschema.validate(manifest, SCHEMA)
-        self.assertEqual(custody_version(manifest, ROOT), "0.1.0")
+        self.assertEqual(custody_version(manifest, ROOT), CUSTODY_VERSION)
         self.assertNotEqual(custody_version(manifest), manifest["platform"]["version"])
 
     def test_malformed_entry_cannot_silently_exclude_custody(self):
@@ -198,7 +199,7 @@ class PackageTests(unittest.TestCase):
         (self.root / "release-manifest.yaml").write_text(yaml.safe_dump(self.manifest))
         self.run_step("Resolve optional custody release")
         output = (self.root / "outputs").read_text().strip()
-        self.assertEqual(output, "version=0.1.0" if supplied else "version=")
+        self.assertEqual(output, f"version={CUSTODY_VERSION}" if supplied else "version=")
         self.env["CUSTODY_VERSION"] = output.removeprefix("version=")
         self.run_step("Publish platform charts")  # PUBLISH=false: real local Helm only.
         self.run_step("Build connected customer package")
@@ -221,10 +222,10 @@ class PackageTests(unittest.TestCase):
         package = self.assemble(supplied=True)
         verify_package(self.root, package)
         digests = read_yaml(package / "chart-digests.yaml")["charts"]
-        self.assertEqual(digests["openbao-custody"]["version"], "0.1.0")
+        self.assertEqual(digests["openbao-custody"]["version"], CUSTODY_VERSION)
         self.assertEqual(digests["openbao-custody"]["ociDigest"], "dry-run")
         self.assertEqual(digests["guardian-platform"]["version"], "9.8.7")
-        self.assertTrue((package / "charts/openbao-custody-0.1.0.tgz").is_file())
+        self.assertTrue((package / f"charts/openbao-custody-{CUSTODY_VERSION}.tgz").is_file())
         self.assertFalse((package / "charts/openbao-custody-9.8.7.tgz").exists())
 
         # The policy is owned upstream and synced; the package must carry the
@@ -234,7 +235,7 @@ class PackageTests(unittest.TestCase):
             policy.read_bytes(),
             (ROOT / "scripts/openbao/policies/guardian-auth.hcl").read_bytes(),
         )
-        with tarfile.open(package / "charts/openbao-custody-0.1.0.tgz") as archive:
+        with tarfile.open(package / f"charts/openbao-custody-{CUSTODY_VERSION}.tgz") as archive:
             names = set(archive.getnames())
         for name in required_chart_files(ROOT):
             self.assertIn("openbao-custody/" + name, names)
@@ -272,7 +273,7 @@ class PackageTests(unittest.TestCase):
 
     def test_reused_archive_checks_payload_even_with_recomputed_checksum(self):
         package = self.assemble(supplied=True)
-        archive = package / "charts/openbao-custody-0.1.0.tgz"
+        archive = package / f"charts/openbao-custody-{CUSTODY_VERSION}.tgz"
         original = archive.read_bytes()
         # Identical immutable content repackaged at another time is accepted.
         # Changed values/templates must fail even with self-consistent metadata.
