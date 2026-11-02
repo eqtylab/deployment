@@ -10,7 +10,7 @@
 1. Review the [prerequisites](#-prerequisites). Use the existing GHCR installation path until your version has a verified `cloudsmith-delivery.json`; then follow [Cloudsmith setup](./docs/cloudsmith.md).
 2. Follow [Deployment Process](https://guardian.docs.eqtylab.io/deployment/deployment-process/) on the docs site, including your identity provider's page:
    - [Auth0](https://guardian.docs.eqtylab.io/deployment/auth0/) · [Microsoft Entra ID](https://guardian.docs.eqtylab.io/deployment/microsoft-entra-id/) · [Keycloak](https://guardian.docs.eqtylab.io/deployment/keycloak/)
-3. Use [`govctl`](./govctl/README.md) to generate Helm values and secrets (`--artifact-source github` for GHCR; the Cloudsmith default only for verified deliveries), then install the [`guardian-platform`](./charts/guardian-platform/) umbrella chart.
+3. Use [`guardctl`](./guardctl/README.md) to generate Helm values and secrets (`--artifact-source github` for GHCR; the Cloudsmith default only for verified deliveries), then install the [`guardian-platform`](./charts/guardian-platform/) umbrella chart.
 
 ## ✅ Prerequisites
 
@@ -25,7 +25,7 @@
 
 - **[`charts/`](./charts/README.md)** — Helm charts for the Guardian Platform services (auth, governance, integrity, Guardian) plus per-IdP bootstrap charts.
 - **[`docs/`](./docs/)** — [Cloudsmith setup](./docs/cloudsmith.md), the [Cloudsmith release runbook](./docs/cloudsmith-release.md), and the optional [OpenBao custody delivery](./docs/openbao-delivery.md) notes. Deployment guides are on the [docs site](https://guardian.docs.eqtylab.io/deployment/deployment-process/).
-- **[`govctl/`](./govctl/README.md)** — CLI tool for generating Helm values, bootstrap configs, and secrets files interactively.
+- **[`guardctl/`](./guardctl/README.md)** — CLI tool for generating Helm values, bootstrap configs, and secrets files interactively.
 - **[`scripts/`](./scripts/README.md)** — Helper scripts for NGINX ingress setup, cert-manager installation, IdP bootstrap, post-install database seeding, OpenBao operator setup, and release packaging checks.
 - **[`releases/`](./releases/)** — Per-version release manifests pinning chart versions, image digests, and source refs for each platform release.
 - **[`containers/`](./containers/)** — Custom container image builds (e.g. patched PostgreSQL) used by the platform.
@@ -47,4 +47,4 @@ dependency. OpenBao application use remains development-only.
 For questions, deployment assistance, or issues, contact your EQTY Lab representative or open an issue in this repository.
 
 Release operators: [Cloudsmith mirroring and activation](./docs/cloudsmith-release.md).
-Internal infrastructure continues to use GHCR; use `govctl init --artifact-source github`.
+Internal infrastructure continues to use GHCR; use `guardctl init --artifact-source github`.
