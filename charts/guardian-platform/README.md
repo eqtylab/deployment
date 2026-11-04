@@ -62,19 +62,76 @@ This allows:
 - Helm 3.20+
 - Persistent Volume Provisioner for database storage
 - Registry access: a Cloudsmith prod entitlement for a verified delivery, or existing GHCR credentials before that version is delivered
-- Ingress controller (NGINX, Traefik, etc.)
+- Ingress controller (HAProxy Kubernetes Ingress Controller; see below)
 - TLS certificate management (cert-manager or manual)
 
 ### Infrastructure Dependencies
 
 #### Ingress Controller (Required)
 
+The examples and `guardctl` output use the
+[HAProxy Kubernetes Ingress Controller](https://github.com/haproxytech/kubernetes-ingress)
+and its `haproxy` ingress class:
+
 ```bash
-helm upgrade --install ingress-nginx ingress-nginx \
-  --repo https://kubernetes.github.io/ingress-nginx \
-  --namespace ingress-nginx \
-  --create-namespace
+cat > haproxy-values.yaml <<'EOF'
+controller:
+  extraArgs:
+    - --disable-quic
+  pprof:
+    enabled: false
+  service:
+    type: LoadBalancer
+    enablePorts:
+      quic: false
+      stat: false
+      admin: false
+  config:
+    ssl-redirect-port: "443"
+    global-config-snippet: |
+      tune.bufsize 32768
+    response-set-header: |
+      Strict-Transport-Security "max-age=31536000; includeSubDomains"
+EOF
+
+helm upgrade --install haproxy-kubernetes-ingress \
+  oci://ghcr.io/haproxytech/helm-charts/kubernetes-ingress \
+  --version 1.54.4 \
+  --namespace haproxy-controller \
+  --create-namespace \
+  --values haproxy-values.yaml
 ```
+
+These values:
+
+- keep the stats and admin ports, which serve metrics and debug endpoints, off
+  the public LoadBalancer
+- turn off the pprof debug endpoints, which otherwise answer on the admin port
+  to anything in the cluster that can reach the pod
+- turn off the QUIC listener, which otherwise advertises HTTP/3 on a port the
+  LoadBalancer does not expose
+- send HTTP-to-HTTPS redirects to port 443; the controller default is its
+  internal port 8443
+- raise the buffer that a request's or response's headers must fit in from 16
+  KB to 32 KB, so the proxy is not the tightest header limit. Auth Service and
+  Governance Service still accept at most 16 KB of request headers
+- send `Strict-Transport-Security` on every response. An ingress with its own
+  `haproxy.org/response-set-header` annotation replaces this value
+
+To scrape the controller with kube-prometheus-stack, also set
+`controller.serviceMonitor.enabled: true` and
+`controller.serviceMonitor.extraLabels.release: kube-prometheus-stack`, the
+label its default ServiceMonitor selector requires. The ServiceMonitor uses a
+separate ClusterIP metrics Service, so the stats port stays off the
+LoadBalancer.
+
+> **Note:** The HAProxy controller bundled in `gateway-stack`
+> (`gateway-stack.haproxyIngress.enabled: true`) also serves the `haproxy`
+> class, with the same redirect, buffer, QUIC, and pprof settings. If you
+> enable it, skip this install. Set `Strict-Transport-Security` under
+> `gateway-stack.haproxyIngress.controller.config.response-set-header`, and the
+> ServiceMonitor settings above under
+> `gateway-stack.haproxyIngress.controller.serviceMonitor`.
 
 #### TLS Certificate Management (Required for Production)
 
@@ -100,7 +157,7 @@ spec:
     solvers:
     - http01:
         ingress:
-          class: nginx
+          ingressClassName: haproxy
 EOF
 ```
 
@@ -222,6 +279,89 @@ helm upgrade governance-platform oci://ghcr.io/eqtylab/charts/guardian-platform 
   --values values.yaml \
   --values secrets.yaml
 ```
+
+### Migrating from ingress-nginx
+
+The community ingress-nginx controller is retired and receives no security
+fixes. To move an install to HAProxy:
+
+1. Install the HAProxy controller as in
+   [Ingress Controller](#ingress-controller-required). It gets its own
+   LoadBalancer IP and runs alongside ingress-nginx. Lower the TTL on the
+   platform DNS record now, at least one old TTL before step 5.
+2. In each service's `ingress` block, set `className: haproxy` and convert the
+   ingress-nginx settings:
+   - **Path prefixes**: replace the regex path, `use-regex`, and
+     `rewrite-target: "/$2"` with a plain prefix path and
+     `haproxy.org/path-rewrite`. HAProxy matches `ImplementationSpecific` paths
+     as literal string prefixes, so a regex path left in place never matches:
+     its requests reach Guardian at `/` instead, or return 404.
+
+     ```yaml
+     annotations:
+       haproxy.org/path-rewrite: '^/authService/?(.*) /\1'
+     hosts:
+       - host: guardian.your-domain.com
+         paths:
+           - path: "/authService"
+             pathType: Prefix
+     ```
+
+     Use single quotes, as shown, or write `\\1` inside double quotes. In
+     double quotes `\1` is an invalid escape and the file does not parse.
+
+   - **Body size**: remove `proxy-body-size`. HAProxy does not limit request
+     bodies, so each service's own limit applies: 50 MB for Governance
+     Service, 4 MB for Auth Service, and 2 MB for Integrity Service's JSON
+     routes. Integrity Service's blob upload (`PUT /store/v1/blob`) has no
+     limit and holds the whole body in memory, so it accepts a body of any
+     size from a caller who can create declarations or comments in a project.
+     The ingress-nginx examples set `proxy-body-size: "0"` for Integrity
+     Service, so that is unchanged.
+   - **Header buffers**: remove `proxy-buffer-size`,
+     `client-header-buffer-size`, and `large-client-header-buffers`. The
+     controller's `tune.bufsize` replaces them: all of a request's headers
+     together must fit in 32 KB, where `large-client-header-buffers: "4 16k"`
+     allowed up to 64 KB. Behind either controller, Auth Service and
+     Governance Service accept at most 16 KB of request headers.
+   - **CORS**: if you set `enable-cors`, set `haproxy.org/cors-enable: "true"`,
+     `haproxy.org/cors-respond-to-options: "true"`, and
+     `haproxy.org/cors-allow-headers` with `Authorization` listed. HAProxy's
+     defaults leave preflight requests to the services, and a `*` allow-headers
+     value does not cover `Authorization`.
+
+3. If you override `auth-service.networkPolicy.ingress`, add the HAProxy
+   controller's namespace (`haproxy-controller` above) to it. The default list
+   already includes it; without it, Auth Service rejects traffic from HAProxy.
+4. Set the cert-manager HTTP-01 solver to `ingressClassName: haproxy`. Existing
+   certificates keep working; the solver is used at the next renewal.
+5. Run `helm upgrade` with the new values. ingress-nginx stops serving the
+   platform once the class changes, so point the DNS record at the HAProxy
+   LoadBalancer IP right away:
+
+   ```bash
+   kubectl -n haproxy-controller get svc haproxy-kubernetes-ingress
+   ```
+
+ingress-nginx did some things by default that HAProxy does not:
+
+- It sent `Strict-Transport-Security` on HTTPS responses. The controller values
+  above restore it.
+- It set `X-Real-IP`, `X-Forwarded-Host`, `X-Forwarded-Port`, and
+  `X-Request-ID` on requests. HAProxy sets `X-Forwarded-For` and
+  `X-Forwarded-Proto`.
+- It redirected HTTP to HTTPS with a 308. HAProxy uses a 302.
+- It allowed 60 seconds for a response; HAProxy allows 50 (`timeout-server`).
+
+> **Note:** Controller releases after 3.2.19 may log
+> `DEPRECATED: annotation "<name>" will be removed in a future version` for
+> `path-rewrite`, `response-set-header`, `ssl-redirect-port`, and the `cors-*`
+> annotations. The controller's development branch already does, and names no
+> replacement yet. The annotations work in 3.2.19; check the controller's
+> release notes before you upgrade past it.
+
+The `governance-ops` alerts and dashboard read both controllers' metrics from
+version 1.1.0.
 
 ### Uninstalling
 
@@ -1120,7 +1260,7 @@ guardian:
   replicaCount: 3
   ingress:
     enabled: true
-    className: nginx
+    className: haproxy
     annotations:
       cert-manager.io/issuer: letsencrypt-prod
   autoscaling:

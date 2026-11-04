@@ -24,7 +24,7 @@
 {{- if eq $ingressInstance $targetRelease }}
 {{- range $rule := $ingress.spec.rules }}
 {{- range $pathObj := $rule.http.paths }}
-{{- /* Clean the path by removing nginx regex patterns */ -}}
+{{- /* Clean the path by removing regex groups, as in ingress-nginx paths */ -}}
 {{- $originalPath := $pathObj.path }}
 {{- $cleanPath := regexReplaceAll "\\([^)]*\\)" $originalPath "" }}
 {{- $cleanPath := trimSuffix "/" $cleanPath }}
@@ -80,7 +80,7 @@ spec:
   scrapeTimeout: {{ $scrapeTimeout }}
   module: {{ $module }}
 
-  # Static target with clean URL (nginx regex patterns removed)
+  # Static target with clean URL (regex groups removed)
   # Uses health check path from deployment probe configuration
   targets:
     staticConfig:

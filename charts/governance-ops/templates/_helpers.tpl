@@ -58,6 +58,31 @@ Target release fullname - the Guardian Platform release to monitor
 {{- end }}
 
 {{/*
+5xx ratio per ingress for the target release, from ingress-nginx and HAProxy
+metrics. HAProxy backends are named <namespace>_svc_<service>_<port>; the
+namespace and service are mapped onto ingress-nginx's exported_namespace and
+ingress labels. The two controllers' series are joined before summing, so
+traffic through either or both is counted.
+*/}}
+{{- define "governance-ops.ingressErrorRatio" -}}
+{{- $release := include "governance-ops.targetRelease" . -}}
+{{- $nginx := printf "nginx_ingress_controller_requests{ingress=~\"%s.*\"" $release -}}
+{{- $haproxy := printf "haproxy_backend_http_responses_total{proxy=~\".+_svc_%s.*\"" $release -}}
+{{- $relabel := "\"exported_namespace\", \"$1\", \"proxy\", \"([^_]+)_svc_.+\"), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\")" -}}
+sum by (exported_namespace, ingress) (
+  rate({{ $nginx }}, status=~"5.."}[5m])
+  or
+  label_replace(label_replace(rate({{ $haproxy }}, code="5xx"}[5m]), {{ $relabel }}
+)
+/
+sum by (exported_namespace, ingress) (
+  rate({{ $nginx }}}[5m])
+  or
+  label_replace(label_replace(rate({{ $haproxy }}}[5m]), {{ $relabel }}
+)
+{{- end }}
+
+{{/*
 Check if blackbox-exporter is available for probes and alerts
 Returns non-empty string if the Probe CRD exists (prometheus-operator installed)
 AND the Service named by probes.proberUrl (<service>.<namespace>[.svc...]:<port>) exists;

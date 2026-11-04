@@ -1140,6 +1140,35 @@ haproxyIngress:
     # -- Replica Count
     # @default -- `1`
     replicaCount: 1
+    # -- Extra Controller Arguments
+    # @default -- `["--disable-quic"]`
+    # Turns off the QUIC listener and its alt-svc header, matching
+    # service.enablePorts.quic
+    extraArgs:
+      - --disable-quic
+    # -- pprof Debug Endpoints
+    # @default -- See values below
+    pprof:
+      # -- Enable pprof
+      # @default -- `false`
+      # Serves /debug/pprof on the admin port (6060) to anything that can
+      # reach the pod
+      enabled: false
+    # -- Controller ConfigMap Settings
+    # @default -- See values below
+    config:
+      # -- HTTPS Redirect Port
+      # @default -- `"443"`
+      # Port in the Location header of HTTP-to-HTTPS redirects, as clients
+      # reach the Service
+      ssl-redirect-port: "443"
+      # -- Global Config Snippet
+      # @default -- `tune.bufsize 32768`
+      # Sets a 32 KB buffer that a request's or response's headers must fit in
+      # at the proxy. Services behind it keep their own limits: Auth Service
+      # and Governance Service accept at most 16 KB of request headers
+      global-config-snippet: |
+        tune.bufsize 32768
     # -- Service Configuration
     # @default -- See values below
     service:

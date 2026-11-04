@@ -191,21 +191,20 @@ ingress:
   enabled: false
   # -- Ingress Class Name
   # @default -- `""`
-  # Example: "nginx", "traefik"
+  # Example: "haproxy"
   className: ""
   # -- Ingress Annotations
   # @default -- `{}`
   annotations: {}
     # cert-manager.io/issuer: "letsencrypt-prod"
-    # nginx.ingress.kubernetes.io/rewrite-target: /$2
-    # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # haproxy.org/path-rewrite: '^/authService/?(.*) /\1'
   # -- Ingress Hosts
   # @default -- See values below
   hosts:
     - host: auth.example.com
       paths:
-        - path: "/authService(/|$)(.*)"
-          pathType: ImplementationSpecific
+        - path: "/authService"
+          pathType: Prefix
   # -- TLS Configuration
   # @default -- `[]`
   tls: []
@@ -967,6 +966,13 @@ networkPolicy:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
+        # HAProxy controller in its own namespace, or bundled by gateway-stack
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: haproxy-controller
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: haproxy-ingress
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: governance-service

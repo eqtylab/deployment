@@ -37,7 +37,7 @@ Both backend services also support TOML runtime files with `--config`, which thi
 - Kubernetes 1.29+
 - Helm 3.20+
 - PostgreSQL database (bundled with this chart, or provided by the umbrella chart or external)
-- Ingress controller (bundled HAProxy, NGINX, Traefik, etc.) when `ingress.enabled=true`
+- Ingress controller (bundled HAProxy, or an existing controller serving `ingress.className`) when `ingress.enabled=true`
 - TLS certificates (manual or via cert-manager) when `ingress.tls.enabled=true`
 - Object storage (GCS or S3-compatible) when the plugin runtime is enabled
 
@@ -423,16 +423,20 @@ These keys exist identically under `llmGateway` and `controlPlane`. Replace `<wo
 
 ### Bundled HAProxy Ingress Controller
 
-| Key                                                 | Type   | Default             | Description                                        |
-| --------------------------------------------------- | ------ | ------------------- | -------------------------------------------------- |
-| haproxyIngress.enabled                              | bool   | `false`             | Deploy the bundled HAProxy controller              |
-| haproxyIngress.nameOverride                         | string | `"haproxy-ingress"` | Keeps generated object names Kubernetes-compatible |
-| haproxyIngress.controller.replicaCount              | int    | `1`                 | Number of controller replicas                      |
-| haproxyIngress.controller.service.type              | string | `"LoadBalancer"`    | Controller service type                            |
-| haproxyIngress.controller.service.enablePorts.quic  | bool   | `false`             | Enable QUIC port                                   |
-| haproxyIngress.controller.service.enablePorts.stat  | bool   | `false`             | Enable stats port                                  |
-| haproxyIngress.controller.service.enablePorts.admin | bool   | `false`             | Enable admin port                                  |
-| haproxyIngress.controller.service.annotations       | object | `{}`                | Controller service annotations                     |
+| Key                                                    | Type   | Default              | Description                                                                           |
+| ------------------------------------------------------ | ------ | -------------------- | ------------------------------------------------------------------------------------- |
+| haproxyIngress.enabled                                 | bool   | `false`              | Deploy the bundled HAProxy controller                                                 |
+| haproxyIngress.nameOverride                            | string | `"haproxy-ingress"`  | Keeps generated object names Kubernetes-compatible                                    |
+| haproxyIngress.controller.replicaCount                 | int    | `1`                  | Number of controller replicas                                                         |
+| haproxyIngress.controller.extraArgs                    | list   | `["--disable-quic"]` | Extra controller arguments; replacing the list drops `--disable-quic`                 |
+| haproxyIngress.controller.pprof.enabled                | bool   | `false`              | Serve `/debug/pprof` on the admin port (6060)                                         |
+| haproxyIngress.controller.config.ssl-redirect-port     | string | `"443"`              | Port in the Location header of HTTP-to-HTTPS redirects                                |
+| haproxyIngress.controller.config.global-config-snippet | string | `tune.bufsize 32768` | HAProxy global settings; the 32 KB buffer must hold a request's or response's headers |
+| haproxyIngress.controller.service.type                 | string | `"LoadBalancer"`     | Controller service type                                                               |
+| haproxyIngress.controller.service.enablePorts.quic     | bool   | `false`              | Enable QUIC port                                                                      |
+| haproxyIngress.controller.service.enablePorts.stat     | bool   | `false`              | Enable stats port                                                                     |
+| haproxyIngress.controller.service.enablePorts.admin    | bool   | `false`              | Enable admin port                                                                     |
+| haproxyIngress.controller.service.annotations          | object | `{}`                 | Controller service annotations                                                        |
 
 ## Configuration Inheritance
 

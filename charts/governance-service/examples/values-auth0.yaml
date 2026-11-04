@@ -19,17 +19,15 @@ securityContext:
 
 ingress:
   enabled: true
-  className: "nginx"
+  className: "haproxy"
   annotations:
     cert-manager.io/issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    haproxy.org/path-rewrite: '^/governanceService/?(.*) /\1'
   hosts:
     - host: "guardian.your-domain.com"
       paths:
-        - path: "/governanceService(/|$)(.*)"
-          pathType: "ImplementationSpecific"
+        - path: "/governanceService"
+          pathType: "Prefix"
   tls:
     - secretName: "governance-service-tls"
       hosts:

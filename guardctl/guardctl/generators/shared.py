@@ -4,12 +4,6 @@ from typing import Any
 
 from guardctl.core.models import PlatformConfig
 
-# Annotations for services served under a path prefix on the platform domain
-PATH_PREFIX_ANNOTATIONS = {
-    "nginx.ingress.kubernetes.io/use-regex": "true",
-    "nginx.ingress.kubernetes.io/rewrite-target": "/$2",
-}
-
 # Guardian API scopes, as (name, description)
 API_SCOPES = [
     ("governance:declarations:create", "Create governance declarations"),
@@ -26,15 +20,15 @@ API_SCOPES = [
 def ingress_values(
     config: PlatformConfig,
     paths: list[dict[str, str]],
-    annotations: dict[str, str],
+    annotations: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Generate an NGINX ingress on the platform domain with cert-manager TLS."""
+    """Generate a HAProxy ingress on the platform domain with cert-manager TLS."""
     return {
         "enabled": True,
-        "className": "nginx",
+        "className": "haproxy",
         "annotations": {
             "cert-manager.io/issuer": "letsencrypt-prod",
-            **annotations,
+            **(annotations or {}),
         },
         "hosts": [
             {
@@ -51,21 +45,12 @@ def ingress_values(
     }
 
 
-def path_prefix_ingress_values(
-    config: PlatformConfig,
-    prefix: str,
-    annotations: dict[str, str],
-) -> dict[str, Any]:
-    """Generate an ingress that serves a service under /<prefix> on the platform domain."""
+def path_prefix_ingress_values(config: PlatformConfig, prefix: str) -> dict[str, Any]:
+    """Generate an ingress that serves a service under /<prefix>, stripping the prefix."""
     return ingress_values(
         config,
-        [
-            {
-                "path": f"/{prefix}(/|$)(.*)",
-                "pathType": "ImplementationSpecific",
-            }
-        ],
-        {**PATH_PREFIX_ANNOTATIONS, **annotations},
+        [{"path": f"/{prefix}", "pathType": "Prefix"}],
+        {"haproxy.org/path-rewrite": f"^/{prefix}/?(.*) /\\1"},
     )
 
 

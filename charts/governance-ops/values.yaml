@@ -53,7 +53,7 @@ dashboards:
   # Comprehensive monitoring dashboard for the Guardian Platform including:
   # - Platform Health: Service uptime gauges and replica counts
   # - Service Readiness Timeline: Real-time readiness status
-  # - Request Traffic: Request rates per service from nginx ingress
+  # - Request Traffic: Request rates per service from the ingress controller
   # - Server Error Rates (5xx): Error tracking for service health
   # - Resource Utilization: CPU and memory usage by pod
   # Uses Grafana $namespace variable for namespace selection
@@ -61,7 +61,7 @@ dashboards:
     # -- Enable Guardian Platform Dashboard
     # @default -- `true`
     # Provision the guardian-platform.json dashboard
-    # Requirements: kube-state-metrics, nginx-ingress-controller metrics
+    # Requirements: kube-state-metrics, HAProxy or ingress-nginx metrics
     enabled: true
 
     # -- Dashboard UID

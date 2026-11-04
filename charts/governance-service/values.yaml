@@ -197,22 +197,21 @@ ingress:
   enabled: false
   # -- Ingress Class Name
   # @default -- `""`
-  # Example: "nginx", "traefik"
+  # Example: "haproxy"
   className: ""
   # -- Ingress Annotations
   # @default -- `{}`
   annotations: {}
     # cert-manager.io/issuer: "letsencrypt-prod"
-    # nginx.ingress.kubernetes.io/rewrite-target: /$2
-    # nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    # haproxy.org/path-rewrite: '^/governanceService/?(.*) /\1'
   # -- Ingress Hosts
   # @default -- See values below
   hosts:
     - host: guardian.example.com
       paths:
-        # Path uses regex for nginx rewrite - requires rewrite-target annotation
-        - path: "/governanceService(/|$)(.*)"
-          pathType: ImplementationSpecific
+        # Requires a path-rewrite annotation that strips the prefix
+        - path: "/governanceService"
+          pathType: Prefix
   # -- TLS Configuration
   # @default -- `[]`
   tls: []

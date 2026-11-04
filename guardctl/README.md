@@ -31,7 +31,7 @@ Before running `guardctl init`, you'll need the following in place:
 
 - **Kubernetes cluster** — a running cluster on AWS (EKS), Azure (AKS), or GCP (GKE)
 - **Helm** — installed locally
-- **NGINX Ingress Controller** — deployed to the cluster
+- **HAProxy Kubernetes Ingress Controller** — deployed to the cluster with the `haproxy` ingress class. See [Ingress Controller](../charts/guardian-platform/README.md#ingress-controller-required) for the controller values the generated ingresses expect
 - **cert-manager** — deployed with a `letsencrypt-prod` Issuer in the release namespace. The generated ingresses use the namespaced `cert-manager.io/issuer` annotation; for a ClusterIssuer, change it to `cert-manager.io/cluster-issuer`
 - **Domain** — with DNS pointing to the cluster's ingress load balancer
 

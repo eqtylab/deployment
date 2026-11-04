@@ -32,7 +32,7 @@ This allows:
 - Helm 3.20+
 - PostgreSQL database (provided by umbrella chart or external)
 - Azure Blob Storage, AWS S3, or Google Cloud Storage account (with container/bucket created)
-- Ingress controller (NGINX, Traefik, etc.)
+- Ingress controller (the examples use the HAProxy Kubernetes Ingress Controller)
 - TLS certificates (manual or via cert-manager)
 
 ## Deployment
@@ -51,17 +51,15 @@ integrity-service:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      haproxy.org/path-rewrite: '^/integrityService/?(.*) /\1'
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
-          - path: "/integrityService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
+          - path: "/integrityService"
+            pathType: "Prefix"
     tls:
       - secretName: "integrity-service-tls"
         hosts:
@@ -81,17 +79,15 @@ integrity-service:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      haproxy.org/path-rewrite: '^/integrityService/?(.*) /\1'
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
-          - path: "/integrityService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
+          - path: "/integrityService"
+            pathType: "Prefix"
     tls:
       - secretName: "integrity-service-tls"
         hosts:
@@ -110,17 +106,15 @@ integrity-service:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      haproxy.org/path-rewrite: '^/integrityService/?(.*) /\1'
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
-          - path: "/integrityService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
+          - path: "/integrityService"
+            pathType: "Prefix"
     tls:
       - secretName: "integrity-service-tls"
         hosts:
@@ -236,13 +230,13 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Ingress
 
-| Key                 | Type   | Default                                                                                                                  | Description                 |
-| ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| ingress.enabled     | bool   | `false`                                                                                                                  | Enable ingress              |
-| ingress.className   | string | `""`                                                                                                                     | Ingress class name          |
-| ingress.annotations | object | `{}`                                                                                                                     | Ingress annotations         |
-| ingress.hosts       | list   | `[{"host":"guardian.example.com","paths":[{"path":"/integrityService(/\|$)(.*)","pathType":"ImplementationSpecific"}]}]` | Ingress hosts configuration |
-| ingress.tls         | list   | `[]`                                                                                                                     | Ingress TLS configuration   |
+| Key                 | Type   | Default                                                                                        | Description                 |
+| ------------------- | ------ | ---------------------------------------------------------------------------------------------- | --------------------------- |
+| ingress.enabled     | bool   | `false`                                                                                        | Enable ingress              |
+| ingress.className   | string | `""`                                                                                           | Ingress class name          |
+| ingress.annotations | object | `{}`                                                                                           | Ingress annotations         |
+| ingress.hosts       | list   | `[{"host":"guardian.example.com","paths":[{"path":"/integrityService","pathType":"Prefix"}]}]` | Ingress hosts configuration |
+| ingress.tls         | list   | `[]`                                                                                           | Ingress TLS configuration   |
 
 ### Resources
 

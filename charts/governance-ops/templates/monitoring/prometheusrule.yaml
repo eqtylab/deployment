@@ -50,9 +50,7 @@ spec:
         - alert: GuardianPlatformErrorRateWarning
           expr: |
             (
-              sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{ingress=~"{{ include "governance-ops.targetRelease" . }}.*", status=~"5.."}[5m]))
-              /
-              sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{ingress=~"{{ include "governance-ops.targetRelease" . }}.*"}[5m]))
+              {{- include "governance-ops.ingressErrorRatio" . | nindent 14 }}
             ) > {{ .Values.alerts.rules.highErrorRate.warningThreshold }}
           for: {{ .Values.alerts.rules.highErrorRate.warningFor }}
           labels:
@@ -66,9 +64,7 @@ spec:
         - alert: GuardianPlatformErrorRateCritical
           expr: |
             (
-              sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{ingress=~"{{ include "governance-ops.targetRelease" . }}.*", status=~"5.."}[5m]))
-              /
-              sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{ingress=~"{{ include "governance-ops.targetRelease" . }}.*"}[5m]))
+              {{- include "governance-ops.ingressErrorRatio" . | nindent 14 }}
             ) > {{ .Values.alerts.rules.highErrorRate.criticalThreshold }}
           for: {{ .Values.alerts.rules.highErrorRate.criticalFor }}
           labels:

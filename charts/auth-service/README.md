@@ -34,7 +34,7 @@ This allows:
 - PostgreSQL database (provided by umbrella chart or external)
 - Authentication provider (Auth0, Entra ID, or Keycloak)
 - Key management provider: AWS KMS, Azure Key Vault, or GCP KMS (for DID key signing)
-- Ingress controller (NGINX, Traefik, etc.)
+- Ingress controller (the examples use the HAProxy Kubernetes Ingress Controller)
 - TLS certificates (manual or via cert-manager)
 
 ## Deployment
@@ -53,20 +53,15 @@ auth-service:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-      nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
+      haproxy.org/path-rewrite: '^/authService/?(.*) /\1'
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
-          - path: "/authService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
+          - path: "/authService"
+            pathType: "Prefix"
     tls:
       - secretName: "auth-service-tls"
         hosts:
@@ -99,20 +94,15 @@ auth-service:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-      nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
+      haproxy.org/path-rewrite: '^/authService/?(.*) /\1'
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
-          - path: "/authService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
+          - path: "/authService"
+            pathType: "Prefix"
     tls:
       - secretName: "auth-service-tls"
         hosts:
@@ -143,20 +133,15 @@ auth-service:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: "/$2"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
-      nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/client-header-buffer-size: "16k"
-      nginx.ingress.kubernetes.io/large-client-header-buffers: "4 16k"
+      haproxy.org/path-rewrite: '^/authService/?(.*) /\1'
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
-          - path: "/authService(/|$)(.*)"
-            pathType: "ImplementationSpecific"
+          - path: "/authService"
+            pathType: "Prefix"
     tls:
       - secretName: "auth-service-tls"
         hosts:
@@ -327,13 +312,13 @@ Secret reference whose local and global names are both empty fails the render.
 
 ### Ingress
 
-| Key                 | Type   | Default                                                                                                         | Description                 |
-| ------------------- | ------ | --------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| ingress.enabled     | bool   | `false`                                                                                                         | Enable ingress              |
-| ingress.className   | string | `""`                                                                                                            | Ingress class name          |
-| ingress.annotations | object | `{}`                                                                                                            | Ingress annotations         |
-| ingress.hosts       | list   | `[{"host":"auth.example.com","paths":[{"path":"/authService(/\|$)(.*)","pathType":"ImplementationSpecific"}]}]` | Ingress hosts configuration |
-| ingress.tls         | list   | `[]`                                                                                                            | Ingress TLS configuration   |
+| Key                 | Type   | Default                                                                               | Description                 |
+| ------------------- | ------ | ------------------------------------------------------------------------------------- | --------------------------- |
+| ingress.enabled     | bool   | `false`                                                                               | Enable ingress              |
+| ingress.className   | string | `""`                                                                                  | Ingress class name          |
+| ingress.annotations | object | `{}`                                                                                  | Ingress annotations         |
+| ingress.hosts       | list   | `[{"host":"auth.example.com","paths":[{"path":"/authService","pathType":"Prefix"}]}]` | Ingress hosts configuration |
+| ingress.tls         | list   | `[]`                                                                                  | Ingress TLS configuration   |
 
 ### Resources
 
@@ -613,11 +598,11 @@ generates its own.
 
 ### Advanced: Network Policy Configuration
 
-| Key                   | Type | Default         | Description                                                                                                                         |
-| --------------------- | ---- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| networkPolicy.enabled | bool | `false`         | Enable NetworkPolicy                                                                                                                |
-| networkPolicy.ingress | list | See values.yaml | Ingress on 8080 from the ingress-nginx namespace and the Governance Service, Integrity Service, eqty-pdfgen, and gateway-stack pods |
-| networkPolicy.egress  | list | See values.yaml | Egress to DNS in kube-system, PostgreSQL on 5432, the Governance Service on 10001, and HTTPS on 443                                 |
+| Key                   | Type | Default         | Description                                                                                                                                                                                               |
+| --------------------- | ---- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| networkPolicy.enabled | bool | `false`         | Enable NetworkPolicy                                                                                                                                                                                      |
+| networkPolicy.ingress | list | See values.yaml | Ingress on 8080 from the ingress-nginx and haproxy-controller namespaces and the bundled HAProxy controller (haproxy-ingress), Governance Service, Integrity Service, eqty-pdfgen, and gateway-stack pods |
+| networkPolicy.egress  | list | See values.yaml | Egress to DNS in kube-system, PostgreSQL on 5432, the Governance Service on 10001, and HTTPS on 443                                                                                                       |
 
 ### Advanced: Migration Job Configuration
 

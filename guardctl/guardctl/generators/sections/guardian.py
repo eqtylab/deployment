@@ -13,11 +13,7 @@ def generate_guardian_section(config: PlatformConfig) -> dict[str, Any]:
     section: dict[str, Any] = {
         "replicaCount": 1,
         **runtime_image_values(config),
-        "ingress": ingress_values(
-            config,
-            [{"path": "/", "pathType": "Prefix"}],
-            {"nginx.ingress.kubernetes.io/proxy-body-size": "64m"},
-        ),
+        "ingress": ingress_values(config, [{"path": "/", "pathType": "Prefix"}]),
     }
 
     # Auth provider config

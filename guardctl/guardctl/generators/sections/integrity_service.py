@@ -13,11 +13,7 @@ def generate_integrity_service_section(config: PlatformConfig) -> dict[str, Any]
     section: dict[str, Any] = {
         "replicaCount": 2,
         **runtime_image_values(config),
-        "ingress": path_prefix_ingress_values(
-            config,
-            "integrityService",
-            {"nginx.ingress.kubernetes.io/proxy-body-size": "0"},
-        ),
+        "ingress": path_prefix_ingress_values(config, "integrityService"),
     }
 
     # Storage configuration - integrity-service supports aws_s3, azure_blob, and gcs

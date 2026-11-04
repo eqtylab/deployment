@@ -90,7 +90,7 @@ The platform requires object storage (for artifacts) and a key vault (for DID ke
 
 Set up ingress, DNS, and certificate management:
 
-- Install the [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/deploy/) as the default ingress class
+- Install the [HAProxy Kubernetes Ingress Controller](https://github.com/haproxytech/kubernetes-ingress) with the `haproxy` ingress class (see the [`guardian-platform` README](guardian-platform/README.md#ingress-controller-required) for the values to use)
 - Create a DNS A-record pointing your domain to the ingress external IP
 - Install [cert-manager](https://cert-manager.io/docs/installation/helm/) and create a Let's Encrypt Issuer for automatic TLS
 

@@ -13,11 +13,7 @@ def generate_governance_service_section(config: PlatformConfig) -> dict[str, Any
     section: dict[str, Any] = {
         "replicaCount": 2,
         **runtime_image_values(config),
-        "ingress": path_prefix_ingress_values(
-            config,
-            "governanceService",
-            {"nginx.ingress.kubernetes.io/proxy-body-size": "64m"},
-        ),
+        "ingress": path_prefix_ingress_values(config, "governanceService"),
     }
 
     # Application configuration

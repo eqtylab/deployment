@@ -30,7 +30,7 @@ This allows:
 - Kubernetes 1.29+
 - Helm 3.20+
 - Authentication provider (Auth0, Microsoft Entra ID, or Keycloak)
-- Ingress controller (NGINX, Traefik, etc.)
+- Ingress controller (the examples use the HAProxy Kubernetes Ingress Controller)
 - TLS certificates (manual or via cert-manager)
 
 ## Deployment
@@ -49,10 +49,9 @@ guardian:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
@@ -77,10 +76,9 @@ guardian:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     hosts:
       - host: "guardian.yourcompany.com"
         paths:
@@ -106,10 +104,9 @@ guardian:
     tag: ""
   ingress:
     enabled: true
-    className: "nginx"
+    className: "haproxy"
     annotations:
       cert-manager.io/issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     hosts:
       - host: "guardian.yourcompany.com"
         paths:

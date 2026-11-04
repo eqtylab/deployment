@@ -14,16 +14,7 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
     section: dict[str, Any] = {
         "replicaCount": 2,
         **runtime_image_values(config),
-        "ingress": path_prefix_ingress_values(
-            config,
-            "authService",
-            {
-                "nginx.ingress.kubernetes.io/proxy-body-size": "64m",
-                "nginx.ingress.kubernetes.io/proxy-buffer-size": "16k",
-                "nginx.ingress.kubernetes.io/client-header-buffer-size": "16k",
-                "nginx.ingress.kubernetes.io/large-client-header-buffers": "4 16k",
-            },
-        ),
+        "ingress": path_prefix_ingress_values(config, "authService"),
     }
 
     # Add auth provider config

@@ -1313,8 +1313,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m])) by (ingress)",
-          "legendFormat": "{{target}}",
+          "expr": "sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\"))",
+          "legendFormat": "{{ingress}}",
           "refId": "A"
         }
       ],
@@ -1379,7 +1379,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]))",
+          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]))",
           "legendFormat": "Request Rate",
           "refId": "A"
         }
@@ -1485,8 +1485,8 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m])) by (ingress) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m])) by (ingress)) or (sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m])) by (ingress) * 0)",
-          "legendFormat": "{{target}}",
+          "expr": "(sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\", code=\"5xx\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\")) / sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\"))) or (sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\")) * 0)",
+          "legendFormat": "{{ingress}}",
           "refId": "A"
         }
       ],
@@ -1553,7 +1553,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m])) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]))) or vector(0)",
+          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m]) or rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\", code=\"5xx\"}[5m])) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]))) or vector(0)",
           "legendFormat": "Error Rate (5xx)",
           "refId": "A"
         }
@@ -1831,7 +1831,7 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-(guardian|governance-studio)\"}, host)",
+        "definition": "label_values(kube_ingress_path{namespace=\"$namespace\", ingress=~\"$release-(guardian|governance-studio)\"}, host)",
         "hide": 2,
         "includeAll": false,
         "label": "Instance URL",
@@ -1839,7 +1839,7 @@
         "name": "instance_url",
         "options": [],
         "query": {
-          "query": "label_values(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-(guardian|governance-studio)\"}, host)",
+          "query": "label_values(kube_ingress_path{namespace=\"$namespace\", ingress=~\"$release-(guardian|governance-studio)\"}, host)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,

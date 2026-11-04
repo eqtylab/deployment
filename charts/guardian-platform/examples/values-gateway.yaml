@@ -39,7 +39,7 @@ gateway-stack:
   # values, then set enabled: true
   ingress:
     enabled: false
-    className: "nginx"
+    className: "haproxy"
     controlPlanePath: "/api"
     hosts:
       llmGateway: "gateway.example.com"
