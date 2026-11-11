@@ -1,0 +1,106 @@
+platform:
+  name: guardian-platform
+  version: 1.3.0
+  releaseType: stable
+  releaseDate: "2026-11-11"
+  kubernetesMinimumVersion: "1.29"
+  architecture: linux/amd64
+sources:
+  guardian:
+    repository: eqtylab/guardian
+    ref: 7462f10cbb8f36efe396a09475dbaa6b180c5776
+  infrastructure:
+    repository: eqtylab/guardian-infrastructure
+    ref: "9ffeae41cb39ce857d3968c9bb2eb60a0b13c75b"
+images:
+  authService:
+    repository: ghcr.io/eqtylab/auth-service
+    tag: 1.3.0
+    digest: "sha256:ede66d32bb21b23b041430229437f1d223d2597ab2b720fa8e14119fa8d93db3"
+    sourceSha: "7462f10cbb8f36efe396a09475dbaa6b180c5776"
+    metadataArtifact: image-metadata-auth-service
+  governanceService:
+    repository: ghcr.io/eqtylab/governance-service
+    tag: 1.3.0
+    digest: "sha256:8dc145e96c6824e2a1b31c122132fd02619120dd77da3a42cbedb1c500a627b2"
+    sourceSha: "7462f10cbb8f36efe396a09475dbaa6b180c5776"
+    metadataArtifact: image-metadata-governance-service
+  guardian:
+    repository: ghcr.io/eqtylab/guardian
+    tag: 1.3.0
+    digest: "sha256:719aabcb3211a9ac0da1524a2512a0eba4096bf08fa6f3b4beceb23799015bcb"
+    sourceSha: "7462f10cbb8f36efe396a09475dbaa6b180c5776"
+    metadataArtifact: image-metadata-studio
+  integrityService:
+    repository: ghcr.io/eqtylab/integrity-service
+    tag: 1.3.0
+    digest: "sha256:1e6210317b8da99812de9020ad6b9d9a27536d778a39cf9e279c5cb7d92a16eb"
+    sourceSha: "7462f10cbb8f36efe396a09475dbaa6b180c5776"
+    metadataArtifact: image-metadata-integrity-service
+  eqtyPdfgen:
+    repository: ghcr.io/eqtylab/eqty-pdfgen
+    tag: 1.3.0
+    digest: "sha256:b8c0ec001882a6cae401a922ec2f6861c3905b94fda63eeb4775fdc9363c0183"
+    sourceSha: "7462f10cbb8f36efe396a09475dbaa6b180c5776"
+    metadataArtifact: image-metadata-pdfgen
+  llmGateway:
+    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    tag: 1.3.0
+    digest: "sha256:78b097318822231b47aeb5c86b59a7d390d2a0b14cb6aef8ba0df7072352e1c5"
+    sourceSha: "7462f10cbb8f36efe396a09475dbaa6b180c5776"
+    metadataArtifact: image-metadata-llm-gateway
+  controlPlane:
+    repository: ghcr.io/eqtylab/guardian-control-plane
+    tag: 1.3.0
+    digest: "sha256:f3f2f5f59ebc73d5bec5c0f5c128a1dcc343bc2f1bd3fa43e89742d54236dae5"
+    sourceSha: "7462f10cbb8f36efe396a09475dbaa6b180c5776"
+    metadataArtifact: image-metadata-control-plane
+charts:
+  authService:
+    name: auth-service
+    version: 1.3.0
+    oci: oci://ghcr.io/eqtylab/charts/auth-service
+  governanceService:
+    name: governance-service
+    version: 1.3.0
+    oci: oci://ghcr.io/eqtylab/charts/governance-service
+  guardian:
+    name: guardian
+    version: 1.3.0
+    oci: oci://ghcr.io/eqtylab/charts/guardian
+  integrityService:
+    name: integrity-service
+    version: 1.3.0
+    oci: oci://ghcr.io/eqtylab/charts/integrity-service
+  eqtyPdfgen:
+    name: eqty-pdfgen
+    version: 1.3.0
+    oci: oci://ghcr.io/eqtylab/charts/eqty-pdfgen
+  gatewayStack:
+    name: gateway-stack
+    version: 1.3.0
+    oci: oci://ghcr.io/eqtylab/charts/gateway-stack
+  guardianPlatform:
+    name: guardian-platform
+    version: 1.3.0
+    oci: oci://ghcr.io/eqtylab/charts/guardian-platform
+validation:
+  required: true
+  mode: manual
+  identityProvider: keycloak
+  database: bundled-postgres
+  evidence:
+    status: approved
+    recordedIn: infrastructure-release-pr
+    reviewer: "captjt"
+    reviewedAt: "2026-11-11T05:27:38Z"
+docs:
+  provider: self-hosted
+  version: v1.3.0
+  state: beta
+  default: false
+  sourceRepository: eqtylab/guardian
+  sourceFormat: static-site
+  sourceCommit: 7462f10cbb8f36efe396a09475dbaa6b180c5776
+  snapshotTag: docs/v1.3.0
+  workflowRunUrl: https://github.com/eqtylab/guardian/actions/runs/42968039742

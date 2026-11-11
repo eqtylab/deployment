@@ -1,24 +1,24 @@
 dependencies:
 - name: auth-service
   repository: file://../auth-service
-  version: 1.2.1
+  version: 1.3.0
 - name: eqty-pdfgen
   repository: file://../eqty-pdfgen
-  version: 1.2.1
+  version: 1.3.0
 - name: gateway-stack
   repository: file://../gateway-stack
-  version: 1.2.1
+  version: 1.3.0
 - name: governance-service
   repository: file://../governance-service
-  version: 1.2.1
+  version: 1.3.0
 - name: guardian
   repository: file://../guardian
-  version: 1.2.1
+  version: 1.3.0
 - name: integrity-service
   repository: file://../integrity-service
-  version: 1.2.1
+  version: 1.3.0
 - name: postgresql
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 18.1.15
-digest: sha256:c436f3ee3a0f2ef1ffff9b213faa64ab5441a7560b4bb9b03052910d68a2ff40
-generated: "2026-10-21T09:47:42.399906-04:00"
+digest: sha256:297ba7ca2aba0aebda4383ea0c8e6990a0f1a248743df3f7df25da21bd403d6d
+generated: "2026-11-11T04:49:46.713510537Z"
