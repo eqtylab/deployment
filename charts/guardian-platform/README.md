@@ -128,7 +128,10 @@ LoadBalancer.
 > **Note:** The HAProxy controller bundled in `gateway-stack`
 > (`gateway-stack.haproxyIngress.enabled: true`) also serves the `haproxy`
 > class, with the same redirect, buffer, QUIC, and pprof settings. If you
-> enable it, skip this install. Set `Strict-Transport-Security` under
+> enable it, skip this install. It creates its own default certificate
+> Secret, including when an upgrade turns it on; to supply your own, set
+> `gateway-stack.haproxyIngress.controller.defaultTLSSecret.secret` and
+> `defaultTLSSecret.create: false`. Set `Strict-Transport-Security` under
 > `gateway-stack.haproxyIngress.controller.config.response-set-header`, and the
 > ServiceMonitor settings above under
 > `gateway-stack.haproxyIngress.controller.serviceMonitor`.

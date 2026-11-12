@@ -423,20 +423,22 @@ These keys exist identically under `llmGateway` and `controlPlane`. Replace `<wo
 
 ### Bundled HAProxy Ingress Controller
 
-| Key                                                    | Type   | Default              | Description                                                                           |
-| ------------------------------------------------------ | ------ | -------------------- | ------------------------------------------------------------------------------------- |
-| haproxyIngress.enabled                                 | bool   | `false`              | Deploy the bundled HAProxy controller                                                 |
-| haproxyIngress.nameOverride                            | string | `"haproxy-ingress"`  | Keeps generated object names Kubernetes-compatible                                    |
-| haproxyIngress.controller.replicaCount                 | int    | `1`                  | Number of controller replicas                                                         |
-| haproxyIngress.controller.extraArgs                    | list   | `["--disable-quic"]` | Extra controller arguments; replacing the list drops `--disable-quic`                 |
-| haproxyIngress.controller.pprof.enabled                | bool   | `false`              | Serve `/debug/pprof` on the admin port (6060)                                         |
-| haproxyIngress.controller.config.ssl-redirect-port     | string | `"443"`              | Port in the Location header of HTTP-to-HTTPS redirects                                |
-| haproxyIngress.controller.config.global-config-snippet | string | `tune.bufsize 32768` | HAProxy global settings; the 32 KB buffer must hold a request's or response's headers |
-| haproxyIngress.controller.service.type                 | string | `"LoadBalancer"`     | Controller service type                                                               |
-| haproxyIngress.controller.service.enablePorts.quic     | bool   | `false`              | Enable QUIC port                                                                      |
-| haproxyIngress.controller.service.enablePorts.stat     | bool   | `false`              | Enable stats port                                                                     |
-| haproxyIngress.controller.service.enablePorts.admin    | bool   | `false`              | Enable admin port                                                                     |
-| haproxyIngress.controller.service.annotations          | object | `{}`                 | Controller service annotations                                                        |
+| Key                                                    | Type   | Default                          | Description                                                                                                     |
+| ------------------------------------------------------ | ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| haproxyIngress.enabled                                 | bool   | `false`                          | Deploy the bundled HAProxy controller                                                                           |
+| haproxyIngress.nameOverride                            | string | `"haproxy-ingress"`              | Keeps generated object names Kubernetes-compatible                                                              |
+| haproxyIngress.controller.replicaCount                 | int    | `1`                              | Number of controller replicas                                                                                   |
+| haproxyIngress.controller.extraArgs                    | list   | `["--disable-quic"]`             | Extra controller arguments; replacing the list drops `--disable-quic`                                           |
+| haproxyIngress.controller.pprof.enabled                | bool   | `false`                          | Serve `/debug/pprof` on the admin port (6060)                                                                   |
+| haproxyIngress.controller.defaultTLSSecret.secret      | string | `"haproxy-ingress-default-cert"` | Secret HAProxy serves for TLS that names none of its hosts; releases in one namespace need different names      |
+| haproxyIngress.controller.defaultTLSSecret.create      | bool   | `true`                           | Create a self-signed Secret with that name; skipped when a Secret of that name exists that Helm does not manage |
+| haproxyIngress.controller.config.ssl-redirect-port     | string | `"443"`                          | Port in the Location header of HTTP-to-HTTPS redirects                                                          |
+| haproxyIngress.controller.config.global-config-snippet | string | `tune.bufsize 32768`             | HAProxy global settings; the 32 KB buffer must hold a request's or response's headers                           |
+| haproxyIngress.controller.service.type                 | string | `"LoadBalancer"`                 | Controller service type                                                                                         |
+| haproxyIngress.controller.service.enablePorts.quic     | bool   | `false`                          | Enable QUIC port                                                                                                |
+| haproxyIngress.controller.service.enablePorts.stat     | bool   | `false`                          | Enable stats port                                                                                               |
+| haproxyIngress.controller.service.enablePorts.admin    | bool   | `false`                          | Enable admin port                                                                                               |
+| haproxyIngress.controller.service.annotations          | object | `{}`                             | Controller service annotations                                                                                  |
 
 ## Configuration Inheritance
 
@@ -571,6 +573,8 @@ For GKE with Cloud DNS and DNS-01, configure:
 For `ClusterIssuer`, the Cloud DNS service account secret must exist in the cert-manager cluster resource namespace (typically `cert-manager`).
 
 When installing the bundled HAProxy subchart, this chart sets `haproxyIngress.nameOverride: haproxy-ingress` to ensure generated object names stay lowercase and Kubernetes-compatible.
+
+The bundled controller serves `haproxyIngress.controller.defaultTLSSecret.secret` for TLS that names none of its hosts. This chart creates that Secret, self-signed, as a release resource on install and on the upgrade that turns the controller on, and keeps its key across upgrades. To use a Secret you manage, such as one cert-manager keeps, set `defaultTLSSecret.secret` to its name and `defaultTLSSecret.create: false`.
 
 For GKE `LoadBalancer` services, this chart also disables HAProxy QUIC/UDP and the extra `stat`/`admin` service ports by default to avoid mixed-protocol LB errors.
 

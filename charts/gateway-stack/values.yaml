@@ -1146,6 +1146,19 @@ haproxyIngress:
     # service.enablePorts.quic
     extraArgs:
       - --disable-quic
+    # -- Default TLS Certificate
+    # @default -- See values below
+    defaultTLSSecret:
+      # -- Default Certificate Secret Name
+      # @default -- `haproxy-ingress-default-cert`
+      # Secret HAProxy serves for TLS that names none of its hosts. Releases in
+      # one namespace need different names
+      secret: haproxy-ingress-default-cert
+      # -- Create Default Certificate Secret
+      # @default -- `true` (a self-signed Secret named by secret)
+      # Skipped when a Secret of that name exists that Helm does not manage.
+      # Set false to supply your own
+      create: true
     # -- pprof Debug Endpoints
     # @default -- See values below
     pprof:
