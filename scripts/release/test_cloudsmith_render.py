@@ -35,7 +35,7 @@ class CloudsmithRenderTests(unittest.TestCase):
             "--set-string",
             "auth-service.image.digest=sha256:" + "a" * 64,
             "--set-string",
-            "gateway-stack.llmGateway.image.digest=sha256:" + "b" * 64,
+            "llm-gateway.image.digest=sha256:" + "b" * 64,
         ]
         if secrets:
             args += [
@@ -47,12 +47,10 @@ class CloudsmithRenderTests(unittest.TestCase):
                 "global.secrets.database.values.gatewayDsn=postgres://test:test@postgres/guardian?sslmode=disable",
             ]
         else:
-            token = (
-                "global.secrets.controlPlane.values.registrationTokenSecret"
-                if (ROOT / "charts/control-plane").is_dir()
-                else "gateway-stack.controlPlane.auth.registrationTokenSecret"
-            )
-            args += ["--set", f"{token}=ci-validation"]
+            args += [
+                "--set",
+                "global.secrets.controlPlane.values.registrationTokenSecret=ci-validation",
+            ]
         if cloudsmith:
             args += [
                 "--values",
