@@ -358,6 +358,8 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 
 ## Troubleshooting
 
+These commands assume the release name `guardian-platform` and the `guardian` namespace. With another release name, a `nameOverride`, or a `fullnameOverride`, use the guardian Deployment that `kubectl get deployment -n <namespace>` lists.
+
 ### Viewing Logs
 
 ```bash

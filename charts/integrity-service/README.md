@@ -488,10 +488,12 @@ kubectl create secret generic platform-gcs \
 
 ## Troubleshooting
 
+These commands assume the release name `guardian-platform` and the `guardian` namespace. With another release name, a `nameOverride`, or a `fullnameOverride`, use the integrity-service Deployment that `kubectl get deployment -n <namespace>` lists.
+
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/integrity-service -n guardian
+kubectl logs -f deployment/guardian-platform-integrity-service -n guardian
 ```
 
 ### Checking Pod Status
@@ -506,19 +508,19 @@ kubectl describe pod <pod-name> -n guardian
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/integrity-service -n guardian -- env | grep INTEGRITY_APP
+kubectl exec -it deployment/guardian-platform-integrity-service -n guardian -- env | grep INTEGRITY_APP
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/integrity-service -n guardian -- env | sort
+kubectl exec -it deployment/guardian-platform-integrity-service -n guardian -- env | sort
 ```
 
 Test health endpoint:
 
 ```bash
-kubectl exec -it deployment/integrity-service -n guardian -- curl -s localhost:3050/health/v1
+kubectl exec -it deployment/guardian-platform-integrity-service -n guardian -- curl -s localhost:3050/health/v1
 ```
 
 ### Common Issues
@@ -556,7 +558,7 @@ kubectl exec -it deployment/integrity-service -n guardian -- curl -s localhost:3
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/integrity-service -n guardian`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/guardian-platform-integrity-service -n guardian`
 
 ## Health Endpoints
 

@@ -538,10 +538,12 @@ When upgrading:
 
 ## Troubleshooting
 
+These commands assume the release name `guardian-platform` and the `guardian` namespace. With another release name, a `nameOverride`, or a `fullnameOverride`, use the llm-gateway Deployment that `kubectl get deployment -n <namespace>` lists.
+
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/llm-gateway -n guardian
+kubectl logs -f deployment/guardian-platform-llm-gateway -n guardian
 ```
 
 ### Checking Pod Status
@@ -556,13 +558,13 @@ kubectl describe pod <pod-name> -n guardian
 View the container arguments in the running pod:
 
 ```bash
-kubectl get deployment/llm-gateway -n guardian -o jsonpath='{.spec.template.spec.containers[0].args}'
+kubectl get deployment/guardian-platform-llm-gateway -n guardian -o jsonpath='{.spec.template.spec.containers[0].args}'
 ```
 
 Test health endpoint:
 
 ```bash
-kubectl exec -it deployment/llm-gateway -n guardian -- curl -s localhost:10000/health
+kubectl exec -it deployment/guardian-platform-llm-gateway -n guardian -- curl -s localhost:10000/health
 ```
 
 ### Common Issues
@@ -595,7 +597,7 @@ kubectl exec -it deployment/llm-gateway -n guardian -- curl -s localhost:10000/h
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if a Secret was updated: `kubectl rollout restart deployment/llm-gateway -n guardian`
+- Restart pods if a Secret was updated: `kubectl rollout restart deployment/guardian-platform-llm-gateway -n guardian`
 
 ## Health Endpoints
 

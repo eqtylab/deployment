@@ -1056,10 +1056,12 @@ selected.
 
 ## Troubleshooting
 
+These commands assume the release name `guardian-platform` and the `guardian` namespace. With another release name, a `nameOverride`, or a `fullnameOverride`, use the auth-service Deployment that `kubectl get deployment -n <namespace>` lists.
+
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/auth-service -n guardian
+kubectl logs -f deployment/guardian-platform-auth-service -n guardian
 ```
 
 ### Checking Pod Status
@@ -1074,25 +1076,25 @@ kubectl describe pod <pod-name> -n guardian
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/auth-service -n guardian -- env | grep -E 'IDP|AUTH0|ENTRA|KEYCLOAK|VAULT|KMS|GCP|KEY_MANAGEMENT|DATABASE|DB_'
+kubectl exec -it deployment/guardian-platform-auth-service -n guardian -- env | grep -E 'IDP|AUTH0|ENTRA|KEYCLOAK|VAULT|KMS|GCP|KEY_MANAGEMENT|DATABASE|DB_'
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/auth-service -n guardian -- env | sort
+kubectl exec -it deployment/guardian-platform-auth-service -n guardian -- env | sort
 ```
 
 Test health endpoint (liveness):
 
 ```bash
-kubectl exec -it deployment/auth-service -n guardian -- curl localhost:8080/health
+kubectl exec -it deployment/guardian-platform-auth-service -n guardian -- curl localhost:8080/health
 ```
 
 Test readiness endpoint:
 
 ```bash
-kubectl exec -it deployment/auth-service -n guardian -- curl localhost:8080/health/ready
+kubectl exec -it deployment/guardian-platform-auth-service -n guardian -- curl localhost:8080/health/ready
 ```
 
 ### Common Issues
@@ -1145,7 +1147,7 @@ kubectl exec -it deployment/auth-service -n guardian -- curl localhost:8080/heal
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/auth-service -n guardian`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/guardian-platform-auth-service -n guardian`
 
 ## Health Endpoints
 

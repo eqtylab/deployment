@@ -600,10 +600,12 @@ governance-service:
 
 ## Troubleshooting
 
+These commands assume the release name `guardian-platform` and the `guardian` namespace. With another release name, a `nameOverride`, or a `fullnameOverride`, use the governance-service Deployment that `kubectl get deployment -n <namespace>` lists.
+
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/governance-service -n guardian
+kubectl logs -f deployment/guardian-platform-governance-service -n guardian
 ```
 
 ### Checking Pod Status
@@ -618,25 +620,25 @@ kubectl describe pod <pod-name> -n guardian
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/governance-service -n guardian -- env | grep -E 'STORAGE|AUTH|ENTRA|KEYCLOAK|DATABASE|DB_'
+kubectl exec -it deployment/guardian-platform-governance-service -n guardian -- env | grep -E 'STORAGE|AUTH|ENTRA|KEYCLOAK|DATABASE|DB_'
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/governance-service -n guardian -- env | sort
+kubectl exec -it deployment/guardian-platform-governance-service -n guardian -- env | sort
 ```
 
 Test health endpoint (liveness):
 
 ```bash
-kubectl exec -it deployment/governance-service -n guardian -- curl localhost:10001/health
+kubectl exec -it deployment/guardian-platform-governance-service -n guardian -- curl localhost:10001/health
 ```
 
 Test readiness endpoint:
 
 ```bash
-kubectl exec -it deployment/governance-service -n guardian -- curl localhost:10001/health/ready
+kubectl exec -it deployment/guardian-platform-governance-service -n guardian -- curl localhost:10001/health/ready
 ```
 
 ### Common Issues
@@ -685,7 +687,7 @@ kubectl exec -it deployment/governance-service -n guardian -- curl localhost:100
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/governance-service -n guardian`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/guardian-platform-governance-service -n guardian`
 - Use `-debug-config` or `-debug-config-only` args to see loaded configuration
 
 ## Health Endpoints

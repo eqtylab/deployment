@@ -235,10 +235,12 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 
 ## Troubleshooting
 
+These commands assume the release name `guardian-platform` and the `guardian` namespace. With another release name, a `nameOverride`, or a `fullnameOverride`, use the eqty-pdfgen Deployment that `kubectl get deployment -n <namespace>` lists.
+
 ### Viewing Logs
 
 ```bash
-kubectl logs -f deployment/eqty-pdfgen -n guardian
+kubectl logs -f deployment/guardian-platform-eqty-pdfgen -n guardian
 ```
 
 ### Checking Pod Status
@@ -253,19 +255,19 @@ kubectl describe pod <pod-name> -n guardian
 View key environment variables in the running pod:
 
 ```bash
-kubectl exec -it deployment/eqty-pdfgen -n guardian -- env | grep -E 'PDFGEN|TYPST|EQTY_'
+kubectl exec -it deployment/guardian-platform-eqty-pdfgen -n guardian -- env | grep -E 'PDFGEN|TYPST|EQTY_'
 ```
 
 View all environment variables:
 
 ```bash
-kubectl exec -it deployment/eqty-pdfgen -n guardian -- env | sort
+kubectl exec -it deployment/guardian-platform-eqty-pdfgen -n guardian -- env | sort
 ```
 
 Test health endpoint:
 
 ```bash
-kubectl exec -it deployment/eqty-pdfgen -n guardian -- curl -s localhost:8080/health/ready
+kubectl exec -it deployment/guardian-platform-eqty-pdfgen -n guardian -- curl -s localhost:8080/health/ready
 ```
 
 ### Common Issues
@@ -292,7 +294,7 @@ kubectl exec -it deployment/eqty-pdfgen -n guardian -- curl -s localhost:8080/he
 
 - Remember: service-level config overrides global config
 - Check for typos in global value paths
-- Restart pods if configuration was updated: `kubectl rollout restart deployment/eqty-pdfgen -n guardian`
+- Restart pods if configuration was updated: `kubectl rollout restart deployment/guardian-platform-eqty-pdfgen -n guardian`
 
 ## Health Endpoints
 
