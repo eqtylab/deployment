@@ -133,7 +133,9 @@ jobs:
           fi
           if [ -f charts/guardian-platform/examples/values-gateway.yaml ]; then
             optional_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
-            optional_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
+            if [ ! -d charts/control-plane ]; then
+              optional_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
+            fi
           fi
 
           helm template guardian-platform charts/guardian-platform >/dev/null
@@ -165,7 +167,9 @@ jobs:
           fi
           if [ -f charts/guardian-platform/examples/values-gateway.yaml ]; then
             template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
-            template_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
+            if [ ! -d charts/control-plane ]; then
+              template_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
+            fi
           fi
 
           helm template guardian-platform charts/guardian-platform \

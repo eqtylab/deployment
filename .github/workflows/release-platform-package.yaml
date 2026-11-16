@@ -165,6 +165,9 @@ jobs:
             charts+=(eqty-pdfgen)
           fi
           charts+=(governance-service guardian integrity-service)
+          if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" = "control-plane" ]; then
+            charts+=(control-plane)
+          fi
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             charts+=(gateway-stack)
           fi
@@ -213,6 +216,9 @@ jobs:
             charts+=(charts/eqty-pdfgen)
           fi
           charts+=(charts/governance-service charts/guardian charts/integrity-service)
+          if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" = "control-plane" ]; then
+            charts+=(charts/control-plane)
+          fi
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             charts+=(charts/gateway-stack)
           fi
@@ -228,7 +234,9 @@ jobs:
           fi
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
-            template_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
+            if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" != "control-plane" ]; then
+              template_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
+            fi
           fi
 
           helm template guardian-platform charts/guardian-platform \
@@ -321,6 +329,9 @@ jobs:
             charts+=(eqty-pdfgen)
           fi
           charts+=(governance-service guardian integrity-service)
+          if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" = "control-plane" ]; then
+            charts+=(control-plane)
+          fi
           if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
             charts+=(gateway-stack)
           fi
