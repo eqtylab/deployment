@@ -6,10 +6,9 @@ Helper scripts for infrastructure setup, identity provider bootstrap, post-insta
 
 | Script                           | Description                                      | Usage                      |
 | -------------------------------- | ------------------------------------------------ | -------------------------- |
-| [nginx.sh](nginx.sh)             | Installs the NGINX Ingress Controller via Helm   | `./scripts/nginx.sh`       |
 | [cert-issuer.sh](cert-issuer.sh) | Installs cert-manager via Helm for automatic TLS | `./scripts/cert-issuer.sh` |
 
-Both scripts accept `-n <namespace>` to override the default namespace (`ingress-nginx`).
+It accepts `-n <namespace>` to override the default namespace (`cert-manager`). For the HAProxy Kubernetes Ingress Controller, see [Ingress Controller](../charts/guardian-platform/README.md#ingress-controller-required).
 
 ## Identity Provider Bootstrap
 
@@ -48,20 +47,20 @@ The `helpers/` directory contains shared shell functions used by all scripts:
 
 The `openbao/` directory is synced from `eqtylab/guardian-infrastructure`; edit it there, not here. It configures a development-only OpenBao for Auth signing and is shipped in the connected customer package (see [`docs/openbao-delivery.md`](../docs/openbao-delivery.md)).
 
-| Script                                                         | Description                                                                          | Usage                                                        |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| [openbao/configure-auth.sh](openbao/configure-auth.sh)         | Enables the Transit mount, scoped policy, Kubernetes auth method and role for Auth   | `./scripts/openbao/configure-auth.sh --help`                 |
-| [openbao/kind-custody-smoke.sh](openbao/kind-custody-smoke.sh) | Installs the custody chart on a disposable kind cluster and checks Raft/unseal       | `./scripts/openbao/kind-custody-smoke.sh`                    |
-| [openbao/test-custody-chart.py](openbao/test-custody-chart.py) | Cluster-free custody render, NOTES and package checks (build dependencies first)     | `python3 -B scripts/openbao/test-custody-chart.py`           |
+| Script                                                         | Description                                                                        | Usage                                              |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------- |
+| [openbao/configure-auth.sh](openbao/configure-auth.sh)         | Enables the Transit mount, scoped policy, Kubernetes auth method and role for Auth | `./scripts/openbao/configure-auth.sh --help`       |
+| [openbao/kind-custody-smoke.sh](openbao/kind-custody-smoke.sh) | Installs the custody chart on a disposable kind cluster and checks Raft/unseal     | `./scripts/openbao/kind-custody-smoke.sh`          |
+| [openbao/test-custody-chart.py](openbao/test-custody-chart.py) | Cluster-free custody render, NOTES and package checks (build dependencies first)   | `python3 -B scripts/openbao/test-custody-chart.py` |
 
 The script reads `openbao/policies/guardian-auth.hcl` and `helpers/output.sh` relative to itself; keep that layout when copying it.
 
 ## Release Tooling
 
-| Script                                                                       | Description                                                                                       | Usage                                                                                                         |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| [release/custody_distribution.py](release/custody_distribution.py)           | Validates optional custody selection in release manifests and verifies the packaged custody files | `python3 -B scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml`   |
-| [release/cloudsmith_release.py](release/cloudsmith_release.py) | Verify publication eligibility, generate receipts and prepare a read-only mirror inventory | `python3 -B scripts/release/cloudsmith_release.py prepare --version <version> --work <new-directory>` |
-| [release/publish_cloudsmith.py](release/publish_cloudsmith.py) | Mirror and verify prepared artifacts; requires the explicitly enabled CI publication context | Invoked by `mirror-cloudsmith-release.yaml` |
+| Script                                                             | Description                                                                                       | Usage                                                                                                     |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| [release/custody_distribution.py](release/custody_distribution.py) | Validates optional custody selection in release manifests and verifies the packaged custody files | `python3 -B scripts/release/custody_distribution.py validate-manifests releases/v*/release-manifest.yaml` |
+| [release/cloudsmith_release.py](release/cloudsmith_release.py)     | Verify publication eligibility, generate receipts and prepare a read-only mirror inventory        | `python3 -B scripts/release/cloudsmith_release.py prepare --version <version> --work <new-directory>`     |
+| [release/publish_cloudsmith.py](release/publish_cloudsmith.py)     | Mirror and verify prepared artifacts; requires the explicitly enabled CI publication context      | Invoked by `mirror-cloudsmith-release.yaml`                                                               |
 
 Owned in this repository (not synced). The release workflow runs it before publication; `python3 -B -m unittest discover -s scripts/release -p 'test_*.py' -v` runs its regressions.
