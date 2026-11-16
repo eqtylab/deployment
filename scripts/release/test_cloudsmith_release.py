@@ -184,7 +184,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_inventory_preserves_all_runtime_images_and_independent_custody(self):
         self.assertEqual(len(self.inventory["images"]), 8)
-        self.assertEqual(len(self.inventory["charts"]), 8)
+        self.assertEqual(len(self.inventory["charts"]), 9)
         chart = next(
             c for c in self.inventory["charts"] if c["name"] == "openbao-custody"
         )

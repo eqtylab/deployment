@@ -143,8 +143,11 @@ jobs:
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             services+=(eqtyPdfgen)
           fi
-          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
-            services+=(llmGateway controlPlane)
+          if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" = "control-plane" ]; then
+            services+=(controlPlane)
+          fi
+          if [ "$(yq '.charts.llmGateway.name // ""' "$MANIFEST")" = "llm-gateway" ]; then
+            services+=(llmGateway)
           fi
 
           for service in "${services[@]}"; do
@@ -168,8 +171,8 @@ jobs:
           if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" = "control-plane" ]; then
             charts+=(control-plane)
           fi
-          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
-            charts+=(gateway-stack)
+          if [ "$(yq '.charts.llmGateway.name // ""' "$MANIFEST")" = "llm-gateway" ]; then
+            charts+=(llm-gateway)
           fi
           charts+=(guardian-platform)
 
@@ -206,9 +209,6 @@ jobs:
           test -f charts/openbao-custody/Chart.lock
           helm dependency build charts/openbao-custody
           python -B scripts/openbao/test-custody-chart.py
-          if [ -d charts/gateway-stack ]; then
-            helm dependency build charts/gateway-stack
-          fi
           helm dependency build charts/guardian-platform
           python -B -m unittest discover -s scripts/release -p 'test_*.py' -v
           charts=(charts/auth-service)
@@ -219,8 +219,8 @@ jobs:
           if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" = "control-plane" ]; then
             charts+=(charts/control-plane)
           fi
-          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
-            charts+=(charts/gateway-stack)
+          if [ "$(yq '.charts.llmGateway.name // ""' "$MANIFEST")" = "llm-gateway" ]; then
+            charts+=(charts/llm-gateway)
           fi
           charts+=(charts/guardian-platform)
 
@@ -232,11 +232,8 @@ jobs:
           if [ "$(yq '.charts.eqtyPdfgen.name // ""' "$MANIFEST")" = "eqty-pdfgen" ]; then
             template_args+=(--set 'eqty-pdfgen.enabled=true')
           fi
-          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
+          if [ "$(yq '.charts.llmGateway.name // ""' "$MANIFEST")" = "llm-gateway" ]; then
             template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
-            if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" != "control-plane" ]; then
-              template_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
-            fi
           fi
 
           helm template guardian-platform charts/guardian-platform \
@@ -282,7 +279,7 @@ jobs:
             # Custody has its own lifecycle and must never inherit VERSION.
             chart_version="$(yq '.version' "$chart_dir/Chart.yaml")"
 
-            if [ "$chart" = "gateway-stack" ] || [ "$chart" = "guardian-platform" ]; then
+            if [ "$chart" = "guardian-platform" ]; then
               helm dependency build "$chart_dir"
             fi
 
@@ -332,8 +329,8 @@ jobs:
           if [ "$(yq '.charts.controlPlane.name // ""' "$MANIFEST")" = "control-plane" ]; then
             charts+=(control-plane)
           fi
-          if [ "$(yq '.charts.gatewayStack.name // ""' "$MANIFEST")" = "gateway-stack" ]; then
-            charts+=(gateway-stack)
+          if [ "$(yq '.charts.llmGateway.name // ""' "$MANIFEST")" = "llm-gateway" ]; then
+            charts+=(llm-gateway)
           fi
           charts+=(guardian-platform)
 

@@ -105,9 +105,6 @@ jobs:
         run: |
           test -f charts/openbao-custody/Chart.lock
           helm dependency build charts/openbao-custody
-          if [ -d charts/gateway-stack ]; then
-            helm dependency build charts/gateway-stack
-          fi
           helm dependency build charts/guardian-platform
 
       - name: Validate custody renders and distribution
@@ -133,9 +130,6 @@ jobs:
           fi
           if [ -f charts/guardian-platform/examples/values-gateway.yaml ]; then
             optional_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
-            if [ ! -d charts/control-plane ]; then
-              optional_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
-            fi
           fi
 
           helm template guardian-platform charts/guardian-platform >/dev/null
@@ -167,9 +161,6 @@ jobs:
           fi
           if [ -f charts/guardian-platform/examples/values-gateway.yaml ]; then
             template_args+=(--values charts/guardian-platform/examples/values-gateway.yaml)
-            if [ ! -d charts/control-plane ]; then
-              template_args+=(--set gateway-stack.controlPlane.auth.registrationTokenSecret=ci-validation)
-            fi
           fi
 
           helm template guardian-platform charts/guardian-platform \
@@ -188,10 +179,8 @@ jobs:
           if [ -d charts/eqty-pdfgen ]; then
             grep -q 'registry.customer.example/eqtylab/eqty-pdfgen' /tmp/repository-prefix-override.yaml
           fi
-          if [ -d charts/gateway-stack ]; then
-            grep -q 'registry.customer.example/eqtylab/guardian-llm-gateway' /tmp/repository-prefix-override.yaml
-            grep -q 'registry.customer.example/eqtylab/guardian-control-plane' /tmp/repository-prefix-override.yaml
-          fi
+          grep -q 'registry.customer.example/eqtylab/guardian-control-plane' /tmp/repository-prefix-override.yaml
+          grep -q 'registry.customer.example/eqtylab/guardian-llm-gateway' /tmp/repository-prefix-override.yaml
 
       - name: Validate release manifests against schema
         run: |
@@ -263,8 +252,11 @@ jobs:
                 charts+=(eqty-pdfgen)
               fi
               charts+=(governance-service guardian integrity-service)
-              if [ "$(yq '.charts.gatewayStack.name // ""' "$manifest")" = "gateway-stack" ]; then
-                charts+=(gateway-stack)
+              if [ "$(yq '.charts.controlPlane.name // ""' "$manifest")" = "control-plane" ]; then
+                charts+=(control-plane)
+              fi
+              if [ "$(yq '.charts.llmGateway.name // ""' "$manifest")" = "llm-gateway" ]; then
+                charts+=(llm-gateway)
               fi
               charts+=(guardian-platform)
 
