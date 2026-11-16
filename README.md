@@ -26,7 +26,7 @@
 - **[`charts/`](./charts/README.md)** — Helm charts for the Guardian Platform services (auth, governance, integrity, Guardian) plus per-IdP bootstrap charts.
 - **[`docs/`](./docs/)** — [Cloudsmith setup](./docs/cloudsmith.md), the [Cloudsmith release runbook](./docs/cloudsmith-release.md), and the optional [OpenBao custody delivery](./docs/openbao-delivery.md) notes. Deployment guides are on the [docs site](https://guardian.docs.eqtylab.io/deployment/deployment-process/).
 - **[`guardctl/`](./guardctl/README.md)** — CLI tool for generating Helm values, bootstrap configs, and secrets files interactively.
-- **[`scripts/`](./scripts/README.md)** — Helper scripts for NGINX ingress setup, cert-manager installation, IdP bootstrap, post-install database seeding, OpenBao operator setup, and release packaging checks.
+- **[`scripts/`](./scripts/README.md)** — Helper scripts for cert-manager installation, IdP bootstrap, post-install database seeding, OpenBao operator setup, and release packaging checks.
 - **[`releases/`](./releases/)** — Per-version release manifests pinning chart versions, image digests, and source refs for each platform release.
 - **[`containers/`](./containers/)** — Custom container image builds (e.g. patched PostgreSQL) used by the platform.
 - **[`schemas/`](./schemas/)** — JSON schemas for release manifests and other structured artifacts in this repo.
