@@ -1,0 +1,39 @@
+{{- if .Values.enabled }}
+{{- $healthPath := printf "%s/health" (trimSuffix "/" .Values.config.apiBasePath) }}
+Control Plane has been deployed!
+
+Service URL (internal): http://{{ include "control-plane.fullname" . }}:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+External URL: https://{{ .host }}{{ trimSuffix "/" $.Values.config.apiBasePath }}
+{{- end }}
+{{- else }}
+
+To access the service, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "control-plane.fullname" . }} 10010:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:10010{{ $healthPath }}
+{{- end }}
+
+Configuration:
+  Authentication: {{ if .Values.config.auth.enabled }}enabled{{ else }}disabled{{ end }}
+  Bearer Mode: {{ .Values.config.auth.bearer.mode | default "oidc" }}
+  Guardian Adapter: {{ if .Values.config.adapter.enabled }}enabled{{ else }}disabled{{ end }}
+  Plugin Artifact Storage: {{ .Values.config.plugins.artifactStorage.provider | default "not set" }}
+  VirusTotal Scanning: {{ if .Values.config.virusTotal.enabled }}enabled{{ else }}disabled{{ end }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "control-plane.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "control-plane.fullname" . }} -n {{ .Release.Namespace }}
+
+To check health:
+  kubectl exec -it deployment/{{ include "control-plane.fullname" . }} -n {{ .Release.Namespace }} -- curl -s localhost:{{ .Values.service.port }}{{ $healthPath }}
+
+{{- if not .Values.config.plugins.artifactStorage.provider }}
+
+⚠️  WARNING: Plugin artifact storage is not configured!
+Please set: control-plane.config.plugins.artifactStorage.provider to "gcs", "s3", "azure", or "file"
+{{- end }}
+{{- end }}

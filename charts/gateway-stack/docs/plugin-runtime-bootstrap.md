@@ -1,7 +1,7 @@
 # Hook/Plugin Runtime Bootstrap
 
 This guide covers the operational steps needed to enable the hook/plugin
-foundation in a cluster deployed with `gateway-stack`.
+foundation in a cluster deployed with `gateway-stack` and `control-plane`.
 
 ## Prerequisites
 
@@ -48,13 +48,13 @@ llmGateway:
         secretKey: encryption-key
 ```
 
-Control-plane values:
+Control Plane values, under `control-plane:` in the umbrella chart:
 
 ```yaml
-controlPlane:
-  serviceAccount:
-    annotations:
-      iam.gke.io/gcp-service-account: guardian-control-plane@project-id.iam.gserviceaccount.com
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: guardian-control-plane@project-id.iam.gserviceaccount.com
+config:
   plugins:
     artifactStorage:
       provider: gcs
@@ -66,10 +66,10 @@ controlPlane:
         kmsKeyName: ""
     trustedSignerKeys:
       signer-prod: did:key:z6Mk...
-    secrets:
-      encryptionKey:
-        existingSecret: guardian-plugin-secret-key
-        secretKey: encryption-key
+secrets:
+  pluginSecretsKey:
+    name: guardian-plugin-secret-key
+    key: encryption-key
 ```
 
 Notes:
@@ -166,8 +166,8 @@ Recommended first rollout:
 
 Use additive rotation:
 
-1. Add the new signer public key to both `controlPlane.plugins.trustedSignerKeys`
-   and `llmGateway.plugins.trustedSignerKeys`.
+1. Add the new signer public key to both `control-plane.config.plugins.trustedSignerKeys`
+   and `gateway-stack.llmGateway.plugins.trustedSignerKeys`.
 2. Roll both deployments so the new trust root is active everywhere.
 3. Start signing new artifacts and configurations with the new signer key.
 4. Activate at least one configuration signed by the new key in every deployment.

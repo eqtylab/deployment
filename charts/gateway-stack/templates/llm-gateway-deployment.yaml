@@ -159,10 +159,10 @@ spec:
             - name: LLM_GATEWAY_REGISTRATION_TOKEN_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "gateway-stack.controlPlaneAuthSecretName" . }}
-                  key: {{ .Values.controlPlane.auth.secretKeys.registrationTokenSecret }}
+                  name: {{ required "global.secrets.controlPlane.secretName is required when llmGateway.registration.enabled is true" (((.Values.global).secrets).controlPlane).secretName | quote }}
+                  key: {{ ((((.Values.global).secrets).controlPlane).keys).registrationTokenSecret | default "registration-token-secret" | quote }}
             - name: LLM_GATEWAY_REGISTRATION_TOKEN_ISSUER
-              value: {{ default "control-plane" .Values.controlPlane.auth.registrationTokenIssuer | quote }}
+              value: {{ .Values.llmGateway.registration.tokenIssuer | default "control-plane" | quote }}
             {{- end }}
             {{- $credentialSigner := .Values.llmGateway.registration.credentialSigner }}
             {{- if or $credentialSigner.existingSecret $credentialSigner.seed }}

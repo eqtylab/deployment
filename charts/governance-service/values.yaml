@@ -659,7 +659,7 @@ config:
   pdfgenServiceUrl: ""
 
   # -- Control Plane URL
-  # @default -- `""` (e.g., "http://{Release.Name}-gateway-stack-control-plane:10010")
+  # @default -- `""` (e.g., "http://{Release.Name}-control-plane:10010")
   # Control Plane base URL for agent assessments and certifications
   controlPlaneUrl: ""
 

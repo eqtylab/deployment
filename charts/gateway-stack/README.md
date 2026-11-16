@@ -4,12 +4,11 @@ A Helm chart for deploying the Agent Gateway stack on Kubernetes.
 
 ## Description
 
-The Gateway Stack runs the Agent Gateway for the Guardian Platform: the LLM Gateway, a signing proxy in front of upstream model providers, and the Control Plane, its management API.
+The Gateway Stack runs the LLM Gateway of the Agent Gateway for the Guardian Platform: a signing proxy in front of upstream model providers. Its management API, the Control Plane, is the [`control-plane`](../control-plane/README.md) chart.
 
 Key capabilities:
 
 - **LLM Gateway**: RFC 9421 signed proxy for Anthropic and OpenAI upstreams, with an append-only audit trail
-- **Control Plane**: Management API for agent registration, plugin publishing, and project configuration
 - **Hook/Plugin Runtime**: Signed plugin distribution with GCS or S3 artifact storage and encrypted plugin secrets
 - **Agent Registration**: Ed25519-signed verifiable credentials issued to onboarding agents
 
@@ -21,7 +20,7 @@ Public routes (`ingress.enabled`), agent registration (`llmGateway.registration.
 
 The Gateway Stack uses runtime configuration injected via container arguments and environment variables. Application configuration is provided through Helm values and applied to the container at startup.
 
-The llm-gateway and control-plane containers also receive `LLM_GATEWAY_SERVICE_VERSION` and `CONTROL_PLANE_SERVICE_VERSION` respectively, auto-populated from `Chart.Version` and not user-configurable. These carry the service-prefixed names each service's config loader expects, rather than the bare `SERVICE_VERSION` used by the platform charts.
+The llm-gateway container also receives `LLM_GATEWAY_SERVICE_VERSION`, auto-populated from `Chart.Version` and not user-configurable. It carries the service-prefixed name the service's config loader expects, rather than the bare `SERVICE_VERSION` used by the platform charts.
 
 This allows:
 
@@ -30,7 +29,7 @@ This allows:
 - Clear separation of infrastructure and application settings
 - Automatic configuration inheritance from umbrella chart globals
 
-Both backend services also support TOML runtime files with `--config`, which this chart does not use by default. See [Optional TOML Runtime Files](#optional-toml-runtime-files).
+The LLM Gateway also supports TOML runtime files with `--config`, which this chart does not use by default. See [Optional TOML Runtime Files](#optional-toml-runtime-files).
 
 ## Prerequisites
 
@@ -43,7 +42,7 @@ Both backend services also support TOML runtime files with `--config`, which thi
 
 ## Deployment
 
-When deployed via the `guardian-platform` umbrella chart, the Gateway Stack inherits its database and adapter configuration from global values. It is disabled by default there; enable it with `charts/guardian-platform/examples/values-gateway.yaml`.
+When deployed via the `guardian-platform` umbrella chart, the Gateway Stack inherits its database configuration and the Control Plane's registration token Secret from global values. It is disabled by default there; enable it with `charts/guardian-platform/examples/values-gateway.yaml`.
 
 ### Quick Start
 
@@ -59,35 +58,26 @@ helm upgrade --install guardian charts/gateway-stack \
 
 All example files are sanitized and safe to copy:
 
-| File                          | Demonstrates                                                                                                                                           |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `examples/values-gke.yaml`    | GKE with Workload Identity, GCS plugin artifact storage, and cert-manager DNS-01 via Cloud DNS                                                         |
-| `examples/values-dev.yaml`    | Development install with cert-manager HTTP-01 behind a dedicated HAProxy ingress class and inline database credentials                                 |
-| `examples/values-stag.yaml`   | Staging install with Google OIDC bearer verification and PostgreSQL credentials from a pre-created Secret                                              |
-| `examples/values-onprem.yaml` | Air-gapped install with an external database, S3-compatible plugin artifact storage, pre-issued TLS certificates, and Auth Service bearer verification |
+| File                          | Demonstrates                                                                                                           |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `examples/values-gke.yaml`    | GKE with Workload Identity, GCS plugin artifact storage, and cert-manager DNS-01 via Cloud DNS                         |
+| `examples/values-dev.yaml`    | Development install with cert-manager HTTP-01 behind a dedicated HAProxy ingress class and inline database credentials |
+| `examples/values-stag.yaml`   | Staging install with PostgreSQL credentials from a pre-created Secret                                                  |
+| `examples/values-onprem.yaml` | Air-gapped install with an external database, S3-compatible plugin artifact storage, and pre-issued TLS certificates   |
 
 ### Required Configuration
 
 Set these before a production install. Image tags are omitted deliberately: leaving
 `image.tag` empty resolves to the chart `appVersion`, which the platform release
 process pins to the release version. Set a tag only to pin outside a release.
-Every image object (`llmGateway.image`, `controlPlane.image` and
-`controlPlane.waitForRegistryViews.image`) also accepts `digest: sha256:...`,
-which takes precedence over its tag while retaining registry mirror behavior.
+`llmGateway.image` also accepts `digest: sha256:...`, which takes precedence
+over its tag while retaining registry mirror behavior.
 
 - `llmGateway.image.repository`
 - `llmGateway.registration.credentialSigner.existingSecret` when `llmGateway.registration.enabled=true`
-- `controlPlane.image.repository`
-- `controlPlane.auth.enabled=true`
-- `controlPlane.auth.bearer.enabled=true` (required whenever auth is enabled, and auth whenever it is; bearer tokens are the only credential)
-- `controlPlane.auth.bearer.issuerURL`
-- `controlPlane.auth.bearer.clientID`
-- One of:
-  - `controlPlane.auth.existingSecret` with a `registrationTokenSecret` key
-  - inline `controlPlane.auth.registrationTokenSecret`
+- `global.secrets.controlPlane.secretName` when `llmGateway.registration.enabled=true`: the Control Plane's Secret holding `registration-token-secret`, or the key set in `global.secrets.controlPlane.keys.registrationTokenSecret`
 - `ingress.enabled=true` (plus `haproxyIngress.enabled=true` unless an existing ingress controller serves `ingress.className`)
 - `ingress.hosts.llmGateway`
-- `ingress.hosts.controlPlane`
 - `ingress.certManager.clusterIssuer`
 - `database.password` and `postgresql.auth.password` (keep these in sync when the bundled database is enabled)
 
@@ -105,13 +95,15 @@ To have this chart create the ACME issuer for you, also set:
 
 When deployed via the umbrella chart, these global values are automatically used:
 
-| Key                                     | Type   | Description                                                                                               |
-| --------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
-| global.imageRegistryOverride            | string | Replace only the image registry host (e.g., `registry.customer.example`)                                  |
-| global.imageRepositoryPrefixOverride    | string | Replace the full EQTY Lab image repository prefix (e.g., `registry.example/eqty`)                         |
-| global.imagePullPolicy                  | string | Default image pull policy for platform installs                                                           |
-| global.imagePullSecrets                 | list   | Image pull secrets for every workload in this chart when global.secrets.imageRegistry.secretName is empty |
-| global.secrets.imageRegistry.secretName | string | Name of image pull secret                                                                                 |
+| Key                                                      | Type   | Description                                                                                               |
+| -------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
+| global.imageRegistryOverride                             | string | Replace only the image registry host (e.g., `registry.customer.example`)                                  |
+| global.imageRepositoryPrefixOverride                     | string | Replace the full EQTY Lab image repository prefix (e.g., `registry.example/eqty`)                         |
+| global.imagePullPolicy                                   | string | Default image pull policy for platform installs                                                           |
+| global.imagePullSecrets                                  | list   | Image pull secrets for every workload in this chart when global.secrets.imageRegistry.secretName is empty |
+| global.secrets.imageRegistry.secretName                  | string | Name of image pull secret                                                                                 |
+| global.secrets.controlPlane.secretName                   | string | Secret holding the registration token secret (key `registration-token-secret`)                            |
+| global.secrets.controlPlane.keys.registrationTokenSecret | string | Key holding the registration token secret (defaults to `registration-token-secret`)                       |
 
 ### Chart-Specific Parameters
 
@@ -163,20 +155,21 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### LLM Gateway Registration and Audit
 
-| Key                                                     | Type   | Default                           | Description                                                              |
-| ------------------------------------------------------- | ------ | --------------------------------- | ------------------------------------------------------------------------ |
-| llmGateway.registration.enabled                         | bool   | `false`                           | Enable agent registration                                                |
-| llmGateway.registration.credentialSigner.seed           | string | `""`                              | Inline Ed25519 seed; prefer `existingSecret`                             |
-| llmGateway.registration.credentialSigner.existingSecret | string | `""`                              | Pre-created Secret holding the signer seed                               |
-| llmGateway.registration.credentialSigner.secretKey      | string | `"seed"`                          | Key within the signer Secret                                             |
-| llmGateway.authServiceBaseURL                           | string | `""`                              | Auth-service URL for API-key enroll; empty disables that path            |
-| llmGateway.authServiceIdentityIssuer                    | string | `""`                              | Registry identity issuer; defaults to `<authServiceBaseURL>/api/v1/auth` |
-| llmGateway.audit.enabled                                | bool   | `true`                            | Enable audit logging                                                     |
-| llmGateway.audit.queueDir                               | string | `"/var/lib/guardian/audit-queue"` | Audit queue directory (emptyDir)                                         |
-| llmGateway.audit.queueMaxBytes                          | int    | `10737418240`                     | Audit queue size cap (10 GiB)                                            |
-| llmGateway.audit.batchSize                              | int    | `100`                             | Audit batch size                                                         |
-| llmGateway.audit.flushInterval                          | string | `"1s"`                            | Audit flush interval                                                     |
-| llmGateway.audit.retentionDays                          | int    | `90`                              | Audit retention in days                                                  |
+| Key                                                     | Type   | Default                           | Description                                                                                     |
+| ------------------------------------------------------- | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------- |
+| llmGateway.registration.enabled                         | bool   | `false`                           | Enable agent registration                                                                       |
+| llmGateway.registration.tokenIssuer                     | string | `"control-plane"`                 | Registration token issuer; must match the Control Plane's `config.auth.registrationTokenIssuer` |
+| llmGateway.registration.credentialSigner.seed           | string | `""`                              | Inline Ed25519 seed; prefer `existingSecret`                                                    |
+| llmGateway.registration.credentialSigner.existingSecret | string | `""`                              | Pre-created Secret holding the signer seed                                                      |
+| llmGateway.registration.credentialSigner.secretKey      | string | `"seed"`                          | Key within the signer Secret                                                                    |
+| llmGateway.authServiceBaseURL                           | string | `""`                              | Auth-service URL for API-key enroll; empty disables that path                                   |
+| llmGateway.authServiceIdentityIssuer                    | string | `""`                              | Registry identity issuer; defaults to `<authServiceBaseURL>/api/v1/auth`                        |
+| llmGateway.audit.enabled                                | bool   | `true`                            | Enable audit logging                                                                            |
+| llmGateway.audit.queueDir                               | string | `"/var/lib/guardian/audit-queue"` | Audit queue directory (emptyDir)                                                                |
+| llmGateway.audit.queueMaxBytes                          | int    | `10737418240`                     | Audit queue size cap (10 GiB)                                                                   |
+| llmGateway.audit.batchSize                              | int    | `100`                             | Audit batch size                                                                                |
+| llmGateway.audit.flushInterval                          | string | `"1s"`                            | Audit flush interval                                                                            |
+| llmGateway.audit.retentionDays                          | int    | `90`                              | Audit retention in days                                                                         |
 
 ### LLM Gateway Plugin Runtime
 
@@ -198,214 +191,115 @@ When deployed via the umbrella chart, these global values are automatically used
 | llmGateway.plugins.secretEnvsSecret.name                | string | `""`                                   | Secret providing plugin secret env vars (local/dev fallback)                                                |
 | llmGateway.projectContext.mode                          | string | `"disabled"`                           | Project context mode (`disabled`, `observe`, or `enforce`); requires the plugin runtime                     |
 
-### Control Plane
-
-| Key                                                | Type   | Default                                    | Description                                                                                                |
-| -------------------------------------------------- | ------ | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| controlPlane.replicaCount                          | int    | `1`                                        | Number of replicas to deploy                                                                               |
-| controlPlane.image.repository                      | string | `"ghcr.io/eqtylab/guardian-control-plane"` | Container image repository                                                                                 |
-| controlPlane.image.tag                             | string | `""`                                       | Overrides the image tag (default is chart appVersion)                                                      |
-| controlPlane.image.digest                          | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag                                                     |
-| controlPlane.image.pullPolicy                      | string | `""`                                       | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                |
-| controlPlane.listenAddr                            | string | `":10010"`                                 | Listen address                                                                                             |
-| controlPlane.apiBasePath                           | string | `""`                                       | API base path; set with `ingress.controlPlanePath`                                                         |
-| controlPlane.corsAllowAll                          | bool   | `true`                                     | Allow all CORS origins                                                                                     |
-| controlPlane.service.enabled                       | bool   | `true`                                     | Create a Service resource                                                                                  |
-| controlPlane.service.type                          | string | `"ClusterIP"`                              | Kubernetes service type                                                                                    |
-| controlPlane.service.port                          | int    | `10010`                                    | Service port                                                                                               |
-| controlPlane.extraArgs                             | list   | `[]`                                       | Extra container arguments                                                                                  |
-| controlPlane.extraEnv                              | list   | `[]`                                       | Extra environment variables                                                                                |
-| controlPlane.hostAliases                           | list   | `[]`                                       | Optional pod host aliases (local qualification DNS only)                                                   |
-| controlPlane.resources                             | object | `{}`                                       | Resource requests and limits                                                                               |
-| controlPlane.waitForRegistryViews.enabled          | bool   | `true`                                     | Wait for llm-gateway migrations before starting                                                            |
-| controlPlane.waitForRegistryViews.image.repository | string | `"docker.io/library/postgres"`             | Init container image supplying `psql`                                                                      |
-| controlPlane.waitForRegistryViews.image.tag        | string | `"17.6"`                                   | Init container image tag                                                                                   |
-| controlPlane.waitForRegistryViews.image.digest     | string | `""`                                       | Immutable sha256 digest; takes precedence over the tag                                                     |
-| controlPlane.waitForRegistryViews.image.pullPolicy | string | `""`                                       | Init container image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`) |
-| controlPlane.waitForRegistryViews.intervalSeconds  | int    | `2`                                        | Poll interval                                                                                              |
-
-`controlPlane.hostAliases` exists for local qualification DNS only: the disposable
-OpenBao kind profile resolves its canonical Integrity status origin through it.
-The application's URL trust checks are unchanged. The `openbaoKindProfile` guard in
-the umbrella chart accepts only the base64 form of `trustedSignerKeys` values.
-
-### Control Plane Authentication
-
-| Key                                         | Type   | Default                        | Description                                                                  |
-| ------------------------------------------- | ------ | ------------------------------ | ---------------------------------------------------------------------------- |
-| controlPlane.auth.enabled                   | bool   | `false`                        | Enable authentication                                                        |
-| controlPlane.auth.existingSecret            | string | `""`                           | Pre-created Secret holding auth material                                     |
-| controlPlane.auth.allowedEmailDomains       | list   | `[]`                           | Email domains permitted for bearer tokens                                    |
-| controlPlane.auth.registrationTokenSecret   | string | `"change-me"`                  | Registration token secret; rejected at render time while left at `change-me` |
-| controlPlane.auth.registrationTokenIssuer   | string | `"control-plane"`              | Registration token issuer                                                    |
-| controlPlane.auth.bearer.enabled            | bool   | `false`                        | Enable bearer token verification                                             |
-| controlPlane.auth.bearer.mode               | string | `""`                           | `oidc` (default) or `auth_service`                                           |
-| controlPlane.auth.bearer.issuerURL          | string | `""`                           | Bearer issuer URL (`oidc` mode)                                              |
-| controlPlane.auth.bearer.clientID           | string | `""`                           | Bearer client ID (`oidc` mode)                                               |
-| controlPlane.auth.bearer.authServiceBaseURL | string | `""`                           | Auth Service URL (`auth_service` mode); falls back to the adapter URL        |
-| controlPlane.auth.bearer.scopes             | list   | `["openid","profile","email"]` | Bearer scopes                                                                |
-
-### Control Plane Adapter
-
-| Key                                                   | Type   | Default | Description                                                  |
-| ----------------------------------------------------- | ------ | ------- | ------------------------------------------------------------ |
-| controlPlane.adapter.enabled                          | bool   | `false` | Enable the Guardian adapter                                  |
-| controlPlane.adapter.authServiceBaseURL               | string | `""`    | Defaults to `http://{Release.Name}-auth-service:8080`        |
-| controlPlane.adapter.governanceServiceBaseURL         | string | `""`    | Defaults to `http://{Release.Name}-governance-service:10001` |
-| controlPlane.adapter.integrityBaseURL                 | string | `""`    | Defaults to `http://{Release.Name}-integrity-service:3050`   |
-| controlPlane.adapter.httpTimeout                      | string | `"5s"`  | Adapter HTTP timeout                                         |
-| controlPlane.adapter.projectRuntimeReadTimeout        | string | `"30s"` | Project runtime read timeout                                 |
-| controlPlane.adapter.integrityHTTPTimeout             | string | `"5s"`  | Integrity HTTP timeout                                       |
-| controlPlane.adapter.integrityStatusCacheTTL          | string | `"5m"`  | Integrity status cache TTL                                   |
-| controlPlane.adapter.trustedMembershipIssuerDIDs      | list   | `[]`    | Trusted membership credential issuers                        |
-| controlPlane.adapter.trustedComplianceIssuerDIDs      | list   | `[]`    | Trusted compliance credential issuers                        |
-| controlPlane.adapter.allowEmbeddedCredentialBootstrap | bool   | `false` | Allow embedded credential bootstrap                          |
-
-### Control Plane Plugin Management
-
-| Key                                                       | Type   | Default                                    | Description                                                                                                                                                         |
-| --------------------------------------------------------- | ------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| controlPlane.plugins.publisherSigner.keyID                | string | `""`                                       | Publisher signer key ID                                                                                                                                             |
-| controlPlane.plugins.publisherSigner.existingSecret       | string | `""`                                       | Secret holding the publisher signer seed                                                                                                                            |
-| controlPlane.plugins.publisherSigner.secretKey            | string | `"seed"`                                   | Key within the signer Secret                                                                                                                                        |
-| controlPlane.plugins.publisherSigner.mountPath            | string | `"/run/secrets/guardian-plugin-publisher"` | Signer seed mount path                                                                                                                                              |
-| controlPlane.plugins.artifactStorage.provider             | string | `""`                                       | Artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                                                                                                         |
-| controlPlane.plugins.artifactStorage.bucket               | string | `""`                                       | Artifact storage bucket or Azure container; the mount path for `file`                                                                                               |
-| controlPlane.plugins.artifactStorage.prefix               | string | `""`                                       | Artifact storage key prefix                                                                                                                                         |
-| controlPlane.plugins.artifactStorage.maxUploadBytes       | int    | `536870912`                                | Maximum upload size (512 MiB)                                                                                                                                       |
-| controlPlane.plugins.artifactStorage.gcs.kmsKeyName       | string | `""`                                       | GCS KMS key name                                                                                                                                                    |
-| controlPlane.plugins.trustedSignerKeys                    | object | `{}`                                       | Map of signer key ID to Ed25519 public key (standard-base64 raw 32 bytes or `did:key`)                                                                              |
-| controlPlane.plugins.secrets.encryptionKey.existingSecret | string | `""`                                       | Secret holding the plugin secret encryption key                                                                                                                     |
-| controlPlane.virusTotal.enabled                           | bool   | `false`                                    | Enable VirusTotal scanning of the blobs callers look up through `/v1/vt-scans`                                                                                      |
-| controlPlane.virusTotal.existingSecret                    | string | `""`                                       | Secret holding the VirusTotal API key (**required** when `controlPlane.virusTotal.enabled` is true, unless `controlPlane.extraEnv` sets `CONTROL_PLANE_VT_API_KEY`) |
-| controlPlane.virusTotal.secretKey                         | string | `"api-key"`                                | Key within the VirusTotal Secret                                                                                                                                    |
-
 ### Plugin Artifact Storage Backends
 
-These keys exist identically under both `llmGateway.plugins.artifactStorage` and `controlPlane.plugins.artifactStorage`. Replace `<workload>` with either `llmGateway` or `controlPlane`.
+The Control Plane's equivalents are in the [`control-plane`](../control-plane/README.md) chart.
 
-| Key                                                                    | Type   | Default                                       | Description                                                             |
-| ---------------------------------------------------------------------- | ------ | --------------------------------------------- | ----------------------------------------------------------------------- |
-| \<workload\>.plugins.artifactStorage.gcs.endpoint                      | string | `""`                                          | GCS endpoint override                                                   |
-| \<workload\>.plugins.artifactStorage.gcs.existingSecret                | string | `""`                                          | Secret holding a GCS service account JSON; unset uses workload identity |
-| \<workload\>.plugins.artifactStorage.gcs.secretKey                     | string | `"serviceAccountJson"`                        | Key holding the service account JSON                                    |
-| \<workload\>.plugins.artifactStorage.gcs.mountPath                     | string | `"/run/secrets/guardian-plugin-artifact-gcs"` | Where the service account JSON is mounted                               |
-| \<workload\>.plugins.artifactStorage.s3.endpoint                       | string | `""`                                          | S3 endpoint override                                                    |
-| \<workload\>.plugins.artifactStorage.s3.region                         | string | `""`                                          | S3 region; required when provider is `s3`                               |
-| \<workload\>.plugins.artifactStorage.s3.forcePathStyle                 | bool   | `false`                                       | Use path-style S3 addressing                                            |
-| \<workload\>.plugins.artifactStorage.s3.accessKeyID                    | string | `""`                                          | S3 access key ID; required when no `existingSecret` is set              |
-| \<workload\>.plugins.artifactStorage.s3.secretAccessKey                | string | `""`                                          | S3 secret access key; required when no `existingSecret` is set          |
-| \<workload\>.plugins.artifactStorage.s3.existingSecret                 | string | `""`                                          | Pre-created Secret holding the S3 credentials                           |
-| \<workload\>.plugins.artifactStorage.s3.secretKeys.accessKeyID         | string | `"accessKeyID"`                               | Key holding the access key ID                                           |
-| \<workload\>.plugins.artifactStorage.s3.secretKeys.secretAccessKey     | string | `"secretAccessKey"`                           | Key holding the secret access key                                       |
-| \<workload\>.plugins.artifactStorage.azure.accountName                 | string | `""`                                          | Storage account name; required with an account key or managed identity  |
-| \<workload\>.plugins.artifactStorage.azure.endpoint                    | string | `""`                                          | Blob service endpoint override; not with `connectionString`             |
-| \<workload\>.plugins.artifactStorage.azure.useManagedIdentity          | bool   | `false`                                       | Authenticate with the pod's managed identity                            |
-| \<workload\>.plugins.artifactStorage.azure.accountKey                  | string | `""`                                          | Account key                                                             |
-| \<workload\>.plugins.artifactStorage.azure.connectionString            | string | `""`                                          | Connection string                                                       |
-| \<workload\>.plugins.artifactStorage.azure.existingSecret              | string | `""`                                          | Pre-created Secret holding an account key or a connection string        |
-| \<workload\>.plugins.artifactStorage.azure.secretKeys.accountKey       | string | `"accountKey"`                                | Key holding the account key                                             |
-| \<workload\>.plugins.artifactStorage.azure.secretKeys.connectionString | string | `"connectionString"`                          | Key holding the connection string                                       |
-| \<workload\>.plugins.artifactStorage.file.existingClaim                | string | `""`                                          | ReadWriteMany PVC mounted at `bucket`; required when provider is `file` |
-| \<workload\>.plugins.secrets.encryptionKey.secretKey                   | string | `"encryption-key"`                            | Key holding the plugin secret encryption key                            |
+| Key                                                                  | Type   | Default                                       | Description                                                             |
+| -------------------------------------------------------------------- | ------ | --------------------------------------------- | ----------------------------------------------------------------------- |
+| llmGateway.plugins.artifactStorage.gcs.endpoint                      | string | `""`                                          | GCS endpoint override                                                   |
+| llmGateway.plugins.artifactStorage.gcs.existingSecret                | string | `""`                                          | Secret holding a GCS service account JSON; unset uses workload identity |
+| llmGateway.plugins.artifactStorage.gcs.secretKey                     | string | `"serviceAccountJson"`                        | Key holding the service account JSON                                    |
+| llmGateway.plugins.artifactStorage.gcs.mountPath                     | string | `"/run/secrets/guardian-plugin-artifact-gcs"` | Where the service account JSON is mounted                               |
+| llmGateway.plugins.artifactStorage.s3.endpoint                       | string | `""`                                          | S3 endpoint override                                                    |
+| llmGateway.plugins.artifactStorage.s3.region                         | string | `""`                                          | S3 region; required when provider is `s3`                               |
+| llmGateway.plugins.artifactStorage.s3.forcePathStyle                 | bool   | `false`                                       | Use path-style S3 addressing                                            |
+| llmGateway.plugins.artifactStorage.s3.accessKeyID                    | string | `""`                                          | S3 access key ID; required when no `existingSecret` is set              |
+| llmGateway.plugins.artifactStorage.s3.secretAccessKey                | string | `""`                                          | S3 secret access key; required when no `existingSecret` is set          |
+| llmGateway.plugins.artifactStorage.s3.existingSecret                 | string | `""`                                          | Pre-created Secret holding the S3 credentials                           |
+| llmGateway.plugins.artifactStorage.s3.secretKeys.accessKeyID         | string | `"accessKeyID"`                               | Key holding the access key ID                                           |
+| llmGateway.plugins.artifactStorage.s3.secretKeys.secretAccessKey     | string | `"secretAccessKey"`                           | Key holding the secret access key                                       |
+| llmGateway.plugins.artifactStorage.azure.accountName                 | string | `""`                                          | Storage account name; required with an account key or managed identity  |
+| llmGateway.plugins.artifactStorage.azure.endpoint                    | string | `""`                                          | Blob service endpoint override; not with `connectionString`             |
+| llmGateway.plugins.artifactStorage.azure.useManagedIdentity          | bool   | `false`                                       | Authenticate with the pod's managed identity                            |
+| llmGateway.plugins.artifactStorage.azure.accountKey                  | string | `""`                                          | Account key                                                             |
+| llmGateway.plugins.artifactStorage.azure.connectionString            | string | `""`                                          | Connection string                                                       |
+| llmGateway.plugins.artifactStorage.azure.existingSecret              | string | `""`                                          | Pre-created Secret holding an account key or a connection string        |
+| llmGateway.plugins.artifactStorage.azure.secretKeys.accountKey       | string | `"accountKey"`                                | Key holding the account key                                             |
+| llmGateway.plugins.artifactStorage.azure.secretKeys.connectionString | string | `"connectionString"`                          | Key holding the connection string                                       |
+| llmGateway.plugins.artifactStorage.file.existingClaim                | string | `""`                                          | ReadWriteMany PVC mounted at `bucket`; required when provider is `file` |
+| llmGateway.plugins.secrets.encryptionKey.secretKey                   | string | `"encryption-key"`                            | Key holding the plugin secret encryption key                            |
 
 ### Ingress
 
-| Key                                           | Type   | Default                                            | Description                                           |
-| --------------------------------------------- | ------ | -------------------------------------------------- | ----------------------------------------------------- |
-| ingress.enabled                               | bool   | `false`                                            | Enable ingress                                        |
-| ingress.className                             | string | `"haproxy"`                                        | Ingress class name                                    |
-| ingress.annotations                           | object | `{}`                                               | Annotations applied to both Ingress resources         |
-| ingress.llmGatewayAnnotations                 | object | `{}`                                               | Annotations applied to the gateway Ingress only       |
-| ingress.controlPlaneAnnotations               | object | `{}`                                               | Annotations applied to the control-plane Ingress only |
-| ingress.controlPlanePath                      | string | `"/"`                                              | Control-plane path                                    |
-| ingress.hosts.llmGateway                      | string | `"gateway.example.com"`                            | LLM Gateway host                                      |
-| ingress.hosts.controlPlane                    | string | `"control.example.com"`                            | Control-plane host                                    |
-| ingress.tls.enabled                           | bool   | `true`                                             | Enable TLS                                            |
-| ingress.tls.llmGatewaySecretName              | string | `""`                                               | Defaults to `{fullname}-llm-gateway-tls`              |
-| ingress.tls.controlPlaneSecretName            | string | `""`                                               | Defaults to `{fullname}-control-plane-tls`            |
-| ingress.certManager.enabled                   | bool   | `true`                                             | Add the cert-manager cluster-issuer annotation        |
-| ingress.certManager.clusterIssuer             | string | `""`                                               | ClusterIssuer name                                    |
-| ingress.certManager.createClusterIssuer       | bool   | `false`                                            | Create a cluster-scoped ClusterIssuer                 |
-| ingress.certManager.acme.email                | string | `""`                                               | ACME registration email                               |
-| ingress.certManager.acme.server               | string | `"https://acme-v02.api.letsencrypt.org/directory"` | ACME directory server                                 |
-| ingress.certManager.acme.privateKeySecretName | string | `""`                                               | Defaults to `{fullname}-acme-account-key`             |
-| ingress.certManager.acme.solver               | string | `"dns01"`                                          | ACME solver (`dns01` or `http01`)                     |
-| ingress.certManager.acme.http01.ingressClass  | string | `""`                                               | HTTP-01 solver ingress class                          |
-| ingress.certManager.acme.dns01                | object | `{}`                                               | DNS-01 solver configuration, passed through verbatim  |
+| Key                                           | Type   | Default                                            | Description                                          |
+| --------------------------------------------- | ------ | -------------------------------------------------- | ---------------------------------------------------- |
+| ingress.enabled                               | bool   | `false`                                            | Enable ingress                                       |
+| ingress.className                             | string | `"haproxy"`                                        | Ingress class name                                   |
+| ingress.annotations                           | object | `{}`                                               | Annotations applied to the Ingress                   |
+| ingress.llmGatewayAnnotations                 | object | `{}`                                               | Additional annotations applied to the Ingress        |
+| ingress.hosts.llmGateway                      | string | `"gateway.example.com"`                            | LLM Gateway host                                     |
+| ingress.tls.enabled                           | bool   | `true`                                             | Enable TLS                                           |
+| ingress.tls.llmGatewaySecretName              | string | `""`                                               | Defaults to `{fullname}-llm-gateway-tls`             |
+| ingress.certManager.enabled                   | bool   | `true`                                             | Add the cert-manager cluster-issuer annotation       |
+| ingress.certManager.clusterIssuer             | string | `""`                                               | ClusterIssuer name                                   |
+| ingress.certManager.createClusterIssuer       | bool   | `false`                                            | Create a cluster-scoped ClusterIssuer                |
+| ingress.certManager.acme.email                | string | `""`                                               | ACME registration email                              |
+| ingress.certManager.acme.server               | string | `"https://acme-v02.api.letsencrypt.org/directory"` | ACME directory server                                |
+| ingress.certManager.acme.privateKeySecretName | string | `""`                                               | Defaults to `{fullname}-acme-account-key`            |
+| ingress.certManager.acme.solver               | string | `"dns01"`                                          | ACME solver (`dns01` or `http01`)                    |
+| ingress.certManager.acme.http01.ingressClass  | string | `""`                                               | HTTP-01 solver ingress class                         |
+| ingress.certManager.acme.dns01                | object | `{}`                                               | DNS-01 solver configuration, passed through verbatim |
 
 ### Service Account
 
-Each workload owns its own service account. Replace `<workload>` with either `llmGateway` or `controlPlane`.
-
-| Key                                     | Type   | Default | Description                                                                  |
-| --------------------------------------- | ------ | ------- | ---------------------------------------------------------------------------- |
-| \<workload\>.serviceAccount.create      | bool   | `true`  | Specifies whether a service account should be created                        |
-| \<workload\>.serviceAccount.automount   | bool   | `true`  | Automatically mount the ServiceAccount's API credentials                     |
-| \<workload\>.serviceAccount.annotations | object | `{}`    | Annotations to add to the service account; bind cloud IAM identities here    |
-| \<workload\>.serviceAccount.name        | string | `""`    | The name of the service account (generated if serviceAccount.create is true) |
+| Key                                   | Type   | Default | Description                                                                  |
+| ------------------------------------- | ------ | ------- | ---------------------------------------------------------------------------- |
+| llmGateway.serviceAccount.create      | bool   | `true`  | Specifies whether a service account should be created                        |
+| llmGateway.serviceAccount.automount   | bool   | `true`  | Automatically mount the ServiceAccount's API credentials                     |
+| llmGateway.serviceAccount.annotations | object | `{}`    | Annotations to add to the service account; bind cloud IAM identities here    |
+| llmGateway.serviceAccount.name        | string | `""`    | The name of the service account (generated if serviceAccount.create is true) |
 
 ### Security
 
-Applies to `llmGateway` and `controlPlane` unless noted. Replace `<workload>` with either key.
+| Key                           | Type   | Default                 | Description                                                                             |
+| ----------------------------- | ------ | ----------------------- | --------------------------------------------------------------------------------------- |
+| llmGateway.podAnnotations     | object | `{}`                    | Annotations to add to pods                                                              |
+| llmGateway.podLabels          | object | `{}`                    | Labels to add to pods                                                                   |
+| llmGateway.podSecurityContext | object | `{"runAsNonRoot":true}` | Security context for the pod                                                            |
+| llmGateway.securityContext    | object | see values.yaml         | Container security context; drops all capabilities and uses a read-only root filesystem |
 
-| Key                                               | Type   | Default                 | Description                                                                             |
-| ------------------------------------------------- | ------ | ----------------------- | --------------------------------------------------------------------------------------- |
-| \<workload\>.podAnnotations                       | object | `{}`                    | Annotations to add to pods                                                              |
-| \<workload\>.podLabels                            | object | `{}`                    | Labels to add to pods                                                                   |
-| \<workload\>.podSecurityContext                   | object | `{"runAsNonRoot":true}` | Security context for the pod                                                            |
-| \<workload\>.securityContext                      | object | see values.yaml         | Container security context; drops all capabilities and uses a read-only root filesystem |
-| controlPlane.waitForRegistryViews.securityContext | object | see values.yaml         | Init container security context, pinned to UID 999                                      |
-
-Both workloads carry a `checksum/secrets` pod annotation, so changing a chart-managed Secret rolls the pods that read it.
+The LLM Gateway carries a `checksum/secrets` pod annotation, so changing a chart-managed Secret rolls its pods.
 
 ### Resources
 
-These keys exist identically under `llmGateway` and `controlPlane`. Replace `<workload>` with either key.
+| Key                                                      | Type   | Default | Description                          |
+| -------------------------------------------------------- | ------ | ------- | ------------------------------------ |
+| llmGateway.resources                                     | object | `{}`    | CPU/Memory resource requests/limits  |
+| llmGateway.autoscaling.enabled                           | bool   | `false` | Enable horizontal pod autoscaling    |
+| llmGateway.autoscaling.minReplicas                       | int    | `1`     | Minimum number of replicas           |
+| llmGateway.autoscaling.maxReplicas                       | int    | `10`    | Maximum number of replicas           |
+| llmGateway.autoscaling.targetCPUUtilizationPercentage    | int    | `80`    | Target CPU utilization percentage    |
+| llmGateway.autoscaling.targetMemoryUtilizationPercentage | int    | `80`    | Target memory utilization percentage |
 
-| Key                                                        | Type   | Default | Description                          |
-| ---------------------------------------------------------- | ------ | ------- | ------------------------------------ |
-| \<workload\>.resources                                     | object | `{}`    | CPU/Memory resource requests/limits  |
-| \<workload\>.autoscaling.enabled                           | bool   | `false` | Enable horizontal pod autoscaling    |
-| \<workload\>.autoscaling.minReplicas                       | int    | `1`     | Minimum number of replicas           |
-| \<workload\>.autoscaling.maxReplicas                       | int    | `10`    | Maximum number of replicas           |
-| \<workload\>.autoscaling.targetCPUUtilizationPercentage    | int    | `80`    | Target CPU utilization percentage    |
-| \<workload\>.autoscaling.targetMemoryUtilizationPercentage | int    | `80`    | Target memory utilization percentage |
-
-> **Note:** Resources are empty by default. For production, set appropriate requests and limits on each workload.
+> **Note:** Resources are empty by default. For production, set appropriate requests and limits.
 
 ### High Availability
 
-| Key                                             | Type | Default | Description                                                                                                                             |
-| ----------------------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| \<workload\>.podDisruptionBudget.enabled        | bool | `false` | Enable Pod Disruption Budget                                                                                                            |
-| \<workload\>.podDisruptionBudget.minAvailable   | int  | `1`     | Minimum available pods during disruptions (only rendered when replicaCount, or autoscaling.minReplicas with autoscaling on, is above 1) |
-| \<workload\>.podDisruptionBudget.maxUnavailable | int  | `1`     | Maximum unavailable pods during disruptions (only rendered otherwise)                                                                   |
+| Key                                           | Type | Default | Description                                                                                                                             |
+| --------------------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| llmGateway.podDisruptionBudget.enabled        | bool | `false` | Enable Pod Disruption Budget                                                                                                            |
+| llmGateway.podDisruptionBudget.minAvailable   | int  | `1`     | Minimum available pods during disruptions (only rendered when replicaCount, or autoscaling.minReplicas with autoscaling on, is above 1) |
+| llmGateway.podDisruptionBudget.maxUnavailable | int  | `1`     | Maximum unavailable pods during disruptions (only rendered otherwise)                                                                   |
 
 ### Node Scheduling
 
-| Key                       | Type   | Default | Description                       |
-| ------------------------- | ------ | ------- | --------------------------------- |
-| \<workload\>.nodeSelector | object | `{}`    | Node labels for pod assignment    |
-| \<workload\>.tolerations  | list   | `[]`    | Tolerations for pod assignment    |
-| \<workload\>.affinity     | object | `{}`    | Affinity rules for pod assignment |
+| Key                     | Type   | Default | Description                       |
+| ----------------------- | ------ | ------- | --------------------------------- |
+| llmGateway.nodeSelector | object | `{}`    | Node labels for pod assignment    |
+| llmGateway.tolerations  | list   | `[]`    | Tolerations for pod assignment    |
+| llmGateway.affinity     | object | `{}`    | Affinity rules for pod assignment |
 
 ### Health Checks
 
-| Key                                               | Type | Default | Description                                                      |
-| ------------------------------------------------- | ---- | ------- | ---------------------------------------------------------------- |
-| llmGateway.probes.startup.failureThreshold        | int  | `180`   | Startup probe failure threshold, sized for long index migrations |
-| llmGateway.probes.startup.periodSeconds           | int  | `5`     | Startup probe period                                             |
-| llmGateway.probes.liveness.initialDelaySeconds    | int  | `5`     | Liveness probe initial delay                                     |
-| llmGateway.probes.liveness.periodSeconds          | int  | `10`    | Liveness probe period                                            |
-| llmGateway.probes.readiness.initialDelaySeconds   | int  | `3`     | Readiness probe initial delay                                    |
-| llmGateway.probes.readiness.periodSeconds         | int  | `10`    | Readiness probe period                                           |
-| controlPlane.probes.startup.failureThreshold      | int  | `180`   | Startup probe failure threshold                                  |
-| controlPlane.probes.startup.periodSeconds         | int  | `5`     | Startup probe period                                             |
-| controlPlane.probes.liveness.initialDelaySeconds  | int  | `5`     | Liveness probe initial delay                                     |
-| controlPlane.probes.liveness.periodSeconds        | int  | `10`    | Liveness probe period                                            |
-| controlPlane.probes.readiness.initialDelaySeconds | int  | `3`     | Readiness probe initial delay                                    |
-| controlPlane.probes.readiness.periodSeconds       | int  | `10`    | Readiness probe period                                           |
+| Key                                             | Type | Default | Description                                                      |
+| ----------------------------------------------- | ---- | ------- | ---------------------------------------------------------------- |
+| llmGateway.probes.startup.failureThreshold      | int  | `180`   | Startup probe failure threshold, sized for long index migrations |
+| llmGateway.probes.startup.periodSeconds         | int  | `5`     | Startup probe period                                             |
+| llmGateway.probes.liveness.initialDelaySeconds  | int  | `5`     | Liveness probe initial delay                                     |
+| llmGateway.probes.liveness.periodSeconds        | int  | `10`    | Liveness probe period                                            |
+| llmGateway.probes.readiness.initialDelaySeconds | int  | `3`     | Readiness probe initial delay                                    |
+| llmGateway.probes.readiness.periodSeconds       | int  | `10`    | Readiness probe period                                           |
 
 ### Bundled PostgreSQL
 
@@ -450,9 +344,9 @@ When deployed via the umbrella chart, configuration follows this precedence (hig
 
 ## Database Wiring
 
-By default, this chart creates a Secret containing a `dsn` key used by both services.
+By default, this chart creates a Secret containing a `dsn` key, which the LLM Gateway reads. The Control Plane reads the same database through its own DSN reference.
 
-`database.password` and `postgresql.auth.password` both ship as `change-me` and are rejected at render time, the same way `controlPlane.auth.registrationTokenSecret` is. An install must either set real passwords or supply the credentials through a Secret:
+`database.password` and `postgresql.auth.password` both ship as `change-me` and are rejected at render time at render time. An install must either set real passwords or supply the credentials through a Secret:
 
 - `database.existingSecret` skips the chart-generated DSN Secret entirely
 - `postgresql.auth.existingSecret` skips the bundled database's generated password
@@ -469,18 +363,9 @@ postgres://guardian:<password>@<host>:5432/guardian_gateway?sslmode=disable
 
 The chart-generated DSN percent-encodes `database.user` and `database.password`, so passwords containing `@`, `/`, `?`, `#`, or `:` are safe. A DSN supplied through `database.existingSecret` is used verbatim — percent-encode its userinfo yourself before storing it.
 
-## Control-Plane Auth Secret Wiring
+## Registration Token Wiring
 
-When `controlPlane.auth.enabled=true` or `llmGateway.registration.enabled=true`, the chart reads security material from a single Kubernetes Secret.
-
-- If `controlPlane.auth.existingSecret` is set, that secret is used as-is.
-- If it is unset, the chart creates a Secret from inline values.
-
-Expected secret keys:
-
-- `registrationTokenSecret` (override via `controlPlane.auth.secretKeys.registrationTokenSecret`)
-
-When `llmGateway.registration.enabled=true`, `llm-gateway` reads `registrationTokenSecret` from this secret as `LLM_GATEWAY_REGISTRATION_TOKEN_SECRET`.
+When `llmGateway.registration.enabled=true`, `llm-gateway` reads the Control Plane's registration token secret as `LLM_GATEWAY_REGISTRATION_TOKEN_SECRET`, from the Secret named by `global.secrets.controlPlane.secretName` (default `platform-control-plane`), key `global.secrets.controlPlane.keys.registrationTokenSecret` (default `registration-token-secret`). The umbrella chart creates that Secret from `global.secrets.controlPlane`. `llmGateway.registration.tokenIssuer` must match the Control Plane's `config.auth.registrationTokenIssuer`.
 
 API-key enrollment (`viper did register` with `GUARDIAN_API_KEY`) is a separate path. Set `llmGateway.authServiceBaseURL` to the auth-service that minted the key (for example the in-cluster auth-service Guardian uses). Leaving it empty keeps that path disabled and the gateway returns `404 registration_unavailable`.
 
@@ -503,22 +388,11 @@ The chart injects that key into the `llm-gateway` container as `LLM_GATEWAY_CRED
 
 When `llmGateway.plugins.enabled=true`, the chart wires the gateway hook runtime, async `request.end` queue, artifact cache, and signer trust keys. See `docs/plugin-runtime-bootstrap.md` for the full bootstrap procedure.
 
-For shared deployments, prefer `llmGateway.plugins.secrets.resolutionOrder: ["store"]` and configure both the control-plane and llm-gateway with the same generic `plugins.secrets.encryptionKey.existingSecret`. End users then set integration secret values through the control-plane plugin secret API while snapshots keep only `secret_ref` objects. `llmGateway.plugins.secretEnvs` and `secretEnvsSecret` remain available as local/dev fallback paths; when either is set and no explicit resolver order is provided, the chart enables the `env` resolver automatically.
+For shared deployments, prefer `llmGateway.plugins.secrets.resolutionOrder: ["store"]` and give the Control Plane and llm-gateway the same encryption key Secret (`llmGateway.plugins.secrets.encryptionKey.existingSecret` here). End users then set integration secret values through the Control Plane's plugin secret API while snapshots keep only `secret_ref` objects. `llmGateway.plugins.secretEnvs` and `secretEnvsSecret` remain available as local/dev fallback paths; when either is set and no explicit resolver order is provided, the chart enables the `env` resolver automatically.
 
-For GCS-backed artifacts, bind both service accounts to cloud IAM identities that can read/write the shared bucket.
+For GCS-backed artifacts, bind the llm-gateway service account to a cloud IAM identity that can read the shared bucket.
 
-To let the control-plane sign uploaded plugin artifacts and project configuration manifests server-side, create a Secret containing the encoded Ed25519 seed and configure the publisher signer:
-
-```yaml
-controlPlane:
-  plugins:
-    publisherSigner:
-      keyID: signer-dev-v1
-      existingSecret: guardian-plugin-publisher-signer
-      secretKey: seed
-```
-
-The chart mounts only the selected Secret key into the control-plane pod. Keep the corresponding public key trusted by every gateway that consumes artifacts or snapshots signed by this signer.
+The Control Plane signs uploaded plugin artifacts and project configuration manifests; see the [`control-plane`](../control-plane/README.md) chart. Keep its public key in `llmGateway.plugins.trustedSignerKeys`.
 
 ## OpenTelemetry Configuration
 
@@ -554,12 +428,9 @@ For Splunk forwarding using `gateway OTLP logs -> Collector -> Splunk HEC`, see 
 
 ## Ingress Behavior
 
-This chart creates separate Ingress resources:
+This chart creates one Ingress:
 
 - `https://<llmGateway host>/` -> `llm-gateway`
-- `https://<controlPlane host><ingress.controlPlanePath>` -> `control-plane`
-
-`control-plane` is publicly exposed when ingress is enabled.
 
 When `ingress.certManager.enabled=true`, ingresses include the `cert-manager.io/cluster-issuer` annotation. If `ingress.certManager.createClusterIssuer=true`, this chart also creates a `ClusterIssuer` configured for ACME validation using either DNS-01 or HTTP-01.
 
@@ -578,29 +449,19 @@ The bundled controller serves `haproxyIngress.controller.defaultTLSSecret.secret
 
 For GKE `LoadBalancer` services, this chart also disables HAProxy QUIC/UDP and the extra `stat`/`admin` service ports by default to avoid mixed-protocol LB errors.
 
-## Control-Plane API Base Path
-
-When exposing control-plane behind a path prefix (for example `/api`), set both:
-
-- `ingress.controlPlanePath=/api`
-- `controlPlane.apiBasePath=/api`
-
 ## Postgres Migration Behavior
 
-`llm-gateway` applies SQL migrations on startup. `control-plane` waits for `v_registry_agents` to appear before it starts, which avoids startup races. The gateway startup probe allows long-running concurrent index migrations to finish before liveness checks can restart the pod. Migration contenders poll a non-blocking advisory lock so they do not retain database snapshots while a concurrent index build is waiting to finish.
+`llm-gateway` applies SQL migrations on startup. The Control Plane waits for `v_registry_agents` to appear before it starts, which avoids startup races. The gateway startup probe allows long-running concurrent index migrations to finish before liveness checks can restart the pod. Migration contenders poll a non-blocking advisory lock so they do not retain database snapshots while a concurrent index build is waiting to finish.
 
 ## Bitnami PostgreSQL Image Source
 
 The chart pins PostgreSQL to `bitnamilegacy/postgresql` by default because versioned tags for `bitnami/postgresql` may not be available on Docker Hub.
 
-For air-gapped installs, `global.imageRegistryOverride` redirects the registry host for images this chart owns, including the `psql` init container. `global.imageRepositoryPrefixOverride` now redirects only EQTY Lab images whose source begins with `ghcr.io/eqtylab/`; it leaves upstream images at their existing sources. Installations that previously used the prefix alone to mirror `psql` must also set the host override or `controlPlane.waitForRegistryViews.image.repository` explicitly. Neither override reaches the bundled Bitnami subchart, which reads its own `global.imageRegistry`; mirror that image separately or set `postgresql.image.repository` directly.
+For air-gapped installs, `global.imageRegistryOverride` redirects the registry host for images this chart owns. `global.imageRepositoryPrefixOverride` redirects only EQTY Lab images whose source begins with `ghcr.io/eqtylab/`; it leaves upstream images at their existing sources. Neither override reaches the bundled Bitnami subchart, which reads its own `global.imageRegistry`; mirror that image separately or set `postgresql.image.repository` directly.
 
 ## Optional TOML Runtime Files
 
-Both backend services support TOML runtime files with `--config`:
-
-- llm-gateway: `--config` or `LLM_GATEWAY_CONFIG_FILE`
-- control-plane: `--config` or `CONTROL_PLANE_CONFIG_FILE`
+llm-gateway supports TOML runtime files with `--config` or `LLM_GATEWAY_CONFIG_FILE`.
 
 Source precedence is:
 
@@ -609,7 +470,7 @@ Source precedence is:
 3. environment variables
 4. CLI flags
 
-This chart wires both services through args and env only. It has no values for extra volumes or volume mounts, so it cannot mount a TOML file from a `ConfigMap` or `Secret`. Set runtime options with `llmGateway.extraEnv` and `controlPlane.extraEnv`, or pass CLI flags with `llmGateway.extraArgs` and `controlPlane.extraArgs`.
+This chart wires the service through args and env only. It has no values for extra volumes or volume mounts, so it cannot mount a TOML file from a `ConfigMap` or `Secret`. Set runtime options with `llmGateway.extraEnv`, or pass CLI flags with `llmGateway.extraArgs`.
 
 ## Additional Guides
 
@@ -625,7 +486,6 @@ This chart wires both services through args and env only. It has no values for e
 
 ```bash
 kubectl logs -f deployment/guardian-llm-gateway -n guardian
-kubectl logs -f deployment/guardian-control-plane -n guardian
 ```
 
 ### Checking Pod Status
@@ -644,11 +504,10 @@ kubectl get deployment guardian-llm-gateway -n guardian -o yaml
 kubectl exec -it deployment/guardian-llm-gateway -n guardian -- env | sort
 ```
 
-Test the health endpoints:
+Test the health endpoint:
 
 ```bash
 kubectl exec -it deployment/guardian-llm-gateway -n guardian -- curl -s localhost:10000/health
-kubectl exec -it deployment/guardian-control-plane -n guardian -- curl -s localhost:10010/health
 ```
 
 ### Common Issues
@@ -656,18 +515,11 @@ kubectl exec -it deployment/guardian-control-plane -n guardian -- curl -s localh
 **Render fails with `must not be the default value 'change-me'`**
 
 - Set `database.password` and `postgresql.auth.password`, or supply `database.existingSecret` and `postgresql.auth.existingSecret`
-- Set `controlPlane.auth.registrationTokenSecret`, or supply `controlPlane.auth.existingSecret`
-
-**control-plane stuck in Init**
-
-- The `wait-for-registry-views` init container is waiting on llm-gateway migrations
-- Check llm-gateway logs for migration progress and confirm both services share one database
-- Verify the DSN in the database Secret reaches the intended host
 
 **Agent registration rejected**
 
 - Confirm `llmGateway.registration.enabled=true` and a credential signer seed is present
-- Verify llm-gateway and control-plane resolve the same `registrationTokenSecret`
+- Verify `global.secrets.controlPlane.secretName` names the Secret the Control Plane reads
 - Check clock skew against `llmGateway.signature.defaultClockSkew`
 - `404 registration_unavailable` / `API-key agent registration is not enabled` means `llmGateway.authServiceBaseURL` is unset, not that the key is invalid
 
@@ -684,11 +536,10 @@ kubectl exec -it deployment/guardian-control-plane -n guardian -- curl -s localh
 
 ## Health Endpoints
 
-| Endpoint                                | Service       | Description                                               |
-| --------------------------------------- | ------------- | --------------------------------------------------------- |
-| `GET /health`                           | llm-gateway   | Liveness, readiness, and startup probe target             |
-| `GET {controlPlane.apiBasePath}/health` | control-plane | Liveness and readiness; `/health` when no base path       |
-| `GET /metrics`                          | llm-gateway   | Prometheus metrics on a dedicated port (default `:10001`) |
+| Endpoint       | Service     | Description                                               |
+| -------------- | ----------- | --------------------------------------------------------- |
+| `GET /health`  | llm-gateway | Liveness, readiness, and startup probe target             |
+| `GET /metrics` | llm-gateway | Prometheus metrics on a dedicated port (default `:10001`) |
 
 See `docs/prometheus-metrics.md` for enabling and scraping the metrics endpoint.
 

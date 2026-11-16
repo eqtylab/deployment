@@ -1,0 +1,98 @@
+# On-Premises Control Plane Configuration Example
+# Demonstrates an air-gapped install with an internal registry mirror, an
+# external database, S3-compatible plugin artifact storage, pre-issued TLS
+# certificates, and authentication through the Auth Service
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `control-plane:` key in your umbrella values file
+#
+# Replace every example.internal hostname before deploying
+
+global:
+  # Point the Control Plane image at an internal mirror
+  imageRegistryOverride: registry.example.internal
+  # The wait container's image is a complete reference; the override above
+  # does not apply to it
+  utilityImages:
+    postgres: registry.example.internal/library/postgres:17.6
+
+enabled: true
+
+image:
+  tag: ""
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  className: ""
+  hosts:
+    - host: "control-plane.example.internal"
+      paths:
+        - path: "/api"
+          pathType: "Prefix"
+  # Pre-issued certificate
+  tls:
+    - secretName: "guardian-control-plane-tls"
+      hosts:
+        - "control-plane.example.internal"
+
+startupProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  failureThreshold: 180
+  periodSeconds: 5
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 3
+  periodSeconds: 10
+
+# Pre-created Secret holding the guardian_gateway DSN under dsn
+externalDatabase:
+  dsnSecretKeyRef:
+    name: "guardian-db"
+    key: "dsn"
+
+config:
+  apiBasePath: "/api"
+  # The chart default is true; false rejects cross-origin browser requests
+  corsAllowAll: false
+
+  # Verifies bearer tokens through the Guardian Platform Auth Service
+  auth:
+    enabled: true
+    bearer:
+      enabled: true
+      mode: "auth_service"
+
+  plugins:
+    artifactStorage:
+      provider: "s3"
+      bucket: "guardian-plugin-artifacts"
+      prefix: "production"
+      s3:
+        endpoint: "https://s3.example.internal"
+        region: "us-east-1"
+        forcePathStyle: true
+    trustedSignerKeys:
+      signer-onprem: "did:key:z6MksM27vR5Rdxi4BgF3mG7qbQ8x1xWmA2oxRjzT51r9bYEv"
+
+secrets:
+  # Pre-created Secret holding the registration token secret under
+  # registration-token-secret
+  controlPlane:
+    name: "guardian-control-plane-auth"
+  pluginArtifactStorage:
+    s3:
+      name: "guardian-artifact-s3"

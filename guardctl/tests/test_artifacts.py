@@ -85,6 +85,7 @@ class ArtifactProfileTests(unittest.TestCase):
         configure_artifacts(config, "cloudsmith")
         values = yaml.safe_load(generate_values(config))
         self.assertEqual(list(images(values)), [])
+        self.assertEqual(values["control-plane"], {"enabled": False})
         self.assertEqual(values["gateway-stack"], {"enabled": False})
 
     def test_github_overrides_all_seven_images_to_latest(self):

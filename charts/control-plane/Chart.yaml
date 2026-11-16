@@ -1,0 +1,12 @@
+apiVersion: v2
+name: control-plane
+description: A Helm chart for deploying the Control Plane - management API of the Agent Gateway, called by Guardian and the CLI onboarding flows
+type: application
+version: 1.3.0
+appVersion: "1.3.0"
+home: https://github.com/eqtylab/guardian-infrastructure
+sources:
+  - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/control-plane
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io

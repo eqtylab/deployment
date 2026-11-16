@@ -982,7 +982,11 @@ networkPolicy:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: eqty-pdfgen
-        # Control Plane (gateway adapter) and LLM Gateway
+        # Control Plane (Guardian adapter)
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: control-plane
+        # LLM Gateway
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: gateway-stack

@@ -2,6 +2,9 @@ dependencies:
 - name: auth-service
   repository: file://../auth-service
   version: 1.3.0
+- name: control-plane
+  repository: file://../control-plane
+  version: 1.3.0
 - name: eqty-pdfgen
   repository: file://../eqty-pdfgen
   version: 1.3.0
@@ -20,5 +23,5 @@ dependencies:
 - name: postgresql
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 18.1.15
-digest: sha256:297ba7ca2aba0aebda4383ea0c8e6990a0f1a248743df3f7df25da21bd403d6d
-generated: "2026-11-11T04:49:46.713510537Z"
+digest: sha256:7dc32c9e6ac19c77056f6d94301dd08eed22dad25aba846817ac2d964c1c21fd
+generated: "2026-11-13T15:45:12.676887-05:00"

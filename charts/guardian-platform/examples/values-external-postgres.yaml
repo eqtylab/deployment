@@ -18,7 +18,7 @@
 # (their default is `global.secrets.create: false`, so secrets must be pre-created):
 #   1. A managed PostgreSQL instance reachable from the cluster
 #   2. The platform databases pre-created on the instance (guardian_gateway is
-#      required only when gateway-stack is enabled):
+#      required only when control-plane or gateway-stack is enabled):
 #        CREATE DATABASE governance;
 #        CREATE DATABASE "IntegrityServiceDB";
 #        CREATE DATABASE guardian_gateway;
@@ -27,8 +27,8 @@
 #          --from-literal=password='<your-db-password>' \
 #          --from-literal=gateway-dsn='postgres://postgres:<url-encoded-password>@<host>:5432/guardian_gateway?sslmode=require' \
 #          --namespace guardian
-#      The gateway DSN uses sslmode=require; gateway-stack does not read
-#      sslRootCert, so the server certificate is not verified
+#      The gateway DSN uses sslmode=require; control-plane and gateway-stack do
+#      not read sslRootCert, so the server certificate is not verified
 #   4. (Only if using sslMode verify-ca/verify-full) A Secret or ConfigMap
 #      with the provider's CA bundle (see per-provider notes below):
 #        kubectl create secret generic postgres-ca \
@@ -72,7 +72,8 @@ global:
     # Managed Postgres services all support TLS. Use verify-full when you have
     # the provider's CA bundle mounted; downgrade to "require" if you cannot
     # provide a CA bundle but still want encryption in transit. sslMode and
-    # sslRootCert do not reach gateway-stack, which uses the gateway-dsn sslmode
+    # sslRootCert do not reach control-plane or gateway-stack, which use the
+    # gateway-dsn sslmode
     sslMode: "verify-full"
     sslRootCert:
       secretName: "postgres-ca"

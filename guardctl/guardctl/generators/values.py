@@ -5,6 +5,7 @@ from typing import Any
 from guardctl.core.models import AuthProvider, DatabaseMode, PlatformConfig
 from guardctl.utils.yaml import dump_yaml_sections, file_header, required
 from guardctl.generators.sections.auth_service import generate_auth_service_section
+from guardctl.generators.sections.control_plane import generate_control_plane_section
 from guardctl.generators.sections.eqty_pdfgen import generate_eqty_pdfgen_section
 from guardctl.generators.sections.gateway_stack import generate_gateway_stack_section
 from guardctl.generators.sections.governance_service import (
@@ -36,6 +37,12 @@ def generate_values(config: PlatformConfig) -> str:
             "Auth Service",
             "Override values for the auth-service Helm chart.",
             generate_auth_service_section(config),
+        ),
+        (
+            "control-plane",
+            "Control Plane",
+            "Override values for the control-plane Helm chart.",
+            generate_control_plane_section(config),
         ),
         (
             "eqty-pdfgen",

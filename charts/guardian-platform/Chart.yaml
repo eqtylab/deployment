@@ -16,12 +16,17 @@ dependencies:
     version: "1.3.0"
     repository: "file://../auth-service"
     condition: auth-service.enabled
+  # Control Plane
+  - name: control-plane
+    version: "1.3.0"
+    repository: "file://../control-plane"
+    condition: control-plane.enabled
   # PDFGen
   - name: eqty-pdfgen
     version: "1.3.0"
     repository: "file://../eqty-pdfgen"
     condition: eqty-pdfgen.enabled
-  # Gateway and Control Plane
+  # LLM Gateway
   - name: gateway-stack
     version: "1.3.0"
     repository: "file://../gateway-stack"

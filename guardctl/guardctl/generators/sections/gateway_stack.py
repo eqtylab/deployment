@@ -9,12 +9,11 @@ from guardctl.core.models import PlatformConfig
 
 def generate_gateway_stack_section(config: PlatformConfig) -> dict[str, Any]:
     """Generate the gateway-stack section of values.yaml."""
-    # The gateway stack (LLM gateway and control plane) uses its own hostnames
-    # and ingress class rather than the shared platform domain, so enabling it
-    # needs deployment-specific decisions that guardctl does not prompt for:
-    # hostnames, TLS, a registration credential signer, and plugin artifact
-    # storage. Disabled by default to match the guardian-platform chart
-    # default.
+    # The LLM Gateway uses its own hostname and ingress class rather than the
+    # shared platform domain, so enabling it needs deployment-specific decisions
+    # that guardctl does not prompt for: a hostname, TLS, a registration
+    # credential signer, and plugin artifact storage. Disabled by default to
+    # match the guardian-platform chart default.
     #
     # To enable it, layer charts/guardian-platform/examples/values-gateway.yaml
     # over this file and see charts/gateway-stack/README.md for the full setup.
@@ -23,6 +22,5 @@ def generate_gateway_stack_section(config: PlatformConfig) -> dict[str, Any]:
     section: dict[str, Any] = {"enabled": False}
     if runtime_image_values(config):
         section["llmGateway"] = runtime_image_values(config)
-        section["controlPlane"] = runtime_image_values(config)
 
     return section

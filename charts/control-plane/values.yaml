@@ -1,0 +1,628 @@
+# =============================================================================
+# CONTROL PLANE - HELM VALUES CONFIGURATION
+# =============================================================================
+# This values file configures the Control Plane, the management API of the
+# Agent Gateway, called by Guardian and the CLI onboarding flows
+#
+# When deployed via the umbrella chart (guardian-platform), most values
+# are auto-configured from global settings
+# =============================================================================
+
+# -- Enable Service
+# @default -- `true`
+# Enable the Control Plane
+enabled: true
+
+# -- Global values shared by umbrella and standalone installs
+global:
+  # -- Replace only the image registry host, for example registry.customer.example
+  imageRegistryOverride: ""
+  # -- Replace the full EQTY Lab image repository prefix, for example registry.customer.example/eqtylab
+  imageRepositoryPrefixOverride: ""
+  # -- Helper images shared by the platform's dependency wait containers
+  # @default -- See values below
+  utilityImages:
+    # -- Complete image reference for the PostgreSQL wait container (empty keeps `docker.io/library/postgres:17.6`)
+    # @default -- `""`
+    postgres: ""
+  # -- Secrets Configuration
+  # @default -- See values below
+  # Platform Secret names used when this chart's own Secret name is empty; the
+  # umbrella chart replaces them with its global.secrets values
+  secrets:
+    # -- Database Credentials
+    # @default -- See values below
+    database:
+      # -- Secret Name
+      # @default -- `platform-database`
+      secretName: "platform-database"
+    # -- Control Plane Credentials
+    # @default -- See values below
+    controlPlane:
+      # -- Secret Name
+      # @default -- `platform-control-plane`
+      secretName: "platform-control-plane"
+
+# -- Replica Count
+# @default -- `1`
+# Number of pod replicas to run (ignored if autoscaling.enabled is true)
+replicaCount: 1
+
+# -- Image Configuration
+# @default -- See values below
+# Container image settings for the Control Plane
+image:
+  # -- Image Repository
+  # @default -- `ghcr.io/eqtylab/guardian-control-plane`
+  repository: ghcr.io/eqtylab/guardian-control-plane
+  # -- Image Pull Policy
+  # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
+  # Options: IfNotPresent, Always, Never
+  pullPolicy: ""
+  # -- Image Tag
+  # @default -- `""` (uses chart appVersion)
+  tag: ""
+  # -- Immutable digest; takes precedence over tag when set
+  # @default -- `""`
+  digest: ""
+
+# -- Container Arguments
+# @default -- `[]`
+# Appended after the arguments the chart builds from config
+args: []
+
+# -- Image Pull Secrets
+# @default -- `[]`
+# Used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty
+imagePullSecrets: []
+
+# -- Name Override
+# @default -- `""`
+# Override the chart name used for resource naming
+nameOverride: ""
+
+# -- Full Name Override
+# @default -- `""`
+# Override the full name used for resource naming
+fullnameOverride: ""
+
+# -- Service Account Configuration
+# @default -- See values below
+serviceAccount:
+  # -- Create Service Account
+  # @default -- `true`
+  create: true
+  # -- Automount API Credentials
+  # @default -- `true`
+  automount: true
+  # -- Service Account Annotations
+  # @default -- `{}`
+  # Bind a cloud IAM identity here for plugin artifact storage access
+  annotations: {}
+  # -- Service Account Name
+  # @default -- `""` (generated if create is true)
+  name: ""
+
+# -- Pod Annotations
+# @default -- `{}`
+# Additional annotations to add to pods
+podAnnotations: {}
+
+# -- Pod Labels
+# @default -- `{}`
+# Additional labels to add to pods
+podLabels: {}
+
+# -- Pod Security Context
+# @default -- See values below
+# Security context applied at the pod level
+podSecurityContext:
+  runAsNonRoot: true
+
+# -- Container Security Context
+# @default -- See values below
+# Security context applied at the container level
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# -- Service Configuration
+# @default -- See values below
+service:
+  # -- Enable Service
+  # @default -- `true`
+  enabled: true
+  # -- Service Type
+  # @default -- `ClusterIP`
+  # Options: ClusterIP, NodePort, LoadBalancer
+  type: ClusterIP
+  # -- Service Port
+  # @default -- `10010`
+  port: 10010
+
+# -- Ingress Configuration
+# @default -- See values below
+ingress:
+  # -- Enable Ingress
+  # @default -- `false`
+  enabled: false
+  # -- Ingress Class Name
+  # @default -- `""`
+  # Example: "haproxy"
+  className: ""
+  # -- Ingress Annotations
+  # @default -- `{}`
+  annotations: {}
+    # cert-manager.io/issuer: "letsencrypt-prod"
+  # -- Ingress Hosts
+  # @default -- See values below
+  hosts:
+    - host: cp.guardian.example.com
+      paths:
+        # Set config.apiBasePath to serve the API under a path prefix
+        - path: "/"
+          pathType: Prefix
+  # -- TLS Configuration
+  # @default -- `[]`
+  tls: []
+    # - secretName: control-plane-tls
+    #   hosts:
+    #     - cp.guardian.example.com
+
+# -- Resource Configuration
+# @default -- `{}`
+# CPU and memory resource requests and limits
+resources: {}
+  # requests:
+  #   cpu: 100m
+  #   memory: 256Mi
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+
+# -- Autoscaling Configuration
+# @default -- See values below
+autoscaling:
+  # -- Enable Autoscaling
+  # @default -- `false`
+  enabled: false
+  # -- Minimum Replicas
+  # @default -- `1`
+  minReplicas: 1
+  # -- Maximum Replicas
+  # @default -- `10`
+  maxReplicas: 10
+  # -- Target CPU Utilization
+  # @default -- `80`
+  targetCPUUtilizationPercentage: 80
+  # -- Target Memory Utilization
+  # @default -- `80`
+  targetMemoryUtilizationPercentage: 80
+
+# -- Pod Disruption Budget
+# @default -- See values below
+podDisruptionBudget:
+  # -- Enable PDB
+  # @default -- `false`
+  enabled: false
+  # -- Minimum Available
+  # @default -- `1`
+  # Only rendered when replicaCount, or autoscaling.minReplicas with autoscaling on, is above 1
+  minAvailable: 1
+  # -- Maximum Unavailable
+  # @default -- `1`
+  # Only rendered otherwise; allows eviction of single-replica pods during node drains
+  # Setting this to `0` may block node drains and cluster upgrades
+  maxUnavailable: 1
+
+# -- Node Selector
+# @default -- `{}`
+# Node labels for pod assignment
+nodeSelector: {}
+
+# -- Tolerations
+# @default -- `[]`
+# Tolerations for pod assignment
+tolerations: []
+
+# -- Affinity
+# @default -- `{}`
+# Affinity rules for pod assignment
+affinity: {}
+
+# -- Init Containers
+# @default -- `[]`
+# Init containers to add to the pod
+initContainers: []
+
+# -- Dependency Wait Configuration
+# @default -- See values below
+# What the wait-registry-views init container checks before the Control Plane starts
+waitDeps:
+  # -- Registry Views Wait
+  # @default -- See values below
+  # The registry views the LLM Gateway's migrations create
+  registryViews:
+    # -- Enabled
+    # @default -- `true`
+    enabled: true
+    # -- Interval Seconds
+    # @default -- `2`
+    # Seconds between checks
+    intervalSeconds: 2
+
+# -- Startup Probe
+# @default -- See values below
+# Prefix the path with config.apiBasePath when it is set
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  failureThreshold: 180
+  periodSeconds: 5
+
+# -- Liveness Probe
+# @default -- See values below
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# -- Readiness Probe
+# @default -- See values below
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 3
+  periodSeconds: 10
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+# -- External Database Configuration
+# @default -- See values below
+# The registry and audit store the Control Plane shares with the LLM Gateway
+externalDatabase:
+  # -- DSN Secret Reference
+  # @default -- See values below
+  dsnSecretKeyRef:
+    # -- Secret Name
+    # @default -- `""` (auto-configured from global.secrets.database.secretName)
+    name: ""
+    # -- Secret Key
+    # @default -- `""` (auto-configured from global.secrets.database.keys.gatewayDsn, defaults to "gateway-dsn")
+    key: ""
+
+# =============================================================================
+# APPLICATION CONFIGURATION
+# =============================================================================
+
+# -- Application Configuration
+# @default -- See values below
+config:
+  # -- Listen Address
+  # @default -- `:10010`
+  listenAddr: ":10010"
+
+  # -- API Base Path
+  # @default -- `""`
+  # Serves the API under this prefix; set the ingress path and probe paths to match
+  apiBasePath: ""
+
+  # -- Allow All CORS Origins
+  # @default -- `true`
+  corsAllowAll: true
+
+  # ---------------------------------------------------------------------------
+  # Authentication Configuration
+  # ---------------------------------------------------------------------------
+
+  # -- Authentication Configuration
+  # @default -- See values below
+  auth:
+    # -- Enable Authentication
+    # @default -- `false`
+    # Reads the registration token secret from secrets.controlPlane
+    enabled: false
+    # -- Registration Token Issuer
+    # @default -- `control-plane`
+    registrationTokenIssuer: "control-plane"
+    # -- Allowed Email Domains
+    # @default -- `[]`
+    # Restricts bearer tokens to these email domains
+    allowedEmailDomains: []
+    # -- Bearer Token Verification
+    # @default -- See values below
+    bearer:
+      # -- Enable Bearer Token Verification
+      # @default -- `false`
+      # Must match auth.enabled
+      enabled: false
+      # -- Bearer Verification Mode
+      # @default -- `""` (treated as "oidc")
+      # Options: oidc, auth_service
+      # "oidc" verifies tokens against issuerURL and clientID; "auth_service" asks the
+      # Auth Service at authServiceBaseURL, falling back to adapter.authServiceBaseURL
+      mode: ""
+      # -- Bearer Issuer URL
+      # @default -- `""`
+      issuerURL: ""
+      # -- Bearer Client ID
+      # @default -- `""`
+      clientID: ""
+      # -- Auth Service Base URL
+      # @default -- `""` (falls back to adapter.authServiceBaseURL)
+      authServiceBaseURL: ""
+      # -- Bearer Scopes
+      # @default -- `["openid", "profile", "email"]`
+      scopes:
+        - "openid"
+        - "profile"
+        - "email"
+
+  # ---------------------------------------------------------------------------
+  # Guardian Adapter Configuration
+  # ---------------------------------------------------------------------------
+
+  # -- Guardian Adapter Configuration
+  # @default -- See values below
+  # Resolves platform identity, project, and integrity data for Guardian
+  adapter:
+    # -- Enable Adapter
+    # @default -- `false` (set to true by the umbrella chart)
+    enabled: false
+    # -- Auth Service Base URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
+    authServiceBaseURL: ""
+    # -- Governance Service Base URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-governance-service:10001")
+    governanceServiceBaseURL: ""
+    # -- Adapter HTTP Timeout
+    # @default -- `5s`
+    httpTimeout: "5s"
+    # -- Project Runtime Read Timeout
+    # @default -- `30s`
+    projectRuntimeReadTimeout: "30s"
+    # -- Integrity Service Base URL
+    # @default -- `""` (auto-generated: "http://{Release.Name}-integrity-service:3050")
+    integrityBaseURL: ""
+    # -- Integrity HTTP Timeout
+    # @default -- `5s`
+    integrityHTTPTimeout: "5s"
+    # -- Integrity Status Cache TTL
+    # @default -- `5m`
+    integrityStatusCacheTTL: "5m"
+    # -- Trusted Membership Issuer DIDs
+    # @default -- `[]`
+    trustedMembershipIssuerDIDs: []
+    # -- Trusted Compliance Issuer DIDs
+    # @default -- `[]`
+    trustedComplianceIssuerDIDs: []
+    # -- Allow Embedded Credential Bootstrap
+    # @default -- `false`
+    allowEmbeddedCredentialBootstrap: false
+
+  # ---------------------------------------------------------------------------
+  # VirusTotal Configuration
+  # ---------------------------------------------------------------------------
+
+  # -- VirusTotal Configuration
+  # @default -- See values below
+  # Optional scanning of the blobs callers look up through /v1/vt-scans
+  virusTotal:
+    # -- Enable VirusTotal Scanning
+    # @default -- `false`
+    # Reads the API key from secrets.virusTotal, unless extraEnvVars sets CONTROL_PLANE_VT_API_KEY
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Plugin Configuration
+  # ---------------------------------------------------------------------------
+
+  # -- Plugin Management Configuration
+  # @default -- See values below
+  plugins:
+    # -- Plugin Publisher Signer
+    # @default -- See values below
+    # Signs plugin artifacts and project configuration manifests with the seed in secrets.pluginPublisherSigner
+    publisherSigner:
+      # -- Signer Key ID
+      # @default -- `""` (**REQUIRED** when secrets.pluginPublisherSigner.name is set)
+      keyID: ""
+      # -- Publisher Signer Mount Path
+      # @default -- `/run/secrets/guardian-plugin-publisher`
+      mountPath: "/run/secrets/guardian-plugin-publisher"
+    # -- Plugin Artifact Storage
+    # @default -- See values below
+    artifactStorage:
+      # -- Storage Provider
+      # @default -- `""`
+      # Options: gcs, s3, azure, file
+      provider: ""
+      # -- Storage Bucket
+      # @default -- `""`
+      # The mount path when provider is file
+      bucket: ""
+      # -- Storage Key Prefix
+      # @default -- `""`
+      prefix: ""
+      # -- Max Upload Bytes
+      # @default -- `536870912` (512 MiB)
+      maxUploadBytes: 536870912
+      # -- GCS Settings
+      # @default -- See values below
+      # Uses the pod's Workload Identity unless secrets.pluginArtifactStorage.gcs.name is set
+      gcs:
+        # -- GCS Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- GCS KMS Key Name
+        # @default -- `""`
+        kmsKeyName: ""
+        # -- GCS Credentials Mount Path
+        # @default -- `/run/secrets/guardian-plugin-artifact-gcs`
+        mountPath: "/run/secrets/guardian-plugin-artifact-gcs"
+      # -- S3 Settings
+      # @default -- See values below
+      s3:
+        # -- S3 Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- S3 Region
+        # @default -- `""` (**REQUIRED** when provider is s3)
+        region: ""
+        # -- Force Path Style Addressing
+        # @default -- `false`
+        forcePathStyle: false
+        # -- S3 Access Key ID
+        # @default -- `""` (**REQUIRED** when provider is s3 and secrets.pluginArtifactStorage.s3.name is empty)
+        accessKeyID: ""
+        # -- S3 Secret Access Key
+        # @default -- `""` (**REQUIRED** when provider is s3 and secrets.pluginArtifactStorage.s3.name is empty)
+        secretAccessKey: ""
+      # -- Azure Settings
+      # @default -- See values below
+      # Set exactly one of accountKey, connectionString, useManagedIdentity, or secrets.pluginArtifactStorage.azure.name
+      azure:
+        # -- Azure Storage Account Name
+        # @default -- `""` (**REQUIRED** with an account key or managed identity)
+        accountName: ""
+        # -- Azure Endpoint Override
+        # @default -- `""`
+        endpoint: ""
+        # -- Use Managed Identity
+        # @default -- `false`
+        useManagedIdentity: false
+        # -- Azure Account Key
+        # @default -- `""`
+        accountKey: ""
+        # -- Azure Connection String
+        # @default -- `""`
+        connectionString: ""
+      # -- File Settings
+      # @default -- See values below
+      file:
+        # -- Existing PersistentVolumeClaim
+        # @default -- `""` (**REQUIRED** when provider is file)
+        # ReadWriteMany claim shared by the Control Plane and LLM Gateway, mounted at bucket
+        existingClaim: ""
+    # -- Trusted Plugin Signer Keys
+    # @default -- `{}`
+    # Map of signer key ID to did:key public key
+    trustedSignerKeys: {}
+
+# =============================================================================
+# SECRETS CONFIGURATION
+# =============================================================================
+
+# -- Secrets Configuration
+# @default -- See values below
+secrets:
+  # -- Control Plane Secret
+  # @default -- See values below
+  # Holds the registration token secret; read when config.auth.enabled is true
+  controlPlane:
+    # -- Secret Name
+    # @default -- `""` (auto-configured from global.secrets.controlPlane.secretName)
+    name: ""
+
+  # -- VirusTotal Secret
+  # @default -- See values below
+  # Only used when config.virusTotal.enabled is true
+  virusTotal:
+    # -- Secret Name
+    # @default -- `""`
+    # **REQUIRED** when config.virusTotal.enabled is true, unless extraEnvVars sets CONTROL_PLANE_VT_API_KEY
+    name: ""
+    # -- Secret Key
+    # @default -- `""` (defaults to "api-key")
+    key: ""
+
+  # -- Plugin Publisher Signer Secret
+  # @default -- See values below
+  # Holds the encoded Ed25519 seed; requires config.plugins.publisherSigner.keyID
+  pluginPublisherSigner:
+    # -- Secret Name
+    # @default -- `""`
+    name: ""
+    # -- Secret Key
+    # @default -- `""` (defaults to "seed")
+    key: ""
+
+  # -- Plugin Secrets Encryption Key Secret
+  # @default -- See values below
+  # Use the same Secret for the LLM Gateway
+  pluginSecretsKey:
+    # -- Secret Name
+    # @default -- `""`
+    name: ""
+    # -- Secret Key
+    # @default -- `""` (defaults to "encryption-key")
+    key: ""
+
+  # -- Plugin Artifact Storage Secrets
+  # @default -- See values below
+  # Only configure the section matching config.plugins.artifactStorage.provider
+  pluginArtifactStorage:
+    # -- GCS Credentials Secret
+    # @default -- See values below
+    gcs:
+      # -- Secret Name
+      # @default -- `""` (uses the pod's Workload Identity)
+      name: ""
+      # -- Secret Key
+      # @default -- `""` (defaults to "serviceAccountJson")
+      key: ""
+    # -- S3 Credentials Secret
+    # @default -- See values below
+    s3:
+      # -- Secret Name
+      # @default -- `""` (uses config.plugins.artifactStorage.s3 keys)
+      name: ""
+      # -- Secret Keys
+      # @default -- See values below
+      keys:
+        # -- Access Key ID Key
+        # @default -- `accessKeyID`
+        accessKeyID: "accessKeyID"
+        # -- Secret Access Key Key
+        # @default -- `secretAccessKey`
+        secretAccessKey: "secretAccessKey"
+    # -- Azure Credentials Secret
+    # @default -- See values below
+    azure:
+      # -- Secret Name
+      # @default -- `""`
+      # Holds an account key or a connection string
+      name: ""
+      # -- Secret Keys
+      # @default -- See values below
+      keys:
+        # -- Account Key Key
+        # @default -- `accountKey`
+        accountKey: "accountKey"
+        # -- Connection String Key
+        # @default -- `connectionString`
+        connectionString: "connectionString"
+
+# =============================================================================
+# EXTRA CONFIGURATION
+# =============================================================================
+
+# -- Extra Environment Variables
+# @default -- `[]`
+extraEnvVars: []
+  # - name: EXTRA_VAR
+  #   value: "extra-value"
+
+# -- Optional pod host aliases (local qualification DNS only)
+# @default -- `[]`
+hostAliases: []

@@ -70,13 +70,13 @@ def generate_secrets(config: PlatformConfig) -> str:
 
 
 def _gateway_dsn(config: PlatformConfig, password: str) -> str:
-    """Build the guardian_gateway DSN consumed by the gateway-stack subchart.
+    """Build the guardian_gateway DSN read by the control-plane and gateway-stack subcharts.
 
     The gateway reads a full connection string rather than user/password fields,
     so the generated password is repeated here. Change both together.
 
-    Only used when gateway-stack is enabled; the umbrella writes this key into
-    the platform database Secret only in that case.
+    Only used when control-plane or gateway-stack is enabled; the umbrella
+    writes this key into the platform database Secret only in that case.
     """
     if config.database_mode == DatabaseMode.EXTERNAL:
         host = "TODO-set-managed-pg-host.example.com"
@@ -105,7 +105,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "values": {
                 "username": "postgres",
                 "password": db_password,
-                # Only consumed when gateway-stack is enabled
+                # Only consumed when control-plane or gateway-stack is enabled
                 "gatewayDsn": _gateway_dsn(config, db_password),
             },
         },
@@ -115,6 +115,13 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "values": {
                 "apiSecret": _generate_secret(),
                 "jwtSecret": _generate_secret(),
+            },
+        },
+        # Only consumed when control-plane or gateway-stack registration is enabled
+        "controlPlane": {
+            "secretName": "platform-control-plane",
+            "values": {
+                "registrationTokenSecret": _generate_secret(),
             },
         },
         # Image registry (always required)

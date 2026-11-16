@@ -36,6 +36,18 @@ class GatewayDsnTests(unittest.TestCase):
         dsn = self.gateway_dsn(DatabaseMode.BUNDLED)
         self.assertTrue(dsn.endswith("/guardian_gateway?sslmode=disable"), dsn)
 
+    def test_registration_token_secret_is_generated(self):
+        config = PlatformConfig(
+            cloud_provider=CloudProvider.GCP,
+            auth_provider=AuthProvider.KEYCLOAK,
+            domain="customer.example.com",
+            environment="production",
+        )
+        secrets = yaml.safe_load(generate_secrets(config))["global"]["secrets"]
+        control_plane = secrets["controlPlane"]
+        self.assertEqual(control_plane["secretName"], "platform-control-plane")
+        self.assertEqual(len(control_plane["values"]["registrationTokenSecret"]), 44)
+
     def test_bundled_database_gateway_dsn_targets_the_guardian_platform_postgresql(
         self,
     ):

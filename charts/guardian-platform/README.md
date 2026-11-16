@@ -23,7 +23,8 @@ The platform uses a microservices architecture with the following components:
 - **Integrity Service** - Rust-based service for verifiable credentials and data integrity
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
 - **PDFGen** - PDF and ZIP rendering service for governance manifests
-- **Gateway Stack** - Optional LLM Gateway and Control Plane
+- **Control Plane** - Optional management API of the Agent Gateway
+- **Gateway Stack** - Optional LLM Gateway
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
 
@@ -39,9 +40,9 @@ reuses `platform-database` and expects a `gateway-dsn` key for the
 `gateway-stack.database.existingSecret` (to the new name or to your own DSN
 Secret) and `postgresql.global.postgresql.auth.existingSecret` to match; the
 chart refuses to render until you do. The Control Plane also needs a
-registration token secret, in
-`gateway-stack.controlPlane.auth.registrationTokenSecret` or a Secret named by
-`gateway-stack.controlPlane.auth.existingSecret`.
+registration token secret: `global.secrets.controlPlane.values.registrationTokenSecret`
+with `global.secrets.create: true`, or a `platform-control-plane` Secret with a
+`registration-token-secret` key.
 
 ## Configuration Model
 
@@ -294,6 +295,7 @@ fixes. To move an install to HAProxy:
    platform DNS record now, at least one old TTL before step 5.
 2. In each service's `ingress` block, set `className: haproxy` and convert the
    ingress-nginx settings:
+
    - **Path prefixes**: replace the regex path, `use-regex`, and
      `rewrite-target: "/$2"` with a plain prefix path and
      `haproxy.org/path-rewrite`. HAProxy matches `ImplementationSpecific` paths
@@ -537,6 +539,8 @@ Centralized secret configuration for all platform components:
 | ------------------------------------------------------- | ------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | global.secrets.create                                   | bool   | `false`                        | Auto-create secrets from values (dev only)                                                                           |
 | global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name                                                                                     |
+| global.secrets.database.keys.gatewayDsn                 | string | `"gateway-dsn"`                | Key holding the gateway DSN the Control Plane and the LLM Gateway read                                               |
+| global.secrets.controlPlane.secretName                  | string | `"platform-control-plane"`     | Control Plane registration token secret name                                                                         |
 | global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, entra, or keycloak)                                                                            |
 | global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`             | Auth0 credentials secret name                                                                                        |
 | global.secrets.auth.entra.secretName                    | string | `"platform-entra"`             | Microsoft Entra ID credentials secret name                                                                           |
@@ -588,6 +592,21 @@ Authentication and authorization service settings. See [auth-service/README.md](
 | auth-service.ingress.enabled                                        | bool   | `false`    | Enable ingress                                                                                                                   |
 | auth-service.autoscaling.enabled                                    | bool   | `false`    | Enable horizontal pod autoscaling                                                                                                |
 | auth-service.waitDeps.governanceService.enabled                     | bool   | `true`     | Wait for the Governance Service before Auth starts; set false when governance-service.enabled is false                           |
+
+### Control Plane Configuration
+
+Agent Gateway management API settings. See [control-plane/README.md](../control-plane/README.md) for complete documentation.
+
+| Key                                                   | Type   | Default          | Description                                                                                 |
+| ----------------------------------------------------- | ------ | ---------------- | ------------------------------------------------------------------------------------------- |
+| control-plane.enabled                                 | bool   | `false`          | Enable the Control Plane                                                                    |
+| control-plane.replicaCount                            | int    | `1`              | Number of replicas                                                                          |
+| control-plane.ingress.enabled                         | bool   | `false`          | Enable ingress                                                                              |
+| control-plane.config.apiBasePath                      | string | `""`             | Serve the API under this prefix; set the ingress path and probe paths to match              |
+| control-plane.config.auth.enabled                     | bool   | `true`           | Enable authentication; reads the registration token secret from global.secrets.controlPlane |
+| control-plane.config.auth.bearer.mode                 | string | `"auth_service"` | Verify bearer tokens through the Auth Service                                               |
+| control-plane.config.adapter.enabled                  | bool   | `true`           | Resolve identity, projects, and integrity status from the platform services                 |
+| control-plane.config.plugins.artifactStorage.provider | string | `""`             | Plugin artifact storage provider (`gcs`, `s3`, `azure`, or `file`)                          |
 
 ### PDFGen Configuration
 
@@ -1352,6 +1371,17 @@ helm upgrade guardian-platform ./charts/guardian-platform \
   --values values.yaml
 ```
 
+### Upgrading from gateway-stack's Control Plane
+
+Earlier releases ran the Control Plane in `gateway-stack`. Its values moved from
+`gateway-stack.controlPlane.*` to `control-plane.*`, and the chart fails to
+render while the old keys remain. The resources are renamed to
+`{Release.Name}-control-plane`, so Helm replaces the Deployment. Set
+`control-plane.enabled: true`, since the Control Plane is off by default. See
+[control-plane/README.md](../control-plane/README.md#upgrading-from-gateway-stack)
+for the key map and the steps before upgrading, including the registration
+token key and ingress TLS.
+
 ### Verify Upgrade
 
 ```bash
@@ -1361,6 +1391,8 @@ kubectl rollout status deployment/guardian-platform-guardian -n guardian
 kubectl rollout status deployment/guardian-platform-integrity-service -n guardian
 # If PDFGen is enabled
 kubectl rollout status deployment/guardian-platform-eqty-pdfgen -n guardian
+# If the Control Plane is enabled
+kubectl rollout status deployment/guardian-platform-control-plane -n guardian
 ```
 
 ### Rolling Back

@@ -1,10 +1,10 @@
 {{- if .Values.openbaoKindProfile }}
 {{- $gateway := index .Values "gateway-stack" }}
-{{- $publisher := $gateway.controlPlane.plugins.publisherSigner }}
-{{- $keyID := required "local kind profile requires controlPlane.plugins.publisherSigner.keyID" $publisher.keyID }}
-{{- $_ := required "local kind profile requires controlPlane.plugins.publisherSigner.existingSecret" $publisher.existingSecret }}
+{{- $controlPlane := index .Values "control-plane" }}
+{{- $keyID := required "local kind profile requires control-plane.config.plugins.publisherSigner.keyID" $controlPlane.config.plugins.publisherSigner.keyID }}
+{{- $_ := required "local kind profile requires control-plane.secrets.pluginPublisherSigner.name" $controlPlane.secrets.pluginPublisherSigner.name }}
 {{- $gatewayKey := index $gateway.llmGateway.plugins.trustedSignerKeys $keyID | default "" }}
-{{- $controlPlaneKey := index $gateway.controlPlane.plugins.trustedSignerKeys $keyID | default "" }}
+{{- $controlPlaneKey := index $controlPlane.config.plugins.trustedSignerKeys $keyID | default "" }}
 {{- if or (empty $gatewayKey) (ne $gatewayKey $controlPlaneKey) }}
 {{- fail "local kind profile requires matching publisher public keys in Gateway and Control Plane trustedSignerKeys" }}
 {{- end }}
@@ -12,11 +12,11 @@
 {{- fail "local kind publisher public key must be a base64-encoded 32-byte Ed25519 public key" }}
 {{- end }}
 {{- $integrity := index .Values "integrity-service" }}
-{{- if ne $gateway.controlPlane.adapter.integrityBaseURL $integrity.config.integrityServiceUrl }}
+{{- if ne $controlPlane.config.adapter.integrityBaseURL $integrity.config.integrityServiceUrl }}
 {{- fail "local kind Control Plane integrityBaseURL must match the Integrity public status URL" }}
 {{- end }}
 {{- $statusHostAlias := false }}
-{{- range $alias := $gateway.controlPlane.hostAliases }}
+{{- range $alias := $controlPlane.hostAliases }}
 {{- if has "guardian.local.test" $alias.hostnames }}
 {{- $statusHostAlias = true }}
 {{- end }}

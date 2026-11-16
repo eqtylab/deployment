@@ -6,51 +6,84 @@
 #     --values examples/values-auth0.yaml \
 #     --values examples/values-gateway.yaml
 #
-# The umbrella chart's gateway-stack defaults already wire the platform database
-# Secret, the control-plane adapter, and auth-service bearer verification, so
-# this overlay only turns the stack on, sets its API path and routes, points
-# Governance Service at the Control Plane, and points Guardian at the
-# control-plane API and the LLM Gateway
+# The umbrella chart's control-plane and gateway-stack defaults already wire
+# the platform database Secret, the Guardian adapter, and Auth Service bearer
+# verification, so this overlay only turns them on, sets the Control Plane's
+# API path and routes, points Governance Service at the Control Plane, and
+# points Guardian at the Control Plane API and the LLM Gateway
 #
 # The governance-service Control Plane URL follows the release name and the
-# default gateway-stack Service name and port; change it if you set
-# gateway-stack.fullnameOverride, gateway-stack.nameOverride, or
-# gateway-stack.controlPlane.service.port
+# default control-plane Service name and port; change it if you set
+# control-plane.fullnameOverride, control-plane.nameOverride, or
+# control-plane.service.port
 #
 # If global.secrets.create=true, also set
-# global.secrets.database.values.gatewayDsn to the guardian_gateway DSN
-#
-# The Control Plane needs a registration token secret. Set
-# gateway-stack.controlPlane.auth.registrationTokenSecret in your secrets file
-# (openssl rand -hex 32), or name a pre-created Secret with a
-# registrationTokenSecret key in auth.existingSecret below
+# global.secrets.database.values.gatewayDsn to the guardian_gateway DSN and
+# global.secrets.controlPlane.values.registrationTokenSecret
+# (openssl rand -base64 32). Otherwise create the platform-control-plane
+# Secret with a registration-token-secret key
+
+control-plane:
+  enabled: true
+
+  # Public routes stay off until hostnames and TLS are chosen. Replace the
+  # host, TLS Secret, and guardian.config.gatewayApiUrl, then set enabled: true
+  ingress:
+    enabled: false
+    className: "haproxy"
+    annotations: {}
+      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: "control-plane.example.com"
+        paths:
+          - path: "/api"
+            pathType: "Prefix"
+    tls:
+      - secretName: "control-plane-tls"
+        hosts:
+          - "control-plane.example.com"
+
+  # Probes follow the API base path
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    failureThreshold: 180
+    periodSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 3
+    periodSeconds: 10
+
+  # Serve the Control Plane API under /api
+  config:
+    apiBasePath: "/api"
 
 gateway-stack:
   enabled: true
 
-  # Serve the control-plane API under /api
-  controlPlane:
-    apiBasePath: "/api"
-    # auth:
-    #   existingSecret: "guardian-control-plane-auth"
-
-  # Public routes stay off until hostnames and TLS are chosen. Replace both
-  # hosts and the guardian.config.gatewayApiUrl and llmGatewayUrl
-  # values, then set enabled: true
+  # Public routes stay off until hostnames and TLS are chosen. Replace the
+  # host and guardian.config.llmGatewayUrl, then set enabled: true
   ingress:
     enabled: false
     className: "haproxy"
-    controlPlanePath: "/api"
     hosts:
       llmGateway: "gateway.example.com"
-      controlPlane: "control-plane.example.com"
 
 governance-service:
   config:
-    controlPlaneUrl: "http://{{ .Release.Name }}-gateway-stack-control-plane:10010"
+    controlPlaneUrl: "http://{{ .Release.Name }}-control-plane:10010"
 
-# Guardian calls the control-plane API on the controlPlane host and
-# shows the llmGateway host in agent onboarding commands
+# Guardian calls the Control Plane API on its host and shows the LLM Gateway
+# host in agent onboarding commands
 guardian:
   config:
     gatewayApiUrl: "https://control-plane.example.com/api"

@@ -13,6 +13,10 @@
 global:
   imagePullSecrets:
     - name: ghcr-pull
+  # Holds the Control Plane's registration token secret, key registration-token-secret
+  secrets:
+    controlPlane:
+      secretName: guardian-dev-control-plane-auth
 
 llmGateway:
   image:
@@ -49,37 +53,11 @@ llmGateway:
       existingSecret: guardian-dev-llm-gateway-credential-signer
       secretKey: seed
 
-controlPlane:
-  image:
-    repository: ghcr.io/eqtylab/guardian-control-plane
-    tag: ""
-    pullPolicy: Always
-  apiBasePath: /api
-  auth:
-    enabled: true
-    existingSecret: guardian-dev-control-plane-auth
-    allowedEmailDomains:
-      - example.com
-    registrationTokenIssuer: control-plane
-    bearer:
-      enabled: true
-      issuerURL: https://your-tenant.us.auth0.com/
-      clientID: replace-with-device-client-id
-      scopes:
-        - openid
-        - profile
-        - email
-  virusTotal:
-    enabled: false
-    existingSecret: ""
-
 ingress:
   enabled: true
   className: haproxy-gateway-dev
-  controlPlanePath: /api
   hosts:
     llmGateway: gateway.dev.example.com
-    controlPlane: guardian.dev.example.com
   certManager:
     enabled: true
     clusterIssuer: letsencrypt-gateway-dev

@@ -1,0 +1,91 @@
+# Control Plane Configuration Example
+# Minimal configuration for deploying the Control Plane
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `control-plane:` key in your umbrella values file
+
+# The Control Plane is disabled by default in the umbrella chart
+enabled: true
+
+image:
+  tag: ""
+  pullPolicy: Always
+
+# Workload Identity for plugin artifact storage (GKE example)
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: "guardian-plugins@your-project.iam.gserviceaccount.com"
+
+ingress:
+  enabled: true
+  className: "haproxy"
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+  hosts:
+    - host: "cp.guardian.your-domain.com"
+      paths:
+        - path: "/api"
+          pathType: "Prefix"
+  tls:
+    - secretName: "control-plane-tls"
+      hosts:
+        - "cp.guardian.your-domain.com"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+startupProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  failureThreshold: 180
+  periodSeconds: 5
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 3
+  periodSeconds: 10
+
+config:
+  # Serve the API under /api, matching the ingress path and probes above
+  apiBasePath: "/api"
+
+  # Authentication - verify Guardian's bearer tokens through the Auth Service
+  auth:
+    enabled: true
+    bearer:
+      enabled: true
+      mode: "auth_service"
+
+  # Plugin artifact storage - GCS through Workload Identity
+  plugins:
+    publisherSigner:
+      keyID: "signer-v1"
+    artifactStorage:
+      provider: "gcs"
+      bucket: "your-plugin-artifact-bucket"
+      prefix: "guardian-plugins"
+    trustedSignerKeys:
+      signer-v1: "did:key:z6Mk..."
+
+secrets:
+  # Pre-created Secrets; use the same plugin secrets key Secret for the LLM Gateway
+  pluginPublisherSigner:
+    name: "guardian-plugin-publisher-signer"
+  pluginSecretsKey:
+    name: "guardian-plugin-secrets-key"

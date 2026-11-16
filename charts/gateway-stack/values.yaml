@@ -1,17 +1,17 @@
 # =============================================================================
 # GATEWAY STACK - HELM VALUES CONFIGURATION
 # =============================================================================
-# This values file configures the Agent Gateway stack: the LLM Gateway,
-# the Control Plane, and the bundled PostgreSQL and HAProxy ingress
-# dependencies
+# This values file configures the Agent Gateway stack: the LLM Gateway and
+# the bundled PostgreSQL and HAProxy ingress dependencies. The Control Plane
+# is the control-plane chart
 #
-# When deployed via the umbrella chart (guardian-platform), the database and
-# control-plane adapter values are auto-configured from the platform release
+# When deployed via the umbrella chart (guardian-platform), the database
+# values are auto-configured from the platform release
 # =============================================================================
 
 # -- Enable Gateway Stack
 # @default -- `true`
-# Enable the LLM Gateway and Control Plane
+# Enable the LLM Gateway
 enabled: true
 
 # -- Global values shared by umbrella and standalone installs
@@ -23,6 +23,17 @@ global:
   imageRegistryOverride: ""
   # -- Replace the full EQTY Lab image repository prefix, for example registry.customer.example/eqtylab
   imageRepositoryPrefixOverride: ""
+  # -- Secrets Configuration
+  # @default -- See values below
+  # Platform Secret names; the umbrella chart replaces them with its global.secrets values
+  secrets:
+    # -- Control Plane Credentials
+    # @default -- See values below
+    # Holds the registration token secret the Control Plane issues tokens with
+    controlPlane:
+      # -- Secret Name
+      # @default -- `platform-control-plane`
+      secretName: "platform-control-plane"
 
 # -- Image Pull Secrets
 # @default -- `[]`
@@ -37,8 +48,8 @@ nameOverride: ""
 # -- Full Name Override
 # @default -- `""`
 # Override the full name prefix for every resource this chart creates. Setting
-# it to "guardian" yields guardian-llm-gateway and guardian-control-plane
-# instead of <release>-gateway-stack-*. Changing it on an existing release
+# it to "guardian" yields guardian-llm-gateway instead of
+# <release>-gateway-stack-llm-gateway. Changing it on an existing release
 # renames the workloads, so treat it as install-time configuration
 fullnameOverride: ""
 
@@ -48,8 +59,8 @@ fullnameOverride: ""
 
 # -- Database Configuration
 # @default -- See values below
-# Connection settings for the registry and audit store shared by llm-gateway
-# and control-plane
+# Connection settings for the registry and audit store llm-gateway shares
+# with the Control Plane
 database:
   # -- Database Host
   # @default -- `""` (auto-generated: "{Release.Name}-postgresql")
@@ -264,8 +275,13 @@ llmGateway:
   registration:
     # -- Enable Agent Registration
     # @default -- `false`
-    # Requires a credential signer seed and a control-plane registration token
+    # Requires a credential signer seed and the registration token secret in
+    # global.secrets.controlPlane
     enabled: false
+    # -- Registration Token Issuer
+    # @default -- `control-plane`
+    # Must match the Control Plane's config.auth.registrationTokenIssuer
+    tokenIssuer: control-plane
     # -- Registration Credential Signer
     # @default -- See values below
     credentialSigner:
@@ -508,475 +524,12 @@ llmGateway:
       periodSeconds: 10
 
 # =============================================================================
-# CONTROL PLANE
-# =============================================================================
-
-# -- Control Plane Configuration
-# @default -- See values below
-# The management API behind Guardian and the CLI onboarding flows
-controlPlane:
-  # -- Replica Count
-  # @default -- `1`
-  replicaCount: 1
-  # -- Image Configuration
-  # @default -- See values below
-  image:
-    # -- Image Repository
-    # @default -- `ghcr.io/eqtylab/guardian-control-plane`
-    repository: ghcr.io/eqtylab/guardian-control-plane
-    # -- Image Tag
-    # @default -- `""` (uses chart appVersion)
-    tag: ""
-    # -- Immutable digest; takes precedence over tag when set
-    # @default -- `""`
-    digest: ""
-    # -- Image Pull Policy
-    # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
-    # Options: IfNotPresent, Always, Never
-    pullPolicy: ""
-  # -- Listen Address
-  # @default -- `":10010"`
-  listenAddr: ":10010"
-  # -- API Base Path
-  # @default -- `""`
-  # Set together with ingress.controlPlanePath when serving behind a path prefix
-  apiBasePath: ""
-  # -- Allow All CORS Origins
-  # @default -- `true`
-  corsAllowAll: true
-  # -- Pod Annotations
-  # @default -- `{}`
-  podAnnotations: {}
-  # -- Pod Labels
-  # @default -- `{}`
-  podLabels: {}
-  # -- Service Account Configuration
-  # @default -- See values below
-  serviceAccount:
-    # -- Create Service Account
-    # @default -- `true`
-    create: true
-    # -- Automount API Credentials
-    # @default -- `true`
-    automount: true
-    # -- Service Account Name
-    # @default -- `""` (generated if create is true)
-    name: ""
-    # -- Service Account Annotations
-    # @default -- `{}`
-    # Bind a cloud IAM identity here for plugin artifact storage access
-    annotations: {}
-  # -- Pod Security Context
-  # @default -- See values below
-  # Also applies to the waitForRegistryViews init container, which sets its own
-  # non-root UID below
-  podSecurityContext:
-    runAsNonRoot: true
-  # -- Container Security Context
-  # @default -- See values below
-  # The image must declare a non-root USER
-  securityContext:
-    runAsNonRoot: true
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: true
-    capabilities:
-      drop:
-        - ALL
-  # -- Resource Requests and Limits
-  # @default -- `{}`
-  resources: {}
-  # -- Autoscaling Configuration
-  # @default -- See values below
-  autoscaling:
-    # -- Enable Autoscaling
-    # @default -- `false`
-    # Replaces replicaCount when enabled
-    enabled: false
-    # -- Minimum Replicas
-    # @default -- `1`
-    minReplicas: 1
-    # -- Maximum Replicas
-    # @default -- `10`
-    maxReplicas: 10
-    # -- Target CPU Utilization
-    # @default -- `80`
-    targetCPUUtilizationPercentage: 80
-    # -- Target Memory Utilization
-    # @default -- `80`
-    targetMemoryUtilizationPercentage: 80
-  # -- Pod Disruption Budget
-  # @default -- See values below
-  podDisruptionBudget:
-    # -- Enable PDB
-    # @default -- `false`
-    enabled: false
-    # -- Minimum Available
-    # @default -- `1`
-    # Only rendered when replicaCount, or autoscaling.minReplicas with autoscaling on, is above 1
-    minAvailable: 1
-    # -- Maximum Unavailable
-    # @default -- `1`
-    # Only rendered otherwise; allows eviction of single-replica pods during node drains
-    # Setting this to `0` may block node drains and cluster upgrades
-    maxUnavailable: 1
-  # -- Node Selector
-  # @default -- `{}`
-  # Node labels for pod assignment
-  nodeSelector: {}
-  # -- Optional pod host aliases (local qualification DNS only)
-  # @default -- `[]`
-  hostAliases: []
-  # -- Tolerations
-  # @default -- `[]`
-  # Tolerations for pod assignment
-  tolerations: []
-  # -- Affinity
-  # @default -- `{}`
-  # Affinity rules for pod assignment
-  affinity: {}
-  # -- Extra Container Arguments
-  # @default -- `[]`
-  extraArgs: []
-  # -- Extra Environment Variables
-  # @default -- `[]`
-  extraEnv: []
-  # -- Authentication Configuration
-  # @default -- See values below
-  auth:
-    # -- Enable Authentication
-    # @default -- `false`
-    enabled: false
-    # -- Existing Auth Secret
-    # @default -- `""` (the chart generates a Secret from the inline values below)
-    existingSecret: ""
-    # -- Auth Secret Keys
-    # @default -- See values below
-    secretKeys:
-      # -- Registration Token Secret Key
-      # @default -- `registrationTokenSecret`
-      registrationTokenSecret: registrationTokenSecret
-    # -- Allowed Email Domains
-    # @default -- `[]`
-    # Restricts bearer tokens to these email domains
-    allowedEmailDomains: []
-    # -- Registration Token Secret
-    # @default -- `change-me` (REQUIRED to change when auth or registration is enabled)
-    # Rejected at render time while left at "change-me"
-    registrationTokenSecret: change-me
-    # -- Registration Token Issuer
-    # @default -- `control-plane`
-    registrationTokenIssuer: control-plane
-    # -- Bearer Token Verification
-    # @default -- See values below
-    bearer:
-      # -- Enable Bearer Token Verification
-      # @default -- `false`
-      enabled: false
-      # -- Bearer Verification Mode
-      # @default -- `""` (treated as "oidc")
-      # "oidc" verifies bearer tokens locally against issuerURL/clientID;
-      # "auth_service" delegates verification to the Guardian Platform
-      # auth-service validate endpoint (authServiceBaseURL, falling back to
-      # adapter CONTROL_PLANE_ADAPTER_AUTH_SERVICE_BASE_URL)
-      mode: ""
-      # -- Bearer Issuer URL
-      # @default -- `""`
-      issuerURL: ""
-      # -- Bearer Client ID
-      # @default -- `""`
-      clientID: ""
-      # -- Auth Service Base URL
-      # @default -- `""` (falls back to the adapter auth-service URL)
-      authServiceBaseURL: ""
-      # -- Bearer Scopes
-      # @default -- `["openid", "profile", "email"]`
-      scopes:
-        - openid
-        - profile
-        - email
-  # -- Guardian Adapter Configuration
-  # @default -- See values below
-  # Resolves platform identity, project, and integrity data for Guardian
-  adapter:
-    # -- Enable Adapter
-    # @default -- `false` (set to true by the umbrella chart)
-    enabled: false
-    # -- Auth Service Base URL
-    # @default -- `""` (auto-generated: "http://{Release.Name}-auth-service:8080")
-    authServiceBaseURL: ""
-    # -- Governance Service Base URL
-    # @default -- `""` (auto-generated: "http://{Release.Name}-governance-service:10001")
-    governanceServiceBaseURL: ""
-    # -- Adapter HTTP Timeout
-    # @default -- `5s`
-    httpTimeout: 5s
-    # -- Project Runtime Read Timeout
-    # @default -- `30s`
-    projectRuntimeReadTimeout: 30s
-    # -- Integrity Service Base URL
-    # @default -- `""` (auto-generated: "http://{Release.Name}-integrity-service:3050")
-    integrityBaseURL: ""
-    # -- Integrity HTTP Timeout
-    # @default -- `5s`
-    integrityHTTPTimeout: 5s
-    # -- Integrity Status Cache TTL
-    # @default -- `5m`
-    integrityStatusCacheTTL: 5m
-    # -- Trusted Membership Issuer DIDs
-    # @default -- `[]`
-    trustedMembershipIssuerDIDs: []
-    # -- Trusted Compliance Issuer DIDs
-    # @default -- `[]`
-    trustedComplianceIssuerDIDs: []
-    # -- Allow Embedded Credential Bootstrap
-    # @default -- `false`
-    allowEmbeddedCredentialBootstrap: false
-  # -- VirusTotal Configuration
-  # @default -- See values below
-  # Optional scanning of the blobs callers look up through /v1/vt-scans
-  virusTotal:
-    # -- Enable VirusTotal Scanning
-    # @default -- `false`
-    enabled: false
-    # -- Existing VirusTotal Secret
-    # @default -- `""`
-    # Name of a Secret containing the VirusTotal API key
-    # **REQUIRED** when enabled is true, unless controlPlane.extraEnv sets CONTROL_PLANE_VT_API_KEY
-    existingSecret: ""
-    # -- VirusTotal Secret Key
-    # @default -- `api-key`
-    secretKey: api-key
-  # -- Plugin Management Configuration
-  # @default -- See values below
-  plugins:
-    # -- Plugin Publisher Signer
-    # @default -- See values below
-    # Pre-created Secret containing the encoded Ed25519 seed used to sign plugin
-    # artifacts and project configuration manifests server-side
-    publisherSigner:
-      # -- Signer Key ID
-      # @default -- `""` (REQUIRED when existingSecret is set)
-      keyID: ""
-      # -- Existing Publisher Signer Secret
-      # @default -- `""`
-      existingSecret: ""
-      # -- Publisher Signer Secret Key
-      # @default -- `seed`
-      secretKey: seed
-      # -- Publisher Signer Mount Path
-      # @default -- `/run/secrets/guardian-plugin-publisher`
-      mountPath: /run/secrets/guardian-plugin-publisher
-    # -- Plugin Artifact Storage
-    # @default -- See values below
-    artifactStorage:
-      # -- Storage Provider
-      # @default -- `""`
-      # Options: gcs, s3, azure, file
-      provider: ""
-      # -- Storage Bucket
-      # @default -- `""`
-      bucket: ""
-      # -- Storage Key Prefix
-      # @default -- `""`
-      prefix: ""
-      # -- Max Upload Bytes
-      # @default -- `536870912` (512 MiB)
-      maxUploadBytes: 536870912
-      # -- GCS Settings
-      # @default -- See values below
-      gcs:
-        # -- GCS Endpoint Override
-        # @default -- `""`
-        endpoint: ""
-        # -- GCS KMS Key Name
-        # @default -- `""`
-        kmsKeyName: ""
-        # -- GCS Credentials Secret
-        # @default -- `""` (uses the pod's workload identity)
-        existingSecret: ""
-        # -- GCS Credentials Secret Key
-        # @default -- `serviceAccountJson`
-        secretKey: serviceAccountJson
-        # -- GCS Credentials Mount Path
-        # @default -- `/run/secrets/guardian-plugin-artifact-gcs`
-        mountPath: /run/secrets/guardian-plugin-artifact-gcs
-      # -- S3 Settings
-      # @default -- See values below
-      s3:
-        # -- S3 Endpoint Override
-        # @default -- `""`
-        endpoint: ""
-        # -- S3 Region
-        # @default -- `""` (REQUIRED when provider is s3)
-        region: ""
-        # -- Force Path Style Addressing
-        # @default -- `false`
-        forcePathStyle: false
-        # -- S3 Access Key ID
-        # @default -- `""` (REQUIRED when provider is s3 and existingSecret is unset)
-        accessKeyID: ""
-        # -- S3 Secret Access Key
-        # @default -- `""` (REQUIRED when provider is s3 and existingSecret is unset)
-        secretAccessKey: ""
-        # -- Existing S3 Credentials Secret
-        # @default -- `""`
-        existingSecret: ""
-        # -- S3 Secret Keys
-        # @default -- See values below
-        secretKeys:
-          # -- Access Key ID Key
-          # @default -- `accessKeyID`
-          accessKeyID: accessKeyID
-          # -- Secret Access Key Key
-          # @default -- `secretAccessKey`
-          secretAccessKey: secretAccessKey
-      # -- Azure Settings
-      # @default -- See values below
-      azure:
-        # -- Azure Storage Account Name
-        # @default -- `""` (REQUIRED with an account key or managed identity)
-        accountName: ""
-        # -- Azure Endpoint Override
-        # @default -- `""`
-        endpoint: ""
-        # -- Use Managed Identity
-        # @default -- `false`
-        useManagedIdentity: false
-        # -- Azure Account Key
-        # @default -- `""`
-        accountKey: ""
-        # -- Azure Connection String
-        # @default -- `""`
-        connectionString: ""
-        # -- Existing Azure Credentials Secret
-        # @default -- `""` (holds an account key or a connection string)
-        existingSecret: ""
-        # -- Azure Secret Keys
-        # @default -- See values below
-        secretKeys:
-          # -- Account Key Key
-          # @default -- `accountKey`
-          accountKey: accountKey
-          # -- Connection String Key
-          # @default -- `connectionString`
-          connectionString: connectionString
-      # -- File Settings
-      # @default -- See values below
-      file:
-        # -- Existing PersistentVolumeClaim
-        # @default -- `""` (REQUIRED when provider is file)
-        # ReadWriteMany claim shared by the Control Plane and LLM Gateway, mounted at bucket
-        existingClaim: ""
-    # -- Trusted Plugin Signer Keys
-    # @default -- `{}`
-    # Map of signer key ID to did:key public key
-    trustedSignerKeys: {}
-    # -- Plugin Secrets Configuration
-    # @default -- See values below
-    secrets:
-      # -- Plugin Secret Encryption Key
-      # @default -- See values below
-      # Use the same Secret here and on llmGateway.plugins.secrets.encryptionKey
-      encryptionKey:
-        # -- Existing Encryption Key Secret
-        # @default -- `""`
-        existingSecret: ""
-        # -- Encryption Key Secret Key
-        # @default -- `encryption-key`
-        secretKey: encryption-key
-  # -- Service Configuration
-  # @default -- See values below
-  service:
-    # -- Enable Service
-    # @default -- `true`
-    enabled: true
-    # -- Service Type
-    # @default -- `ClusterIP`
-    # Options: ClusterIP, NodePort, LoadBalancer
-    type: ClusterIP
-    # -- Service Port
-    # @default -- `10010`
-    port: 10010
-  # -- Registry View Wait Configuration
-  # @default -- See values below
-  # Init container that waits for the registry views created by llm-gateway
-  # migrations, which avoids a control-plane startup race
-  waitForRegistryViews:
-    # -- Enable Wait Init Container
-    # @default -- `true`
-    enabled: true
-    # -- Wait Container Image
-    # @default -- See values below
-    # Supplies psql; the global host override applies, but the EQTY Lab prefix override does not
-    image:
-      # -- Image Repository
-      # @default -- `docker.io/library/postgres`
-      repository: docker.io/library/postgres
-      # -- Image Pull Policy
-      # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
-      # Options: IfNotPresent, Always, Never
-      pullPolicy: ""
-      # -- Image Tag
-      # @default -- `17.6`
-      # Debian variant; alpine images use UID 70, not the 999 pinned below
-      tag: "17.6"
-      # -- Immutable digest; takes precedence over tag when set
-      # @default -- `""`
-      digest: ""
-    # -- Poll Interval Seconds
-    # @default -- `2`
-    intervalSeconds: 2
-    # -- Init Container Security Context
-    # @default -- See values below
-    # UID 999 is the postgres account; the image declares no USER
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: 999
-      runAsGroup: 999
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-        drop:
-          - ALL
-  # -- Health Probe Configuration
-  # @default -- See values below
-  probes:
-    # -- Startup Probe
-    # @default -- See values below
-    # Holds off liveness checks until the Control Plane first reports healthy
-    startup:
-      # -- Failure Threshold
-      # @default -- `180`
-      failureThreshold: 180
-      # -- Period Seconds
-      # @default -- `5`
-      periodSeconds: 5
-    # -- Liveness Probe
-    # @default -- See values below
-    liveness:
-      # -- Initial Delay Seconds
-      # @default -- `5`
-      initialDelaySeconds: 5
-      # -- Period Seconds
-      # @default -- `10`
-      periodSeconds: 10
-    # -- Readiness Probe
-    # @default -- See values below
-    readiness:
-      # -- Initial Delay Seconds
-      # @default -- `3`
-      initialDelaySeconds: 3
-      # -- Period Seconds
-      # @default -- `10`
-      periodSeconds: 10
-
-# =============================================================================
 # INGRESS CONFIGURATION
 # =============================================================================
 
 # -- Ingress Configuration
 # @default -- See values below
-# Creates separate Ingress resources for the gateway and the Control Plane
+# Creates the LLM Gateway's Ingress
 ingress:
   # -- Enable Ingress
   # @default -- `false`
@@ -987,27 +540,17 @@ ingress:
   className: haproxy
   # -- Shared Ingress Annotations
   # @default -- `{}`
-  # Applied to both the gateway and control-plane Ingress resources
+  # Applied to the LLM Gateway Ingress
   annotations: {}
   # -- LLM Gateway Ingress Annotations
   # @default -- `{}`
   llmGatewayAnnotations: {}
-  # -- Control Plane Ingress Annotations
-  # @default -- `{}`
-  controlPlaneAnnotations: {}
-  # -- Control Plane Path
-  # @default -- `/`
-  # Set together with controlPlane.apiBasePath when serving behind a path prefix
-  controlPlanePath: /
   # -- Ingress Hosts
   # @default -- See values below
   hosts:
     # -- LLM Gateway Host
     # @default -- `gateway.example.com`
     llmGateway: gateway.example.com
-    # -- Control Plane Host
-    # @default -- `control.example.com`
-    controlPlane: control.example.com
   # -- TLS Configuration
   # @default -- See values below
   tls:
@@ -1017,9 +560,6 @@ ingress:
     # -- LLM Gateway TLS Secret Name
     # @default -- `""` (auto-generated: "{fullname}-llm-gateway-tls")
     llmGatewaySecretName: ""
-    # -- Control Plane TLS Secret Name
-    # @default -- `""` (auto-generated: "{fullname}-control-plane-tls")
-    controlPlaneSecretName: ""
   # -- cert-manager Configuration
   # @default -- See values below
   certManager:

@@ -598,11 +598,11 @@ generates its own.
 
 ### Advanced: Network Policy Configuration
 
-| Key                   | Type | Default         | Description                                                                                                                                                                                               |
-| --------------------- | ---- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| networkPolicy.enabled | bool | `false`         | Enable NetworkPolicy                                                                                                                                                                                      |
-| networkPolicy.ingress | list | See values.yaml | Ingress on 8080 from the ingress-nginx and haproxy-controller namespaces and the bundled HAProxy controller (haproxy-ingress), Governance Service, Integrity Service, eqty-pdfgen, and gateway-stack pods |
-| networkPolicy.egress  | list | See values.yaml | Egress to DNS in kube-system, PostgreSQL on 5432, the Governance Service on 10001, and HTTPS on 443                                                                                                       |
+| Key                   | Type | Default         | Description                                                                                                                                                                                                              |
+| --------------------- | ---- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| networkPolicy.enabled | bool | `false`         | Enable NetworkPolicy                                                                                                                                                                                                     |
+| networkPolicy.ingress | list | See values.yaml | Ingress on 8080 from the ingress-nginx and haproxy-controller namespaces and the bundled HAProxy controller (haproxy-ingress), Governance Service, Integrity Service, eqty-pdfgen, control-plane, and gateway-stack pods |
+| networkPolicy.egress  | list | See values.yaml | Egress to DNS in kube-system, PostgreSQL on 5432, the Governance Service on 10001, and HTTPS on 443                                                                                                                      |
 
 ### Advanced: Migration Job Configuration
 

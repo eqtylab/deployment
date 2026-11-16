@@ -8,9 +8,10 @@ This repository contains Helm charts for deploying the Guardian Platform on Kube
 | ----------------------------------------- | -------- | ------------------------------------------------------------ |
 | [auth-service](auth-service/)             | Subchart | Go-based authentication and authorization service            |
 | [auth0-bootstrap](auth0-bootstrap/)       | Utility  | Auth0 application, API, and user configuration job           |
+| [control-plane](control-plane/)           | Subchart | Agent Gateway management API                                 |
 | [entra-bootstrap](entra-bootstrap/)       | Utility  | Microsoft Entra ID app registration configuration job        |
 | [eqty-pdfgen](eqty-pdfgen/)               | Subchart | PDF and ZIP rendering service for governance manifests       |
-| [gateway-stack](gateway-stack/)           | Subchart | LLM Gateway and Control Plane                                |
+| [gateway-stack](gateway-stack/)           | Subchart | LLM Gateway                                                  |
 | [governance-ops](governance-ops/)         | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
 | [guardian-platform](guardian-platform/)   | Umbrella | Complete platform deployment (recommended)                   |
 | [governance-service](governance-service/) | Subchart | Go-based backend API and workflow engine                     |
@@ -27,9 +28,10 @@ The chart repository is organized using an **umbrella chart pattern**:
 charts/
 ├── auth-service/            # Authentication subchart
 ├── auth0-bootstrap/         # Auth0 configuration utility
+├── control-plane/           # Agent Gateway management API subchart
 ├── entra-bootstrap/         # Entra ID configuration utility
 ├── eqty-pdfgen/             # Manifest PDF rendering subchart
-├── gateway-stack/           # Gateway and control plane subchart
+├── gateway-stack/           # LLM Gateway subchart
 ├── governance-ops/          # Operational monitoring (dashboards, alerts)
 ├── guardian-platform/       # Umbrella chart (deploy this for full platform)
 │   ├── Chart.yaml           # Dependencies on all subcharts
@@ -313,9 +315,10 @@ Charts follow [Semantic Versioning](https://semver.org/):
 - **MINOR**: New features, new configuration options
 - **PATCH**: Bug fixes, documentation updates
 
-The seven platform charts (`guardian-platform`, `auth-service`, `eqty-pdfgen`,
-`gateway-stack`, `governance-service`, `guardian`, and `integrity-service`)
-share one version, set for each platform release.
+The eight platform charts (`guardian-platform`, `auth-service`,
+`control-plane`, `eqty-pdfgen`, `gateway-stack`, `governance-service`,
+`guardian`, and `integrity-service`) share one version, set for each platform
+release.
 
 The bootstrap charts (`auth0-bootstrap`, `entra-bootstrap`,
 `keycloak-bootstrap`), `governance-ops`, and `openbao-custody` version

@@ -42,6 +42,11 @@ global:
       provider: "keycloak"
     keyManagement:
       provider: "openbao"
+    # The launcher's Secret and key
+    controlPlane:
+      secretName: "guardian-control-plane-auth"
+      keys:
+        registrationTokenSecret: "registrationTokenSecret"
 
 postgresql:
   enabled: false
@@ -142,7 +147,7 @@ governance-service:
     azureStorageAccountName: "guardian"
     azureStorageContainerName: "guardian"
     azureUseManagedIdentity: false
-    controlPlaneUrl: "http://{{ .Release.Name }}-gateway-stack-control-plane:10010"
+    controlPlaneUrl: "http://{{ .Release.Name }}-control-plane:10010"
     serviceAccount:
       enabled: true
   migrations:
@@ -225,6 +230,60 @@ eqty-pdfgen:
     timestampUrl: ""
 
 # =============================================================================
+# Control Plane
+# =============================================================================
+control-plane:
+  enabled: true
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    failureThreshold: 180
+    periodSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    initialDelaySeconds: 3
+    periodSeconds: 10
+  config:
+    apiBasePath: "/api"
+    adapter:
+      integrityBaseURL: "http://guardian.local.test:8080/integrityService"
+    auth:
+      enabled: true
+      bearer:
+        enabled: true
+        mode: "auth_service"
+    plugins:
+      artifactStorage:
+        provider: "s3"
+        bucket: "guardian-plugins"
+        prefix: "kind"
+        s3:
+          endpoint: "http://minio:9000"
+          region: "us-east-1"
+          forcePathStyle: true
+      # Required; the launcher supplies the actual publisher public key.
+      trustedSignerKeys: {}
+  secrets:
+    pluginArtifactStorage:
+      s3:
+        name: "guardian-artifact-s3"
+
+# =============================================================================
 # Gateway Stack
 # =============================================================================
 gateway-stack:
@@ -257,31 +316,4 @@ gateway-stack:
           forcePathStyle: true
           existingSecret: "guardian-artifact-s3"
       # Required; the launcher supplies the actual publisher public key.
-      trustedSignerKeys: {}
-  controlPlane:
-    resources:
-      requests:
-        cpu: "50m"
-        memory: "128Mi"
-      limits:
-        memory: "512Mi"
-    apiBasePath: "/api"
-    adapter:
-      integrityBaseURL: "http://guardian.local.test:8080/integrityService"
-    auth:
-      enabled: true
-      existingSecret: "guardian-control-plane-auth"
-      bearer:
-        enabled: true
-        mode: "auth_service"
-    plugins:
-      artifactStorage:
-        provider: "s3"
-        bucket: "guardian-plugins"
-        prefix: "kind"
-        s3:
-          endpoint: "http://minio:9000"
-          region: "us-east-1"
-          forcePathStyle: true
-          existingSecret: "guardian-artifact-s3"
       trustedSignerKeys: {}

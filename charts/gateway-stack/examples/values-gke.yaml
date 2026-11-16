@@ -11,6 +11,10 @@
 
 global:
   imagePullSecrets: []
+  # Holds the Control Plane's registration token secret, key registration-token-secret
+  secrets:
+    controlPlane:
+      secretName: guardian-control-plane-auth
 
 llmGateway:
   image:
@@ -59,56 +63,11 @@ llmGateway:
     - name: OTEL_RESOURCE_ATTRIBUTES
       value: service.name=guardian-llm-gateway,deployment.environment=development
 
-controlPlane:
-  image:
-    repository: ghcr.io/eqtylab/guardian-control-plane
-    tag: ""
-  apiBasePath: /api
-  serviceAccount:
-    annotations:
-      iam.gke.io/gcp-service-account: guardian-control-plane-dev@your-gcp-project-id.iam.gserviceaccount.com
-  auth:
-    enabled: true
-    allowedEmailDomains:
-      - example.com
-    registrationTokenSecret: replace-with-registration-token-secret
-    registrationTokenIssuer: control-plane
-    bearer:
-      enabled: true
-      issuerURL: https://accounts.google.com
-      clientID: replace-with-device-client-id
-      scopes:
-        - openid
-        - profile
-        - email
-  plugins:
-    publisherSigner:
-      keyID: signer-dev
-      existingSecret: guardian-plugin-publisher-signer
-      secretKey: seed
-    artifactStorage:
-      provider: gcs
-      bucket: guardian-plugin-artifacts-dev
-      prefix: development
-      maxUploadBytes: 536870912
-      gcs:
-        endpoint: ""
-        kmsKeyName: ""
-    trustedSignerKeys:
-      signer-dev: did:key:z6MkReplaceWithTrustedPluginSigner
-    # For store-backed plugin secrets:
-    # secrets:
-    #   encryptionKey:
-    #     existingSecret: guardian-plugin-secret-key
-    #     secretKey: encryption-key
-
 ingress:
   enabled: true
   className: haproxy
-  controlPlanePath: /api
   hosts:
     llmGateway: gateway.example.com
-    controlPlane: control-plane.example.com
   certManager:
     enabled: true
     clusterIssuer: letsencrypt-prod

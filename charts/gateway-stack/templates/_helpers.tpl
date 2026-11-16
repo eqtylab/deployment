@@ -109,17 +109,6 @@ Secret name for app DB connection
 {{- end -}}
 
 {{/*
-Secret name for control-plane auth
-*/}}
-{{- define "gateway-stack.controlPlaneAuthSecretName" -}}
-{{- if .Values.controlPlane.auth.existingSecret -}}
-{{- .Values.controlPlane.auth.existingSecret -}}
-{{- else -}}
-{{- printf "%s-control-plane-auth" (include "gateway-stack.fullname" .) -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Secret name for llm-gateway registration credential signer
 */}}
 {{- define "gateway-stack.llmGatewayCredentialSignerSecretName" -}}
@@ -141,30 +130,20 @@ TLS secret names
 {{- end -}}
 {{- end -}}
 
-{{- define "gateway-stack.controlPlaneTLSSecretName" -}}
-{{- if .Values.ingress.tls.controlPlaneSecretName -}}
-{{- .Values.ingress.tls.controlPlaneSecretName -}}
-{{- else -}}
-{{- printf "%s-control-plane-tls" (include "gateway-stack.fullname" .) -}}
-{{- end -}}
-{{- end -}}
-
 {{/*
-Checksums of the chart-managed Secrets each workload consumes, so a credential
+Checksums of the chart-managed Secrets each workload consumes, plus the
+registration token from global.secrets.controlPlane.values, so a credential
 change rolls the pods that read it. Secrets supplied through existingSecret are
 rendered empty here and are not tracked; rotate those with your own rollout.
 */}}
 {{- define "gateway-stack.llmGatewaySecretsChecksum" -}}
 {{- $db := include (print $.Template.BasePath "/database-secret.yaml") . -}}
-{{- $auth := include (print $.Template.BasePath "/control-plane-auth-secret.yaml") . -}}
 {{- $signer := include (print $.Template.BasePath "/llm-gateway-credential-signer-secret.yaml") . -}}
-{{- printf "%s%s%s" $db $auth $signer | sha256sum -}}
+{{- $token := "" -}}
+{{- if .Values.llmGateway.registration.enabled -}}
+{{- $token = (((((.Values.global).secrets).controlPlane).values).registrationTokenSecret) | default "" -}}
 {{- end -}}
-
-{{- define "gateway-stack.controlPlaneSecretsChecksum" -}}
-{{- $db := include (print $.Template.BasePath "/database-secret.yaml") . -}}
-{{- $auth := include (print $.Template.BasePath "/control-plane-auth-secret.yaml") . -}}
-{{- printf "%s%s" $db $auth | sha256sum -}}
+{{- printf "%s%s%s" $db $signer $token | sha256sum -}}
 {{- end -}}
 
 {{/*
@@ -175,16 +154,6 @@ Service account names
 {{- .Values.llmGateway.serviceAccount.name -}}
 {{- else if .Values.llmGateway.serviceAccount.create -}}
 {{- printf "%s-llm-gateway" (include "gateway-stack.fullname" .) -}}
-{{- else -}}
-default
-{{- end -}}
-{{- end -}}
-
-{{- define "gateway-stack.controlPlaneServiceAccountName" -}}
-{{- if .Values.controlPlane.serviceAccount.name -}}
-{{- .Values.controlPlane.serviceAccount.name -}}
-{{- else if .Values.controlPlane.serviceAccount.create -}}
-{{- printf "%s-control-plane" (include "gateway-stack.fullname" .) -}}
 {{- else -}}
 default
 {{- end -}}
