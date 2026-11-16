@@ -8,9 +8,6 @@ dependencies:
 - name: eqty-pdfgen
   repository: file://../eqty-pdfgen
   version: 1.3.0
-- name: gateway-stack
-  repository: file://../gateway-stack
-  version: 1.3.0
 - name: governance-service
   repository: file://../governance-service
   version: 1.3.0
@@ -20,8 +17,14 @@ dependencies:
 - name: integrity-service
   repository: file://../integrity-service
   version: 1.3.0
+- name: llm-gateway
+  repository: file://../llm-gateway
+  version: 1.3.0
+- name: kubernetes-ingress
+  repository: oci://ghcr.io/haproxytech/helm-charts
+  version: 1.56.3
 - name: postgresql
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 18.1.15
-digest: sha256:7dc32c9e6ac19c77056f6d94301dd08eed22dad25aba846817ac2d964c1c21fd
-generated: "2026-11-13T15:45:12.676887-05:00"
+digest: sha256:b0988ca870de1b2941288cbfc6077ab1703c436257540ccbef6099a7729ac143
+generated: "2026-11-16T10:21:25.23647-05:00"

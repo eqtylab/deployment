@@ -11,13 +11,13 @@ This repository contains Helm charts for deploying the Guardian Platform on Kube
 | [control-plane](control-plane/)           | Subchart | Agent Gateway management API                                 |
 | [entra-bootstrap](entra-bootstrap/)       | Utility  | Microsoft Entra ID app registration configuration job        |
 | [eqty-pdfgen](eqty-pdfgen/)               | Subchart | PDF and ZIP rendering service for governance manifests       |
-| [gateway-stack](gateway-stack/)           | Subchart | LLM Gateway                                                  |
 | [governance-ops](governance-ops/)         | Ops      | Operational monitoring (dashboards, alerts, endpoint probes) |
 | [guardian-platform](guardian-platform/)   | Umbrella | Complete platform deployment (recommended)                   |
 | [governance-service](governance-service/) | Subchart | Go-based backend API and workflow engine                     |
 | [guardian](guardian/)                     | Subchart | React-based frontend application                             |
 | [integrity-service](integrity-service/)   | Subchart | Rust-based verifiable credentials and lineage service        |
 | [keycloak-bootstrap](keycloak-bootstrap/) | Utility  | Keycloak realm and client configuration job                  |
+| [llm-gateway](llm-gateway/)               | Subchart | Agent Gateway signing proxy for upstream model providers     |
 | [openbao-custody](openbao-custody/)       | Custody  | Separately managed OpenBao release for Auth signing keys     |
 
 ## Architecture
@@ -31,7 +31,6 @@ charts/
 ├── control-plane/           # Agent Gateway management API subchart
 ├── entra-bootstrap/         # Entra ID configuration utility
 ├── eqty-pdfgen/             # Manifest PDF rendering subchart
-├── gateway-stack/           # LLM Gateway subchart
 ├── governance-ops/          # Operational monitoring (dashboards, alerts)
 ├── guardian-platform/       # Umbrella chart (deploy this for full platform)
 │   ├── Chart.yaml           # Dependencies on all subcharts
@@ -41,6 +40,7 @@ charts/
 ├── guardian/                # Frontend subchart
 ├── integrity-service/       # Credentials/lineage subchart
 ├── keycloak-bootstrap/      # Keycloak configuration utility
+├── llm-gateway/             # Agent Gateway signing proxy subchart
 └── openbao-custody/         # Separate OpenBao release for Auth signing keys (not in the umbrella)
 ```
 
@@ -163,7 +163,6 @@ Helper scripts are also available in `scripts/auth0/`, `scripts/entra/`, and `sc
 **8. Deploy**
 
 ```bash
-helm dependency build ./gateway-stack
 helm dependency build ./guardian-platform
 helm upgrade --install guardian-platform ./guardian-platform \
   --namespace guardian \
@@ -188,8 +187,7 @@ For complete documentation, see [Deployment Process](https://guardian.docs.eqtyl
 ### From Local Directory
 
 ```bash
-# Build dependencies from Chart.lock (gateway-stack first)
-helm dependency build ./gateway-stack
+# Build dependencies from Chart.lock
 helm dependency build ./guardian-platform
 
 # Install
@@ -283,8 +281,7 @@ helm diff upgrade guardian-platform ./guardian-platform \
 ### Updating Dependencies
 
 ```bash
-# Build subchart dependencies from Chart.lock (gateway-stack first)
-helm dependency build ./gateway-stack
+# Build subchart dependencies from Chart.lock
 helm dependency build ./guardian-platform
 
 # Re-resolve dependencies and rewrite Chart.lock (only when changing them)
@@ -316,8 +313,8 @@ Charts follow [Semantic Versioning](https://semver.org/):
 - **PATCH**: Bug fixes, documentation updates
 
 The eight platform charts (`guardian-platform`, `auth-service`,
-`control-plane`, `eqty-pdfgen`, `gateway-stack`, `governance-service`,
-`guardian`, and `integrity-service`) share one version, set for each platform
+`control-plane`, `eqty-pdfgen`, `governance-service`, `guardian`,
+`integrity-service`, and `llm-gateway`) share one version, set for each platform
 release.
 
 The bootstrap charts (`auth0-bootstrap`, `entra-bootstrap`,

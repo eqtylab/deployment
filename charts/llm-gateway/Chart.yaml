@@ -1,0 +1,12 @@
+apiVersion: v2
+name: llm-gateway
+description: A Helm chart for deploying the LLM Gateway - signing proxy in front of upstream model providers that records audit events for the Agent Gateway
+type: application
+version: 1.3.0
+appVersion: "1.3.0"
+home: https://github.com/eqtylab/guardian-infrastructure
+sources:
+  - https://github.com/eqtylab/guardian-infrastructure/tree/main/charts/llm-gateway
+maintainers:
+  - name: EQTY Lab
+    email: support@eqtylab.io

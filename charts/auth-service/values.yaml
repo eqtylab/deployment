@@ -966,7 +966,7 @@ networkPolicy:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
-        # HAProxy controller in its own namespace, or bundled by gateway-stack
+        # HAProxy controller in its own namespace, or bundled through the umbrella chart
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: haproxy-controller
@@ -989,7 +989,7 @@ networkPolicy:
         # LLM Gateway
         - podSelector:
             matchLabels:
-              app.kubernetes.io/name: gateway-stack
+              app.kubernetes.io/name: llm-gateway
       ports:
         - protocol: TCP
           port: 8080

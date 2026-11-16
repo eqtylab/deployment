@@ -26,11 +26,6 @@ dependencies:
     version: "1.3.0"
     repository: "file://../eqty-pdfgen"
     condition: eqty-pdfgen.enabled
-  # LLM Gateway
-  - name: gateway-stack
-    version: "1.3.0"
-    repository: "file://../gateway-stack"
-    condition: gateway-stack.enabled
   # Governance Service API
   - name: governance-service
     version: "1.3.0"
@@ -46,7 +41,18 @@ dependencies:
     version: "1.3.0"
     repository: "file://../integrity-service"
     condition: integrity-service.enabled
-  # PostgreSQL - used by auth-service, governance-service, and integrity-service
+  # LLM Gateway
+  - name: llm-gateway
+    version: "1.3.0"
+    repository: "file://../llm-gateway"
+    condition: llm-gateway.enabled
+  # HAProxy ingress controller - opt-in, for installs without an existing controller
+  - name: kubernetes-ingress
+    version: "~1.56.3"
+    repository: "oci://ghcr.io/haproxytech/helm-charts"
+    alias: haproxyIngress
+    condition: haproxyIngress.enabled
+  # PostgreSQL - used by auth-service, governance-service, integrity-service, control-plane, and llm-gateway
   - name: postgresql
     version: "~18.1.1" # Bitnami chart version
     repository: "oci://registry-1.docker.io/bitnamicharts"

@@ -1,0 +1,401 @@
+{{- if .Values.enabled }}
+{{- $projectContextMode := .Values.config.projectContext.mode }}
+{{- if not (and (kindIs "string" $projectContextMode) (has (lower $projectContextMode) (list "disabled" "observe" "enforce"))) }}
+{{- fail (printf "config.projectContext.mode must be one of disabled, observe, enforce (got %v)" $projectContextMode) }}
+{{- end }}
+{{- $projectContextMode = lower $projectContextMode }}
+{{- if and (ne $projectContextMode "disabled") (not .Values.config.plugins.enabled) }}
+{{- fail "config.projectContext.mode requires config.plugins.enabled to be true" }}
+{{- end }}
+{{- $plugins := .Values.config.plugins }}
+{{- $storage := $plugins.artifactStorage }}
+{{- $storageSecrets := .Values.secrets.pluginArtifactStorage }}
+{{- if and $plugins.enabled $storage.provider (not (has $storage.provider (list "gcs" "s3" "azure" "file"))) }}
+{{- fail "config.plugins.artifactStorage.provider must be one of gcs, s3, azure, file" }}
+{{- end }}
+{{- if and $plugins.enabled (eq $storage.provider "azure") }}
+{{- $modes := 0 }}
+{{- range (list $storage.azure.connectionString $storage.azure.accountKey $storageSecrets.azure.name $storage.azure.useManagedIdentity) }}
+{{- if . }}{{ $modes = add1 $modes }}{{ end }}
+{{- end }}
+{{- if ne (int $modes) 1 }}
+{{- fail "config.plugins.artifactStorage.azure requires exactly one of connectionString, accountKey, useManagedIdentity, or secrets.pluginArtifactStorage.azure.name" }}
+{{- end }}
+{{- if and (or $storage.azure.accountKey $storage.azure.useManagedIdentity) (not $storage.azure.accountName) }}
+{{- fail "config.plugins.artifactStorage.azure.accountName is required with accountKey or useManagedIdentity" }}
+{{- end }}
+{{- if and $storage.azure.connectionString $storage.azure.endpoint }}
+{{- fail "config.plugins.artifactStorage.azure.endpoint cannot be combined with connectionString" }}
+{{- end }}
+{{- end }}
+{{- if and $plugins.enabled (eq $storage.provider "file") }}
+{{- if not $storage.file.existingClaim }}
+{{- fail "config.plugins.artifactStorage.file.existingClaim is required when provider is file" }}
+{{- end }}
+{{- if not (hasPrefix "/" (default "" $storage.bucket)) }}
+{{- fail "config.plugins.artifactStorage.bucket must be an absolute path when provider is file" }}
+{{- end }}
+{{- end }}
+{{- $dsnSecretName := required "externalDatabase.dsnSecretKeyRef.name (or global.secrets.database.secretName) is required" (.Values.externalDatabase.dsnSecretKeyRef.name | default (((.Values.global).secrets).database).secretName) }}
+{{- $dsnSecretKey := .Values.externalDatabase.dsnSecretKeyRef.key | default ((((.Values.global).secrets).database).keys).gatewayDsn | default "gateway-dsn" }}
+{{- $globalLLMGateway := (((.Values.global).secrets).llmGateway) | default dict }}
+{{- $llmGatewaySecretName := .Values.secrets.llmGateway.name | default $globalLLMGateway.secretName }}
+{{- $usesPlatformLLMGatewaySecret := has (.Values.secrets.llmGateway.name | default "") (list "" $globalLLMGateway.secretName) }}
+{{- $usesPlatformControlPlaneSecret := has (.Values.secrets.controlPlane.name | default "") (list "" (((.Values.global).secrets).controlPlane).secretName) }}
+{{- $platformPluginSecretEnvs := ($globalLLMGateway.values).pluginSecretEnvs | default dict }}
+{{- $useLLMGatewaySecretEnvs := and $plugins.enabled (not (empty $platformPluginSecretEnvs)) $usesPlatformLLMGatewaySecret }}
+{{- $hasSecretEnvFallback := or $useLLMGatewaySecretEnvs .Values.secrets.pluginSecretEnvs.name }}
+{{- $gcsSecretKey := $storageSecrets.gcs.key | default "serviceAccountJson" }}
+{{- $gcsMountPath := $storage.gcs.mountPath | default "/run/secrets/guardian-plugin-artifact-gcs" }}
+{{- $gcsCredentials := and $plugins.enabled (eq $storage.provider "gcs") $storageSecrets.gcs.name }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "llm-gateway.fullname" . }}
+  labels:
+    {{- include "llm-gateway.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "llm-gateway.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- $registration := .Values.config.registration.enabled }}
+      {{- $registrationToken := (((((.Values.global).secrets).controlPlane).values).registrationTokenSecret) | default "" }}
+      {{- $credentialSignerSeed := ($globalLLMGateway.values).credentialSignerSeed | default "" }}
+      {{- $platformSecrets := printf "%s%s%s" (ternary $registrationToken "" (and $registration $usesPlatformControlPlaneSecret)) (ternary $credentialSignerSeed "" (and $registration $usesPlatformLLMGatewaySecret)) (ternary (toJson $platformPluginSecretEnvs) "" $useLLMGatewaySecretEnvs) }}
+      {{- $secretsChecksum := ternary (sha256sum $platformSecrets) "" (ne $platformSecrets "") }}
+      {{- if or .Values.podAnnotations $secretsChecksum }}
+      annotations:
+        {{- with $secretsChecksum }}
+        checksum/platform-secrets: {{ . }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        {{- include "llm-gateway.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if and .Values.global (((.Values.global).secrets).imageRegistry).secretName }}
+      imagePullSecrets:
+        - name: {{ ((.Values.global).secrets).imageRegistry.secretName }}
+      {{- else if (.Values.global).imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- else if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if or .Values.serviceAccount.create .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name | default (include "llm-gateway.fullname" .) }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "llm-gateway.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default ((.Values.global).imagePullPolicy | default "IfNotPresent") }}
+          args:
+            # ========================================================================
+            # Server Configuration
+            # ========================================================================
+            - -listen={{ .Values.config.listenAddr }}
+            {{- if .Values.config.deploymentEnvironment }}
+            - {{ printf "-deployment-environment=%s" .Values.config.deploymentEnvironment | quote }}
+            {{- end }}
+            - -registry-backend=postgres
+            - -registry-db-dsn=$(DB_DSN)
+            - {{ printf "-anthropic-upstream-url=%s" .Values.config.upstreams.anthropicURL | quote }}
+            - {{ printf "-openai-upstream-url=%s" .Values.config.upstreams.openaiURL | quote }}
+
+            # ========================================================================
+            # Request Signature Configuration
+            # ========================================================================
+            - {{ printf "-signature-label=%s" .Values.config.signature.label | quote }}
+            - {{ printf "-default-sig-max-age=%s" .Values.config.signature.defaultSigMaxAge | quote }}
+            - {{ printf "-default-clock-skew=%s" .Values.config.signature.defaultClockSkew | quote }}
+
+            # ========================================================================
+            # Agent Registration Configuration
+            # ========================================================================
+            - -agent-registration-enabled={{ ternary "true" "false" .Values.config.registration.enabled }}
+            {{- if .Values.config.authServiceBaseURL }}
+            - {{ printf "-auth-service-base-url=%s" .Values.config.authServiceBaseURL | quote }}
+            {{- end }}
+            {{- if .Values.config.authServiceIdentityIssuer }}
+            - {{ printf "-auth-service-identity-issuer=%s" .Values.config.authServiceIdentityIssuer | quote }}
+            {{- end }}
+
+            # ========================================================================
+            # Audit Configuration
+            # ========================================================================
+            {{- $audit := .Values.config.audit }}
+            - -audit-enabled={{ ternary "true" "false" $audit.enabled }}
+            - -audit-db-dsn=$(DB_DSN)
+            - -audit-queue-dir={{ $audit.queueDir }}
+            - -audit-queue-max-bytes={{ int64 $audit.queueMaxBytes }}
+            - -audit-batch-size={{ $audit.batchSize }}
+            - -audit-flush-interval={{ $audit.flushInterval }}
+            - -audit-retention-days={{ $audit.retentionDays }}
+
+            # ========================================================================
+            # Plugin Configuration
+            # ========================================================================
+            {{- if $plugins.enabled }}
+            - -plugins-enabled=true
+            - -plugin-poll-interval={{ $plugins.pollInterval }}
+            - -plugin-end-queue-dir={{ $plugins.endQueueDir }}
+            - -plugin-end-queue-max-bytes={{ int64 $plugins.endQueueMaxBytes }}
+            - -plugin-artifact-cache-dir={{ $plugins.artifactCacheDir }}
+            - -plugin-authorizer-shadow-enabled={{ ternary "true" "false" $plugins.authorizerShadowEnabled }}
+            {{- if $storage.provider }}
+            - -plugin-artifact-storage-provider={{ $storage.provider }}
+            {{- end }}
+            {{- if $storage.bucket }}
+            - -plugin-artifact-storage-bucket={{ $storage.bucket }}
+            {{- end }}
+            {{- if $storage.prefix }}
+            - -plugin-artifact-storage-prefix={{ $storage.prefix }}
+            {{- end }}
+            {{- if $storage.gcs.endpoint }}
+            - -plugin-artifact-storage-gcs-endpoint={{ $storage.gcs.endpoint }}
+            {{- end }}
+            {{- if $gcsCredentials }}
+            - {{ printf "-plugin-artifact-storage-gcs-credentials-file=%s/%s" (trimSuffix "/" $gcsMountPath) $gcsSecretKey | quote }}
+            {{- end }}
+            {{- if eq $storage.provider "s3" }}
+            {{- if $storage.s3.endpoint }}
+            - -plugin-artifact-storage-s3-endpoint={{ $storage.s3.endpoint }}
+            {{- end }}
+            - {{ printf "-plugin-artifact-storage-s3-region=%s" (required "config.plugins.artifactStorage.s3.region is required when provider is s3" $storage.s3.region) | quote }}
+            - -plugin-artifact-storage-s3-force-path-style={{ ternary "true" "false" $storage.s3.forcePathStyle }}
+            {{- end }}
+            {{- if eq $storage.provider "azure" }}
+            {{- if $storage.azure.accountName }}
+            - {{ printf "-plugin-artifact-storage-azure-account-name=%s" $storage.azure.accountName | quote }}
+            {{- end }}
+            {{- if $storage.azure.endpoint }}
+            - {{ printf "-plugin-artifact-storage-azure-endpoint=%s" $storage.azure.endpoint | quote }}
+            {{- end }}
+            {{- if $storage.azure.useManagedIdentity }}
+            - -plugin-artifact-storage-azure-use-managed-identity=true
+            {{- end }}
+            {{- end }}
+            {{- range $key := keys $plugins.trustedSignerKeys | sortAlpha }}
+            - {{ printf "-plugin-trusted-signer-key=%s=%s" $key (index $plugins.trustedSignerKeys $key) | quote }}
+            {{- end }}
+            {{- if $plugins.secrets.resolutionOrder }}
+            - {{ printf "-plugin-secrets-resolution-order=%s" (join "," $plugins.secrets.resolutionOrder) | quote }}
+            {{- else if $hasSecretEnvFallback }}
+            - -plugin-secrets-resolution-order=env
+            {{- end }}
+            {{- end }}
+            {{- if ne $projectContextMode "disabled" }}
+            - -project-context-mode={{ $projectContextMode }}
+            {{- end }}
+            {{- range .Values.args }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            # ========================================================================
+            # Application Configuration
+            # ========================================================================
+            - name: LLM_GATEWAY_SERVICE_VERSION
+              value: {{ .Chart.Version | quote }}
+
+            # ========================================================================
+            # Database Configuration
+            # ========================================================================
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $dsnSecretName | quote }}
+                  key: {{ $dsnSecretKey | quote }}
+
+            # ========================================================================
+            # Agent Registration Configuration
+            # ========================================================================
+            {{- if .Values.config.registration.enabled }}
+            - name: LLM_GATEWAY_REGISTRATION_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "secrets.controlPlane.name (or global.secrets.controlPlane.secretName) is required when config.registration.enabled is true" (.Values.secrets.controlPlane.name | default (((.Values.global).secrets).controlPlane).secretName) | quote }}
+                  key: {{ ((((.Values.global).secrets).controlPlane).keys).registrationTokenSecret | default "registration-token-secret" | quote }}
+            - name: LLM_GATEWAY_REGISTRATION_TOKEN_ISSUER
+              value: {{ .Values.config.registration.tokenIssuer | default "control-plane" | quote }}
+            - name: LLM_GATEWAY_CREDENTIAL_SIGNER_SEED
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "secrets.llmGateway.name (or global.secrets.llmGateway.secretName) is required when config.registration.enabled is true" $llmGatewaySecretName | quote }}
+                  key: {{ ($globalLLMGateway.keys).credentialSignerSeed | default "credential-signer-seed" | quote }}
+            {{- end }}
+
+            # ========================================================================
+            # Plugin Configuration
+            # ========================================================================
+            {{- if $plugins.enabled }}
+            {{- if .Values.secrets.pluginSecretsKey.name }}
+            - name: LLM_GATEWAY_PLUGIN_SECRETS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.pluginSecretsKey.name | quote }}
+                  key: {{ .Values.secrets.pluginSecretsKey.key | default "encryption-key" | quote }}
+            {{- end }}
+            {{- if $useLLMGatewaySecretEnvs }}
+            {{- range $key := keys $platformPluginSecretEnvs | sortAlpha }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $globalLLMGateway.secretName | quote }}
+                  key: {{ $key | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if eq $storage.provider "s3" }}
+            {{- if $storageSecrets.s3.name }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $storageSecrets.s3.name | quote }}
+                  key: {{ $storageSecrets.s3.keys.accessKeyID | default "accessKeyID" | quote }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $storageSecrets.s3.name | quote }}
+                  key: {{ $storageSecrets.s3.keys.secretAccessKey | default "secretAccessKey" | quote }}
+            {{- else }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_ACCESS_KEY_ID
+              value: {{ required "config.plugins.artifactStorage.s3.accessKeyID is required when provider is s3 and secrets.pluginArtifactStorage.s3.name is empty" $storage.s3.accessKeyID | quote }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_S3_SECRET_ACCESS_KEY
+              value: {{ required "config.plugins.artifactStorage.s3.secretAccessKey is required when provider is s3 and secrets.pluginArtifactStorage.s3.name is empty" $storage.s3.secretAccessKey | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if eq $storage.provider "azure" }}
+            {{- if $storageSecrets.azure.name }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_AZURE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $storageSecrets.azure.name | quote }}
+                  key: {{ $storageSecrets.azure.keys.accountKey | default "accountKey" | quote }}
+                  optional: true
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $storageSecrets.azure.name | quote }}
+                  key: {{ $storageSecrets.azure.keys.connectionString | default "connectionString" | quote }}
+                  optional: true
+            {{- else if $storage.azure.accountKey }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_AZURE_ACCOUNT_KEY
+              value: {{ $storage.azure.accountKey | quote }}
+            {{- else if $storage.azure.connectionString }}
+            - name: LLM_GATEWAY_PLUGIN_ARTIFACT_STORAGE_AZURE_CONNECTION_STRING
+              value: {{ $storage.azure.connectionString | quote }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if and $plugins.enabled .Values.secrets.pluginSecretEnvs.name }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secrets.pluginSecretEnvs.name | quote }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: audit-queue
+              mountPath: {{ .Values.config.audit.queueDir | quote }}
+            {{- if $plugins.enabled }}
+            - name: plugin-end-queue
+              mountPath: {{ $plugins.endQueueDir | quote }}
+            - name: plugin-artifact-cache
+              mountPath: {{ $plugins.artifactCacheDir | quote }}
+            {{- if $gcsCredentials }}
+            - name: plugin-artifact-gcs-credentials
+              mountPath: {{ $gcsMountPath | quote }}
+              readOnly: true
+            {{- end }}
+            {{- if eq $storage.provider "file" }}
+            - name: plugin-artifact-storage
+              mountPath: {{ $storage.bucket | quote }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: audit-queue
+          emptyDir: {}
+        {{- if $plugins.enabled }}
+        - name: plugin-end-queue
+          emptyDir: {}
+        - name: plugin-artifact-cache
+          emptyDir: {}
+        {{- if $gcsCredentials }}
+        - name: plugin-artifact-gcs-credentials
+          secret:
+            secretName: {{ $storageSecrets.gcs.name | quote }}
+            items:
+              - key: {{ $gcsSecretKey | quote }}
+                path: {{ $gcsSecretKey | quote }}
+        {{- end }}
+        {{- if eq $storage.provider "file" }}
+        - name: plugin-artifact-storage
+          persistentVolumeClaim:
+            claimName: {{ $storage.file.existingClaim | quote }}
+        {{- end }}
+        {{- end }}
+{{- end }}

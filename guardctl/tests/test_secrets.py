@@ -48,6 +48,20 @@ class GatewayDsnTests(unittest.TestCase):
         self.assertEqual(control_plane["secretName"], "platform-control-plane")
         self.assertEqual(len(control_plane["values"]["registrationTokenSecret"]), 44)
 
+    def test_credential_signer_seed_is_a_32_byte_hex_seed(self):
+        config = PlatformConfig(
+            cloud_provider=CloudProvider.GCP,
+            auth_provider=AuthProvider.KEYCLOAK,
+            domain="customer.example.com",
+            environment="production",
+        )
+        secrets = yaml.safe_load(generate_secrets(config))["global"]["secrets"]
+        llm_gateway = secrets["llmGateway"]
+        self.assertEqual(llm_gateway["secretName"], "platform-llm-gateway")
+        self.assertEqual(
+            len(bytes.fromhex(llm_gateway["values"]["credentialSignerSeed"])), 32
+        )
+
     def test_bundled_database_gateway_dsn_targets_the_guardian_platform_postgresql(
         self,
     ):

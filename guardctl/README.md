@@ -153,17 +153,17 @@ Configures all platform services based on your selections. Values the charts req
 - **auth-service** — IDP provider config, key management, ingress, and token exchange for Keycloak and Entra
 - **control-plane** — Control Plane (`enabled: false` by default, plus image overrides for GitHub output; its hostname, TLS, and plugin storage are not prompted for)
 - **eqty-pdfgen** — cluster-internal manifest PDF rendering service (`enabled: true` by default; no ingress)
-- **gateway-stack** — LLM Gateway (`enabled: false` by default, plus image overrides for GitHub output; its hostname, TLS, and plugin storage are not prompted for)
 - **governance-service** — storage provider, cloud-specific config, ingress
 - **guardian** — Guardian: frontend auth config, feature flags, ingress
 - **integrity-service** — blob storage config, ingress
+- **llm-gateway** — LLM Gateway (`enabled: false` by default, plus image overrides for GitHub output; its hostname, TLS, and plugin storage are not prompted for)
 - **postgresql** — `enabled: true` plus persistence size and resource requests and limits when database mode is `bundled`; just `enabled: false` when `external`
 
-To enable the gateway, layer [`values-gateway.yaml`](../charts/guardian-platform/examples/values-gateway.yaml) over the generated file and see [`charts/control-plane/README.md`](../charts/control-plane/README.md) and [`charts/gateway-stack/README.md`](../charts/gateway-stack/README.md) for hostnames, TLS, and plugin setup.
+To enable the gateway, layer [`values-gateway.yaml`](../charts/guardian-platform/examples/values-gateway.yaml) over the generated file and see [`charts/control-plane/README.md`](../charts/control-plane/README.md) and [`charts/llm-gateway/README.md`](../charts/llm-gateway/README.md) for hostnames, TLS, and plugin setup.
 
 PDFgen bound signing and optional timestamping are available through explicit values overrides: layer `eqty-pdfgen.config.signingBound`, `eqty-pdfgen.config.timestampUrl`, and compatible Auth/PDFgen image selections over the generated file. Verify the [image capability prerequisites](../charts/eqty-pdfgen/README.md#prerequisites) first. Bound signing is independent of the key-management provider; OpenBao remains optional. Full generator support for these settings is deferred.
 
-When database mode is `external`, `global.postgresql.host` is marked `REQUIRED` — fill it in before deploying. The generated `gatewayDsn` in `secrets-{env}.yaml` contains `TODO-set-managed-pg-host.example.com` as its host; replace it with the same host. The `gatewayDsn` uses `sslmode=require`: control-plane and gateway-stack do not read `global.postgresql.sslMode` or `sslRootCert`, so the gateway's connection is encrypted but the server certificate is not verified. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default. For `sslMode: verify-ca` or `verify-full`, create a Secret named `postgres-ca` holding the CA bundle at key `ca.crt` before deploying, or use a ConfigMap and set `global.postgresql.sslRootCert.configMapName` in place of `secretName`. See the [Cloud-Managed PostgreSQL Configuration](../charts/guardian-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
+When database mode is `external`, `global.postgresql.host` is marked `REQUIRED` — fill it in before deploying. The generated `gatewayDsn` in `secrets-{env}.yaml` contains `TODO-set-managed-pg-host.example.com` as its host; replace it with the same host. The `gatewayDsn` uses `sslmode=require`: control-plane and llm-gateway do not read `global.postgresql.sslMode` or `sslRootCert`, so the gateway's connection is encrypted but the server certificate is not verified. The generated `secrets-{env}.yaml` already includes the `platform-database` Secret by default. For `sslMode: verify-ca` or `verify-full`, create a Secret named `postgres-ca` holding the CA bundle at key `ca.crt` before deploying, or use a ConfigMap and set `global.postgresql.sslRootCert.configMapName` in place of `secretName`. See the [Cloud-Managed PostgreSQL Configuration](../charts/guardian-platform/README.md#cloud-managed-postgresql-configuration) section of the chart README for the full setup and the manual-secret alternative.
 
 ### bootstrap-{env}.yaml
 
@@ -187,9 +187,10 @@ The bootstrap file sets:
 
 Only includes secrets relevant to your configuration:
 
-- **Database** — PostgreSQL credentials, plus a `gatewayDsn` connection string for the `guardian_gateway` database (only consumed when `control-plane` or `gateway-stack` is enabled; it repeats the generated password, so change both together). With the bundled database, its host is `guardian-platform-postgresql`, which assumes the Helm release name `guardian-platform`; change the host if you install under another release name
+- **Database** — PostgreSQL credentials, plus a `gatewayDsn` connection string for the `guardian_gateway` database (only consumed when `control-plane` or `llm-gateway` is enabled; it repeats the generated password, so change both together). With the bundled database, its host is `guardian-platform-postgresql`, which assumes the Helm release name `guardian-platform`; change the host if you install under another release name
 - **Auth Service** — API secret, JWT secret
-- **Control Plane** — registration token secret (only consumed when `control-plane` auth or `gateway-stack` registration is enabled)
+- **Control Plane** — registration token secret (only consumed when `control-plane` auth or `llm-gateway` registration is enabled)
+- **LLM Gateway** — credential signer seed (only consumed when `llm-gateway` registration is enabled)
 - **Auth provider** — Auth0 _or_ Entra _or_ Keycloak secrets (not all three); Entra and Keycloak include a generated token signing key
 - **Storage** — AWS S3 _or_ Azure Blob _or_ GCS credentials (S3 credentials are omitted when using IAM role / IRSA access)
 - **Image registry** — pull secret for container images (the GitHub username is marked `REQUIRED`)

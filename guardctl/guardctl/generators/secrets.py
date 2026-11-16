@@ -70,12 +70,12 @@ def generate_secrets(config: PlatformConfig) -> str:
 
 
 def _gateway_dsn(config: PlatformConfig, password: str) -> str:
-    """Build the guardian_gateway DSN read by the control-plane and gateway-stack subcharts.
+    """Build the guardian_gateway DSN read by the control-plane and llm-gateway subcharts.
 
     The gateway reads a full connection string rather than user/password fields,
     so the generated password is repeated here. Change both together.
 
-    Only used when control-plane or gateway-stack is enabled; the umbrella
+    Only used when control-plane or llm-gateway is enabled; the umbrella
     writes this key into the platform database Secret only in that case.
     """
     if config.database_mode == DatabaseMode.EXTERNAL:
@@ -105,7 +105,7 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
             "values": {
                 "username": "postgres",
                 "password": db_password,
-                # Only consumed when control-plane or gateway-stack is enabled
+                # Only consumed when control-plane or llm-gateway is enabled
                 "gatewayDsn": _gateway_dsn(config, db_password),
             },
         },
@@ -117,11 +117,18 @@ def _generate_secrets_section(config: PlatformConfig) -> dict[str, Any]:
                 "jwtSecret": _generate_secret(),
             },
         },
-        # Only consumed when control-plane or gateway-stack registration is enabled
+        # Only consumed when control-plane or llm-gateway registration is enabled
         "controlPlane": {
             "secretName": "platform-control-plane",
             "values": {
                 "registrationTokenSecret": _generate_secret(),
+            },
+        },
+        # Only consumed when llm-gateway registration is enabled
+        "llmGateway": {
+            "secretName": "platform-llm-gateway",
+            "values": {
+                "credentialSignerSeed": _generate_db_secret(),
             },
         },
         # Image registry (always required)

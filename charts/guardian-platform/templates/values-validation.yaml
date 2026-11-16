@@ -1,42 +1,36 @@
 {{- if hasKey .Values "governance-studio" }}
 {{- fail "Guardian's values moved from governance-studio: to guardian:. Rename the key. On an existing install, keep its release and namespace, and set nameOverride: governance-platform and guardian.nameOverride: governance-studio to keep its resource names" }}
 {{- end }}
-{{- $gatewayValues := index .Values "gateway-stack" | default dict }}
-{{- $gatewayIngress := $gatewayValues.ingress | default dict }}
-{{- if or (hasKey $gatewayValues "controlPlane") (hasKey $gatewayIngress "controlPlanePath") (hasKey $gatewayIngress "controlPlaneAnnotations") (hasKey ($gatewayIngress.hosts | default dict) "controlPlane") (hasKey ($gatewayIngress.tls | default dict) "controlPlaneSecretName") }}
-{{- fail "The Control Plane moved from gateway-stack to the control-plane chart. Move gateway-stack.controlPlane.* to control-plane.* and its ingress settings to control-plane.ingress; charts/control-plane/README.md maps each key" }}
+{{- if hasKey .Values "gateway-stack" }}
+{{- fail "The gateway-stack chart was split into llm-gateway and control-plane. Move gateway-stack.llmGateway.* to llm-gateway.*, gateway-stack.controlPlane.* to control-plane.*, and gateway-stack.haproxyIngress to haproxyIngress; charts/llm-gateway/README.md and charts/control-plane/README.md map each key" }}
 {{- end }}
 {{- $databaseSecret := ((((.Values.global).secrets).database).secretName) | default "" }}
 {{- if and ((.Values.global).secrets).create $databaseSecret (ne $databaseSecret "platform-database") }}
-{{- $gateway := index .Values "gateway-stack" | default dict }}
-{{- if and $gateway.enabled (eq (($gateway.database).existingSecret | default "") "platform-database") }}
-{{- fail (printf "global.secrets.database.secretName is %q but gateway-stack.database.existingSecret is still platform-database, so the chart would not write the gateway DSN key; set gateway-stack.database.existingSecret to %q, or to a Secret of your own that holds the DSN" $databaseSecret $databaseSecret) }}
-{{- end }}
 {{- $postgresAuth := ((((.Values.postgresql).global).postgresql).auth) | default dict }}
 {{- if and (.Values.postgresql).enabled (ne ($postgresAuth.existingSecret | default "") $databaseSecret) }}
 {{- fail (printf "global.secrets.database.secretName is %q but postgresql.global.postgresql.auth.existingSecret is %q; set it to %q so the bundled PostgreSQL reads the Secret the chart creates" $databaseSecret ($postgresAuth.existingSecret | default "") $databaseSecret) }}
 {{- end }}
 {{- end }}
-{{- $gateway := index .Values "gateway-stack" | default dict }}
 {{- $gatewayDsnKey := (((((.Values.global).secrets).database).keys).gatewayDsn) | default "" }}
-{{- $gatewaySecretDsnKey := ((($gateway.database).secretKeys).dsn) | default "" }}
-{{- if and ((.Values.global).secrets).create $gateway.enabled (eq (($gateway.database).existingSecret | default "") $databaseSecret) (ne $gatewaySecretDsnKey $gatewayDsnKey) }}
-{{- fail (printf "global.secrets.database.keys.gatewayDsn is %q but gateway-stack.database.secretKeys.dsn is %q; set it to %q so gateway-stack reads the key the chart writes" $gatewayDsnKey $gatewaySecretDsnKey $gatewayDsnKey) }}
+{{- range $chart := list "control-plane" "llm-gateway" }}
+{{- $values := index $.Values $chart | default dict }}
+{{- $dsn := (($values.externalDatabase).dsnSecretKeyRef) | default dict }}
+{{- if and (($.Values.global).secrets).create $values.enabled (has ($dsn.name | default "") (list "" $databaseSecret)) $dsn.key (ne $dsn.key $gatewayDsnKey) }}
+{{- fail (printf "global.secrets.database.keys.gatewayDsn is %q but %s.externalDatabase.dsnSecretKeyRef.key is %q; set it to %q, or leave it empty, so %s reads the key the chart writes" $gatewayDsnKey $chart $dsn.key $gatewayDsnKey $chart) }}
+{{- end }}
 {{- end }}
 {{- $controlPlane := index .Values "control-plane" | default dict }}
-{{- $controlPlaneDsn := (($controlPlane.externalDatabase).dsnSecretKeyRef) | default dict }}
-{{- if and ((.Values.global).secrets).create $controlPlane.enabled (has ($controlPlaneDsn.name | default "") (list "" $databaseSecret)) $controlPlaneDsn.key (ne $controlPlaneDsn.key $gatewayDsnKey) }}
-{{- fail (printf "global.secrets.database.keys.gatewayDsn is %q but control-plane.externalDatabase.dsnSecretKeyRef.key is %q; set it to %q, or leave it empty, so the Control Plane reads the key the chart writes" $gatewayDsnKey $controlPlaneDsn.key $gatewayDsnKey) }}
-{{- end }}
-{{- $registration := (($gateway.llmGateway).registration) | default dict }}
-{{- $controlPlaneSecret := ((($controlPlane.secrets).controlPlane).name) | default "" }}
+{{- $llmGateway := index .Values "llm-gateway" | default dict }}
+{{- $registration := (($llmGateway.config).registration) | default dict }}
 {{- $platformControlPlaneSecret := ((((.Values.global).secrets).controlPlane).secretName) | default "" }}
-{{- if and $controlPlane.enabled $gateway.enabled $registration.enabled $controlPlaneSecret (ne $controlPlaneSecret $platformControlPlaneSecret) }}
-{{- fail (printf "control-plane.secrets.controlPlane.name is %q but the LLM Gateway reads global.secrets.controlPlane.secretName %q; set global.secrets.controlPlane.secretName instead so both read the same registration token" $controlPlaneSecret $platformControlPlaneSecret) }}
+{{- $controlPlaneSecret := ((($controlPlane.secrets).controlPlane).name) | default $platformControlPlaneSecret }}
+{{- $llmGatewaySecret := ((($llmGateway.secrets).controlPlane).name) | default $platformControlPlaneSecret }}
+{{- if and $controlPlane.enabled $llmGateway.enabled $registration.enabled (ne $controlPlaneSecret $llmGatewaySecret) }}
+{{- fail (printf "control-plane reads the registration token from Secret %q but llm-gateway reads it from %q; set global.secrets.controlPlane.secretName and leave both secrets.controlPlane.name values empty so they read the same Secret" $controlPlaneSecret $llmGatewaySecret) }}
 {{- end }}
 {{- $controlPlaneIssuer := ((($controlPlane.config).auth).registrationTokenIssuer) | default "control-plane" }}
-{{- if and $controlPlane.enabled $gateway.enabled $registration.enabled (ne ($registration.tokenIssuer | default "control-plane") $controlPlaneIssuer) }}
-{{- fail (printf "gateway-stack.llmGateway.registration.tokenIssuer is %q but control-plane.config.auth.registrationTokenIssuer is %q; set them to the same value" ($registration.tokenIssuer | default "control-plane") $controlPlaneIssuer) }}
+{{- if and $controlPlane.enabled $llmGateway.enabled $registration.enabled (ne ($registration.tokenIssuer | default "control-plane") $controlPlaneIssuer) }}
+{{- fail (printf "llm-gateway.config.registration.tokenIssuer is %q but control-plane.config.auth.registrationTokenIssuer is %q; set them to the same value" ($registration.tokenIssuer | default "control-plane") $controlPlaneIssuer) }}
 {{- end }}
 {{- $fullname := include "guardian-platform.fullname" . }}
 {{- $hooks := dict "keycloak" .Values.keycloak.createOrganization "auth0" .Values.auth0.createOrganization "entra" .Values.entra.createOrganization }}

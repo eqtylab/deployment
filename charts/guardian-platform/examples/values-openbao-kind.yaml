@@ -284,23 +284,18 @@ control-plane:
         name: "guardian-artifact-s3"
 
 # =============================================================================
-# Gateway Stack
+# LLM Gateway
 # =============================================================================
-gateway-stack:
+llm-gateway:
   enabled: true
-  postgresql:
-    enabled: false
-  haproxyIngress:
-    enabled: false
-  ingress:
-    enabled: false
-  llmGateway:
-    resources:
-      requests:
-        cpu: "50m"
-        memory: "128Mi"
-      limits:
-        memory: "512Mi"
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+  config:
     deploymentEnvironment: "development"
     registration:
       enabled: false
@@ -314,6 +309,9 @@ gateway-stack:
           endpoint: "http://minio:9000"
           region: "us-east-1"
           forcePathStyle: true
-          existingSecret: "guardian-artifact-s3"
       # Required; the launcher supplies the actual publisher public key.
       trustedSignerKeys: {}
+  secrets:
+    pluginArtifactStorage:
+      s3:
+        name: "guardian-artifact-s3"

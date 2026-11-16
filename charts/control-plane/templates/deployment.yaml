@@ -75,7 +75,8 @@ spec:
   template:
     metadata:
       {{- $registrationToken := (((((.Values.global).secrets).controlPlane).values).registrationTokenSecret) | default "" }}
-      {{- $tokenChecksum := ternary (sha256sum $registrationToken) "" (and .Values.config.auth.enabled (ne $registrationToken "")) }}
+      {{- $usesPlatformControlPlaneSecret := has (.Values.secrets.controlPlane.name | default "") (list "" (((.Values.global).secrets).controlPlane).secretName) }}
+      {{- $tokenChecksum := ternary (sha256sum $registrationToken) "" (and .Values.config.auth.enabled $usesPlatformControlPlaneSecret (ne $registrationToken "")) }}
       {{- if or .Values.podAnnotations $tokenChecksum }}
       annotations:
         {{- with $tokenChecksum }}

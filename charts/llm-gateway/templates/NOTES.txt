@@ -1,0 +1,37 @@
+{{- if .Values.enabled }}
+LLM Gateway has been deployed!
+
+Service URL (internal): http://{{ include "llm-gateway.fullname" . }}:{{ .Values.service.port }}
+
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+External URL: https://{{ .host }}
+{{- end }}
+{{- else }}
+
+To access the service, you need to enable ingress or use port-forwarding:
+  kubectl port-forward svc/{{ include "llm-gateway.fullname" . }} 10000:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  Then visit: http://localhost:10000/health
+{{- end }}
+
+Configuration:
+  Agent Registration: {{ if .Values.config.registration.enabled }}enabled{{ else }}disabled{{ end }}
+  Plugin Runtime: {{ if .Values.config.plugins.enabled }}enabled{{ else }}disabled{{ end }}
+  Project Context: {{ .Values.config.projectContext.mode }}
+  Audit Logging: {{ if .Values.config.audit.enabled }}enabled{{ else }}disabled{{ end }}
+
+To check the status:
+  kubectl get pods -l app.kubernetes.io/name={{ include "llm-gateway.name" . }} -n {{ .Release.Namespace }}
+
+To view logs:
+  kubectl logs -f deployment/{{ include "llm-gateway.fullname" . }} -n {{ .Release.Namespace }}
+
+To check health:
+  kubectl exec -it deployment/{{ include "llm-gateway.fullname" . }} -n {{ .Release.Namespace }} -- curl -s localhost:{{ .Values.service.port }}/health
+
+{{- if and .Values.config.plugins.enabled (not .Values.config.plugins.artifactStorage.provider) }}
+
+⚠️  WARNING: Plugin artifact storage is not configured!
+Please set: llm-gateway.config.plugins.artifactStorage.provider to "gcs", "s3", "azure", or "file"
+{{- end }}
+{{- end }}

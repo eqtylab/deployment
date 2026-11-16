@@ -24,25 +24,24 @@ The platform uses a microservices architecture with the following components:
 - **Auth Service** - Go-based authentication and authorization service with IDP integration
 - **PDFGen** - PDF and ZIP rendering service for governance manifests
 - **Control Plane** - Optional management API of the Agent Gateway
-- **Gateway Stack** - Optional LLM Gateway
+- **LLM Gateway** - Optional signing proxy of the Agent Gateway
+- **HAProxy Ingress Controller** - Optional bundled ingress controller
 - **PostgreSQL** - Shared relational database for all services
 - **Cloud Storage** - Object storage for attachments (GCS, Azure Blob, or AWS S3)
 
 All services communicate via REST APIs and share authentication through the Auth Service.
 
-The Gateway stack is disabled by default for upgrade compatibility. Enable it
-with `examples/values-gateway.yaml`; its control-plane adapter then resolves the
-umbrella Auth, Governance, and Integrity services automatically, and the overlay
-points Governance Service at the Control Plane for agent assessments. The gateway
-reuses `platform-database` and expects a `gateway-dsn` key for the
-`guardian_gateway` database. With `global.secrets.create: true`, renaming
-`global.secrets.database.secretName` also requires setting
-`gateway-stack.database.existingSecret` (to the new name or to your own DSN
-Secret) and `postgresql.global.postgresql.auth.existingSecret` to match; the
-chart refuses to render until you do. The Control Plane also needs a
-registration token secret: `global.secrets.controlPlane.values.registrationTokenSecret`
-with `global.secrets.create: true`, or a `platform-control-plane` Secret with a
-`registration-token-secret` key.
+The Control Plane and the LLM Gateway are disabled by default for upgrade
+compatibility. Enable them with `examples/values-gateway.yaml`; the Control
+Plane's adapter then resolves the umbrella Auth, Governance, and Integrity
+services automatically, and the overlay points Governance Service at the Control
+Plane for agent assessments. Both read the `gateway-dsn` key of
+`platform-database` for the `guardian_gateway` database, which the bundled
+PostgreSQL creates. Agent registration also needs the Control Plane's
+registration token secret (`global.secrets.controlPlane`) and the LLM Gateway's
+credential signer seed (`global.secrets.llmGateway`), created by the chart with
+`global.secrets.create: true` or supplied as the `platform-control-plane` and
+`platform-llm-gateway` Secrets.
 
 ## Configuration Model
 
@@ -126,16 +125,16 @@ label its default ServiceMonitor selector requires. The ServiceMonitor uses a
 separate ClusterIP metrics Service, so the stats port stays off the
 LoadBalancer.
 
-> **Note:** The HAProxy controller bundled in `gateway-stack`
-> (`gateway-stack.haproxyIngress.enabled: true`) also serves the `haproxy`
+> **Note:** The HAProxy controller bundled in this chart
+> (`haproxyIngress.enabled: true`) also serves the `haproxy`
 > class, with the same redirect, buffer, QUIC, and pprof settings. If you
 > enable it, skip this install. It creates its own default certificate
 > Secret, including when an upgrade turns it on; to supply your own, set
-> `gateway-stack.haproxyIngress.controller.defaultTLSSecret.secret` and
+> `haproxyIngress.controller.defaultTLSSecret.secret` and
 > `defaultTLSSecret.create: false`. Set `Strict-Transport-Security` under
-> `gateway-stack.haproxyIngress.controller.config.response-set-header`, and the
+> `haproxyIngress.controller.config.response-set-header`, and the
 > ServiceMonitor settings above under
-> `gateway-stack.haproxyIngress.controller.serviceMonitor`.
+> `haproxyIngress.controller.serviceMonitor`.
 
 #### TLS Certificate Management (Required for Production)
 
@@ -541,6 +540,7 @@ Centralized secret configuration for all platform components:
 | global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name                                                                                     |
 | global.secrets.database.keys.gatewayDsn                 | string | `"gateway-dsn"`                | Key holding the gateway DSN the Control Plane and the LLM Gateway read                                               |
 | global.secrets.controlPlane.secretName                  | string | `"platform-control-plane"`     | Control Plane registration token secret name                                                                         |
+| global.secrets.llmGateway.secretName                    | string | `"platform-llm-gateway"`       | LLM Gateway credential signer seed and plugin secret environment variables secret name                               |
 | global.secrets.auth.provider                            | string | `"auth0"`                      | Auth provider (auth0, entra, or keycloak)                                                                            |
 | global.secrets.auth.auth0.secretName                    | string | `"platform-auth0"`             | Auth0 credentials secret name                                                                                        |
 | global.secrets.auth.entra.secretName                    | string | `"platform-entra"`             | Microsoft Entra ID credentials secret name                                                                           |
@@ -667,6 +667,33 @@ Credential and lineage service settings. See [integrity-service/README.md](../in
 | integrity-service.ingress.enabled                  | bool   | `false` | Enable ingress                                                  |
 | integrity-service.config.integrityAppBlobStoreType | string | `""`    | Storage provider (**REQUIRED**: aws_s3/azure_blob/gcs/local_fs) |
 | integrity-service.autoscaling.enabled              | bool   | `false` | Enable horizontal pod autoscaling                               |
+
+### LLM Gateway Configuration
+
+Agent Gateway signing proxy settings. See [llm-gateway/README.md](../llm-gateway/README.md) for complete documentation.
+
+| Key                                      | Type   | Default        | Description                                                                                |
+| ---------------------------------------- | ------ | -------------- | ------------------------------------------------------------------------------------------ |
+| llm-gateway.enabled                      | bool   | `false`        | Enable the LLM Gateway                                                                     |
+| llm-gateway.replicaCount                 | int    | `2`            | Number of replicas                                                                         |
+| llm-gateway.ingress.enabled              | bool   | `false`        | Enable ingress                                                                             |
+| llm-gateway.config.deploymentEnvironment | string | `"production"` | Reported on audit events and used by gateway runtime policy                                |
+| llm-gateway.config.registration.enabled  | bool   | `false`        | Enable agent registration; reads global.secrets.controlPlane and global.secrets.llmGateway |
+| llm-gateway.config.authServiceBaseURL    | string | `""`           | Auth Service URL for API-key enrollment; empty disables it                                 |
+| llm-gateway.config.plugins.enabled       | bool   | `false`        | Enable the plugin runtime                                                                  |
+| llm-gateway.config.projectContext.mode   | string | `"disabled"`   | `disabled`, `observe`, or `enforce`; requires the plugin runtime unless `disabled`         |
+
+### HAProxy Ingress Configuration
+
+The [HAProxy Kubernetes Ingress Controller](https://github.com/haproxytech/helm-charts/tree/main/kubernetes-ingress) chart, bundled for installs without an existing controller. See [Ingress Controller](#ingress-controller-required) for the settings the platform's ingresses expect.
+
+| Key                                               | Type   | Default                          | Description                                                |
+| ------------------------------------------------- | ------ | -------------------------------- | ---------------------------------------------------------- |
+| haproxyIngress.enabled                            | bool   | `false`                          | Install the bundled controller                             |
+| haproxyIngress.nameOverride                       | string | `"haproxy-ingress"`              | Name of the controller's resources                         |
+| haproxyIngress.controller.defaultTLSSecret.secret | string | `"haproxy-ingress-default-cert"` | Secret HAProxy serves for TLS that names none of its hosts |
+| haproxyIngress.controller.defaultTLSSecret.create | bool   | `true`                           | Create a self-signed default certificate Secret            |
+| haproxyIngress.controller.service.type            | string | `"LoadBalancer"`                 | Controller Service type                                    |
 
 ### PostgreSQL Configuration
 
@@ -1371,16 +1398,22 @@ helm upgrade guardian-platform ./charts/guardian-platform \
   --values values.yaml
 ```
 
-### Upgrading from gateway-stack's Control Plane
+### Upgrading from gateway-stack
 
-Earlier releases ran the Control Plane in `gateway-stack`. Its values moved from
-`gateway-stack.controlPlane.*` to `control-plane.*`, and the chart fails to
-render while the old keys remain. The resources are renamed to
-`{Release.Name}-control-plane`, so Helm replaces the Deployment. Set
-`control-plane.enabled: true`, since the Control Plane is off by default. See
+Earlier releases ran the Control Plane and the LLM Gateway in the
+`gateway-stack` chart, which is now `control-plane` and `llm-gateway`. Their
+values moved from `gateway-stack.controlPlane.*` to `control-plane.*`,
+`gateway-stack.llmGateway.*` to `llm-gateway.*`, and
+`gateway-stack.haproxyIngress` to `haproxyIngress`, and the chart fails to
+render while a `gateway-stack` key remains. The Control Plane and LLM Gateway
+resources are renamed to `{Release.Name}-control-plane` and
+`{Release.Name}-llm-gateway`, so Helm replaces their Deployments; the HAProxy
+controller keeps its names. Set `control-plane.enabled: true` and
+`llm-gateway.enabled: true`, since both are off by default. See
 [control-plane/README.md](../control-plane/README.md#upgrading-from-gateway-stack)
-for the key map and the steps before upgrading, including the registration
-token key and ingress TLS.
+and [llm-gateway/README.md](../llm-gateway/README.md#upgrading-from-gateway-stack)
+for the key maps and the steps before upgrading, including the Secret keys,
+ingress TLS, and the removed bundled PostgreSQL.
 
 ### Verify Upgrade
 
@@ -1391,8 +1424,9 @@ kubectl rollout status deployment/guardian-platform-guardian -n guardian
 kubectl rollout status deployment/guardian-platform-integrity-service -n guardian
 # If PDFGen is enabled
 kubectl rollout status deployment/guardian-platform-eqty-pdfgen -n guardian
-# If the Control Plane is enabled
+# If the Control Plane and the LLM Gateway are enabled
 kubectl rollout status deployment/guardian-platform-control-plane -n guardian
+kubectl rollout status deployment/guardian-platform-llm-gateway -n guardian
 ```
 
 ### Rolling Back

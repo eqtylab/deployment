@@ -1,0 +1,67 @@
+# LLM Gateway Configuration Example
+# Minimal configuration for deploying the LLM Gateway
+# For all available values, see the chart's values.yaml and README.md
+#
+# Usage:
+#   Set these values under the `llm-gateway:` key in your umbrella values file
+
+# The LLM Gateway is disabled by default in the umbrella chart
+enabled: true
+
+image:
+  tag: ""
+  pullPolicy: Always
+
+# Workload Identity for reading plugin artifacts (GKE example)
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: "guardian-plugins-reader@your-project.iam.gserviceaccount.com"
+
+ingress:
+  enabled: true
+  className: "haproxy"
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+    # Model streams can pause for minutes between bytes
+    haproxy.org/timeout-server: "600s"
+  hosts:
+    - host: "llmgateway.guardian.your-domain.com"
+      paths:
+        - path: "/"
+          pathType: "Prefix"
+  tls:
+    - secretName: "llm-gateway-tls"
+      hosts:
+        - "llmgateway.guardian.your-domain.com"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+config:
+  deploymentEnvironment: "production"
+
+  # Agent registration with the Control Plane's registration tokens
+  registration:
+    enabled: true
+
+  # Plugin runtime - the Control Plane's GCS bucket and trusted signer
+  plugins:
+    enabled: true
+    artifactStorage:
+      provider: "gcs"
+      bucket: "your-plugin-artifact-bucket"
+      prefix: "guardian-plugins"
+    trustedSignerKeys:
+      signer-v1: "did:key:z6Mk..."
+    secrets:
+      resolutionOrder: ["store"]
+
+secrets:
+  # Pre-created Secret; the same one the Control Plane uses
+  pluginSecretsKey:
+    name: "guardian-plugin-secrets-key"

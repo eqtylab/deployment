@@ -1,14 +1,14 @@
 # Hook/Plugin Runtime Bootstrap
 
 This guide covers the operational steps needed to enable the hook/plugin
-foundation in a cluster deployed with `gateway-stack` and `control-plane`.
+foundation in a cluster deployed with the `llm-gateway` and `control-plane` charts.
 
 ## Prerequisites
 
 1. `llm-gateway` and `control-plane` must share the plugin trust roots for the
    signer keys that will sign plugin artifacts and configuration manifests.
 2. A baseline signed configuration must be created and activated before
-   enabling `llmGateway.plugins.enabled=true`.
+   enabling `llm-gateway.config.plugins.enabled=true`.
 3. The active baseline configuration should include `builtin.authorization` in
    `proxy.pre` so the first-party authorization policy is enforced before
    upstream proxying.
@@ -18,14 +18,14 @@ foundation in a cluster deployed with `gateway-stack` and `control-plane`.
 
 ## Helm Values
 
-Gateway values:
+LLM Gateway values, under `llm-gateway:` in the umbrella chart:
 
 ```yaml
-llmGateway:
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: guardian-llm-gateway@project-id.iam.gserviceaccount.com
+config:
   deploymentEnvironment: production
-  serviceAccount:
-    annotations:
-      iam.gke.io/gcp-service-account: guardian-llm-gateway@project-id.iam.gserviceaccount.com
   plugins:
     enabled: true
     pollInterval: 15s
@@ -43,9 +43,10 @@ llmGateway:
       signer-prod: did:key:z6Mk...
     secrets:
       resolutionOrder: ["store"]
-      encryptionKey:
-        existingSecret: guardian-plugin-secret-key
-        secretKey: encryption-key
+secrets:
+  pluginSecretsKey:
+    name: guardian-plugin-secret-key
+    key: encryption-key
 ```
 
 Control Plane values, under `control-plane:` in the umbrella chart:
@@ -75,7 +76,7 @@ secrets:
 Notes:
 
 - `trustedSignerKeys` are public trust roots, so inline values are acceptable.
-- `llmGateway.deploymentEnvironment` labels telemetry and dev-mode checks only;
+- `config.deploymentEnvironment` labels telemetry and dev-mode checks only;
   plugin configurations are no longer scoped by environment.
 - `control-plane` proxies artifact uploads, computes the SHA-256 digest, verifies
   the signer signature, and stores only metadata in Postgres. Artifact bytes live
@@ -124,7 +125,7 @@ GUARDIAN_SECRET__BUILTIN__INTENT_MONITOR__OPENAI_API_KEY=replace-with-openai-key
 6. Activate the configuration through `POST /v1/plugin-configurations/{id}/activate`
    (empty request body).
 7. Confirm `GET /v1/plugin-configurations/current` returns the expected version.
-8. Enable `llmGateway.plugins.enabled=true` and roll the gateway deployment.
+8. Enable `llm-gateway.config.plugins.enabled=true` and roll the gateway deployment.
 
 The gateway now starts cleanly when plugin runtime is enabled but no active
 configuration exists yet. Even so, you should still bootstrap a signed baseline
@@ -157,7 +158,7 @@ Example `builtin.authorization` configuration entry config:
 
 Recommended first rollout:
 
-- set `llmGateway.plugins.authorizerShadowEnabled=true`
+- set `llm-gateway.config.plugins.authorizerShadowEnabled=true`
 - compare hook decisions against the legacy authorizer in telemetry
 - keep the legacy authorizer enabled only for shadow comparison until
   `builtin.authorization` has acceptable mismatch rates
@@ -167,7 +168,7 @@ Recommended first rollout:
 Use additive rotation:
 
 1. Add the new signer public key to both `control-plane.config.plugins.trustedSignerKeys`
-   and `gateway-stack.llmGateway.plugins.trustedSignerKeys`.
+   and `llm-gateway.config.plugins.trustedSignerKeys`.
 2. Roll both deployments so the new trust root is active everywhere.
 3. Start signing new artifacts and configurations with the new signer key.
 4. Activate at least one configuration signed by the new key in every deployment.

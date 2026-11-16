@@ -7,8 +7,8 @@ The gateway is Splunk-unaware. All HEC transport is handled by the Collector, wh
 ## 1. Enable OTLP Log Export
 
 ```yaml
-llmGateway:
-  extraEnv:
+llm-gateway:
+  extraEnvVars:
     - name: OTEL_LOGS_EXPORTER
       value: otlp
     - name: OTEL_EXPORTER_OTLP_ENDPOINT

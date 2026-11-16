@@ -1,12 +1,12 @@
 {{- if .Values.openbaoKindProfile }}
-{{- $gateway := index .Values "gateway-stack" }}
+{{- $llmGateway := index .Values "llm-gateway" }}
 {{- $controlPlane := index .Values "control-plane" }}
 {{- $keyID := required "local kind profile requires control-plane.config.plugins.publisherSigner.keyID" $controlPlane.config.plugins.publisherSigner.keyID }}
 {{- $_ := required "local kind profile requires control-plane.secrets.pluginPublisherSigner.name" $controlPlane.secrets.pluginPublisherSigner.name }}
-{{- $gatewayKey := index $gateway.llmGateway.plugins.trustedSignerKeys $keyID | default "" }}
+{{- $gatewayKey := index $llmGateway.config.plugins.trustedSignerKeys $keyID | default "" }}
 {{- $controlPlaneKey := index $controlPlane.config.plugins.trustedSignerKeys $keyID | default "" }}
 {{- if or (empty $gatewayKey) (ne $gatewayKey $controlPlaneKey) }}
-{{- fail "local kind profile requires matching publisher public keys in Gateway and Control Plane trustedSignerKeys" }}
+{{- fail "local kind profile requires matching publisher public keys in LLM Gateway and Control Plane trustedSignerKeys" }}
 {{- end }}
 {{- if or (not (regexMatch "^[A-Za-z0-9+/]{43}=$" $gatewayKey)) (ne (len (b64dec $gatewayKey)) 32) }}
 {{- fail "local kind publisher public key must be a base64-encoded 32-byte Ed25519 public key" }}

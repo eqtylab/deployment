@@ -15,27 +15,27 @@ For request-level observability beyond these counters — policy decisions, plug
 
 ## 1. Enable the Metrics Port
 
-The metrics listen address is configured via the `-metrics-listen` flag. Add it to `extraArgs` in your `values.yaml`:
+The metrics listen address is configured via the `-metrics-listen` flag. Add it to `args` under `llm-gateway:` in your `values.yaml`:
 
 ```yaml
-llmGateway:
-  extraArgs:
+llm-gateway:
+  args:
     - -metrics-listen=:10001
 ```
 
 To use a non-default port:
 
 ```yaml
-llmGateway:
-  extraArgs:
+llm-gateway:
+  args:
     - -metrics-listen=:9090
 ```
 
 Alternatively, set the environment variable instead of a flag:
 
 ```yaml
-llmGateway:
-  extraEnv:
+llm-gateway:
+  extraEnvVars:
     - name: LLM_GATEWAY_METRICS_LISTEN
       value: ":10001"
 ```
@@ -49,8 +49,8 @@ The default `llm-gateway` Service only exposes the API port. You need to make th
 This works with a Prometheus deployment that uses the standard annotation-based pod scrape config. No additional Service is required.
 
 ```yaml
-llmGateway:
-  extraArgs:
+llm-gateway:
+  args:
     - -metrics-listen=:10001
   podAnnotations:
     prometheus.io/scrape: "true"
@@ -70,11 +70,10 @@ kind: Service
 metadata:
   name: guardian-llm-gateway-metrics
   labels:
-    app.kubernetes.io/component: llm-gateway
-    app.kubernetes.io/part-of: gateway-stack
+    app.kubernetes.io/name: llm-gateway-metrics
 spec:
   selector:
-    app.kubernetes.io/component: llm-gateway
+    app.kubernetes.io/name: llm-gateway
   ports:
     - name: metrics
       port: 10001
@@ -94,7 +93,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/component: llm-gateway
+      app.kubernetes.io/name: llm-gateway-metrics
   endpoints:
     - port: metrics
       path: /metrics

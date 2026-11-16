@@ -7,7 +7,6 @@ from guardctl.utils.yaml import dump_yaml_sections, file_header, required
 from guardctl.generators.sections.auth_service import generate_auth_service_section
 from guardctl.generators.sections.control_plane import generate_control_plane_section
 from guardctl.generators.sections.eqty_pdfgen import generate_eqty_pdfgen_section
-from guardctl.generators.sections.gateway_stack import generate_gateway_stack_section
 from guardctl.generators.sections.governance_service import (
     generate_governance_service_section,
 )
@@ -17,6 +16,7 @@ from guardctl.generators.sections.guardian import (
 from guardctl.generators.sections.integrity_service import (
     generate_integrity_service_section,
 )
+from guardctl.generators.sections.llm_gateway import generate_llm_gateway_section
 from guardctl.generators.sections.postgresql import generate_postgresql_section
 from guardctl.generators.sections.keycloak import generate_keycloak_section
 from guardctl.generators.sections.entra import generate_entra_section
@@ -51,12 +51,6 @@ def generate_values(config: PlatformConfig) -> str:
             generate_eqty_pdfgen_section(config),
         ),
         (
-            "gateway-stack",
-            "Gateway Stack",
-            "Override values for the gateway-stack Helm chart.",
-            generate_gateway_stack_section(config),
-        ),
-        (
             "governance-service",
             "Governance Service",
             "Override values for the governance-service Helm chart.",
@@ -73,6 +67,12 @@ def generate_values(config: PlatformConfig) -> str:
             "Integrity Service",
             "Override values for the integrity-service Helm chart.",
             generate_integrity_service_section(config),
+        ),
+        (
+            "llm-gateway",
+            "LLM Gateway",
+            "Override values for the llm-gateway Helm chart.",
+            generate_llm_gateway_section(config),
         ),
         (
             "postgresql",

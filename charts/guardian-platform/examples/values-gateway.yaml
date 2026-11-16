@@ -6,7 +6,7 @@
 #     --values examples/values-auth0.yaml \
 #     --values examples/values-gateway.yaml
 #
-# The umbrella chart's control-plane and gateway-stack defaults already wire
+# The umbrella chart's control-plane and llm-gateway defaults already wire
 # the platform database Secret, the Guardian adapter, and Auth Service bearer
 # verification, so this overlay only turns them on, sets the Control Plane's
 # API path and routes, points Governance Service at the Control Plane, and
@@ -67,16 +67,27 @@ control-plane:
   config:
     apiBasePath: "/api"
 
-gateway-stack:
+llm-gateway:
   enabled: true
 
   # Public routes stay off until hostnames and TLS are chosen. Replace the
-  # host and guardian.config.llmGatewayUrl, then set enabled: true
+  # host, TLS Secret, and guardian.config.llmGatewayUrl, then set enabled: true
   ingress:
     enabled: false
     className: "haproxy"
+    annotations:
+      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      # Model streams can pause for minutes between bytes
+      haproxy.org/timeout-server: "600s"
     hosts:
-      llmGateway: "gateway.example.com"
+      - host: "gateway.example.com"
+        paths:
+          - path: "/"
+            pathType: "Prefix"
+    tls:
+      - secretName: "llm-gateway-tls"
+        hosts:
+          - "gateway.example.com"
 
 governance-service:
   config:
