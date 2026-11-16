@@ -53,8 +53,8 @@ replicaCount: 2
 # Container image settings for the LLM Gateway
 image:
   # -- Image Repository
-  # @default -- `ghcr.io/eqtylab/guardian-llm-gateway`
-  repository: ghcr.io/eqtylab/guardian-llm-gateway
+  # @default -- `ghcr.io/eqtylab/llm-gateway`
+  repository: ghcr.io/eqtylab/llm-gateway
   # -- Image Pull Policy
   # @default -- `""` (auto-configured from global.imagePullPolicy, defaults to "IfNotPresent")
   # Options: IfNotPresent, Always, Never

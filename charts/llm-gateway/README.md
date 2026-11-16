@@ -103,16 +103,16 @@ When deployed via the umbrella chart, these global values are automatically used
 
 ### Chart-Specific Parameters
 
-| Key              | Type   | Default                                  | Description                                                                                                           |
-| ---------------- | ------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| enabled          | bool   | `true`                                   | Enable this subchart (umbrella chart only)                                                                            |
-| replicaCount     | int    | `2`                                      | Number of replicas to deploy                                                                                          |
-| image.repository | string | `"ghcr.io/eqtylab/guardian-llm-gateway"` | Container image repository                                                                                            |
-| image.pullPolicy | string | `""`                                     | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
-| image.tag        | string | `""`                                     | Overrides the image tag (default is chart appVersion)                                                                 |
-| image.digest     | string | `""`                                     | Immutable sha256 digest; takes precedence over image.tag                                                              |
-| imagePullSecrets | list   | `[]`                                     | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
-| args             | list   | `[]`                                     | Container arguments, appended after those the chart builds from config                                                |
+| Key              | Type   | Default                         | Description                                                                                                           |
+| ---------------- | ------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| enabled          | bool   | `true`                          | Enable this subchart (umbrella chart only)                                                                            |
+| replicaCount     | int    | `2`                             | Number of replicas to deploy                                                                                          |
+| image.repository | string | `"ghcr.io/eqtylab/llm-gateway"` | Container image repository                                                                                            |
+| image.pullPolicy | string | `""`                            | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
+| image.tag        | string | `""`                            | Overrides the image tag (default is chart appVersion)                                                                 |
+| image.digest     | string | `""`                            | Immutable sha256 digest; takes precedence over image.tag                                                              |
+| imagePullSecrets | list   | `[]`                            | Image pull secrets, used only when global.secrets.imageRegistry.secretName and global.imagePullSecrets are both empty |
+| args             | list   | `[]`                            | Container arguments, appended after those the chart builds from config                                                |
 
 ### Service Account
 
