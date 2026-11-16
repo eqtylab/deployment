@@ -199,7 +199,9 @@ class PackageTests(unittest.TestCase):
         (self.root / "release-manifest.yaml").write_text(yaml.safe_dump(self.manifest))
         self.run_step("Resolve optional custody release")
         output = (self.root / "outputs").read_text().strip()
-        self.assertEqual(output, f"version={CUSTODY_VERSION}" if supplied else "version=")
+        self.assertEqual(
+            output, f"version={CUSTODY_VERSION}" if supplied else "version="
+        )
         self.env["CUSTODY_VERSION"] = output.removeprefix("version=")
         self.run_step("Publish platform charts")  # PUBLISH=false: real local Helm only.
         self.run_step("Build connected customer package")
@@ -225,7 +227,9 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(digests["openbao-custody"]["version"], CUSTODY_VERSION)
         self.assertEqual(digests["openbao-custody"]["ociDigest"], "dry-run")
         self.assertEqual(digests["guardian-platform"]["version"], "9.8.7")
-        self.assertTrue((package / f"charts/openbao-custody-{CUSTODY_VERSION}.tgz").is_file())
+        self.assertTrue(
+            (package / f"charts/openbao-custody-{CUSTODY_VERSION}.tgz").is_file()
+        )
         self.assertFalse((package / "charts/openbao-custody-9.8.7.tgz").exists())
 
         # The policy is owned upstream and synced; the package must carry the
@@ -235,7 +239,9 @@ class PackageTests(unittest.TestCase):
             policy.read_bytes(),
             (ROOT / "scripts/openbao/policies/guardian-auth.hcl").read_bytes(),
         )
-        with tarfile.open(package / f"charts/openbao-custody-{CUSTODY_VERSION}.tgz") as archive:
+        with tarfile.open(
+            package / f"charts/openbao-custody-{CUSTODY_VERSION}.tgz"
+        ) as archive:
             names = set(archive.getnames())
         for name in required_chart_files(ROOT):
             self.assertIn("openbao-custody/" + name, names)
