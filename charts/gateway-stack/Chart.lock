@@ -4,6 +4,6 @@ dependencies:
   version: 16.7.27
 - name: kubernetes-ingress
   repository: oci://ghcr.io/haproxytech/helm-charts
-  version: 1.56.0
-digest: sha256:d4e2fafd171d417707d8440ae8d68959b4273e721ea2ea89dc420de903333bae
-generated: "2026-11-12T10:50:51.808698-05:00"
+  version: 1.56.3
+digest: sha256:f4fc5f8f52ba9f4f9ea67cae614e86cf19826bb57bca0853d3bff5b0239904e6
+generated: "2026-11-16T09:38:16.564652-05:00"
