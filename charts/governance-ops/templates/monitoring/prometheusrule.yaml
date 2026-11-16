@@ -55,11 +55,11 @@ spec:
           for: {{ .Values.alerts.rules.highErrorRate.warningFor }}
           labels:
             severity: warning
-            namespace: "{{ "{{ $labels.exported_namespace }}" }}"
+            namespace: "{{ "{{ $labels.service_namespace }}" }}"
             service: "{{ "{{ $labels.ingress }}" }}"
           annotations:
             summary: "Elevated 5xx error rate - {{ "{{ $labels.ingress }}" }}"
-            description: 'Service {{ "{{ $labels.ingress }}" }} in namespace {{ "{{ $labels.exported_namespace }}" }} is experiencing {{ "{{ humanizePercentage $value }}" }} error rate (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highErrorRate.warningThreshold | float64) 100) }}). Investigation recommended.'
+            description: 'Service {{ "{{ $labels.ingress }}" }} in namespace {{ "{{ $labels.service_namespace }}" }} is experiencing {{ "{{ humanizePercentage $value }}" }} error rate (threshold: {{ printf "%.1f%%" (mulf (.Values.alerts.rules.highErrorRate.warningThreshold | float64) 100) }}). Investigation recommended.'
 
         - alert: GuardianPlatformErrorRateCritical
           expr: |
@@ -69,11 +69,11 @@ spec:
           for: {{ .Values.alerts.rules.highErrorRate.criticalFor }}
           labels:
             severity: critical
-            namespace: "{{ "{{ $labels.exported_namespace }}" }}"
+            namespace: "{{ "{{ $labels.service_namespace }}" }}"
             service: "{{ "{{ $labels.ingress }}" }}"
           annotations:
             summary: "Critical 5xx error rate - {{ "{{ $labels.ingress }}" }} degraded"
-            description: 'Service {{ "{{ $labels.ingress }}" }} in namespace {{ "{{ $labels.exported_namespace }}" }} is experiencing {{ "{{ humanizePercentage $value }}" }} error rate. Immediate action required.'
+            description: 'Service {{ "{{ $labels.ingress }}" }} in namespace {{ "{{ $labels.service_namespace }}" }} is experiencing {{ "{{ humanizePercentage $value }}" }} error rate. Immediate action required.'
         {{- end }}
 
         {{- if .Values.alerts.rules.podCrashLooping.enabled }}

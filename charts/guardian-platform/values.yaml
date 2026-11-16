@@ -1406,9 +1406,6 @@ auth-service:
     # @default -- See values below
     ingress:
       - from:
-          - namespaceSelector:
-              matchLabels:
-                kubernetes.io/metadata.name: ingress-nginx
           # HAProxy controller in its own namespace, or bundled through haproxyIngress
           - namespaceSelector:
               matchLabels:

@@ -24,10 +24,7 @@
 {{- if eq $ingressInstance $targetRelease }}
 {{- range $rule := $ingress.spec.rules }}
 {{- range $pathObj := $rule.http.paths }}
-{{- /* Clean the path by removing regex groups, as in ingress-nginx paths */ -}}
-{{- $originalPath := $pathObj.path }}
-{{- $cleanPath := regexReplaceAll "\\([^)]*\\)" $originalPath "" }}
-{{- $cleanPath := trimSuffix "/" $cleanPath }}
+{{- $cleanPath := trimSuffix "/" $pathObj.path }}
 {{- if eq $cleanPath "" }}{{ $cleanPath = "/" }}{{ end }}
 {{- /* Get health check path from service deployment */ -}}
 {{- $probePath := $cleanPath }}

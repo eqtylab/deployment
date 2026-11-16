@@ -1313,7 +1313,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\"))",
+          "expr": "sum by (ingress) (label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\"))",
           "legendFormat": "{{ingress}}",
           "refId": "A"
         }
@@ -1379,7 +1379,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]))",
+          "expr": "sum(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]))",
           "legendFormat": "Request Rate",
           "refId": "A"
         }
@@ -1485,7 +1485,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\", code=\"5xx\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\")) / sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\"))) or (sum by (ingress) (rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\")) * 0)",
+          "expr": "(sum by (ingress) (label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\", code=\"5xx\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\")) / sum by (ingress) (label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\"))) or (sum by (ingress) (label_replace(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]), \"ingress\", \"$1\", \"proxy\", \"[^_]+_svc_([^_]+)_[^_]+\")) * 0)",
           "legendFormat": "{{ingress}}",
           "refId": "A"
         }
@@ -1553,7 +1553,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\", status=~\"5..\"}[5m]) or rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\", code=\"5xx\"}[5m])) / sum(rate(nginx_ingress_controller_requests{exported_namespace=\"$namespace\", ingress=~\"$release-.*\"}[5m]) or rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]))) or vector(0)",
+          "expr": "(sum(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\", code=\"5xx\"}[5m])) / sum(rate(haproxy_backend_http_responses_total{proxy=~\"${namespace}_svc_${release}-.*\"}[5m]))) or vector(0)",
           "legendFormat": "Error Rate (5xx)",
           "refId": "A"
         }

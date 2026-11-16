@@ -26,7 +26,7 @@ Key capabilities:
   - Grafana with sidecar enabled for dashboard auto-discovery
   - AlertManager for alert routing (if using alerts)
 - kube-state-metrics (included in kube-prometheus-stack)
-- Ingress controller metrics in Prometheus, for the request and error rate panels and the 5xx alerts: the HAProxy Kubernetes Ingress Controller (`haproxy_backend_*`, with `controller.serviceMonitor.enabled: true` and `controller.serviceMonitor.extraLabels.release: kube-prometheus-stack`) or ingress-nginx (`nginx_ingress_controller_requests`). The panels and alerts read both
+- Ingress controller metrics in Prometheus, for the request and error rate panels and the 5xx alerts: the HAProxy Kubernetes Ingress Controller (`haproxy_backend_*`, with `controller.serviceMonitor.enabled: true` and `controller.serviceMonitor.extraLabels.release: kube-prometheus-stack`)
 
 **Optional:**
 
@@ -155,7 +155,7 @@ This removes all monitoring resources (ConfigMaps, PrometheusRules, and Probes) 
 - Server Error Rates (5xx): Error tracking for service health
 - Resource Utilization: CPU and memory usage by pod
 
-Requirements: kube-state-metrics, and HAProxy or ingress-nginx metrics
+Requirements: kube-state-metrics, and HAProxy metrics
 
 ### Alert Configuration
 
@@ -402,8 +402,7 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:909
 
 # Query the ingress controller metrics
 # Open: http://localhost:9090/graph
-# Query: haproxy_backend_http_responses_total (HAProxy)
-#    or: nginx_ingress_controller_requests (ingress-nginx)
+# Query: haproxy_backend_http_responses_total
 ```
 
 **Generate traffic to populate panels:**

@@ -61,7 +61,7 @@ dashboards:
     # -- Enable Guardian Platform Dashboard
     # @default -- `true`
     # Provision the guardian-platform.json dashboard
-    # Requirements: kube-state-metrics, HAProxy or ingress-nginx metrics
+    # Requirements: kube-state-metrics, HAProxy metrics
     enabled: true
 
     # -- Dashboard UID
