@@ -45,13 +45,13 @@ images:
     sourceSha: 003fd168e89b7610dbe5068c571033b4c8f3728b
     metadataArtifact: image-metadata-pdfgen
   llmGateway:
-    repository: ghcr.io/eqtylab/guardian-llm-gateway
+    repository: ghcr.io/eqtylab/llm-gateway
     tag: 1.2.0
     digest: sha256:20c4c34047f5240816be12d82bae474f53179546e85d4f708c4febfca821c7b4
     sourceSha: 003fd168e89b7610dbe5068c571033b4c8f3728b
     metadataArtifact: image-metadata-llm-gateway
   controlPlane:
-    repository: ghcr.io/eqtylab/guardian-control-plane
+    repository: ghcr.io/eqtylab/control-plane
     tag: 1.2.0
     digest: sha256:2adb2da7c5ad842cb269168c51692c994db1505328dd5cbe777223e0a2015ca7
     sourceSha: 003fd168e89b7610dbe5068c571033b4c8f3728b

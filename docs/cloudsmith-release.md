@@ -57,8 +57,8 @@ from `eqtylab/guardian` does not grant the deployment workflow access. A success
 - [guardian](https://github.com/orgs/eqtylab/packages/container/guardian/settings)
 - [integrity-service](https://github.com/orgs/eqtylab/packages/container/integrity-service/settings)
 - [eqty-pdfgen](https://github.com/orgs/eqtylab/packages/container/eqty-pdfgen/settings)
-- [guardian-llm-gateway](https://github.com/orgs/eqtylab/packages/container/guardian-llm-gateway/settings)
-- [guardian-control-plane](https://github.com/orgs/eqtylab/packages/container/guardian-control-plane/settings)
+- [llm-gateway](https://github.com/orgs/eqtylab/packages/container/llm-gateway/settings)
+- [control-plane](https://github.com/orgs/eqtylab/packages/container/control-plane/settings)
 
 The grant covers the image and its signature/attestation tags within that
 package. Check all seven to avoid fixing one only to fail on the next image.
