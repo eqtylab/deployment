@@ -179,8 +179,8 @@ jobs:
           if [ -d charts/eqty-pdfgen ]; then
             grep -q 'registry.customer.example/eqtylab/eqty-pdfgen' /tmp/repository-prefix-override.yaml
           fi
-          grep -q 'registry.customer.example/eqtylab/guardian-control-plane' /tmp/repository-prefix-override.yaml
-          grep -q 'registry.customer.example/eqtylab/guardian-llm-gateway' /tmp/repository-prefix-override.yaml
+          grep -q 'registry.customer.example/eqtylab/control-plane' /tmp/repository-prefix-override.yaml
+          grep -q 'registry.customer.example/eqtylab/llm-gateway' /tmp/repository-prefix-override.yaml
 
       - name: Validate release manifests against schema
         run: |
