@@ -26,8 +26,8 @@ Key capabilities:
   - `read:clients`, `create:clients`, `update:clients`
   - `read:resource_servers`, `create:resource_servers`, `update:resource_servers`
   - `read:client_grants`, `create:client_grants`, `update:client_grants`
-  - `read:users`, `create:users`, `update:users`
-  - `read:actions`, `create:actions`, `update:actions`, `delete:actions` (required when Actions are enabled)
+  - `read:users`, `create:users`
+  - `read:actions`, `create:actions`, `update:actions` (required when Actions are enabled)
   - `update:client_keys` (required when the client-credentials-exchange Action is enabled)
 
 ## Deployment
@@ -99,8 +99,8 @@ kubectl create secret generic platform-admin \
 | `read:clients`, `create:clients`, `update:clients`                            | Create and update SPA / M2M applications       |
 | `read:resource_servers`, `create:resource_servers`, `update:resource_servers` | Create and update the Guardian Platform API    |
 | `read:client_grants`, `create:client_grants`, `update:client_grants`          | Grant M2M clients access to APIs               |
-| `read:users`, `create:users`, `update:users`                                  | Create the platform admin user and test users  |
-| `read:actions`, `create:actions`, `update:actions`, `delete:actions`          | Create, update, deploy, and bind Auth0 Actions |
+| `read:users`, `create:users`                                                  | Create the platform admin user and test users  |
+| `read:actions`, `create:actions`, `update:actions`                            | Create, update, deploy, and bind Auth0 Actions |
 | `update:client_keys`                                                          | Rotate the Actions application's secret        |
 
 > **Note:** The job saves new application client IDs and secrets to the `<release>-credentials` Secret (`credentialsSecret.name`), not to its logs. Helm creates the Secret empty, and the job's ServiceAccount can only read and patch that Secret. After the job completes, read it with `kubectl get secret <release>-credentials -o json | jq '.data | map_values(@base64d)'` and populate the `platform-auth0` secret from it. The Secret has `helm.sh/resource-policy: keep`, so it survives `helm uninstall`; delete it yourself when you no longer need it.
@@ -449,7 +449,7 @@ kubectl logs -n guardian -l app.kubernetes.io/name=auth0-bootstrap
 
 **Action create / deploy fails with `HTTP 403 insufficient_scope`**
 
-- Add `read:actions`, `create:actions`, `update:actions`, and `delete:actions` to the bootstrap M2M application's Management API authorization
+- Add `read:actions`, `create:actions`, and `update:actions` to the bootstrap M2M application's Management API authorization
 - Re-run the bootstrap job; it will resume from where it left off
 
 **Action source ConfigMap not found**

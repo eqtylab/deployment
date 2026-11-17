@@ -76,8 +76,8 @@ check_prerequisites() {
     echo "  - read:clients, create:clients, update:clients"
     echo "  - read:resource_servers, create:resource_servers, update:resource_servers"
     echo "  - read:client_grants, create:client_grants, update:client_grants"
-    echo "  - read:users, create:users, update:users"
-    echo "  - read:actions, create:actions, update:actions, delete:actions (Actions)"
+    echo "  - read:users, create:users"
+    echo "  - read:actions, create:actions, update:actions (Actions)"
     echo "  - update:client_keys (client-credentials-exchange Action)"
     exit 1
   fi
