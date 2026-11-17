@@ -22,9 +22,9 @@ dependencies:
   version: 1.3.0
 - name: kubernetes-ingress
   repository: oci://ghcr.io/haproxytech/helm-charts
-  version: 1.56.3
+  version: 1.56.4
 - name: postgresql
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 18.1.15
-digest: sha256:b0988ca870de1b2941288cbfc6077ab1703c436257540ccbef6099a7729ac143
-generated: "2026-11-16T10:21:25.23647-05:00"
+digest: sha256:aac1dad9c91bc192b56321991bdd31dd551aeef9ccf375d2ae174c3fd949823d
+generated: "2026-11-17T10:27:24.992656-05:00"
