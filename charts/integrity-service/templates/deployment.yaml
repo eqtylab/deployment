@@ -103,8 +103,8 @@ spec:
             # ========================================================================
             # Application Configuration
             # ========================================================================
-            - name: INTEGRITY_APP__server__port
-              value: {{ .Values.service.port | default 3050 | quote }}
+            - name: INTEGRITY_APP__port
+              value: {{ .Values.service.port | quote }}
             - name: SERVICE_VERSION
               value: {{ .Chart.Version | quote }}
             - name: RUST_ENVIRONMENT
