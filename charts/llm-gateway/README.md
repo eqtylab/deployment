@@ -278,12 +278,11 @@ All config values support global fallbacks when deployed via umbrella chart.
 
 #### Agent Registration Configuration
 
-| Key                              | Type   | Default           | Description                                                                                                                   |
-| -------------------------------- | ------ | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| config.registration.enabled      | bool   | `false`           | Enable token registration; reads the registration token secret from secrets.controlPlane and the seed from secrets.llmGateway |
-| config.registration.tokenIssuer  | string | `"control-plane"` | Must match the Control Plane's config.auth.registrationTokenIssuer                                                            |
-| config.authServiceBaseURL        | string | `""`              | Auth Service URL for API-key enrollment; empty disables it                                                                    |
-| config.authServiceIdentityIssuer | string | `""`              | Identity issuer stamped on agents enrolled with an API key (defaults to `{authServiceBaseURL}/api/v1/auth`)                   |
+| Key                             | Type   | Default           | Description                                                                                                                   |
+| ------------------------------- | ------ | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| config.registration.enabled     | bool   | `false`           | Enable token registration; reads the registration token secret from secrets.controlPlane and the seed from secrets.llmGateway |
+| config.registration.tokenIssuer | string | `"control-plane"` | Must match the Control Plane's config.auth.registrationTokenIssuer                                                            |
+| config.authServiceBaseURL       | string | `""`              | Auth Service URL for API-key enrollment; empty disables it                                                                    |
 
 #### Audit Configuration
 
@@ -505,7 +504,7 @@ Earlier releases ran the LLM Gateway in the `gateway-stack` chart, which this ch
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `llmGateway.{replicaCount,image,serviceAccount,podAnnotations,podLabels,podSecurityContext,securityContext,service,resources,autoscaling,podDisruptionBudget,nodeSelector,tolerations,affinity}` | The same keys at the top level                                                                                                                            |
 | `llmGateway.probes.*`                                                                                                                                                                            | `startupProbe`, `livenessProbe`, `readinessProbe`                                                                                                         |
-| `llmGateway.{listenAddr,deploymentEnvironment,upstreams,signature,authServiceBaseURL,authServiceIdentityIssuer,audit,projectContext}`                                                            | `config.*`                                                                                                                                                |
+| `llmGateway.{listenAddr,deploymentEnvironment,upstreams,signature,authServiceBaseURL,audit,projectContext}`                                                                                      | `config.*`                                                                                                                                                |
 | `llmGateway.registration.{enabled,tokenIssuer}`                                                                                                                                                  | `config.registration.{enabled,tokenIssuer}`                                                                                                               |
 | `llmGateway.registration.credentialSigner.seed`                                                                                                                                                  | `global.secrets.llmGateway.values.credentialSignerSeed` (the umbrella creates `platform-llm-gateway`)                                                     |
 | `llmGateway.registration.credentialSigner.existingSecret`                                                                                                                                        | `secrets.llmGateway.name` when `global.secrets.create` is true, so the umbrella chart doesn't create it; otherwise `global.secrets.llmGateway.secretName` |

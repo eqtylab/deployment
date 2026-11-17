@@ -155,9 +155,6 @@ spec:
             {{- if .Values.config.authServiceBaseURL }}
             - {{ printf "-auth-service-base-url=%s" .Values.config.authServiceBaseURL | quote }}
             {{- end }}
-            {{- if .Values.config.authServiceIdentityIssuer }}
-            - {{ printf "-auth-service-identity-issuer=%s" .Values.config.authServiceIdentityIssuer | quote }}
-            {{- end }}
 
             # ========================================================================
             # Audit Configuration

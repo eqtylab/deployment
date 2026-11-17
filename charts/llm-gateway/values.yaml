@@ -347,11 +347,6 @@ config:
   # Enables API-key agent enrollment; empty disables it. Agent registration is separate
   authServiceBaseURL: ""
 
-  # -- Auth Service Identity Issuer
-  # @default -- `""` (defaults to "{authServiceBaseURL}/api/v1/auth")
-  # Identity issuer stamped on agents enrolled with an API key
-  authServiceIdentityIssuer: ""
-
   # ---------------------------------------------------------------------------
   # Audit Configuration
   # ---------------------------------------------------------------------------
