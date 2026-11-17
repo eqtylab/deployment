@@ -175,7 +175,6 @@ spec:
             # Server Configuration
             # ========================================================================
             - -listen={{ .Values.config.listenAddr }}
-            - -db-dsn=$(DB_DSN)
             - -cors-allow-all={{ ternary "true" "false" .Values.config.corsAllowAll }}
             {{- if .Values.config.apiBasePath }}
             - -api-base-path={{ .Values.config.apiBasePath }}
@@ -190,9 +189,6 @@ spec:
             - -auth-bearer-enabled={{ ternary "true" "false" $auth.bearer.enabled }}
             {{- if $auth.allowedEmailDomains }}
             - {{ printf "-auth-allowed-email-domains=%s" (join "," $auth.allowedEmailDomains) | quote }}
-            {{- end }}
-            {{- if $auth.enabled }}
-            - -auth-registration-token-secret=$(AUTH_REGISTRATION_TOKEN_SECRET)
             {{- end }}
             {{- if $auth.bearer.mode }}
             - {{ printf "-auth-bearer-mode=%s" $auth.bearer.mode | quote }}
@@ -297,7 +293,7 @@ spec:
             # ========================================================================
             # Database Configuration
             # ========================================================================
-            - name: DB_DSN
+            - name: CONTROL_PLANE_DB_DSN
               valueFrom:
                 secretKeyRef:
                   name: {{ $dsnSecretName | quote }}
@@ -307,7 +303,7 @@ spec:
             # Authentication Configuration
             # ========================================================================
             {{- if $auth.enabled }}
-            - name: AUTH_REGISTRATION_TOKEN_SECRET
+            - name: CONTROL_PLANE_AUTH_REGISTRATION_TOKEN_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ required "secrets.controlPlane.name (or global.secrets.controlPlane.secretName) is required when config.auth.enabled is true" (.Values.secrets.controlPlane.name | default (((.Values.global).secrets).controlPlane).secretName) | quote }}

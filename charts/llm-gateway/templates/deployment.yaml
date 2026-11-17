@@ -137,7 +137,6 @@ spec:
             - {{ printf "-deployment-environment=%s" .Values.config.deploymentEnvironment | quote }}
             {{- end }}
             - -registry-backend=postgres
-            - -registry-db-dsn=$(DB_DSN)
             - {{ printf "-anthropic-upstream-url=%s" .Values.config.upstreams.anthropicURL | quote }}
             - {{ printf "-openai-upstream-url=%s" .Values.config.upstreams.openaiURL | quote }}
 
@@ -161,7 +160,6 @@ spec:
             # ========================================================================
             {{- $audit := .Values.config.audit }}
             - -audit-enabled={{ ternary "true" "false" $audit.enabled }}
-            - -audit-db-dsn=$(DB_DSN)
             - -audit-queue-dir={{ $audit.queueDir }}
             - -audit-queue-max-bytes={{ int64 $audit.queueMaxBytes }}
             - -audit-batch-size={{ $audit.batchSize }}
@@ -236,7 +234,12 @@ spec:
             # ========================================================================
             # Database Configuration
             # ========================================================================
-            - name: DB_DSN
+            - name: LLM_GATEWAY_REGISTRY_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $dsnSecretName | quote }}
+                  key: {{ $dsnSecretKey | quote }}
+            - name: LLM_GATEWAY_AUDIT_DB_DSN
               valueFrom:
                 secretKeyRef:
                   name: {{ $dsnSecretName | quote }}
