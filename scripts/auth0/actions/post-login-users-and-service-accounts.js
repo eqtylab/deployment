@@ -36,8 +36,6 @@ exports.onExecutePostLogin = async (event, api) => {
   const namespace = "https://governance.eqtylab.io/";
 
   const auth0OrgId = event.organization?.id;
-  const auth0OrgName = event.organization?.name;
-  const auth0OrgDisplayName = event.organization?.display_name;
 
   // Service-account users that reach post-login (e.g. interactive login rather
   // than the M2M flow skipped above) still need their tokens enriched
@@ -113,9 +111,10 @@ exports.onExecutePostLogin = async (event, api) => {
     return;
   }
 
+  // Auth Service chooses the active organization: the login's Auth0 Organization, else its default
+  let response;
   try {
-    // Fetch enrichment claims (organizations, roles, projects, etc.) from auth-service
-    const response = await fetch(
+    response = await fetch(
       `${AUTH_SERVICE_URL}/api/v1/auth/claims-enrichment`,
       {
         method: "POST",
@@ -129,207 +128,92 @@ exports.onExecutePostLogin = async (event, api) => {
           name: event.user.name || event.user.nickname || event.user.email,
           picture: event.user.picture,
           provider: "auth0",
+          auth0_organization_id: auth0OrgId,
         }),
       },
     );
-
-    if (response.ok) {
-      const data = await response.json();
-      const claims = data.custom_claims;
-
-      // Organization and role claims
-      if (claims.app_organizations && claims.app_organizations.length > 0) {
-        const orgIds = claims.app_organizations.map((org) => org.id);
-        const auth0OrgIds = claims.app_organizations
-          .filter((org) => org.auth0_org_id)
-          .map((org) => org.auth0_org_id);
-        const roles = [];
-
-        claims.app_organizations.forEach((org) => {
-          if (org.roles && org.roles.length > 0) {
-            org.roles.forEach((role) => {
-              // auth-service expects scoped roles in the format "role_name:org_id"
-              roles.push(`${role}:${org.id}`);
-              // Also emit the unscoped role for backward compatibility
-              roles.push(role);
-            });
-          }
-        });
-
-        const uniqueRoles = [...new Set(roles)];
-
-        api.idToken.setCustomClaim(`${namespace}organizations`, orgIds);
-        api.accessToken.setCustomClaim(`${namespace}organizations`, orgIds);
-
-        // Auth0 organization IDs power UI organization switching
-        if (auth0OrgIds.length > 0) {
-          api.idToken.setCustomClaim(
-            `${namespace}auth0_organizations`,
-            auth0OrgIds,
-          );
-          api.accessToken.setCustomClaim(
-            `${namespace}auth0_organizations`,
-            auth0OrgIds,
-          );
-        }
-
-        // Full organization details consumed by the UI
-        api.idToken.setCustomClaim(
-          `${namespace}organization_details`,
-          claims.app_organizations,
-        );
-
-        api.idToken.setCustomClaim(`${namespace}roles`, uniqueRoles);
-        api.accessToken.setCustomClaim(`${namespace}roles`, uniqueRoles);
-
-        // IMPORTANT: auth-service middleware requires the app_organizations claim
-        api.accessToken.setCustomClaim(
-          `${namespace}app_organizations`,
-          claims.app_organizations,
-        );
-        api.idToken.setCustomClaim(
-          `${namespace}app_organizations`,
-          claims.app_organizations,
-        );
-
-        // Resolve the default organization for this login
-        if (auth0OrgId) {
-          // User logged in through a specific Auth0 org — resolve it to the internal org id
-          let _orgId = 0;
-          let _auth0OrgId = "";
-          claims.app_organizations.forEach((org) => {
-            if (org.auth0_org_id === auth0OrgId) {
-              _orgId = org.id;
-              _auth0OrgId = org.auth0_org_id;
-            }
-          });
-
-          api.idToken.setCustomClaim(`${namespace}organization_id`, _orgId);
-          api.accessToken.setCustomClaim(`${namespace}organization_id`, _orgId);
-
-          api.idToken.setCustomClaim(
-            `${namespace}auth0_organization_id`,
-            _auth0OrgId,
-          );
-          api.accessToken.setCustomClaim(
-            `${namespace}auth0_organization_id`,
-            _auth0OrgId,
-          );
-        } else {
-          // No Auth0 org context — default to the first org the user belongs to
-          api.idToken.setCustomClaim(`${namespace}organization_id`, orgIds[0]);
-          api.accessToken.setCustomClaim(
-            `${namespace}organization_id`,
-            orgIds[0],
-          );
-
-          if (auth0OrgIds.length > 0) {
-            api.idToken.setCustomClaim(
-              `${namespace}auth0_organization_id`,
-              auth0OrgIds[0],
-            );
-            api.accessToken.setCustomClaim(
-              `${namespace}auth0_organization_id`,
-              auth0OrgIds[0],
-            );
-          }
-        }
-      }
-
-      // Project claims
-      if (claims.app_projects && claims.app_projects.length > 0) {
-        const projectIds = claims.app_projects.map((proj) => proj.id);
-        api.idToken.setCustomClaim(`${namespace}projects`, projectIds);
-        api.accessToken.setCustomClaim(`${namespace}projects`, projectIds);
-
-        // IMPORTANT: auth-service middleware requires the app_projects claim
-        api.accessToken.setCustomClaim(
-          `${namespace}app_projects`,
-          claims.app_projects,
-        );
-        api.idToken.setCustomClaim(
-          `${namespace}app_projects`,
-          claims.app_projects,
-        );
-      }
-
-      // User context claims (admin access, etc.)
-      if (claims.user_context) {
-        api.idToken.setCustomClaim(
-          `${namespace}has_admin_access`,
-          claims.user_context.has_admin_access || false,
-        );
-        api.accessToken.setCustomClaim(
-          `${namespace}has_admin_access`,
-          claims.user_context.has_admin_access || false,
-        );
-      }
-
-      // DID key is created automatically on first login by auth-service
-      if (claims.did_key_id) {
-        api.idToken.setCustomClaim(`${namespace}did_key_id`, claims.did_key_id);
-        api.accessToken.setCustomClaim(
-          `${namespace}did_key_id`,
-          claims.did_key_id,
-        );
-      }
-
-      // Standard identity claims (email, user_id, name, picture)
-      api.idToken.setCustomClaim(`${namespace}email`, event.user.email);
-      api.idToken.setCustomClaim(
-        `${namespace}email_verified`,
-        event.user.email_verified,
-      );
-      api.idToken.setCustomClaim(`${namespace}user_id`, event.user.user_id);
-      api.accessToken.setCustomClaim(`${namespace}user_id`, event.user.user_id);
-
-      const name = event.user.name || event.user.nickname || event.user.email;
-      const picture = event.user.picture || "";
-
-      api.accessToken.setCustomClaim(`${namespace}email`, event.user.email);
-      api.accessToken.setCustomClaim(`${namespace}name`, name);
-      api.idToken.setCustomClaim(`${namespace}picture`, picture);
-      api.accessToken.setCustomClaim(`${namespace}picture`, picture);
-
-      // Auth0 organization context from the login event (only set if user logged in through an org)
-      if (auth0OrgId) {
-        api.idToken.setCustomClaim(`${namespace}auth0_org_context`, {
-          id: auth0OrgId,
-          name: auth0OrgName,
-          display_name: auth0OrgDisplayName,
-        });
-        api.accessToken.setCustomClaim(`${namespace}auth0_org_context`, {
-          id: auth0OrgId,
-          name: auth0OrgName,
-          display_name: auth0OrgDisplayName,
-        });
-      }
-    } else {
-      console.error("Claims enrichment failed:", response.status);
-      const errorText = await response.text();
-      console.error("Error response:", errorText);
-
-      // Fall back to a minimal token so the user can still log in if auth-service is unreachable
-      api.idToken.setCustomClaim(`${namespace}user_id`, event.user.user_id);
-      api.accessToken.setCustomClaim(`${namespace}user_id`, event.user.user_id);
-      api.idToken.setCustomClaim(`${namespace}email`, event.user.email);
-      api.accessToken.setCustomClaim(`${namespace}email`, event.user.email);
-    }
   } catch (error) {
     console.error("Claims enrichment error:", error);
+    api.access.deny("Sign-in failed. Try again.");
+    return;
+  }
 
-    // Same minimal-token fallback as the !response.ok branch above
-    api.idToken.setCustomClaim(`${namespace}user_id`, event.user.user_id);
-    api.accessToken.setCustomClaim(`${namespace}user_id`, event.user.user_id);
-    api.idToken.setCustomClaim(`${namespace}email`, event.user.email);
-    api.accessToken.setCustomClaim(`${namespace}email`, event.user.email);
+  if (response.status === 403) {
+    api.access.deny("You aren't a member of this organization in Guardian.");
+    return;
+  }
+  if (!response.ok) {
+    console.error(
+      "Claims enrichment failed:",
+      response.status,
+      await response.text(),
+    );
+    api.access.deny("Sign-in failed. Try again.");
+    return;
+  }
+
+  const claims = (await response.json()).custom_claims;
+  const setClaim = (name, value) => {
+    api.idToken.setCustomClaim(`${namespace}${name}`, value);
+    api.accessToken.setCustomClaim(`${namespace}${name}`, value);
+  };
+
+  // Organization and role claims, as Auth Service built them
+  if (claims.app_organizations && claims.app_organizations.length > 0) {
+    setClaim("organizations", claims.organizations);
+    setClaim("roles", claims.roles);
+    // IMPORTANT: auth-service middleware requires the app_organizations claim
+    setClaim("app_organizations", claims.app_organizations);
     api.idToken.setCustomClaim(
-      "name",
-      event.user.name || event.user.nickname || event.user.email,
+      `${namespace}organization_details`,
+      claims.app_organizations,
     );
-    api.accessToken.setCustomClaim(
-      "name",
-      event.user.name || event.user.nickname || event.user.email,
+
+    // Auth0 organization IDs power UI organization switching
+    if (claims.auth0_organizations && claims.auth0_organizations.length > 0) {
+      setClaim("auth0_organizations", claims.auth0_organizations);
+    }
+  }
+
+  if (claims.organization_id) {
+    setClaim("organization_id", claims.organization_id);
+  }
+  if (claims.auth0_organization_id) {
+    setClaim("auth0_organization_id", claims.auth0_organization_id);
+  }
+
+  // Project claims
+  if (claims.app_projects && claims.app_projects.length > 0) {
+    setClaim(
+      "projects",
+      claims.app_projects.map((proj) => proj.id),
     );
+    // IMPORTANT: auth-service middleware requires the app_projects claim
+    setClaim("app_projects", claims.app_projects);
+  }
+
+  setClaim("has_admin_access", claims.has_admin_access || false);
+
+  // DID key is created automatically on first login by auth-service
+  if (claims.did_key_id) {
+    setClaim("did_key_id", claims.did_key_id);
+  }
+
+  // Standard identity claims (email, user_id, name, picture)
+  setClaim("email", event.user.email);
+  setClaim("user_id", event.user.user_id);
+  setClaim("picture", event.user.picture || "");
+  api.idToken.setCustomClaim(
+    `${namespace}email_verified`,
+    event.user.email_verified,
+  );
+  api.accessToken.setCustomClaim(
+    `${namespace}name`,
+    event.user.name || event.user.nickname || event.user.email,
+  );
+
+  // The active organization's context as Auth Service built it, so it always names organization_id's
+  if (claims.auth0_org_context) {
+    setClaim("auth0_org_context", claims.auth0_org_context);
   }
 };
