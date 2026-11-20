@@ -58,7 +58,7 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
       return;
     }
 
-    // Note: is_service_account lives on user_metadata; roles & org binding live on app_metadata
+    // Note: is_service_account lives on user_metadata; the DID key lives on app_metadata
     const userMetadata = user.user_metadata || {};
     const appMetadata = user.app_metadata || {};
     const isServiceAccountUser = userMetadata.is_service_account === true;
@@ -93,33 +93,7 @@ exports.onExecuteCredentialsExchange = async (event, api) => {
       event.client.metadata?.service_type || "unknown",
     );
 
-    // governance-worker is platform-wide; other service accounts are org-scoped
-    if (event.client.metadata?.service_name === "governance-worker") {
-      api.accessToken.setCustomClaim(namespace + "platform_access", true);
-      api.accessToken.setCustomClaim(namespace + "organizations", ["*"]);
-      api.accessToken.setCustomClaim(namespace + "roles", [
-        "platform:service_account",
-        "governance:declarations:create",
-        "integrity:statements:create",
-      ]);
-    } else {
-      // organization_id is stored as a string in app_metadata, auth-service expects integers
-      const organizationId = appMetadata.organization_id
-        ? parseInt(appMetadata.organization_id, 10)
-        : null;
-      if (organizationId) {
-        api.accessToken.setCustomClaim(
-          namespace + "organization_id",
-          organizationId,
-        );
-        api.accessToken.setCustomClaim(namespace + "organizations", [
-          organizationId,
-        ]);
-      }
-
-      const roles = appMetadata.roles || ["service_account"];
-      api.accessToken.setCustomClaim(namespace + "roles", roles);
-    }
+    // Auth Service reads the account's organization and grants from its service_accounts row
 
     // DID key claims
     if (appMetadata.did_key_id) {

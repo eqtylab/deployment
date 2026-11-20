@@ -62,37 +62,10 @@ exports.onExecutePostLogin = async (event, api) => {
     // Service accounts need a special sub claim for DID key lookup
     api.accessToken.setCustomClaim("sub", serviceAccountId);
 
-    // Platform-wide service accounts have no organization binding
-    const isPlatformWide = !event.user.app_metadata?.organization_id;
-
-    if (isPlatformWide) {
-      // Platform-wide claims: wildcard org access and platform-level roles
-      api.accessToken.setCustomClaim(`${namespace}platform_access`, true);
-      api.accessToken.setCustomClaim(`${namespace}organizations`, ["*"]);
-
-      const platformRoles = [
-        "platform:service_account",
-        "governance:declarations:create",
-        "integrity:statements:create",
-      ];
-      api.accessToken.setCustomClaim(`${namespace}roles`, platformRoles);
-
-      console.log(
-        `Platform-wide service account token enriched: ${serviceAccountName} (${environment} environment)`,
-      );
-    } else {
-      // Org-scoped claims; organization_id is stored as a string in app_metadata, auth-service expects integers
-      const orgId = parseInt(event.user.app_metadata.organization_id, 10);
-      api.accessToken.setCustomClaim(`${namespace}organization_id`, orgId);
-      api.accessToken.setCustomClaim(`${namespace}organizations`, [orgId]);
-
-      const orgRoles = ["service_account", "governance:declarations:create"];
-      api.accessToken.setCustomClaim(`${namespace}roles`, orgRoles);
-
-      console.log(
-        `Organization-scoped service account token enriched: ${serviceAccountName} (${environment} environment)`,
-      );
-    }
+    // Auth Service reads the account's organization and grants from its service_accounts row
+    console.log(
+      `Service account token enriched: ${serviceAccountName} (${environment} environment)`,
+    );
 
     // DID key claim
     if (event.user.app_metadata?.did_key_id) {
