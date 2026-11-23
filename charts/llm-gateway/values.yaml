@@ -44,9 +44,9 @@ global:
       secretName: "platform-llm-gateway"
 
 # -- Replica Count
-# @default -- `2`
+# @default -- `1`
 # Number of pod replicas to run (ignored if autoscaling.enabled is true)
-replicaCount: 2
+replicaCount: 1
 
 # -- Image Configuration
 # @default -- See values below
@@ -190,8 +190,8 @@ autoscaling:
   # @default -- `false`
   enabled: false
   # -- Minimum Replicas
-  # @default -- `2`
-  minReplicas: 2
+  # @default -- `1`
+  minReplicas: 1
   # -- Maximum Replicas
   # @default -- `10`
   maxReplicas: 10

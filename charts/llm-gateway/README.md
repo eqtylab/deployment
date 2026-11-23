@@ -106,7 +106,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | Key              | Type   | Default                         | Description                                                                                                           |
 | ---------------- | ------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | enabled          | bool   | `true`                          | Enable this subchart (umbrella chart only)                                                                            |
-| replicaCount     | int    | `2`                             | Number of replicas to deploy                                                                                          |
+| replicaCount     | int    | `1`                             | Number of replicas to deploy                                                                                          |
 | image.repository | string | `"ghcr.io/eqtylab/llm-gateway"` | Container image repository                                                                                            |
 | image.pullPolicy | string | `""`                            | Image pull policy (auto-configured from global.imagePullPolicy, defaults to `IfNotPresent`)                           |
 | image.tag        | string | `""`                            | Overrides the image tag (default is chart appVersion)                                                                 |
@@ -159,7 +159,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | --------------------------------------------- | ------ | ------- | ------------------------------------ |
 | resources                                     | object | `{}`    | CPU/Memory resource requests/limits  |
 | autoscaling.enabled                           | bool   | `false` | Enable horizontal pod autoscaling    |
-| autoscaling.minReplicas                       | int    | `2`     | Minimum number of replicas           |
+| autoscaling.minReplicas                       | int    | `1`     | Minimum number of replicas           |
 | autoscaling.maxReplicas                       | int    | `10`    | Maximum number of replicas           |
 | autoscaling.targetCPUUtilizationPercentage    | int    | `80`    | Target CPU utilization percentage    |
 | autoscaling.targetMemoryUtilizationPercentage | int    | `80`    | Target memory utilization percentage |
@@ -174,7 +174,7 @@ When deployed via the umbrella chart, these global values are automatically used
 | podDisruptionBudget.minAvailable   | int  | `1`     | Minimum available pods during disruptions (only rendered when replicaCount, or autoscaling.minReplicas with autoscaling on, is above 1) |
 | podDisruptionBudget.maxUnavailable | int  | `1`     | Maximum unavailable pods during disruptions (only rendered otherwise)                                                                   |
 
-Replicas share nothing in memory, and the database migrations each pod runs at startup take a Postgres advisory lock, so pods can start together.
+> **Note:** The LLM Gateway supports one replica for now. Its audit queue, plugin end queue, plugin artifact cache, and configuration cache are local to each pod. Keep `replicaCount` at `1` and leave `autoscaling.enabled` off, because autoscaling would add pods up to `autoscaling.maxReplicas`. This section will be updated when more than one replica is supported.
 
 ### Node Scheduling
 
@@ -533,7 +533,6 @@ When upgrading:
 - The Service is now `{Release.Name}-llm-gateway`. Update anything that calls the old `{Release.Name}-gateway-stack-llm-gateway` Service
 - The credential signer seed's key is now `credential-signer-seed`. To keep an existing Secret, set `global.secrets.llmGateway.keys.credentialSignerSeed: seed`
 - `ingress.tls` is empty by default. Set `ingress.tls`, and a `cert-manager.io/cluster-issuer` or `cert-manager.io/issuer` annotation, to keep HTTPS
-- The default is 2 replicas with a Pod Disruption Budget; set `replicaCount: 1` to keep one
 
 ## Troubleshooting
 

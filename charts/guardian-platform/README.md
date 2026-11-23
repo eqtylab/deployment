@@ -294,7 +294,6 @@ fixes. To move an install to HAProxy:
    platform DNS record now, at least one old TTL before step 5.
 2. In each service's `ingress` block, set `className: haproxy` and convert the
    ingress-nginx settings:
-
    - **Path prefixes**: replace the regex path, `use-regex`, and
      `rewrite-target: "/$2"` with a plain prefix path and
      `haproxy.org/path-rewrite`. HAProxy matches `ImplementationSpecific` paths
@@ -675,7 +674,7 @@ Agent Gateway signing proxy settings. See [llm-gateway/README.md](../llm-gateway
 | Key                                      | Type   | Default        | Description                                                                                |
 | ---------------------------------------- | ------ | -------------- | ------------------------------------------------------------------------------------------ |
 | llm-gateway.enabled                      | bool   | `false`        | Enable the LLM Gateway                                                                     |
-| llm-gateway.replicaCount                 | int    | `2`            | Number of replicas                                                                         |
+| llm-gateway.replicaCount                 | int    | `1`            | Number of replicas                                                                         |
 | llm-gateway.ingress.enabled              | bool   | `false`        | Enable ingress                                                                             |
 | llm-gateway.config.deploymentEnvironment | string | `"production"` | Reported on audit events and used by gateway runtime policy                                |
 | llm-gateway.config.registration.enabled  | bool   | `false`        | Enable agent registration; reads global.secrets.controlPlane and global.secrets.llmGateway |
