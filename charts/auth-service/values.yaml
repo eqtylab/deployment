@@ -673,10 +673,6 @@ config:
       # @default -- `false`
       # Enable user management via Keycloak admin API
       enableUserManagement: false
-      # -- Enable Group Sync
-      # @default -- `false`
-      # Enable group sync with Keycloak
-      enableGroupSync: false
       # -- Client ID
       # @default -- `""`
       # **REQUIRED for Keycloak**: SPA client ID (public, e.g., "guardian-platform-frontend")

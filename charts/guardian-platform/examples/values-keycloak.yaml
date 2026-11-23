@@ -55,7 +55,6 @@ auth-service:
         adminUrl: "https://keycloak.your-domain.com"
         clientId: "guardian-platform-frontend"
         enableUserManagement: true
-        enableGroupSync: false
     # Token Exchange Configuration (for Keycloak)
     tokenExchange:
       enabled: true

@@ -31,7 +31,6 @@ Keycloak Configuration:
   URL: {{ .Values.config.idp.keycloak.adminUrl | default "not set" }}
   Realm: {{ .Values.config.idp.keycloak.realm | default "not set" }}
   User Management: {{ if .Values.config.idp.keycloak.enableUserManagement }}enabled{{ else }}disabled{{ end }}
-  Group Sync: {{ if .Values.config.idp.keycloak.enableGroupSync }}enabled{{ else }}disabled{{ end }}
 {{- end }}
 
 {{- $keyMgmtProvider := .Values.config.keyManagement.provider | default (((.Values.global).secrets).keyManagement).provider | default "" }}

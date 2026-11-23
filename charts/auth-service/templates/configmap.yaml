@@ -84,7 +84,6 @@ data:
   IDP_CLIENT_ID: "{{ .Values.config.idp.keycloak.clientId }}"
   {{- end }}
   IDP_KEYCLOAK_ENABLE_USER_MANAGEMENT: "{{ .Values.config.idp.keycloak.enableUserManagement }}"
-  IDP_KEYCLOAK_ENABLE_GROUP_SYNC: "{{ .Values.config.idp.keycloak.enableGroupSync }}"
   {{- end }}
 
   {{- if eq $idpProvider "entra" }}

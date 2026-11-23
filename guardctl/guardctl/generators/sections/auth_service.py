@@ -58,7 +58,6 @@ def generate_auth_service_section(config: PlatformConfig) -> dict[str, Any]:
             "adminUrl": keycloak_url,
             "clientId": "guardian-platform-frontend",
             "enableUserManagement": True,
-            "enableGroupSync": False,
         }
         section["config"]["tokenExchange"] = {
             "enabled": True,

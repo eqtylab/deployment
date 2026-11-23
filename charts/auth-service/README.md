@@ -155,7 +155,6 @@ auth-service:
         adminUrl: "https://keycloak.yourcompany.com"
         clientId: "guardian-platform-frontend"
         enableUserManagement: true
-        enableGroupSync: false
     # Key Management Configuration (for DID keys)
     keyManagement:
       provider: "azure_key_vault"
@@ -521,7 +520,6 @@ All secret references support global fallbacks when deployed via umbrella chart.
 | config.idp.keycloak.adminUrl                   | string | `""`    | Admin URL (**must be set**, e.g., "https://keycloak.example.com")                                                     |
 | config.idp.keycloak.clientId                   | string | `""`    | Frontend SPA client ID (**must be set**, public client used for user-facing auth, e.g., "guardian-platform-frontend") |
 | config.idp.keycloak.enableUserManagement       | bool   | `false` | Enable user management                                                                                                |
-| config.idp.keycloak.enableGroupSync            | bool   | `false` | Enable group sync                                                                                                     |
 | config.idp.keycloak.serviceAccountClientId     | string | `""`    | Service account client ID (auto-configured from global.secrets.auth.keycloak)                                         |
 | config.idp.keycloak.serviceAccountClientSecret | string | `""`    | Service account client secret (auto-configured from global.secrets.auth.keycloak)                                     |
 
