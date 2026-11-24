@@ -41,7 +41,6 @@
 {{- $globalLLMGateway := (((.Values.global).secrets).llmGateway) | default dict }}
 {{- $llmGatewaySecretName := .Values.secrets.llmGateway.name | default $globalLLMGateway.secretName }}
 {{- $usesPlatformLLMGatewaySecret := has (.Values.secrets.llmGateway.name | default "") (list "" $globalLLMGateway.secretName) }}
-{{- $usesPlatformControlPlaneSecret := has (.Values.secrets.controlPlane.name | default "") (list "" (((.Values.global).secrets).controlPlane).secretName) }}
 {{- $platformPluginSecretEnvs := ($globalLLMGateway.values).pluginSecretEnvs | default dict }}
 {{- $useLLMGatewaySecretEnvs := and $plugins.enabled (not (empty $platformPluginSecretEnvs)) $usesPlatformLLMGatewaySecret }}
 {{- $hasSecretEnvFallback := or $useLLMGatewaySecretEnvs .Values.secrets.pluginSecretEnvs.name }}
@@ -63,15 +62,11 @@ spec:
       {{- include "llm-gateway.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- $registration := .Values.config.registration.enabled }}
-      {{- $registrationToken := (((((.Values.global).secrets).controlPlane).values).registrationTokenSecret) | default "" }}
-      {{- $credentialSignerSeed := ($globalLLMGateway.values).credentialSignerSeed | default "" }}
-      {{- $platformSecrets := printf "%s%s%s" (ternary $registrationToken "" (and $registration $usesPlatformControlPlaneSecret)) (ternary $credentialSignerSeed "" (and $registration $usesPlatformLLMGatewaySecret)) (ternary (toJson $platformPluginSecretEnvs) "" $useLLMGatewaySecretEnvs) }}
-      {{- $secretsChecksum := ternary (sha256sum $platformSecrets) "" (ne $platformSecrets "") }}
-      {{- if or .Values.podAnnotations $secretsChecksum }}
+      {{- $platformSecrets := ((.Values.global).secrets) | default dict }}
+      {{- if or .Values.podAnnotations $platformSecrets.create }}
       annotations:
-        {{- with $secretsChecksum }}
-        checksum/platform-secrets: {{ . }}
+        {{- if $platformSecrets.create }}
+        checksum/platform-secrets: {{ pick $platformSecrets "controlPlane" "database" "llmGateway" | toJson | sha256sum }}
         {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}

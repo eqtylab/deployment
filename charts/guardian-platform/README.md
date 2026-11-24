@@ -402,6 +402,40 @@ global:
     create: false # Use pre-created secrets
 ```
 
+### Rotating Secrets
+
+Services read Secret values when their pods start. With
+`global.secrets.create: true`, each Deployment's `checksum/platform-secrets` pod
+annotation hashes the `global.secrets` entries that service reads, so changing a
+value and running `helm upgrade` rolls the services that read it:
+
+| Deployment         | `global.secrets` entries                                               |
+| ------------------ | ---------------------------------------------------------------------- |
+| Auth Service       | `auth`, `authService`, `database`, `governanceWorker`, `keyManagement` |
+| Governance Service | `auth`, `authService`, `database`, `storage`                           |
+| Integrity Service  | `database`, `storage`                                                  |
+| Control Plane      | `controlPlane`, `database`                                             |
+| LLM Gateway        | `controlPlane`, `database`, `llmGateway`                               |
+
+A change rolls a service even when it reads that Secret under its own
+`secrets.*.name`. Helm never sees the values of Secrets created outside the
+chart, so with `global.secrets.create: false` or a service's own Secret, restart
+the Deployments that read it after changing it:
+
+```bash
+kubectl rollout restart deployment/<deployment-name> -n guardian
+```
+
+The annotation is a SHA-256 hash of those values, readable by anyone who can
+read the Deployments. Use generated secrets, as `guardctl` does, rather than
+short or guessable ones.
+
+> **Warning**: Rolling the pods doesn't change the database password. A changed
+> `global.secrets.database.values.password` restarts every service with the new
+> password, and their new pods fail to start until PostgreSQL accepts it. Change
+> it in PostgreSQL first; keep the bundled PostgreSQL's password unchanged, as
+> [Upgrade](https://guardian.docs.eqtylab.io/deployment/upgrade/) describes.
+
 ### Encrypting Secrets for Version Control
 
 If you need to store secrets in version control (for GitOps workflows), **always encrypt them first**. Several tools are available:
@@ -535,7 +569,7 @@ Centralized secret configuration for all platform components:
 
 | Key                                                     | Type   | Default                        | Description                                                                                                          |
 | ------------------------------------------------------- | ------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| global.secrets.create                                   | bool   | `false`                        | Auto-create secrets from values (dev only)                                                                           |
+| global.secrets.create                                   | bool   | `false`                        | Create the platform Secrets from values                                                                              |
 | global.secrets.database.secretName                      | string | `"platform-database"`          | Database credentials secret name                                                                                     |
 | global.secrets.database.keys.gatewayDsn                 | string | `"gateway-dsn"`                | Key holding the gateway DSN the Control Plane and the LLM Gateway read                                               |
 | global.secrets.controlPlane.secretName                  | string | `"platform-control-plane"`     | Control Plane registration token secret name                                                                         |

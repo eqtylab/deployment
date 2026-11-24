@@ -242,7 +242,7 @@ All secret references support global fallbacks when deployed via umbrella chart.
 
 With LLM Gateway registration on, leave `secrets.controlPlane.name` empty and set `global.secrets.controlPlane.secretName`, so both read the same Secret; the umbrella chart fails to render otherwise.
 
-When the umbrella chart creates the Secret, the pod's `checksum/registration-token` annotation follows `global.secrets.controlPlane.values.registrationTokenSecret`, so changing the token rolls the Control Plane; it is left out when `secrets.controlPlane.name` names another Secret. The LLM Gateway's `checksum/platform-secrets` covers the same value.
+When the umbrella chart creates the platform Secrets (`global.secrets.create`), the pod's `checksum/platform-secrets` annotation hashes the `global.secrets` entries this chart reads, so changing any of their values rolls the Control Plane. See [Rotating Secrets](../guardian-platform/README.md#rotating-secrets).
 
 #### VirusTotal Secret
 

@@ -404,6 +404,8 @@ Governance Service.
 
 All secret references support global fallbacks when deployed via umbrella chart.
 
+When the umbrella chart creates the platform Secrets (`global.secrets.create`), the pod's `checksum/platform-secrets` annotation hashes the `global.secrets` entries this chart reads, so changing any of their values rolls Auth Service. See [Rotating Secrets](../guardian-platform/README.md#rotating-secrets).
+
 #### Auth0 Secret (only used when auth provider is Auth0)
 
 | Key                     | Type   | Description                                                             |

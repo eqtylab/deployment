@@ -318,6 +318,8 @@ installation, and RWO storage is not a shared multi-replica backend.
 
 All secret references support global fallbacks when deployed via umbrella chart.
 
+When the umbrella chart creates the platform Secrets (`global.secrets.create`), the pod's `checksum/platform-secrets` annotation hashes the `global.secrets` entries this chart reads, so changing any of their values rolls Integrity Service. See [Rotating Secrets](../guardian-platform/README.md#rotating-secrets).
+
 #### Storage Secrets
 
 AWS S3 (only used when integrityAppBlobStoreType is "aws_s3"):

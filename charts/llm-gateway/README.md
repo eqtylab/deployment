@@ -234,7 +234,7 @@ When the umbrella chart creates the Secret, it also holds `global.secrets.llmGat
 
 The LLM Gateway and the Control Plane must read the same registration token secret; the umbrella chart fails to render when their Secret names differ.
 
-When the umbrella chart creates the Secrets, the pod's `checksum/platform-secrets` annotation follows the registration token, the credential signer seed, and the plugin secret environment variables it reads from them, so changing any of them rolls the LLM Gateway. Values in a Secret named by `secrets.controlPlane.name` or `secrets.llmGateway.name` are left out.
+When the umbrella chart creates the platform Secrets (`global.secrets.create`), the pod's `checksum/platform-secrets` annotation hashes the `global.secrets` entries this chart reads, so changing any of their values rolls the LLM Gateway. See [Rotating Secrets](../guardian-platform/README.md#rotating-secrets).
 
 #### Plugin Secrets
 

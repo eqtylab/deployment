@@ -14,8 +14,12 @@ spec:
       {{- include "auth-service.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- $platformSecrets := ((.Values.global).secrets) | default dict }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if $platformSecrets.create }}
+        checksum/platform-secrets: {{ pick $platformSecrets "auth" "authService" "database" "governanceWorker" "keyManagement" | toJson | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

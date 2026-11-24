@@ -74,13 +74,11 @@ spec:
       {{- include "control-plane.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- $registrationToken := (((((.Values.global).secrets).controlPlane).values).registrationTokenSecret) | default "" }}
-      {{- $usesPlatformControlPlaneSecret := has (.Values.secrets.controlPlane.name | default "") (list "" (((.Values.global).secrets).controlPlane).secretName) }}
-      {{- $tokenChecksum := ternary (sha256sum $registrationToken) "" (and .Values.config.auth.enabled $usesPlatformControlPlaneSecret (ne $registrationToken "")) }}
-      {{- if or .Values.podAnnotations $tokenChecksum }}
+      {{- $platformSecrets := ((.Values.global).secrets) | default dict }}
+      {{- if or .Values.podAnnotations $platformSecrets.create }}
       annotations:
-        {{- with $tokenChecksum }}
-        checksum/registration-token: {{ . }}
+        {{- if $platformSecrets.create }}
+        checksum/platform-secrets: {{ pick $platformSecrets "controlPlane" "database" | toJson | sha256sum }}
         {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
