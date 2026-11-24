@@ -490,6 +490,25 @@ llm-gateway:
 
 Environment variables come from `global.secrets.llmGateway.values.pluginSecretEnvs`, or from a Secret named by `secrets.pluginSecretEnvs.name`, for example `GUARDIAN_SECRET__BUILTIN__INTENT_MONITOR__OPENAI_API_KEY`.
 
+### Model Routing
+
+From Guardian Platform 1.4, the LLM Gateway routes a `POST` model request on `/v1/anthropic_api/…` or `/v1/openai_api/…` that carries neither an `Authorization` nor an `x-api-key` header through the organization's model catalog, with the provider key the organization or project stored through the Control Plane. Any other request on those two routes without a key, such as `GET /v1/models`, is refused with `model_operation_unsupported`. A request that carries its own key, and any request on the ChatGPT backend, Gemini or Vertex AI routes, is forwarded as before.
+
+The gateway opens stored keys with the plugin secrets key, and without it refuses requests it would route with `model_key_unavailable`. With the key set, it keeps a second connection pool to its registry database for routing: at most 8 connections per replica, on top of its other pools, so count them in the database's connection budget.
+
+Routing needs the agent's project, so set `config.projectContext.mode` to `observe` or `enforce`, which also needs `config.plugins.enabled: true`. With project context `disabled`, the default, routing stays on and refuses requests with no key with `model_project_required`; they aren't forwarded.
+
+If the configured upstreams add their own credential, such as a company LLM proxy, or need none, such as a local model server, turn routing off so requests with no key keep going to them, whatever the plugin secrets key and project context settings:
+
+```yaml
+llm-gateway:
+  extraEnvVars:
+    - name: LLM_GATEWAY_KEYLESS_ROUTING_ENABLED
+      value: "false"
+```
+
+See [Model Routing](https://guardian.docs.eqtylab.io/llm-gateway/model-routing/) in the Guardian Platform docs.
+
 ## Operations Guides
 
 - [Plugin runtime bootstrap](docs/plugin-runtime-bootstrap.md): signed baseline configuration, rollout, and signer rotation
