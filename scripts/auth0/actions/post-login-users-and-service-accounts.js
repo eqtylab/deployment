@@ -98,6 +98,8 @@ exports.onExecutePostLogin = async (event, api) => {
         body: JSON.stringify({
           user_id: event.user.user_id,
           email: event.user.email,
+          // Always true past the check above; sent so Auth Service stores the IdP's value, not its default
+          email_verified: event.user.email_verified,
           name: event.user.name || event.user.nickname || event.user.email,
           picture: event.user.picture,
           provider: "auth0",
